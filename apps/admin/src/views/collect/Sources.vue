@@ -342,11 +342,11 @@ onBeforeUnmount(() => {
           <span v-else class="muted">未配置（直连播放）</span>
         </template>
       </el-table-column>
-      <el-table-column label="页大小" width="80" align="center">
+      <el-table-column label="每页条数" width="100" align="center">
         <template #default="{ row }">{{ row.pagesize }}</template>
       </el-table-column>
       <el-table-column label="间隔" width="70" align="center">
-        <template #default="{ row }">{{ row.intervalSec }}s</template>
+        <template #default="{ row }">{{ row.intervalSec }} 秒</template>
       </el-table-column>
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
