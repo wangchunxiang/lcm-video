@@ -191,7 +191,7 @@ async function testSource(row: SourceRow) {
     if (data.ok) {
       ElNotification({
         title: '测试通过',
-        message: `${row.name}：接口正常，耗时 ${data.elapsed_ms}ms，返回 ${data.categories} 个分类`,
+        message: `${row.name}：接口正常，耗时 ${data.elapsed_ms}ms`,
         type: 'success',
         position: 'top-right',
         duration: 4000,
