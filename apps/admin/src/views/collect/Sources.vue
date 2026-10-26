@@ -355,9 +355,9 @@ onBeforeUnmount(() => {
       </el-table-column>
       <el-table-column label="最后同步" width="165" align="center">
         <template #default="{ row }">
-          <el-tooltip v-if="row.lastSyncStatus !== 0" :content="row.lastSyncMsg || '无'">
-            <span :class="row.lastSyncStatus === 2 ? 'danger' : ''">{{ row.lastSyncAt || '—' }}</span>
-          </el-tooltip>
+          <span v-if="row.lastSyncStatus !== 0" :class="row.lastSyncStatus === 2 ? 'danger' : ''">
+            {{ row.lastSyncAt || '—' }}
+          </span>
           <span v-else class="muted">未同步</span>
         </template>
       </el-table-column>
