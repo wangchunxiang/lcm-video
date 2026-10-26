@@ -330,9 +330,9 @@ onBeforeUnmount(() => {
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
     >
       <el-table-column type="selection" width="46" />
-      <el-table-column prop="sourceTypeName" label="源站分类" min-width="200" />
-      <el-table-column prop="sourceTypeId" label="源站分类ID" width="110" align="center" />
-      <el-table-column label="本站分类" min-width="220">
+      <el-table-column prop="sourceTypeName" label="源站分类" min-width="260" show-overflow-tooltip />
+      <el-table-column prop="sourceTypeId" label="源站分类ID" width="110" align="center" show-overflow-tooltip />
+      <el-table-column label="本站分类" min-width="260">
         <template #default="{ row }">
           <el-tree-select
             :model-value="row.categoryId || undefined"
@@ -356,15 +356,15 @@ onBeforeUnmount(() => {
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="匹配方式" width="90" align="center">
+      <el-table-column label="匹配方式" width="100" align="center">
         <template #default="{ row }">{{ matchTag(row) }}</template>
       </el-table-column>
-      <el-table-column label="状态" width="90" align="center">
+      <el-table-column label="状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="statusTag(row).type" size="small">{{ statusTag(row).text }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="230" fixed="right">
+      <el-table-column label="操作" width="230" fixed="right" align="center">
         <template #default="{ row }">
           <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略分类</el-button>
           <el-button v-else link type="primary" @click="restoreRow(row)">恢复</el-button>
