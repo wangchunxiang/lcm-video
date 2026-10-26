@@ -7,7 +7,6 @@ import AdminLayout from '../layout/AdminLayout.vue';
 import Dashboard from '../views/Dashboard.vue';
 import Placeholder from '../views/Placeholder.vue';
 import Categories from '../views/content/Categories.vue';
-import VodEdit from '../views/content/VodEdit.vue';
 import Vods from '../views/content/Vods.vue';
 import Logs from '../views/collect/Logs.vue';
 import Mappings from '../views/collect/Mappings.vue';
@@ -58,7 +57,6 @@ const routes = [
     children: [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', component: Dashboard, meta: { title: '数据概览' } },
-      { path: 'content/vods/:id(\\d+)', component: VodEdit, meta: { title: '编辑影片' } },
       ...implementedRoutes,
       ...placeholderRoutes,
     ],

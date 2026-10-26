@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { api } from '../../api/client.ts';
-import ImageUpload from '../../components/ImageUpload.vue';
+import { api } from '../api/client.ts';
+import ImageUpload from './ImageUpload.vue';
 
 interface VodDetail {
   id: number;
@@ -55,11 +54,16 @@ interface CategoryNode {
   children?: CategoryNode[];
 }
 
-const route = useRoute();
-const router = useRouter();
+const props = defineProps<{ modelValue: boolean; vodId: number }>();
+const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void; (e: 'saved'): void }>();
 
-const vodId = computed(() => Number(route.params.id));
-const loading = ref(true);
+const visible = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => emit('update:modelValue', value),
+});
+
+const activeTab = ref('base');
+const loading = ref(false);
 const saving = ref(false);
 const form = reactive({
   name: '',
@@ -98,11 +102,15 @@ const pasteVisible = ref(false);
 const pasteTarget = ref<PlayLine | null>(null);
 const pasteText = ref('');
 
+const addLineVisible = ref(false);
+const newLine = reactive({ source_from: '', play_url: '' });
+
 async function load() {
+  if (!props.vodId) return;
   loading.value = true;
   try {
     const [detail, categoryData] = await Promise.all([
-      api.get<{ vod: VodDetail }>(`/vods/${vodId.value}`),
+      api.get<{ vod: VodDetail }>(`/vods/${props.vodId}`),
       api.get<{ items: CategoryNode[] }>('/categories'),
     ]);
     categories.value = categoryData.items;
@@ -130,7 +138,7 @@ async function load() {
       collectedAt: row.collectedAt,
     });
 
-    const plays = await api.get<{ items: PlayLine[] }>(`/vods/${vodId.value}/plays`);
+    const plays = await api.get<{ items: PlayLine[] }>(`/vods/${props.vodId}/plays`);
     lines.value = plays.items.map((line) => ({ ...line, episodes: [...line.episodes] }));
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载影片失败');
@@ -139,10 +147,25 @@ async function load() {
   }
 }
 
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) {
+      activeTab.value = 'base';
+      void load();
+    }
+  },
+);
+
+function close() {
+  visible.value = false;
+  emit('saved');
+}
+
 async function saveBase() {
   saving.value = true;
   try {
-    await api.put(`/vods/${vodId.value}`, {
+    await api.put(`/vods/${props.vodId}`, {
       name: form.name,
       sub_name: form.sub_name,
       category_id: form.category_id,
@@ -184,6 +207,7 @@ async function saveLine(line: PlayLine) {
     ElMessage.success('线路已保存');
     line.dirty = false;
     await load();
+    activeTab.value = 'lines';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存线路失败');
   } finally {
@@ -203,6 +227,7 @@ async function removeLine(line: PlayLine) {
     await api.del(`/plays/${line.id}`);
     ElMessage.success('已删除线路');
     await load();
+    activeTab.value = 'lines';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
   }
@@ -273,12 +298,9 @@ function applyPaste() {
 
 /* ------------------------------ 新增手工线路 ------------------------------ */
 
-const addLineVisible = ref(false);
-const newLine = reactive({ source_from: '', play_url: '' });
-
 async function addLine() {
   try {
-    await api.post(`/vods/${vodId.value}/plays`, {
+    await api.post(`/vods/${props.vodId}/plays`, {
       source_from: newLine.source_from,
       play_url: newLine.play_url,
     });
@@ -287,6 +309,7 @@ async function addLine() {
     newLine.source_from = '';
     newLine.play_url = '';
     await load();
+    activeTab.value = 'lines';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '添加失败');
   }
@@ -296,166 +319,174 @@ function lineTitle(line: PlayLine): string {
   if (line.sourceId === 0) return line.sourceFrom;
   return `${line.sourceName || '源站'} · ${line.sourceFrom}`;
 }
-
-onMounted(load);
 </script>
 
 <template>
-  <div v-loading="loading">
-    <el-page-header content="编辑影片" @back="router.push('/content/vods')" />
+  <el-dialog
+    v-model="visible"
+    :title="`编辑影片${form.name ? '：' + form.name : ''}`"
+    width="90%"
+    top="4vh"
+    class="vod-edit-dialog"
+    :close-on-click-modal="false"
+    destroy-on-close
+    @closed="emit('saved')"
+  >
+    <div v-loading="loading">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="基本信息" name="base">
+          <el-form label-width="90px">
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="影片名称">
+                  <el-input v-model="form.name" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="副标题">
+                  <el-input v-model="form.sub_name" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="分类">
+                  <el-select v-model="form.category_id" filterable style="width: 100%">
+                    <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="年份">
+                  <el-input-number v-model="form.year" :min="0" :max="2999" :controls="false" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="状态">
+                  <el-radio-group v-model="form.status">
+                    <el-radio :value="1">上架</el-radio>
+                    <el-radio :value="0">下架</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="地区">
+                  <el-input v-model="form.area" maxlength="50" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="语言">
+                  <el-input v-model="form.lang" maxlength="50" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="首字母">
+                  <el-input v-model="form.letter" maxlength="1" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="总集数">
+                  <el-input-number v-model="form.episode_count" :min="0" :controls="false" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="上映日期">
+                  <el-input v-model="form.release_date" maxlength="20" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="备注">
+                  <el-input v-model="form.remarks" maxlength="100" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="演员">
+                  <el-input v-model="form.actor" maxlength="500" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="导演">
+                  <el-input v-model="form.director" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="编剧">
+                  <el-input v-model="form.writer" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="封面">
+                  <ImageUpload v-model="form.cover" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="简介">
+                  <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit />
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="详细介绍">
+                  <el-input v-model="form.content" type="textarea" :rows="4" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+        </el-tab-pane>
 
-    <el-card shadow="never" class="section">
-      <el-form label-width="90px">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="影片名称">
-              <el-input v-model="form.name" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="副标题">
-              <el-input v-model="form.sub_name" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="分类">
-              <el-select v-model="form.category_id" filterable style="width: 100%">
-                <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="年份">
-              <el-input-number v-model="form.year" :min="0" :max="2999" :controls="false" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="状态">
-              <el-radio-group v-model="form.status">
-                <el-radio :value="1">上架</el-radio>
-                <el-radio :value="0">下架</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="地区">
-              <el-input v-model="form.area" maxlength="50" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="语言">
-              <el-input v-model="form.lang" maxlength="50" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="首字母">
-              <el-input v-model="form.letter" maxlength="1" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="总集数">
-              <el-input-number v-model="form.episode_count" :min="0" :controls="false" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="上映日期">
-              <el-input v-model="form.release_date" maxlength="20" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="备注">
-              <el-input v-model="form.remarks" maxlength="100" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="演员">
-              <el-input v-model="form.actor" maxlength="500" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="导演">
-              <el-input v-model="form.director" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="编剧">
-              <el-input v-model="form.writer" maxlength="255" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="封面">
-              <ImageUpload v-model="form.cover" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="简介">
-              <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="详细介绍">
-              <el-input v-model="form.content" type="textarea" :rows="5" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item>
-          <el-button type="primary" :loading="saving" @click="saveBase">保存</el-button>
-          <span class="meta">采集时间：{{ form.collectedAt }}</span>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card shadow="never" class="section">
-      <template #header>
-        <div class="card-head">
-          <span>线路与剧集</span>
-          <el-button size="small" type="primary" plain @click="addLineVisible = true">新增手工线路</el-button>
-        </div>
-      </template>
-
-      <el-empty v-if="lines.length === 0" description="这部影片还没有线路" />
-
-      <div v-for="line in lines" :key="line.id" class="line">
-        <div class="line-head">
-          <div>
-            <el-tag :type="line.sourceId === 0 ? 'warning' : 'success'" size="small">{{ lineTitle(line) }}</el-tag>
-            <span class="muted">共 {{ line.episodes.length }} 集</span>
-            <span v-if="line.sourceUpdatedAt" class="muted">源站更新：{{ line.sourceUpdatedAt }}</span>
+        <el-tab-pane :label="`线路与剧集（${lines.length}）`" name="lines">
+          <div class="line-toolbar">
+            <el-button size="small" type="primary" plain @click="addLineVisible = true">新增手工线路</el-button>
           </div>
-          <div>
-            <el-button size="small" @click="openPaste(line)">整段粘贴</el-button>
-            <el-button size="small" @click="addEpisode(line)">加一集</el-button>
-            <el-button size="small" type="primary" :loading="line.saving" @click="saveLine(line)">保存线路</el-button>
-            <el-button size="small" type="danger" plain @click="removeLine(line)">删除线路</el-button>
+
+          <el-empty v-if="lines.length === 0" description="这部影片还没有线路" />
+
+          <div v-for="line in lines" :key="line.id" class="line">
+            <div class="line-head">
+              <div>
+                <el-tag :type="line.sourceId === 0 ? 'warning' : 'success'" size="small">{{ lineTitle(line) }}</el-tag>
+                <span class="muted">共 {{ line.episodes.length }} 集</span>
+                <span v-if="line.sourceUpdatedAt" class="muted">源站更新：{{ line.sourceUpdatedAt }}</span>
+              </div>
+              <div>
+                <el-button size="small" @click="openPaste(line)">整段粘贴</el-button>
+                <el-button size="small" @click="addEpisode(line)">加一集</el-button>
+                <el-button size="small" type="primary" :loading="line.saving" @click="saveLine(line)">保存线路</el-button>
+                <el-button size="small" type="danger" plain @click="removeLine(line)">删除线路</el-button>
+              </div>
+            </div>
+
+            <el-table :data="line.episodes" border size="small" max-height="300">
+              <el-table-column label="#" width="60" align="center">
+                <template #default="{ $index }">{{ $index + 1 }}</template>
+              </el-table-column>
+              <el-table-column label="名称" width="160">
+                <template #default="{ row, $index }">
+                  <el-input v-model="row.name" size="small" @input="line.dirty = true" :placeholder="`第${$index + 1}集`" />
+                </template>
+              </el-table-column>
+              <el-table-column label="地址">
+                <template #default="{ row }">
+                  <el-input v-model="row.url" size="small" @input="line.dirty = true" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" align="center">
+                <template #default="{ $index }">
+                  <el-button link size="small" @click="moveEpisode(line, $index, -1)">上移</el-button>
+                  <el-button link size="small" @click="moveEpisode(line, $index, 1)">下移</el-button>
+                  <el-button link size="small" type="danger" @click="removeEpisode(line, $index)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-        </div>
+        </el-tab-pane>
+      </el-tabs>
+    </div>
 
-        <el-table :data="line.episodes" border size="small" max-height="360">
-          <el-table-column label="#" width="60" align="center">
-            <template #default="{ $index }">{{ $index + 1 }}</template>
-          </el-table-column>
-          <el-table-column label="名称" width="160">
-            <template #default="{ row, $index }">
-              <el-input v-model="row.name" size="small" @input="line.dirty = true" :placeholder="`第${$index + 1}集`" />
-            </template>
-          </el-table-column>
-          <el-table-column label="地址">
-            <template #default="{ row }">
-              <el-input v-model="row.url" size="small" @input="line.dirty = true" />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="150" align="center">
-            <template #default="{ $index }">
-              <el-button link size="small" @click="moveEpisode(line, $index, -1)">上移</el-button>
-              <el-button link size="small" @click="moveEpisode(line, $index, 1)">下移</el-button>
-              <el-button link size="small" type="danger" @click="removeEpisode(line, $index)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-card>
+    <template #footer>
+      <span class="meta">采集时间：{{ form.collectedAt || '—' }}</span>
+      <el-button @click="close">关闭</el-button>
+      <el-button v-if="activeTab === 'base'" type="primary" :loading="saving" @click="saveBase">保存</el-button>
+    </template>
 
-    <el-dialog v-model="pasteVisible" title="整段粘贴导入" width="620px">
+    <el-dialog v-model="pasteVisible" title="整段粘贴导入" width="620px" append-to-body>
       <p class="muted">
         每行一集，支持三种写法：<code>第01集$https://…</code>、<code>第01集 https://…</code>、<code>https://…</code>（只有地址时自动补「第 N 集」）。
         也可以直接粘贴用 <code>#</code> 分隔的一整串。导入会覆盖当前线路的剧集列表，保存后生效。
@@ -467,7 +498,7 @@ onMounted(load);
       </template>
     </el-dialog>
 
-    <el-dialog v-model="addLineVisible" title="新增手工线路" width="560px">
+    <el-dialog v-model="addLineVisible" title="新增手工线路" width="560px" append-to-body>
       <el-form label-width="90px">
         <el-form-item label="线路名称">
           <el-input v-model="newLine.source_from" maxlength="50" placeholder="如：本站备用" />
@@ -486,23 +517,23 @@ onMounted(load);
         <el-button type="primary" @click="addLine">添加</el-button>
       </template>
     </el-dialog>
-  </div>
+  </el-dialog>
 </template>
 
 <style scoped>
-.section {
-  margin-top: 12px;
+:deep(.el-dialog__body) {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-top: 8px;
 }
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.line-toolbar {
+  margin-bottom: 12px;
 }
 .line {
   margin-bottom: 16px;
   padding: 12px;
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 .line-head {
   display: flex;
@@ -518,7 +549,8 @@ onMounted(load);
   color: var(--el-text-color-secondary);
 }
 .meta {
-  margin-left: 12px;
+  float: left;
+  line-height: 32px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }

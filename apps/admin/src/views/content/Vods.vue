@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import VodEditDialog from '../../components/VodEditDialog.vue';
 
 interface VodRow {
   id: number;
@@ -25,7 +25,6 @@ interface CategoryNode {
   children?: CategoryNode[];
 }
 
-const router = useRouter();
 
 const items = ref<VodRow[]>([]);
 const selection = ref<VodRow[]>([]);
@@ -99,8 +98,12 @@ function onSelectionChange(rows: VodRow[]) {
   selection.value = rows;
 }
 
+const editVisible = ref(false);
+const editingId = ref(0);
+
 function edit(row: VodRow) {
-  void router.push(`/content/vods/${row.id}`);
+  editingId.value = row.id;
+  editVisible.value = true;
 }
 
 async function recollect(row: VodRow) {
@@ -350,6 +353,8 @@ onBeforeUnmount(() => {
     </el-dialog>
   </el-card>
   </div>
+
+  <VodEditDialog v-model="editVisible" :vod-id="editingId" @saved="load" />
 </template>
 
 <style scoped>
