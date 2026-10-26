@@ -61,6 +61,12 @@ const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
 let resizeObserver: ResizeObserver | null = null;
 
+type NumKind = 'total' | 'inserted' | 'updated' | 'skipped' | 'ignored' | 'failed';
+
+function numClass(kind: NumKind, value: number): string {
+  return value > 0 ? `num num-${kind}` : 'num num-zero';
+}
+
 function statusOf(row: { status: number }): { text: string; type: TagProps['type'] } {
   if (row.status === 0) return { text: '进行中', type: 'warning' };
   if (row.status === 1) return { text: '成功', type: 'success' };
@@ -230,15 +236,23 @@ onBeforeUnmount(() => {
               <el-tag :type="statusOf(row).type" size="small">{{ statusOf(row).text }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="total" label="采集数" width="90" align="center" />
-          <el-table-column prop="inserted" label="新增" width="80" align="center" />
-          <el-table-column prop="updated" label="更新" width="80" align="center" />
-          <el-table-column prop="skipped" label="跳过" width="80" align="center" />
-          <el-table-column prop="ignored" label="忽略" width="80" align="center" />
+          <el-table-column label="采集数" width="90" align="center">
+            <template #default="{ row }"><span :class="numClass('total', row.total)">{{ row.total }}</span></template>
+          </el-table-column>
+          <el-table-column label="新增" width="80" align="center">
+            <template #default="{ row }"><span :class="numClass('inserted', row.inserted)">{{ row.inserted }}</span></template>
+          </el-table-column>
+          <el-table-column label="更新" width="80" align="center">
+            <template #default="{ row }"><span :class="numClass('updated', row.updated)">{{ row.updated }}</span></template>
+          </el-table-column>
+          <el-table-column label="跳过" width="80" align="center">
+            <template #default="{ row }"><span :class="numClass('skipped', row.skipped)">{{ row.skipped }}</span></template>
+          </el-table-column>
+          <el-table-column label="忽略" width="80" align="center">
+            <template #default="{ row }"><span :class="numClass('ignored', row.ignored)">{{ row.ignored }}</span></template>
+          </el-table-column>
           <el-table-column label="失败" width="80" align="center">
-            <template #default="{ row }">
-              <span :class="row.failed > 0 ? 'danger' : ''">{{ row.failed }}</span>
-            </template>
+            <template #default="{ row }"><span :class="numClass('failed', row.failed)">{{ row.failed }}</span></template>
           </el-table-column>
           <el-table-column prop="startedAt" label="开始时间" width="165" align="center" />
           <el-table-column label="耗时" width="100" align="center">
@@ -288,15 +302,23 @@ onBeforeUnmount(() => {
 
       <el-table v-loading="detailLoading" :data="details" border class="detail-table" empty-text="没有页级明细">
         <el-table-column prop="page" label="页" width="70" align="center" />
-        <el-table-column prop="total" label="本页条数" width="100" align="center" />
-        <el-table-column prop="inserted" label="新增" width="80" align="center" />
-        <el-table-column prop="updated" label="更新" width="80" align="center" />
-        <el-table-column prop="skipped" label="跳过" width="80" align="center" />
-        <el-table-column prop="ignored" label="忽略" width="80" align="center" />
+        <el-table-column label="本页条数" width="100" align="center">
+          <template #default="{ row }"><span :class="numClass('total', row.total)">{{ row.total }}</span></template>
+        </el-table-column>
+        <el-table-column label="新增" width="80" align="center">
+          <template #default="{ row }"><span :class="numClass('inserted', row.inserted)">{{ row.inserted }}</span></template>
+        </el-table-column>
+        <el-table-column label="更新" width="80" align="center">
+          <template #default="{ row }"><span :class="numClass('updated', row.updated)">{{ row.updated }}</span></template>
+        </el-table-column>
+        <el-table-column label="跳过" width="80" align="center">
+          <template #default="{ row }"><span :class="numClass('skipped', row.skipped)">{{ row.skipped }}</span></template>
+        </el-table-column>
+        <el-table-column label="忽略" width="80" align="center">
+          <template #default="{ row }"><span :class="numClass('ignored', row.ignored)">{{ row.ignored }}</span></template>
+        </el-table-column>
         <el-table-column label="失败" width="80" align="center">
-          <template #default="{ row }">
-            <span :class="row.failed > 0 ? 'danger' : ''">{{ row.failed }}</span>
-          </template>
+          <template #default="{ row }"><span :class="numClass('failed', row.failed)">{{ row.failed }}</span></template>
         </el-table-column>
         <el-table-column label="失败原因" min-width="240">
           <template #default="{ row }">
@@ -368,6 +390,30 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 .danger {
+  color: var(--el-color-danger);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.num-zero {
+  color: var(--el-text-color-placeholder);
+}
+.num-total {
+  color: var(--el-text-color-primary);
+}
+.num-inserted {
+  color: var(--el-color-success);
+}
+.num-updated {
+  color: var(--el-color-primary);
+}
+.num-skipped {
+  color: var(--el-text-color-secondary);
+}
+.num-ignored {
+  color: var(--el-color-warning);
+}
+.num-failed {
   color: var(--el-color-danger);
 }
 .log-head {
