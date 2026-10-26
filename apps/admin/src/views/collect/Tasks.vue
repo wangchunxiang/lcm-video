@@ -351,7 +351,7 @@ onUnmounted(() => {
               <span v-else class="muted">仅手动</span>
             </template>
           </el-table-column>
-          <el-table-column label="下次运行" width="165" align="center">
+          <el-table-column label="下次执行" width="165" align="center">
             <template #default="{ row }">
               <span v-if="row.nextRunAt">{{ row.nextRunAt }}</span>
               <span v-else class="muted">—</span>

@@ -255,7 +255,7 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
     <div v-else-if="monthdayWarning" class="line warning">{{ monthdayWarning }}</div>
 
     <div v-if="upcoming.length > 0" class="line upcoming">
-      <span class="label">{{ description || '下次运行' }}</span>
+      <span class="label">{{ description || '下次执行' }}</span>
       <div class="times">
         <span v-for="item in upcoming" :key="item.text" class="time">
           {{ item.text }}<span class="relative">{{ item.relative }}</span>
