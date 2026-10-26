@@ -488,7 +488,6 @@ onUnmounted(() => {
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 .toolbar {
   flex: none;
