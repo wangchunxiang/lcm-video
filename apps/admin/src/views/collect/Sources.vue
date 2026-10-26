@@ -389,12 +389,9 @@ onBeforeUnmount(() => {
   <el-card shadow="never" class="table-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
-      <template v-if="selection.length > 0">
-        <span class="selected">已选 {{ selection.length }} 项</span>
-        <el-button @click="batchStatus('enable')">批量启用</el-button>
-        <el-button @click="batchStatus('disable')">批量停用</el-button>
-        <el-button type="danger" plain @click="confirmBatchDelete">批量删除</el-button>
-      </template>
+      <el-button :disabled="selection.length === 0" @click="batchStatus('enable')">批量启用</el-button>
+      <el-button :disabled="selection.length === 0" @click="batchStatus('disable')">批量停用</el-button>
+      <el-button type="danger" plain :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
     </div>
 
     <div ref="wrapRef" class="table-wrap">
@@ -572,10 +569,6 @@ onBeforeUnmount(() => {
   gap: 8px;
   align-items: center;
   margin-bottom: 12px;
-}
-.selected {
-  color: var(--el-text-color-regular);
-  font-size: 13px;
 }
 .hint {
   color: var(--el-text-color-secondary);
