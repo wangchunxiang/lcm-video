@@ -294,8 +294,8 @@ onBeforeUnmount(() => {
       <el-button :loading="matching" @click="autoMatch">自动匹配</el-button>
       <el-button @click="load">刷新</el-button>
       <el-divider direction="vertical" />
-      <el-button :disabled="selected.length === 0" @click="unmapSelected">取消映射</el-button>
-      <el-button :disabled="selected.length === 0" @click="ignoreSelected">忽略分类</el-button>
+      <el-button type="warning" plain :disabled="selected.length === 0" @click="unmapSelected">取消映射</el-button>
+      <el-button type="info" plain :disabled="selected.length === 0" @click="ignoreSelected">忽略分类</el-button>
     </div>
 
     <div class="summary">
