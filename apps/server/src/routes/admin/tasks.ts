@@ -2,7 +2,7 @@ import { and, eq, inArray, like } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectTask } from '@lcm/db';
-import { isValidCron } from '../../lib/collect/cron.ts';
+import { isValidCron, nextRunAt } from '../../lib/collect/cron.ts';
 import { cancelRun, getRunningLogId, startTask } from '../../lib/collect/runner.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
@@ -61,7 +61,11 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(collectTask.id);
 
-    const items = rows.map((row) => ({ ...row, runningLogId: getRunningLogId(row.id) ?? null }));
+    const items = rows.map((row) => ({
+      ...row,
+      runningLogId: getRunningLogId(row.id) ?? null,
+      nextRunAt: row.cron && row.isEnabled === 1 ? nextRunAt(row.cron) : null,
+    }));
     return ok(reply, { items });
   });
 

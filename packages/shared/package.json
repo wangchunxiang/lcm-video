@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./cron": "./src/cron.ts",
     "./vod": "./src/vod.ts",
     "./settings": "./src/settings.ts"
   }

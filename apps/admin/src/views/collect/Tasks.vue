@@ -2,7 +2,9 @@
 import { onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
+import { describeCron } from '@lcm/shared/cron';
 import { api } from '../../api/client.ts';
+import CronEditor from '../../components/CronEditor.vue';
 
 interface TaskRow {
   id: number;
@@ -16,6 +18,7 @@ interface TaskRow {
   lastRunStatus: number;
   lastRunMsg: string;
   runningLogId: number | null;
+  nextRunAt: string | null;
 }
 
 interface SourceRow {
@@ -329,8 +332,14 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="定时" width="150" align="center">
             <template #default="{ row }">
-              <code v-if="row.cron">{{ row.cron }}</code>
+              <span v-if="row.cron" :title="row.cron">{{ describeCron(row.cron) }}</span>
               <span v-else class="muted">仅手动</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="下次运行" width="165" align="center">
+            <template #default="{ row }">
+              <span v-if="row.nextRunAt">{{ row.nextRunAt }}</span>
+              <span v-else class="muted">—</span>
             </template>
           </el-table-column>
           <el-table-column label="状态" width="80" align="center">
@@ -366,7 +375,7 @@ onUnmounted(() => {
         </el-table>
       </div>
 
-      <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" destroy-on-close>
+      <el-dialog v-model="dialogVisible" :title="dialogTitle" width="660px" destroy-on-close>
         <el-form label-width="90px">
           <el-form-item label="任务名称" required>
             <el-input v-model="form.name" maxlength="50" placeholder="如：西瓜资源每日更新" />
@@ -381,9 +390,8 @@ onUnmounted(() => {
               <el-radio v-for="item in rangeOptions" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="定时表达式">
-            <el-input v-model="form.cron" placeholder="留空表示只能手动执行，如 0 3 * * *" />
-            <div class="hint">五段式「分 时 日 月 周」，按 Asia/Shanghai 时区；如 0 3 * * * 表示每天 3 点</div>
+          <el-form-item label="定时执行">
+            <CronEditor v-model="form.cron" />
           </el-form-item>
           <el-form-item label="启用">
             <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
