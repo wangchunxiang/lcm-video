@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, like, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
@@ -105,9 +105,32 @@ async function loadSource(db: Db, id: number): Promise<typeof collectSource.$inf
 export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
-  app.get('/', async (_req, reply) => {
-    const rows = await db.select().from(collectSource).orderBy(collectSource.sort, collectSource.id);
-    return ok(reply, { items: rows });
+  app.get('/', async (req, reply) => {
+    const query = req.query as Record<string, string | undefined>;
+    const page = Math.max(1, toInt(query.page, 1));
+    const pageSize = Math.min(100, Math.max(1, toInt(query.page_size, 20)));
+
+    const conditions = [];
+    const keyword = toText(query.keyword);
+    if (keyword) conditions.push(like(collectSource.name, `%${keyword}%`));
+    if (query.status === '0' || query.status === '1') {
+      conditions.push(eq(collectSource.isEnabled, toInt(query.status)));
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const countRows = await db.select({ total: sql<number>`count(*)` }).from(collectSource).where(where);
+    const total = Number(countRows[0]?.total ?? 0);
+
+    const rows = await db
+      .select()
+      .from(collectSource)
+      .where(where)
+      .orderBy(collectSource.sort, collectSource.id)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    return ok(reply, { items: rows, total, page, page_size: pageSize });
   });
 
   app.get('/:id', async (req, reply) => {

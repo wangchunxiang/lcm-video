@@ -22,6 +22,10 @@ interface SourceRow {
 }
 
 const items = ref<SourceRow[]>([]);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(20);
+const filters = reactive({ keyword: '', status: '' });
 const loading = ref(false);
 const testing = ref(0);
 const fetching = ref(0);
@@ -46,13 +50,33 @@ const form = reactive({
 async function load() {
   loading.value = true;
   try {
-    const data = await api.get<{ items: SourceRow[] }>('/sources');
+    const params = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) });
+    if (filters.keyword.trim()) params.set('keyword', filters.keyword.trim());
+    if (filters.status !== '') params.set('status', filters.status);
+    const data = await api.get<{ items: SourceRow[]; total: number }>(`/sources?${params.toString()}`);
     items.value = data.items;
+    total.value = data.total;
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载采集源失败');
   } finally {
     loading.value = false;
   }
+}
+
+function search() {
+  page.value = 1;
+  void load();
+}
+
+function reset() {
+  filters.keyword = '';
+  filters.status = '';
+  search();
+}
+
+function onPageChange(next: number) {
+  page.value = next;
+  void load();
 }
 
 function resetForm() {
@@ -190,6 +214,22 @@ onMounted(load);
 
 <template>
   <el-card shadow="never">
+    <div class="search-bar">
+      <el-input
+        v-model="filters.keyword"
+        placeholder="采集源名称"
+        clearable
+        style="width: 200px"
+        @keyup.enter="search"
+      />
+      <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 120px">
+        <el-option label="启用" value="1" />
+        <el-option label="停用" value="0" />
+      </el-select>
+      <el-button type="primary" @click="search">查询</el-button>
+      <el-button @click="reset">重置</el-button>
+    </div>
+
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
       <el-button :loading="loading" @click="load">刷新</el-button>
@@ -235,6 +275,17 @@ onMounted(load);
         </template>
       </el-table-column>
     </el-table>
+
+    <el-pagination
+      class="pager"
+      layout="total, sizes, prev, pager, next"
+      :total="total"
+      :page-sizes="[20, 50, 100]"
+      :page-size="pageSize"
+      :current-page="page"
+      @current-change="onPageChange"
+      @size-change="(size: number) => ((pageSize = size), search())"
+    />
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" destroy-on-close>
       <el-form label-width="110px">
@@ -288,6 +339,12 @@ onMounted(load);
 </template>
 
 <style scoped>
+.search-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
 .toolbar {
   display: flex;
   gap: 8px;
@@ -306,5 +363,9 @@ onMounted(load);
 }
 .danger {
   color: var(--el-color-danger);
+}
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 </style>
