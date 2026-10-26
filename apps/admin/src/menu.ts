@@ -30,7 +30,7 @@ export const menus: MenuItem[] = [
   {
     path: '/tools',
     title: '高级工具',
-    icon: 'Tools',
+    icon: 'SetUp',
     children: [{ path: '/tools/data', title: '数据处理', icon: 'MagicStick' }],
   },
   {
