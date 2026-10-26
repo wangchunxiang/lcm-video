@@ -256,6 +256,7 @@ onBeforeUnmount(() => {
 
     <div class="summary">
       <el-tag
+        size="large"
         :effect="statusFilter === 'all' ? 'dark' : 'plain'"
         class="clickable"
         @click="statusFilter = 'all'"
@@ -263,6 +264,7 @@ onBeforeUnmount(() => {
         共 {{ summary.total }}
       </el-tag>
       <el-tag
+        size="large"
         type="success"
         :effect="statusFilter === '1' ? 'dark' : 'plain'"
         class="clickable"
@@ -271,6 +273,7 @@ onBeforeUnmount(() => {
         已映射 {{ summary.mapped }}
       </el-tag>
       <el-tag
+        size="large"
         type="warning"
         :effect="statusFilter === '0' ? 'dark' : 'plain'"
         class="clickable"
@@ -279,6 +282,7 @@ onBeforeUnmount(() => {
         未映射 {{ summary.unmapped }}
       </el-tag>
       <el-tag
+        size="large"
         type="info"
         :effect="statusFilter === '2' ? 'dark' : 'plain'"
         class="clickable"
