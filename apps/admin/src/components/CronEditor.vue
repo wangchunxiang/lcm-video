@@ -31,12 +31,6 @@ const monthdayOptions = Array.from({ length: 31 }, (_, index) => index + 1);
 const intervalMinuteOptions = [1, 2, 5, 10, 15, 20, 30];
 const intervalHourOptions = [1, 2, 3, 4, 6, 8, 12];
 
-const weekdayPresets: Array<{ label: string; days: number[] }> = [
-  { label: '工作日', days: [1, 2, 3, 4, 5] },
-  { label: '周末', days: [6, 0] },
-  { label: '每天', days: [0, 1, 2, 3, 4, 5, 6] },
-];
-
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -156,10 +150,6 @@ const monthdayWarning = computed(() =>
     : '',
 );
 
-function applyWeekdayPreset(days: number[]) {
-  weekdays.value = [...days];
-}
-
 function onIntervalUnitChange(unit: 'minute' | 'hour') {
   intervalUnit.value = unit;
   intervalValue.value = unit === 'minute' ? 30 : 6;
@@ -209,9 +199,6 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
       </el-select>
       <span class="label">时间</span>
       <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-      <el-button v-for="item in weekdayPresets" :key="item.label" size="small" @click="applyWeekdayPreset(item.days)">
-        {{ item.label }}
-      </el-button>
     </div>
 
     <div v-if="mode === 'month'" class="line">
