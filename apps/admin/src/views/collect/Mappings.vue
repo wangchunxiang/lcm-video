@@ -47,6 +47,33 @@ const filteredRows = computed(() => {
   return rows.value.filter((row) => row.status === target);
 });
 
+interface TreeRow extends SourceCategoryRow {
+  children?: TreeRow[];
+}
+
+const treeRows = computed<TreeRow[]>(() => {
+  const byId = new Map<string, TreeRow>();
+  for (const row of filteredRows.value) {
+    byId.set(row.sourceTypeId, { ...row, children: [] });
+  }
+  const roots: TreeRow[] = [];
+  for (const row of filteredRows.value) {
+    const node = byId.get(row.sourceTypeId);
+    if (!node) continue;
+    const parent = row.sourceTypePid !== '0' ? byId.get(row.sourceTypePid) : undefined;
+    if (parent) parent.children?.push(node);
+    else roots.push(node);
+  }
+  const strip = (nodes: TreeRow[]) => {
+    for (const node of nodes) {
+      if (node.children && node.children.length > 0) strip(node.children);
+      else delete node.children;
+    }
+  };
+  strip(roots);
+  return roots;
+});
+
 function toggleFilter(value: StatusFilter) {
   statusFilter.value = statusFilter.value === value ? 'all' : value;
 }
@@ -268,17 +295,15 @@ onBeforeUnmount(() => {
     <el-table
       :height="tableHeight"
       v-loading="loading"
-      :data="filteredRows"
+      :data="treeRows"
+      row-key="id"
+      default-expand-all
+      :tree-props="{ children: 'children' }"
       border
       stripe
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
     >
-      <el-table-column label="源站分类" min-width="200">
-        <template #default="{ row }">
-          <span :class="row.sourceTypePid !== '0' ? 'child' : ''">{{ row.sourceTypeName }}</span>
-          <span class="muted"> ({{ row.sourceTypeId }})</span>
-        </template>
-      </el-table-column>
+      <el-table-column prop="sourceTypeName" label="源站分类" min-width="200" />
       <el-table-column label="本站分类" min-width="220">
         <template #default="{ row }">
           <el-select
@@ -371,10 +396,6 @@ onBeforeUnmount(() => {
 .clickable {
   cursor: pointer;
   user-select: none;
-}
-.child {
-  padding-left: 16px;
-  color: var(--el-text-color-regular);
 }
 .muted {
   color: var(--el-text-color-secondary);
