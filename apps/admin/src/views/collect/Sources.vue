@@ -28,7 +28,6 @@ const pageSize = ref(20);
 const filters = reactive({ keyword: '', status: '' });
 const loading = ref(false);
 const testing = ref(0);
-const fetching = ref(0);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增采集源');
 const editingId = ref(0);
@@ -154,22 +153,6 @@ async function testSource(row: SourceRow) {
   }
 }
 
-async function fetchCategories(row: SourceRow) {
-  fetching.value = row.id;
-  try {
-    const data = await api.post<{ total: number; mapped: number; fetched: number; matched: number }>(
-      `/sources/${row.id}/fetch-categories`,
-    );
-    ElMessage.success(`获取到 ${data.fetched} 个分类，已映射 ${data.mapped} 个，本次自动匹配 ${data.matched} 个`);
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '获取分类失败');
-    await load();
-  } finally {
-    fetching.value = 0;
-  }
-}
-
 async function remove(row: SourceRow) {
   try {
     await ElMessageBox.confirm(`确定删除采集源「${row.name}」吗？`, '删除采集源', {
@@ -270,7 +253,6 @@ onMounted(load);
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" :loading="testing === row.id" @click="testSource(row)">测试</el-button>
-          <el-button link type="primary" :loading="fetching === row.id" @click="fetchCategories(row)">获取分类</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
         </template>
