@@ -236,7 +236,7 @@ INSERT IGNORE INTO `lcm_category` (`id`,`pid`,`name`,`alias`,`sort`,`is_show`) V
   (21, 2, '港台剧', 'gangtaiju', 2, 1),
   (22, 2, '日韩剧', 'rihanju', 3, 1),
   (23, 2, '欧美剧', 'oumeiju', 4, 1),
-  (24, 2, '海外剧', 'hawaiju', 5, 1),
+  (24, 2, '海外剧', 'haiwaiju', 5, 1),
 
   -- 综艺子类（5）
   (25, 3, '大陆综艺', 'daluzongyi', 1, 1),
@@ -250,4 +250,4 @@ INSERT IGNORE INTO `lcm_category` (`id`,`pid`,`name`,`alias`,`sort`,`is_show`) V
   (31, 4, '港台动漫', 'gangtaidongman', 2, 1),
   (32, 4, '日韩动漫', 'rihandongman', 3, 1),
   (33, 4, '欧美动漫', 'oumeidongman', 4, 1),
-  (34, 4, '海外动漫', 'hawaidongman', 5, 1);
+  (34, 4, '海外动漫', 'haiwaidongman', 5, 1);
