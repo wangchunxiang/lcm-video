@@ -22,23 +22,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 列表页工具栏：按钮间距沿用 Element Plus 自带外边距，
-   只给选择框、输入框、说明文字这类非按钮元素补 12px，避免间距叠加 */
-.toolbar .el-select + .el-button,
-.toolbar .el-input + .el-button,
-.toolbar .el-date-editor + .el-button,
-.toolbar .el-button + .el-select,
-.toolbar .el-input + .el-select,
-.toolbar .el-select + .el-select,
-.toolbar .el-button + .hint,
-.toolbar .el-select + .hint,
-.toolbar .tip,
-.batch .el-select + .el-button,
-.batch-bar .el-select + .el-button,
-.toolbar .el-button + .hint,
-.batch .el-button + .hint,
-.batch-bar .el-button + .hint,
-.batch-bar .el-select + .el-button,
-.batch .el-input + .el-button {
+
+/* 列表页筛选条与操作条：控件之间统一 12px 间距。
+   按钮与按钮之间仍由 Element Plus 自带的 margin-left 处理，这里只补
+   选择框、输入框、说明文字这些非按钮元素相邻时的间距，避免间距叠加。 */
+:is(.toolbar, .search-bar, .batch, .batch-bar) > :is(.el-input, .el-select, .el-date-editor) + :is(.el-input, .el-select, .el-date-editor),
+:is(.toolbar, .search-bar, .batch, .batch-bar) > :is(.el-input, .el-select, .el-date-editor) + .el-button,
+:is(.toolbar, .search-bar, .batch, .batch-bar) > .el-button + :is(.el-select, .el-input),
+:is(.toolbar, .search-bar, .batch, .batch-bar) > :is(.el-button, .el-select, .el-input) + :is(.hint, .tip, .selection-hint) {
   margin-left: 12px;
 }
