@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -37,6 +37,19 @@ const fetching = ref(false);
 const matching = ref(false);
 
 const categoryOptions = ref<{ id: number; label: string }[]>([]);
+
+type StatusFilter = 'all' | '1' | '0' | '2';
+const statusFilter = ref<StatusFilter>('all');
+
+const filteredRows = computed(() => {
+  if (statusFilter.value === 'all') return rows.value;
+  const target = Number(statusFilter.value);
+  return rows.value.filter((row) => row.status === target);
+});
+
+function toggleFilter(value: StatusFilter) {
+  statusFilter.value = statusFilter.value === value ? 'all' : value;
+}
 
 async function loadSources() {
   const data = await api.get<{ items: SourceRow[] }>('/sources');
@@ -171,7 +184,10 @@ function matchTag(row: SourceCategoryRow): string {
   return '—';
 }
 
-watch(sourceId, load);
+watch(sourceId, () => {
+  statusFilter.value = 'all';
+  void load();
+});
 
 onMounted(async () => {
   await loadSources();
@@ -201,6 +217,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="page">
   <el-card shadow="never" class="search-card">
+    <div class="filter-row">
     <div class="toolbar">
       <el-select v-model="sourceId" placeholder="选择采集源" style="width: 200px">
         <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
@@ -211,10 +228,38 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="summary">
-      <el-tag type="info">共 {{ summary.total }}</el-tag>
-      <el-tag type="success">已映射 {{ summary.mapped }}</el-tag>
-      <el-tag type="warning">未映射 {{ summary.unmapped }}</el-tag>
-      <el-tag type="info">已忽略 {{ summary.ignored }}</el-tag>
+      <el-tag
+        :effect="statusFilter === 'all' ? 'dark' : 'plain'"
+        class="clickable"
+        @click="statusFilter = 'all'"
+      >
+        共 {{ summary.total }}
+      </el-tag>
+      <el-tag
+        type="success"
+        :effect="statusFilter === '1' ? 'dark' : 'plain'"
+        class="clickable"
+        @click="toggleFilter('1')"
+      >
+        已映射 {{ summary.mapped }}
+      </el-tag>
+      <el-tag
+        type="warning"
+        :effect="statusFilter === '0' ? 'dark' : 'plain'"
+        class="clickable"
+        @click="toggleFilter('0')"
+      >
+        未映射 {{ summary.unmapped }}
+      </el-tag>
+      <el-tag
+        type="info"
+        :effect="statusFilter === '2' ? 'dark' : 'plain'"
+        class="clickable"
+        @click="toggleFilter('2')"
+      >
+        已忽略 {{ summary.ignored }}
+      </el-tag>
+    </div>
     </div>
   </el-card>
 
@@ -223,7 +268,7 @@ onBeforeUnmount(() => {
     <el-table
       :height="tableHeight"
       v-loading="loading"
-      :data="rows"
+      :data="filteredRows"
       border
       stripe
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
@@ -308,10 +353,24 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+.filter-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.filter-row .toolbar {
+  margin-bottom: 0;
+}
 .summary {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: nowrap;
+}
+.clickable {
+  cursor: pointer;
+  user-select: none;
 }
 .child {
   padding-left: 16px;
