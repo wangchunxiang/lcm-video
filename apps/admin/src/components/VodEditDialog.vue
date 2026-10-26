@@ -505,7 +505,6 @@ function lineTitle(line: PlayLine): string {
     </div>
 
     <template #footer>
-      <span class="meta">采集时间：{{ form.collectedAt || '—' }}</span>
       <el-button @click="close">关闭</el-button>
       <el-button v-if="activeTab === 'base'" type="primary" :loading="saving" @click="saveBase">保存</el-button>
     </template>
@@ -621,12 +620,6 @@ function lineTitle(line: PlayLine): string {
 }
 .muted {
   margin-left: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-.meta {
-  float: left;
-  line-height: 32px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }
