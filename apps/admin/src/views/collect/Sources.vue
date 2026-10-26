@@ -389,9 +389,9 @@ onBeforeUnmount(() => {
   <el-card shadow="never" class="table-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
-      <el-button :disabled="selection.length === 0" @click="batchStatus('enable')">批量启用</el-button>
-      <el-button :disabled="selection.length === 0" @click="batchStatus('disable')">批量停用</el-button>
-      <el-button :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
+      <el-button type="success" :disabled="selection.length === 0" @click="batchStatus('enable')">批量启用</el-button>
+      <el-button type="warning" :disabled="selection.length === 0" @click="batchStatus('disable')">批量停用</el-button>
+      <el-button type="danger" :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
     </div>
 
     <div ref="wrapRef" class="table-wrap">
