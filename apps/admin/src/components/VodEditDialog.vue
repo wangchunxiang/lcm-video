@@ -325,8 +325,8 @@ function lineTitle(line: PlayLine): string {
   <el-dialog
     v-model="visible"
     :title="`编辑影片${form.name ? '：' + form.name : ''}`"
-    width="90%"
-    top="4vh"
+    width="1000px"
+    top="5vh"
     class="vod-edit-dialog"
     :close-on-click-modal="false"
     destroy-on-close
@@ -521,6 +521,9 @@ function lineTitle(line: PlayLine): string {
 </template>
 
 <style scoped>
+:deep(.el-dialog) {
+  max-width: 94%;
+}
 :deep(.el-dialog__body) {
   max-height: calc(100vh - 220px);
   overflow-y: auto;
