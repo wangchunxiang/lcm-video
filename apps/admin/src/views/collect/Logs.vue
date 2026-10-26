@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { api } from '../../api/client.ts';
@@ -59,6 +59,8 @@ const detailLoading = ref(false);
 let timer: ReturnType<typeof setInterval> | undefined;
 const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
+const detailWrapRef = ref<HTMLElement | null>(null);
+const detailTableHeight = ref(300);
 let resizeObserver: ResizeObserver | null = null;
 
 type NumKind = 'total' | 'inserted' | 'updated' | 'skipped' | 'ignored' | 'failed';
@@ -152,6 +154,7 @@ async function openDetail(row: LogRow) {
   drawerVisible.value = true;
   currentLog.value = row;
   details.value = [];
+  observeDetail();
   await loadDetails(row.id, 1);
 }
 
@@ -179,13 +182,23 @@ onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
 
-onMounted(() => {
-  if (!wrapRef.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+function observeDetail() {
+  void nextTick(() => {
+    if (!resizeObserver || !detailWrapRef.value) return;
+    resizeObserver.observe(detailWrapRef.value);
+    detailTableHeight.value = detailWrapRef.value.clientHeight;
   });
-  resizeObserver.observe(wrapRef.value);
-  tableHeight.value = wrapRef.value.clientHeight;
+}
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    if (wrapRef.value) tableHeight.value = wrapRef.value.clientHeight;
+    if (detailWrapRef.value) detailTableHeight.value = detailWrapRef.value.clientHeight;
+  });
+  if (wrapRef.value) {
+    resizeObserver.observe(wrapRef.value);
+    tableHeight.value = wrapRef.value.clientHeight;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -300,7 +313,15 @@ onBeforeUnmount(() => {
         <el-descriptions-item label="信息" :span="3">{{ currentLog.message || '—' }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-table v-loading="detailLoading" :data="details" border class="detail-table" empty-text="没有页级明细">
+      <div ref="detailWrapRef" class="detail-wrap">
+      <el-table
+        v-loading="detailLoading"
+        :data="details"
+        border
+        class="detail-table"
+        empty-text="没有页级明细"
+        :height="detailTableHeight"
+      >
         <el-table-column prop="page" label="页" width="60" align="center" />
         <el-table-column label="本页条数" width="90" align="center">
           <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
@@ -330,6 +351,7 @@ onBeforeUnmount(() => {
         </el-table-column>
         <el-table-column prop="message" label="信息" min-width="120" show-overflow-tooltip />
       </el-table>
+      </div>
 
       <el-pagination
         class="pager"
@@ -424,8 +446,19 @@ onBeforeUnmount(() => {
 .log-summary {
   margin-bottom: 16px;
 }
-.detail-table {
-  margin-bottom: 12px;
+.detail-wrap {
+  flex: 1;
+  min-height: 0;
+}
+:deep(.el-drawer__body) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 12px;
+}
+:deep(.el-drawer__body) > .pager {
+  margin-top: 12px;
+  flex: none;
 }
 .fail-item {
   font-size: 12px;
