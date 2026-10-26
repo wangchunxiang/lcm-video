@@ -279,7 +279,7 @@ onBeforeUnmount(() => {
       />
     </el-card>
 
-    <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="70%">
+    <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="55%">
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
         <span>{{ currentLog.startedAt }} 开始，耗时 {{ durationText(currentLog) }}</span>
@@ -301,26 +301,26 @@ onBeforeUnmount(() => {
       </el-descriptions>
 
       <el-table v-loading="detailLoading" :data="details" border class="detail-table" empty-text="没有页级明细">
-        <el-table-column prop="page" label="页" width="70" align="center" />
-        <el-table-column label="本页条数" width="100" align="center">
+        <el-table-column prop="page" label="页" width="60" align="center" />
+        <el-table-column label="本页条数" width="90" align="center">
           <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
         </el-table-column>
-        <el-table-column label="新增" width="80" align="center">
+        <el-table-column label="新增" width="70" align="center">
           <template #default="{ row }"><span :class="numClass('inserted')">{{ row.inserted }}</span></template>
         </el-table-column>
-        <el-table-column label="更新" width="80" align="center">
+        <el-table-column label="更新" width="70" align="center">
           <template #default="{ row }"><span :class="numClass('updated')">{{ row.updated }}</span></template>
         </el-table-column>
-        <el-table-column label="跳过" width="80" align="center">
+        <el-table-column label="跳过" width="70" align="center">
           <template #default="{ row }"><span :class="numClass('skipped')">{{ row.skipped }}</span></template>
         </el-table-column>
-        <el-table-column label="忽略" width="80" align="center">
+        <el-table-column label="忽略" width="70" align="center">
           <template #default="{ row }"><span :class="numClass('ignored')">{{ row.ignored }}</span></template>
         </el-table-column>
-        <el-table-column label="失败" width="80" align="center">
+        <el-table-column label="失败" width="70" align="center">
           <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
         </el-table-column>
-        <el-table-column label="失败原因" min-width="240">
+        <el-table-column label="失败原因" min-width="200">
           <template #default="{ row }">
             <div v-if="!row.failDetail || row.failDetail.length === 0" class="muted">—</div>
             <div v-for="(item, index) in row.failDetail ?? []" :key="index" class="fail-item">
@@ -328,7 +328,7 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="message" label="信息" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="message" label="信息" min-width="120" show-overflow-tooltip />
       </el-table>
 
       <el-pagination
