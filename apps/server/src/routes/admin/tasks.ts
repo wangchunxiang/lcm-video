@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, like } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectTask } from '@lcm/db';
@@ -30,7 +30,18 @@ interface TaskBody {
 export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
-  app.get('/', async (_req, reply) => {
+  app.get('/', async (req, reply) => {
+    const query = req.query as Record<string, string | undefined>;
+
+    const conditions = [];
+    const keyword = toText(query.keyword);
+    if (keyword) conditions.push(like(collectTask.name, `%${keyword}%`));
+    const sourceId = toInt(query.source_id);
+    if (sourceId > 0) conditions.push(eq(collectTask.sourceId, sourceId));
+    if (query.status === '0' || query.status === '1') {
+      conditions.push(eq(collectTask.isEnabled, toInt(query.status)));
+    }
+
     const rows = await db
       .select({
         id: collectTask.id,
@@ -47,6 +58,7 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
       })
       .from(collectTask)
       .leftJoin(collectSource, eq(collectSource.id, collectTask.sourceId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(collectTask.id);
 
     const items = rows.map((row) => ({ ...row, runningLogId: getRunningLogId(row.id) ?? null }));
@@ -144,6 +156,39 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
     }
     await db.delete(collectTask).where(eq(collectTask.id, id));
     return ok(reply, { id });
+  });
+
+  app.post('/batch', async (req, reply) => {
+    const body = (req.body ?? {}) as { action?: string; ids?: unknown[] };
+    const ids = Array.isArray(body.ids)
+      ? body.ids.map((value) => toInt(value)).filter((value) => value > 0)
+      : [];
+    if (ids.length === 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请先选择任务');
+
+    if (body.action === 'enable' || body.action === 'disable') {
+      await db
+        .update(collectTask)
+        .set({ isEnabled: body.action === 'enable' ? 1 : 0 })
+        .where(inArray(collectTask.id, ids));
+      return ok(reply, { affected: ids.length });
+    }
+
+    if (body.action !== 'delete') {
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, '不支持的操作');
+    }
+
+    const runningIds = ids.filter((id) => getRunningLogId(id) !== undefined);
+    if (runningIds.length > 0) {
+      const runningRows = await db
+        .select({ name: collectTask.name })
+        .from(collectTask)
+        .where(inArray(collectTask.id, runningIds));
+      const names = runningRows.map((row) => row.name).join('、');
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, `${names} 正在执行，请先取消`);
+    }
+
+    await db.delete(collectTask).where(inArray(collectTask.id, ids));
+    return ok(reply, { affected: ids.length });
   });
 
   app.post('/:id/run', async (req, reply) => {
