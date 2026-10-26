@@ -333,7 +333,7 @@ onBeforeUnmount(() => {
       </el-table-column>
       <el-table-column label="操作" width="180" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" :loading="testing === row.id" @click="testSource(row)">测试</el-button>
+          <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>
         </template>
