@@ -158,74 +158,60 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
 
 <template>
   <div class="cron-editor">
-    <div class="modes">
-      <el-radio-group v-model="mode">
-        <el-radio-button v-for="item in MODES" :key="item.value" :value="item.value">{{ item.label }}</el-radio-button>
-      </el-radio-group>
-    </div>
-
-    <div v-if="mode === 'interval'" class="row">
-      <span class="label">间隔</span>
-      <el-select v-model="intervalValue" style="width: 110px">
-        <el-option
-          v-for="item in intervalUnit === 'minute' ? intervalMinuteOptions : intervalHourOptions"
-          :key="item"
-          :label="String(item)"
-          :value="item"
-        />
+    <div class="row">
+      <el-select v-model="mode" style="width: 110px">
+        <el-option v-for="item in MODES" :key="item.value" :label="item.label" :value="item.value" />
       </el-select>
-      <el-select
-        :model-value="intervalUnit"
-        style="width: 90px"
-        @update:model-value="(value) => onIntervalUnitChange(value as 'minute' | 'hour')"
-      >
-        <el-option label="分钟" value="minute" />
-        <el-option label="小时" value="hour" />
-      </el-select>
-      <span class="suffix">执行一次</span>
-    </div>
 
-    <div v-if="mode === 'hour'" class="row">
-      <span class="label">每小时</span>
-      <el-select v-model="minuteOfHour" style="width: 110px">
-        <el-option v-for="item in minuteOptions" :key="item" :label="`第 ${item} 分`" :value="item" />
-      </el-select>
-      <span class="suffix">执行一次</span>
-    </div>
+      <template v-if="mode === 'interval'">
+        <el-select v-model="intervalValue" style="width: 90px">
+          <el-option
+            v-for="item in intervalUnit === 'minute' ? intervalMinuteOptions : intervalHourOptions"
+            :key="item"
+            :label="String(item)"
+            :value="item"
+          />
+        </el-select>
+        <el-select
+          :model-value="intervalUnit"
+          style="width: 90px"
+          @update:model-value="(value) => onIntervalUnitChange(value as 'minute' | 'hour')"
+        >
+          <el-option label="分钟" value="minute" />
+          <el-option label="小时" value="hour" />
+        </el-select>
+        <span class="suffix">执行一次</span>
+      </template>
 
-    <div v-if="mode === 'day'" class="row">
-      <span class="label">时间</span>
-      <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-      <span class="suffix">每天执行一次</span>
-    </div>
+      <template v-else-if="mode === 'hour'">
+        <el-select v-model="minuteOfHour" style="width: 130px">
+          <el-option v-for="item in minuteOptions" :key="item" :label="`第 ${item} 分`" :value="item" />
+        </el-select>
+        <span class="suffix">执行一次</span>
+      </template>
 
-    <template v-if="mode === 'week'">
-      <div class="row">
-        <span class="label">星期</span>
-        <el-select v-model="weekdays" multiple collapse-tags style="width: 220px" placeholder="选择星期">
+      <template v-else-if="mode === 'day'">
+        <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
+        <span class="suffix">每天执行一次</span>
+      </template>
+
+      <template v-else-if="mode === 'week'">
+        <el-select v-model="weekdays" multiple collapse-tags style="width: 200px" placeholder="选择星期">
           <el-option v-for="item in WEEK_LABELS" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-      </div>
-      <div class="row">
-        <span class="label">时间</span>
         <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-        <span class="suffix">这些星期的这个时间执行</span>
-      </div>
-    </template>
+      </template>
 
-    <template v-if="mode === 'month'">
-      <div class="row">
-        <span class="label">日期</span>
-        <el-select v-model="monthdays" multiple collapse-tags style="width: 220px" placeholder="选择日期">
+      <template v-else-if="mode === 'month'">
+        <el-select v-model="monthdays" multiple collapse-tags style="width: 200px" placeholder="选择日期">
           <el-option v-for="item in monthdayOptions" :key="item" :label="`${item} 号`" :value="item" />
         </el-select>
-      </div>
-      <div class="row">
-        <span class="label">时间</span>
         <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-        <span class="suffix">这些日期的这个时间执行</span>
-      </div>
-    </template>
+      </template>
+
+      <span v-else-if="mode === 'manual'" class="suffix">不做定时，只在手动触发时执行</span>
+      <span v-else class="suffix">在定时表达式中自行填写</span>
+    </div>
 
     <div v-if="error" class="row message error">{{ error }}</div>
     <div v-else-if="monthdayWarning" class="row message warning">{{ monthdayWarning }}</div>
@@ -237,30 +223,17 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
 .cron-editor {
   width: 100%;
 }
-.modes {
-  display: flex;
-  flex-wrap: nowrap;
-  margin-bottom: 8px;
-}
 .row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-}
-.label {
-  flex: none;
-  width: 56px;
-  text-align: right;
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
 }
 .suffix {
   color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 .message {
-  padding-left: 64px;
+  margin-top: 6px;
 }
 .error {
   color: var(--el-color-danger);
