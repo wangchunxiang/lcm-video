@@ -2,7 +2,6 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../api/client.ts';
-import ImageUpload from './ImageUpload.vue';
 
 interface VodDetail {
   id: number;
@@ -337,22 +336,35 @@ function lineTitle(line: PlayLine): string {
         <el-tab-pane label="基本信息" name="base">
           <div class="base">
             <div class="base-side">
-              <div class="field-label">封面</div>
-              <ImageUpload v-model="form.cover" />
+              <el-image
+                v-if="form.cover"
+                :src="form.cover"
+                fit="cover"
+                class="poster"
+                :preview-src-list="[form.cover]"
+                preview-teleported
+                hide-on-click-modal
+              />
+              <div v-else class="poster poster-empty">无封面</div>
               <div class="side-meta">采集于 {{ form.collectedAt || '—' }}</div>
             </div>
 
             <div class="base-main">
               <el-form label-width="80px">
                 <el-row :gutter="16">
-                  <el-col :span="16">
+                  <el-col :span="10">
                     <el-form-item label="影片名称">
                       <el-input v-model="form.name" maxlength="255" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
+                  <el-col :span="6">
                     <el-form-item label="副标题">
                       <el-input v-model="form.sub_name" maxlength="255" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="8">
+                    <el-form-item label="封面地址">
+                      <el-input v-model="form.cover" placeholder="https://…" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="10">
@@ -541,14 +553,24 @@ function lineTitle(line: PlayLine): string {
   align-items: flex-start;
 }
 .base-side {
-  width: 168px;
+  width: 130px;
   flex: none;
 }
-.field-label {
-  margin-bottom: 6px;
-  font-size: 13px;
-  line-height: 22px;
-  color: var(--el-text-color-regular);
+.poster {
+  width: 130px;
+  height: 180px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  cursor: zoom-in;
+}
+.poster-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  cursor: default;
 }
 .side-meta {
   margin-top: 10px;
