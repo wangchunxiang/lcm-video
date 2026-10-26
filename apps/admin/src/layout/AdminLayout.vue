@@ -2,43 +2,9 @@
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import {
-  AlarmClock,
-  CollectionTag,
-  DataBoard,
-  Download,
-  Film,
-  Link,
-  MagicStick,
-  Monitor,
-  Operation,
-  SetUp,
-  Setting,
-  Share,
-  Tickets,
-  User,
-  VideoCamera,
-} from '@element-plus/icons-vue';
+import { User } from '@element-plus/icons-vue';
 import { menus } from '../menu.ts';
 
-/** 图标名到组件的显式映射，避免运行时按字符串解析 */
-const iconMap: Record<string, unknown> = {
-  AlarmClock,
-  CollectionTag,
-  DataBoard,
-  Download,
-  Film,
-  Link,
-  MagicStick,
-  Monitor,
-  Operation,
-  SetUp,
-  Setting,
-  Share,
-  Tickets,
-  User,
-  VideoCamera,
-};
 import { auth, logout } from '../auth.ts';
 
 const route = useRoute();
@@ -63,16 +29,13 @@ async function onLogout() {
         <template v-for="item in menus" :key="item.path">
           <el-sub-menu v-if="item.children?.length" :index="item.path">
             <template #title>
-              <el-icon><component :is="iconMap[item.icon ?? '']" /></el-icon>
               <span>{{ item.title }}</span>
             </template>
             <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
-              <el-icon v-if="child.icon"><component :is="iconMap[child.icon]" /></el-icon>
               <span>{{ child.title }}</span>
             </el-menu-item>
           </el-sub-menu>
           <el-menu-item v-else :index="item.path">
-            <el-icon><component :is="iconMap[item.icon ?? '']" /></el-icon>
             <span>{{ item.title }}</span>
           </el-menu-item>
         </template>
@@ -127,17 +90,6 @@ async function onLogout() {
 }
 .menu {
   border-right: none;
-}
-.menu :deep(.el-sub-menu__title .el-icon),
-.menu :deep(.el-menu-item .el-icon) {
-  flex: none;
-  /* 侧栏展开子菜单时会动画改变高度，Chromium 会重绘整片区域，
-     SVG 图标偶尔出现一帧空白。单独提升为合成层可避免被重绘。 */
-  transform: translateZ(0);
-}
-.menu :deep(.el-sub-menu__title .el-icon svg),
-.menu :deep(.el-menu-item .el-icon svg) {
-  display: block;
 }
 .header {
   height: var(--lcm-header-height);
