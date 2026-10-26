@@ -303,7 +303,7 @@ onMounted(load);
           <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
-      <el-table-column label="最后同步" width="165">
+      <el-table-column label="最后同步" width="165" align="center">
         <template #default="{ row }">
           <el-tooltip v-if="row.lastSyncStatus !== 0" :content="row.lastSyncMsg || '无'">
             <span :class="row.lastSyncStatus === 2 ? 'danger' : ''">{{ row.lastSyncAt || '—' }}</span>
