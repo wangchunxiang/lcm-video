@@ -335,107 +335,100 @@ function lineTitle(line: PlayLine): string {
     <div v-loading="loading">
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基本信息" name="base">
-          <div class="base">
-            <div class="base-side">
-              <div class="field-label">封面</div>
-              <ImageUpload v-model="form.cover" />
-              <div class="side-meta">采集于 {{ form.collectedAt || '—' }}</div>
-            </div>
-
-            <div class="base-main">
-              <el-form label-width="80px">
-                <el-row :gutter="16">
-                  <el-col :span="16">
-                    <el-form-item label="影片名称">
-                      <el-input v-model="form.name" maxlength="255" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="副标题">
-                      <el-input v-model="form.sub_name" maxlength="255" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="10">
-                    <el-form-item label="分类">
-                      <el-select v-model="form.category_id" filterable style="width: 100%">
-                        <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="7">
-                    <el-form-item label="年份">
-                      <el-input-number v-model="form.year" :min="0" :max="2999" :controls="false" style="width: 100%" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="7">
-                    <el-form-item label="地区">
-                      <el-input v-model="form.area" maxlength="50" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="语言">
-                      <el-input v-model="form.lang" maxlength="50" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="首字母">
-                      <el-input v-model="form.letter" maxlength="1" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="总集数">
-                      <el-input-number v-model="form.episode_count" :min="0" :controls="false" style="width: 100%" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="上映日期">
-                      <el-input v-model="form.release_date" maxlength="20" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="16">
-                    <el-form-item label="备注">
-                      <el-input v-model="form.remarks" maxlength="100" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="24">
-                    <el-form-item label="状态">
-                      <el-radio-group v-model="form.status">
-                        <el-radio :value="1">上架</el-radio>
-                        <el-radio :value="0">下架</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-
-                <div class="group-title">主创</div>
-                <el-row :gutter="16">
-                  <el-col :span="24">
-                    <el-form-item label="演员">
-                      <el-input v-model="form.actor" maxlength="500" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="导演">
-                      <el-input v-model="form.director" maxlength="255" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="编剧">
-                      <el-input v-model="form.writer" maxlength="255" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-
-                <div class="group-title">简介</div>
-                <el-form-item label-width="0">
-                  <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit placeholder="列表页展示的简短简介" />
+          <el-form label-width="90px">
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="影片名称">
+                  <el-input v-model="form.name" maxlength="255" />
                 </el-form-item>
-                <el-form-item label-width="0">
-                  <el-input v-model="form.content" type="textarea" :rows="4" placeholder="详情页展示的详细介绍" />
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="副标题">
+                  <el-input v-model="form.sub_name" maxlength="255" />
                 </el-form-item>
-              </el-form>
-            </div>
-          </div>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="分类">
+                  <el-select v-model="form.category_id" filterable style="width: 100%">
+                    <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="年份">
+                  <el-input-number v-model="form.year" :min="0" :max="2999" :controls="false" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="状态">
+                  <el-radio-group v-model="form.status">
+                    <el-radio :value="1">上架</el-radio>
+                    <el-radio :value="0">下架</el-radio>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="地区">
+                  <el-input v-model="form.area" maxlength="50" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="语言">
+                  <el-input v-model="form.lang" maxlength="50" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="首字母">
+                  <el-input v-model="form.letter" maxlength="1" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="总集数">
+                  <el-input-number v-model="form.episode_count" :min="0" :controls="false" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="上映日期">
+                  <el-input v-model="form.release_date" maxlength="20" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="备注">
+                  <el-input v-model="form.remarks" maxlength="100" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="演员">
+                  <el-input v-model="form.actor" maxlength="500" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="导演">
+                  <el-input v-model="form.director" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="编剧">
+                  <el-input v-model="form.writer" maxlength="255" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="封面">
+                  <ImageUpload v-model="form.cover" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="简介">
+                  <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit />
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="详细介绍">
+                  <el-input v-model="form.content" type="textarea" :rows="4" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
         </el-tab-pane>
 
         <el-tab-pane :label="`线路与剧集（${lines.length}）`" name="lines">
@@ -535,39 +528,6 @@ function lineTitle(line: PlayLine): string {
   max-height: calc(100vh - 220px);
   overflow-y: auto;
   padding-top: 8px;
-}
-.base {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-.base-side {
-  width: 168px;
-  flex: none;
-}
-.field-label {
-  margin-bottom: 6px;
-  font-size: 13px;
-  line-height: 22px;
-  color: var(--el-text-color-regular);
-}
-.side-meta {
-  margin-top: 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--el-text-color-secondary);
-}
-.base-main {
-  flex: 1;
-  min-width: 0;
-}
-.group-title {
-  margin: 4px 0 14px;
-  padding-left: 8px;
-  border-left: 3px solid var(--el-color-primary);
-  font-size: 13px;
-  line-height: 1;
-  color: var(--el-text-color-primary);
 }
 .line-toolbar {
   margin-bottom: 12px;
