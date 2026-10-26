@@ -1,4 +1,4 @@
-import { and, eq, like, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
@@ -190,6 +190,53 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     });
 
     return ok(reply, { id, plays });
+  });
+
+  app.post('/batch', async (req, reply) => {
+    const body = (req.body ?? {}) as { action?: string; ids?: unknown[]; force?: boolean };
+    const ids = Array.isArray(body.ids)
+      ? body.ids.map((value) => toInt(value)).filter((value) => value > 0)
+      : [];
+    if (ids.length === 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请先选择采集源');
+
+    if (body.action === 'enable' || body.action === 'disable') {
+      await db
+        .update(collectSource)
+        .set({ isEnabled: body.action === 'enable' ? 1 : 0 })
+        .where(inArray(collectSource.id, ids));
+      return ok(reply, { affected: ids.length });
+    }
+
+    if (body.action !== 'delete') {
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, '不支持的操作');
+    }
+
+    const playRows = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(vodPlay)
+      .where(inArray(vodPlay.sourceId, ids));
+    const plays = Number(playRows[0]?.count ?? 0);
+
+    if (plays > 0 && body.force !== true) {
+      return reply.code(409).send({
+        code: 40901,
+        msg: `选中的 ${ids.length} 个源下有 ${plays} 条播放线路，删除后这些线路会被一并清除，相关影片若无其它线路将自动下架`,
+        data: { plays, sources: ids.length },
+      });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(vodPlay).where(inArray(vodPlay.sourceId, ids));
+      await tx.delete(collectSourceCategory).where(inArray(collectSourceCategory.sourceId, ids));
+      await tx.delete(collectTask).where(inArray(collectTask.sourceId, ids));
+      await tx.delete(collectSource).where(inArray(collectSource.id, ids));
+      await tx.execute(sql`
+        UPDATE lcm_vod SET status = 0
+        WHERE status = 1 AND id NOT IN (SELECT vod_id FROM lcm_vod_play)
+      `);
+    });
+
+    return ok(reply, { affected: ids.length, plays });
   });
 
   app.post('/:id/test', async (req, reply) => {

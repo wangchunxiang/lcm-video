@@ -22,6 +22,8 @@ interface SourceRow {
 }
 
 const items = ref<SourceRow[]>([]);
+const selection = ref<SourceRow[]>([]);
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
@@ -69,6 +71,8 @@ async function load() {
     const data = await api.get<{ items: SourceRow[]; total: number }>(`/sources?${params.toString()}`);
     items.value = data.items;
     total.value = data.total;
+    selection.value = [];
+    tableRef.value?.clearSelection();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载采集源失败');
   } finally {
@@ -171,6 +175,62 @@ async function submit() {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
   }
+}
+
+function onSelectionChange(rows: SourceRow[]) {
+  selection.value = rows;
+}
+
+async function batchStatus(action: 'enable' | 'disable') {
+  const ids = selection.value.map((row) => row.id);
+  if (ids.length === 0) return;
+  try {
+    await api.post('/sources/batch', { action, ids });
+    ElMessage.success(action === 'enable' ? `已启用 ${ids.length} 个源` : `已停用 ${ids.length} 个源`);
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+  }
+}
+
+async function batchDelete(force = false) {
+  const ids = selection.value.map((row) => row.id);
+  if (ids.length === 0) return;
+  try {
+    await api.post('/sources/batch', { action: 'delete', ids, force });
+    ElMessage.success(`已删除 ${ids.length} 个采集源`);
+    await load();
+  } catch (error) {
+    if (!force && error instanceof ApiError && error.code === 409) {
+      try {
+        await ElMessageBox.confirm(`${error.message}，确定继续吗？`, '确认删除', {
+          type: 'warning',
+          confirmButtonText: '继续删除',
+          cancelButtonText: '取消',
+        });
+      } catch {
+        return;
+      }
+      await batchDelete(true);
+      return;
+    }
+    ElMessage.error(error instanceof Error ? error.message : '删除失败');
+  }
+}
+
+async function confirmBatchDelete() {
+  const names = selection.value.slice(0, 3).map((row) => row.name).join('、');
+  const more = selection.value.length > 3 ? ` 等 ${selection.value.length} 个源` : '';
+  try {
+    await ElMessageBox.confirm(`确定删除 ${names}${more} 吗？`, '批量删除', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+  await batchDelete();
 }
 
 async function testSource(row: SourceRow) {
@@ -329,10 +389,25 @@ onBeforeUnmount(() => {
   <el-card shadow="never" class="table-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
+      <template v-if="selection.length > 0">
+        <span class="selected">已选 {{ selection.length }} 项</span>
+        <el-button @click="batchStatus('enable')">批量启用</el-button>
+        <el-button @click="batchStatus('disable')">批量停用</el-button>
+        <el-button type="danger" plain @click="confirmBatchDelete">批量删除</el-button>
+      </template>
     </div>
 
     <div ref="wrapRef" class="table-wrap">
-    <el-table v-loading="loading" :data="items" border stripe :height="tableHeight">
+    <el-table
+      ref="tableRef"
+      v-loading="loading"
+      :data="items"
+      border
+      stripe
+      :height="tableHeight"
+      @selection-change="onSelectionChange"
+    >
+      <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
       <el-table-column prop="apiUrl" label="接口地址" min-width="240" show-overflow-tooltip />
       <el-table-column prop="apiFormat" label="格式" width="70" align="center" />
@@ -495,7 +570,12 @@ onBeforeUnmount(() => {
 .toolbar {
   display: flex;
   gap: 8px;
+  align-items: center;
   margin-bottom: 12px;
+}
+.selected {
+  color: var(--el-text-color-regular);
+  font-size: 13px;
 }
 .hint {
   color: var(--el-text-color-secondary);
