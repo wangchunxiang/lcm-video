@@ -69,10 +69,10 @@ function clear() {
 .preview .thumb {
   max-width: 160px;
   max-height: 60px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--el-border-color-light);
   border-radius: 4px;
   padding: 4px;
-  background: #fafafa;
+  background: var(--el-fill-color-light);
 }
 .actions {
   display: flex;
@@ -84,6 +84,6 @@ function clear() {
 }
 .tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 </style>

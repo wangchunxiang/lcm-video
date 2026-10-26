@@ -64,7 +64,7 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1f2d3d 0%, #2b3a4d 100%);
+  background: var(--el-bg-color-page);
 }
 .login-card {
   width: 360px;
@@ -77,12 +77,12 @@ async function onSubmit() {
 .brand h1 {
   margin: 0;
   font-size: 22px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .brand p {
   margin: 6px 0 0;
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 .submit {
   width: 100%;

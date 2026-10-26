@@ -160,18 +160,18 @@ onMounted(load);
 }
 .stat-label {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 .stat-value {
   margin-top: 6px;
   font-size: 26px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .stat-sub {
   margin-top: 6px;
   font-size: 12px;
-  color: #a8abb2;
+  color: var(--el-text-color-placeholder);
 }
 .card-head {
   display: flex;

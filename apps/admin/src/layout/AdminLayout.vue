@@ -23,7 +23,7 @@ async function onLogout() {
   <el-container class="layout">
     <el-aside width="220px" class="aside">
       <div class="logo">蓝草莓影视</div>
-      <el-menu :default-active="activeMenu" router class="menu" background-color="#1f2d3d" text-color="#c0c4cc" active-text-color="#ffd04b">
+      <el-menu :default-active="activeMenu" router class="menu">
         <template v-for="item in menus" :key="item.path">
           <el-sub-menu v-if="item.children?.length" :index="item.path">
             <template #title>
@@ -69,18 +69,18 @@ async function onLogout() {
   height: 100vh;
 }
 .aside {
-  background: #1f2d3d;
+  background: var(--el-bg-color);
   overflow-y: auto;
 }
 .logo {
   height: 56px;
   line-height: 56px;
   text-align: center;
-  color: #fff;
+  color: var(--el-text-color-primary);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 1px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 .menu {
   border-right: none;
@@ -89,12 +89,12 @@ async function onLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--el-bg-color);
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 .crumb {
   font-size: 15px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .user {
   display: flex;
@@ -102,11 +102,11 @@ async function onLogout() {
   gap: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   outline: none;
 }
 .main {
-  background: #f5f7fa;
+  background: var(--el-bg-color-page);
   padding: 16px;
 }
 </style>
