@@ -149,8 +149,9 @@ async function autoMatch() {
 
 async function applyRow(row: SourceCategoryRow, categoryId: number) {
   try {
-    await api.put(`/sources/${sourceId.value}/categories/${row.id}`, { category_id: categoryId });
-    ElMessage.success('已映射');
+    const body = categoryId > 0 ? { category_id: categoryId } : { category_id: 0, status: 0 };
+    await api.put(`/sources/${sourceId.value}/categories/${row.id}`, body);
+    ElMessage.success(categoryId > 0 ? '已映射' : '已取消映射');
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '映射失败');
@@ -176,6 +177,19 @@ async function restoreRow(row: SourceCategoryRow) {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
   }
+}
+
+async function unmapRow(row: SourceCategoryRow) {
+  try {
+    await ElMessageBox.confirm(
+      '取消映射后该源站分类回到「未映射」，之后采集到的影片会被跳过；已入库影片的分类不变。',
+      '取消映射',
+      { type: 'warning', confirmButtonText: '取消映射', cancelButtonText: '返回' },
+    );
+  } catch {
+    return;
+  }
+  await applyRow(row, 0);
 }
 
 async function remapVods(row: SourceCategoryRow) {
@@ -255,16 +269,16 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="summary">
-      <el-button :type="statusFilter === 'all' ? 'primary' : ''" @click="statusFilter = 'all'">
+      <el-button type="primary" :plain="statusFilter !== 'all'" @click="statusFilter = 'all'">
         共 {{ summary.total }}
       </el-button>
-      <el-button :type="statusFilter === '1' ? 'success' : ''" @click="toggleFilter('1')">
+      <el-button type="success" :plain="statusFilter !== '1'" @click="toggleFilter('1')">
         已映射 {{ summary.mapped }}
       </el-button>
-      <el-button :type="statusFilter === '0' ? 'warning' : ''" @click="toggleFilter('0')">
+      <el-button type="warning" :plain="statusFilter !== '0'" @click="toggleFilter('0')">
         未映射 {{ summary.unmapped }}
       </el-button>
-      <el-button :type="statusFilter === '2' ? 'info' : ''" @click="toggleFilter('2')">
+      <el-button type="info" :plain="statusFilter !== '2'" @click="toggleFilter('2')">
         已忽略 {{ summary.ignored }}
       </el-button>
     </div>
@@ -294,7 +308,7 @@ onBeforeUnmount(() => {
             clearable
             placeholder="未映射"
             size="small"
-            @update:model-value="(value: number | undefined) => value && applyRow(row, value)"
+            @update:model-value="(value: number | undefined) => applyRow(row, value ?? 0)"
           >
             <el-option v-for="item in categoryOptions" :key="item.id" :label="item.label" :value="item.id" />
           </el-select>
@@ -314,10 +328,11 @@ onBeforeUnmount(() => {
           <el-tag :type="statusTag(row).type" size="small">{{ statusTag(row).text }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="230" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略</el-button>
           <el-button v-else link type="primary" @click="restoreRow(row)">恢复</el-button>
+          <el-button v-if="row.status === 1" link type="info" @click="unmapRow(row)">取消映射</el-button>
           <el-button v-if="row.status === 1" link type="danger" @click="remapVods(row)">重刷影片</el-button>
         </template>
       </el-table-column>
