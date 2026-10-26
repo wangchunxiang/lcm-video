@@ -349,7 +349,7 @@ function lineTitle(line: PlayLine): string {
             </div>
 
             <div class="base-main">
-              <el-form label-width="80px">
+              <el-form label-width="76px">
                 <el-row :gutter="16">
                   <el-col :span="12">
                     <el-form-item label="影片名称">
@@ -366,44 +366,44 @@ function lineTitle(line: PlayLine): string {
                       <el-input v-model="form.cover" placeholder="https://…" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="10">
+                  <el-col :span="6">
                     <el-form-item label="分类">
                       <el-select v-model="form.category_id" filterable style="width: 100%">
                         <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
                       </el-select>
                     </el-form-item>
                   </el-col>
-                  <el-col :span="7">
+                  <el-col :span="6">
                     <el-form-item label="年份">
                       <el-input-number v-model="form.year" :min="0" :max="2999" :controls="false" style="width: 100%" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="7">
+                  <el-col :span="6">
                     <el-form-item label="地区">
                       <el-input v-model="form.area" maxlength="50" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
+                  <el-col :span="6">
                     <el-form-item label="语言">
                       <el-input v-model="form.lang" maxlength="50" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
+                  <el-col :span="6">
                     <el-form-item label="首字母">
                       <el-input v-model="form.letter" maxlength="1" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
+                  <el-col :span="6">
                     <el-form-item label="总集数">
                       <el-input-number v-model="form.episode_count" :min="0" :controls="false" style="width: 100%" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
+                  <el-col :span="6">
                     <el-form-item label="上映日期">
                       <el-input v-model="form.release_date" maxlength="20" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="16">
+                  <el-col :span="6">
                     <el-form-item label="备注">
                       <el-input v-model="form.remarks" maxlength="100" />
                     </el-form-item>
