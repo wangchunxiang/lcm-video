@@ -338,13 +338,21 @@ onUnmounted(() => {
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="上次执行" min-width="230">
+          <el-table-column label="上次执行" width="165" align="center">
             <template #default="{ row }">
-              <div>{{ row.lastRunAt || '—' }}</div>
-              <div class="run-line">
-                <el-tag size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
-                <span v-if="row.lastRunMsg" class="muted ellipsis" :title="row.lastRunMsg">{{ row.lastRunMsg }}</span>
-              </div>
+              <span v-if="row.lastRunAt">{{ row.lastRunAt }}</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="结果" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span v-if="row.lastRunMsg">{{ row.lastRunMsg }}</span>
+              <span v-else class="muted">—</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="170" align="center" fixed="right">
@@ -439,16 +447,5 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 12px;
-}
-.run-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-}
-.ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 </style>
