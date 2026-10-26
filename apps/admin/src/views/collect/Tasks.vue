@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
 import { computed } from 'vue';
-import { describeCron } from '@lcm/shared/cron';
+import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
 import { api } from '../../api/client.ts';
 import CronEditor from '../../components/CronEditor.vue';
 
@@ -251,19 +251,38 @@ function runStatus(row: TaskRow): { text: string; type: 'success' | 'danger' | '
   return { text: '未执行', type: 'info' };
 }
 
-const currentTask = computed(() => items.value.find((row) => row.id === editingId.value) ?? null);
-
-function agoText(value: string | null): string {
-  if (!value) return '';
-  const time = new Date(value.replace(' ', 'T')).getTime();
-  if (!Number.isFinite(time)) return '';
-  const minutes = Math.round((Date.now() - time) / 60000);
-  if (minutes < 1) return '刚刚';
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} 小时前`;
-  return `${Math.round(hours / 24)} 天前`;
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
 }
+
+function formatRunTime(date: Date): string {
+  const week = WEEK_LABELS.find((item) => item.value === date.getDay())?.label ?? '';
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${week} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function formatRelative(date: Date, now: Date): string {
+  const minutes = Math.round((date.getTime() - now.getTime()) / 60000);
+  if (minutes < 60) return `${minutes} 分钟后`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} 小时后`;
+  return `${Math.round(hours / 24)} 天后`;
+}
+
+const upcomingRuns = computed(() => {
+  const expr = form.cron.trim();
+  if (!expr) return [];
+  if (isValidCron(expr) !== null) return [];
+  const now = new Date();
+  const result: Array<{ text: string; relative: string }> = [];
+  let from = now;
+  for (let index = 0; index < 3; index++) {
+    const next = nextRunAt(expr, from);
+    if (!next) break;
+    result.push({ text: formatRunTime(next), relative: formatRelative(next, now) });
+    from = next;
+  }
+  return result;
+});
 
 const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
@@ -412,14 +431,14 @@ onUnmounted(() => {
           <el-form-item label="定时可视化">
             <CronEditor v-model="form.cron" />
           </el-form-item>
-          <el-form-item v-if="editingId > 0" label="最近执行">
-            <div v-if="currentTask && currentTask.lastRunAt" class="last-run">
-              <span>{{ currentTask.lastRunAt }}</span>
-              <el-tag size="small" :type="runStatus(currentTask).type">{{ runStatus(currentTask).text }}</el-tag>
-              <span class="muted">{{ agoText(currentTask.lastRunAt) }}</span>
-              <span v-if="currentTask.lastRunMsg" class="last-msg">{{ currentTask.lastRunMsg }}</span>
+          <el-form-item label="下次执行">
+            <div v-if="upcomingRuns.length > 0" class="runs">
+              <span v-for="item in upcomingRuns" :key="item.text" class="run">
+                {{ item.text }}<span class="relative">{{ item.relative }}</span>
+              </span>
             </div>
-            <span v-else class="muted">还没有执行过</span>
+            <span v-else-if="!form.cron.trim()" class="muted">留空表示只能手动执行</span>
+            <span v-else class="muted">表达式无效，无法计算下次执行时间</span>
           </el-form-item>
           <el-form-item label="启用">
             <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
@@ -487,15 +506,19 @@ onUnmounted(() => {
 .cron-input :deep(.el-input__inner) {
   font-family: Consolas, Monaco, monospace;
 }
-.last-run {
+.runs {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
   font-size: 13px;
 }
-.last-msg {
+.run {
   color: var(--el-text-color-regular);
-  font-size: 12px;
+  font-family: Consolas, Monaco, monospace;
+}
+.relative {
+  margin-left: 8px;
+  color: var(--el-text-color-secondary);
+  font-family: inherit;
 }
 </style>

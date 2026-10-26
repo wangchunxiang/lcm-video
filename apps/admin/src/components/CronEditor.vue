@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
+import { isValidCron, WEEK_LABELS } from '@lcm/shared/cron';
 
 const props = defineProps<{ modelValue: string }>();
 const emit = defineEmits<{ 'update:modelValue': [string] }>();
@@ -150,39 +150,11 @@ watch(text, (value) => {
 });
 
 const error = computed(() => (text.value.trim() ? isValidCron(text.value.trim()) : null));
-const description = computed(() => (text.value.trim() && !error.value ? describeCron(text.value.trim()) : ''));
 const monthdayWarning = computed(() =>
   mode.value === 'month' && monthdays.value.some((day) => day >= 29)
     ? '29、30、31 号在部分月份不存在，那些月份不执行'
     : '',
 );
-
-function formatDate(date: Date): string {
-  const week = WEEK_LABELS.find((item) => item.value === date.getDay())?.label ?? '';
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${week} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function formatRelative(date: Date, now: Date): string {
-  const diff = Math.round((date.getTime() - now.getTime()) / 60000);
-  if (diff < 60) return `${diff} 分钟后`;
-  const hours = Math.round(diff / 60);
-  if (hours < 48) return `${hours} 小时后`;
-  return `${Math.round(hours / 24)} 天后`;
-}
-
-const upcoming = computed<Array<{ text: string; relative: string }>>(() => {
-  if (!text.value.trim() || error.value) return [];
-  const result: Array<{ text: string; relative: string }> = [];
-  const now = new Date();
-  let from = now;
-  for (let i = 0; i < 3; i++) {
-    const next = nextRunAt(text.value.trim(), from);
-    if (!next) break;
-    result.push({ text: formatDate(next), relative: formatRelative(next, now) });
-    from = next;
-  }
-  return result;
-});
 
 function applyWeekdayPreset(days: number[]) {
   weekdays.value = [...days];
@@ -254,15 +226,6 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
     <div v-if="error" class="line error">{{ error }}</div>
     <div v-else-if="monthdayWarning" class="line warning">{{ monthdayWarning }}</div>
 
-    <div v-if="upcoming.length > 0" class="line upcoming">
-      <span class="label">{{ description || '下次执行' }}</span>
-      <div class="times">
-        <span v-for="item in upcoming" :key="item.text" class="time">
-          {{ item.text }}<span class="relative">{{ item.relative }}</span>
-        </span>
-      </div>
-    </div>
-    <div v-else-if="!text.trim()" class="line muted">留空表示只能手动执行</div>
   </div>
 </template>
 
@@ -288,25 +251,6 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
   min-width: 56px;
   color: var(--el-text-color-secondary);
   font-size: 13px;
-}
-.times {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 16px;
-  font-size: 12px;
-}
-.time {
-  color: var(--el-text-color-regular);
-  font-family: Consolas, Monaco, monospace;
-}
-.relative {
-  margin-left: 4px;
-  color: var(--el-text-color-secondary);
-  font-family: inherit;
-}
-.muted {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
 }
 .error {
   color: var(--el-color-danger);
