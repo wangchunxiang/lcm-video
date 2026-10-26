@@ -156,7 +156,7 @@ async function applyRow(row: SourceCategoryRow, categoryId: number) {
 async function ignoreRow(row: SourceCategoryRow) {
   try {
     await api.put(`/sources/${sourceId.value}/categories/${row.id}`, { status: 2 });
-    ElMessage.success('已忽略');
+    ElMessage.success('已忽略分类');
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
@@ -203,7 +203,7 @@ async function unmapSelected() {
 }
 
 async function ignoreSelected() {
-  await batchApply({ status: 2 }, '忽略');
+  await batchApply({ status: 2 }, '忽略分类');
 }
 
 async function unmapRow(row: SourceCategoryRow) {
@@ -295,7 +295,7 @@ onBeforeUnmount(() => {
       <el-button @click="load">刷新</el-button>
       <el-divider direction="vertical" />
       <el-button :disabled="selected.length === 0" @click="unmapSelected">取消映射</el-button>
-      <el-button :disabled="selected.length === 0" @click="ignoreSelected">忽略</el-button>
+      <el-button :disabled="selected.length === 0" @click="ignoreSelected">忽略分类</el-button>
     </div>
 
     <div class="summary">
@@ -366,7 +366,7 @@ onBeforeUnmount(() => {
       </el-table-column>
       <el-table-column label="操作" width="230" fixed="right">
         <template #default="{ row }">
-          <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略</el-button>
+          <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略分类</el-button>
           <el-button v-else link type="primary" @click="restoreRow(row)">恢复</el-button>
           <el-button v-if="row.status === 1" link type="info" @click="unmapRow(row)">取消映射</el-button>
           <el-button v-if="row.status === 1" link type="danger" @click="remapVods(row)">重刷影片</el-button>
