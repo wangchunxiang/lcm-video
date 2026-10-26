@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api, ApiError } from '../../api/client.ts';
 
@@ -44,6 +44,16 @@ const form = reactive({
   interval_sec: 3,
   timeout: 30,
   retry_times: 2,
+});
+
+const FORBIDDEN_PARAMS = ['ac', 'pg', 'pagesize', 'at', 'h'];
+
+const paramsError = computed(() => {
+  const raw = form.api_params.trim().replace(/^\?/, '');
+  if (!raw) return '';
+  const params = new URLSearchParams(raw);
+  const hits = FORBIDDEN_PARAMS.filter((key) => params.has(key));
+  return hits.length > 0 ? `不能填写 ${hits.join('、')}，这些参数由程序控制` : '';
 });
 
 async function load() {
@@ -120,6 +130,7 @@ function openEdit(row: SourceRow) {
 async function submit() {
   if (!form.name.trim()) return ElMessage.warning('请填写名称');
   if (!/^https?:\/\//i.test(form.api_url.trim())) return ElMessage.warning('接口地址必须以 http:// 或 https:// 开头');
+  if (paramsError.value) return ElMessage.warning(paramsError.value);
 
   try {
     if (editingId.value > 0) {
@@ -312,8 +323,10 @@ onMounted(load);
           </el-radio-group>
         </el-form-item>
         <el-form-item label="额外参数">
-          <el-input v-model="form.api_params" placeholder="如 ac=list&amp;t=1，可留空" />
-          <div class="hint">不能包含 ac、pg、pagesize、at、h，这些由程序控制</div>
+          <el-input v-model="form.api_params" placeholder="如 t=1&amp;year=2024，可留空" />
+          <div class="hint" :class="{ danger: paramsError }">
+            {{ paramsError || '可填写接口的其它查询参数，ac、pg、pagesize、at、h 由程序控制，不要填写' }}
+          </div>
         </el-form-item>
         <el-form-item label="解析接口">
           <el-input v-model="form.parse_url" placeholder="留空表示直连播放，可含 {url} 占位符" />
