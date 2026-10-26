@@ -234,7 +234,6 @@ onMounted(load);
   <el-card shadow="never">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
-      <el-button :loading="loading" @click="load">刷新</el-button>
     </div>
 
     <el-table v-loading="loading" :data="items" border stripe>
