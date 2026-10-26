@@ -408,14 +408,6 @@ function lineTitle(line: PlayLine): string {
                       <el-input v-model="form.remarks" maxlength="100" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="24">
-                    <el-form-item label="状态">
-                      <el-radio-group v-model="form.status">
-                        <el-radio :value="1">上架</el-radio>
-                        <el-radio :value="0">下架</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
-                  </el-col>
                 </el-row>
 
                 <el-row :gutter="16">
@@ -442,6 +434,13 @@ function lineTitle(line: PlayLine): string {
                 </el-form-item>
                 <el-form-item label-width="0">
                   <el-input v-model="form.content" type="textarea" :rows="4" placeholder="详情页展示的详细介绍" />
+                </el-form-item>
+
+                <el-form-item label="状态" label-width="76px">
+                  <el-radio-group v-model="form.status">
+                    <el-radio :value="1">上架</el-radio>
+                    <el-radio :value="0">下架</el-radio>
+                  </el-radio-group>
                 </el-form-item>
               </el-form>
             </div>
