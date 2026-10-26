@@ -66,7 +66,7 @@ if (hasAdminDist) {
   await app.register(fastifyStatic, {
     root: adminDist,
     prefix: '/admin/',
-    wildcard: false,
+    wildcard: true,
   });
 }
 
