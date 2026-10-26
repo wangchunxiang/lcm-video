@@ -339,21 +339,12 @@ onMounted(load);
         <el-form-item label="接口地址" required>
           <el-input v-model="form.api_url" placeholder="https://example.com/api.php/provide/vod/" />
         </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="返回格式">
-              <el-radio-group v-model="form.api_format">
-                <el-radio value="json">JSON</el-radio>
-                <el-radio value="xml">XML</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="启用">
-              <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="返回格式">
+          <el-radio-group v-model="form.api_format">
+            <el-radio value="json">JSON</el-radio>
+            <el-radio value="xml">XML</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="额外参数">
           <el-input v-model="form.api_params" placeholder="如 t=1&amp;year=2024，可留空" />
           <div class="hint" :class="{ danger: paramsError }">
@@ -396,6 +387,10 @@ onMounted(load);
         <el-form-item label="排序">
           <el-input v-model="form.sort" placeholder="0" />
           <div class="hint">数字越小越靠前，只影响后台列表顺序</div>
+        </el-form-item>
+
+        <el-form-item label="启用">
+          <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
         </el-form-item>
       </el-form>
       <template #footer>
