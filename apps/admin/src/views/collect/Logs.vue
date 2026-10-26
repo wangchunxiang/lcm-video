@@ -296,7 +296,7 @@ onBeforeUnmount(() => {
       />
     </el-card>
 
-    <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="55%">
+    <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="42%">
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
         <span>{{ currentLog.startedAt }} 开始，耗时 {{ durationText(currentLog) }}</span>
