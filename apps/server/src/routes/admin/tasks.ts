@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, like } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, like } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectTask } from '@lcm/db';
@@ -62,7 +62,7 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
       .from(collectTask)
       .leftJoin(collectSource, eq(collectSource.id, collectTask.sourceId))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(collectTask.id)
+      .orderBy(desc(collectTask.createdAt), desc(collectTask.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
