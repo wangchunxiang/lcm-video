@@ -231,12 +231,10 @@ onBeforeUnmount(() => {
             </template>
           </el-table-column>
           <el-table-column prop="total" label="采集数" width="90" align="center" />
-          <el-table-column label="新增 / 更新" width="110" align="center">
-            <template #default="{ row }">{{ row.inserted }} / {{ row.updated }}</template>
-          </el-table-column>
-          <el-table-column label="跳过 / 忽略" width="110" align="center">
-            <template #default="{ row }">{{ row.skipped }} / {{ row.ignored }}</template>
-          </el-table-column>
+          <el-table-column prop="inserted" label="新增" width="80" align="center" />
+          <el-table-column prop="updated" label="更新" width="80" align="center" />
+          <el-table-column prop="skipped" label="跳过" width="80" align="center" />
+          <el-table-column prop="ignored" label="忽略" width="80" align="center" />
           <el-table-column label="失败" width="80" align="center">
             <template #default="{ row }">
               <span :class="row.failed > 0 ? 'danger' : ''">{{ row.failed }}</span>
