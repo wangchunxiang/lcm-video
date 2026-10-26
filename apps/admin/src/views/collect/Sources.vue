@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api, ApiError } from '../../api/client.ts';
 
@@ -26,6 +26,10 @@ const total = ref(0);
 const page = ref(1);
 const pageSize = ref(20);
 const filters = reactive({ keyword: '', status: '' });
+
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
 const loading = ref(false);
 const testing = ref(0);
 const dialogVisible = ref(false);
@@ -255,10 +259,25 @@ async function remove(row: SourceRow) {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  if (wrapRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+    });
+    resizeObserver.observe(wrapRef.value);
+    tableHeight.value = wrapRef.value.clientHeight;
+  }
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
 </script>
 
 <template>
+  <div class="page">
   <el-card shadow="never" class="search-card">
     <div class="search-bar">
       <el-input
@@ -277,12 +296,13 @@ onMounted(load);
     </div>
   </el-card>
 
-  <el-card shadow="never">
+  <el-card shadow="never" class="table-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
     </div>
 
-    <el-table v-loading="loading" :data="items" border stripe>
+    <div ref="wrapRef" class="table-wrap">
+    <el-table v-loading="loading" :data="items" border stripe :height="tableHeight">
       <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
       <el-table-column prop="apiUrl" label="接口地址" min-width="240" show-overflow-tooltip />
       <el-table-column prop="apiFormat" label="格式" width="70" align="center" />
@@ -319,6 +339,7 @@ onMounted(load);
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-pagination
       class="pager"
@@ -403,11 +424,34 @@ onMounted(load);
       </template>
     </el-dialog>
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .search-card {
-  margin-bottom: 12px;
+  flex: none;
+}
+.table-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.table-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
 }
 .search-bar {
   display: flex;
