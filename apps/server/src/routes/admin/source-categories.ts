@@ -108,12 +108,22 @@ export const sourceCategoryRoutes: FastifyPluginAsync<SourceCategoryRouteOpts> =
     const categoryId = toInt(body.category_id, 0);
     const status = toInt(body.status, -1);
 
+    const targetIds = rows.map((row) => row.id);
+
     if (status === 2) {
       await db
         .update(collectSourceCategory)
         .set({ categoryId: 0, status: 2, matchType: 2 })
-        .where(inArray(collectSourceCategory.id, rows.map((row) => row.id)));
-      return ok(reply, { affected: rows.length });
+        .where(inArray(collectSourceCategory.id, targetIds));
+      return ok(reply, { affected: targetIds.length });
+    }
+
+    if (status === 0 && categoryId === 0) {
+      await db
+        .update(collectSourceCategory)
+        .set({ categoryId: 0, status: 0, matchType: 0 })
+        .where(inArray(collectSourceCategory.id, targetIds));
+      return ok(reply, { affected: targetIds.length });
     }
 
     if (categoryId <= 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请选择本站分类');
@@ -124,7 +134,7 @@ export const sourceCategoryRoutes: FastifyPluginAsync<SourceCategoryRouteOpts> =
     await db
       .update(collectSourceCategory)
       .set({ categoryId, status: 1, matchType: 2 })
-      .where(inArray(collectSourceCategory.id, rows.map((row) => row.id)));
+      .where(inArray(collectSourceCategory.id, targetIds));
 
     return ok(reply, { affected: rows.length });
   });
@@ -145,34 +155,6 @@ export const sourceCategoryRoutes: FastifyPluginAsync<SourceCategoryRouteOpts> =
     const error = await applyMapping(id, (req.body ?? {}) as MappingBody);
     if (error) return fail(reply, 400, ErrorCode.BAD_REQUEST, error);
     return ok(reply, { id });
-  });
-
-  app.post('/:id/categories/reset', async (req, reply) => {
-    const sourceId = toInt((req.params as { id: string }).id);
-    if (!(await requireSource(sourceId))) return fail(reply, 404, ErrorCode.NOT_FOUND, '采集源不存在');
-
-    const rows = await db
-      .select({ id: collectSourceCategory.id })
-      .from(collectSourceCategory)
-      .where(
-        and(
-          eq(collectSourceCategory.sourceId, sourceId),
-          ne(collectSourceCategory.status, 0),
-        ),
-      );
-    if (rows.length === 0) return ok(reply, { affected: 0 });
-
-    await db
-      .update(collectSourceCategory)
-      .set({ categoryId: 0, status: 0, matchType: 0 })
-      .where(
-        and(
-          eq(collectSourceCategory.sourceId, sourceId),
-          ne(collectSourceCategory.status, 0),
-        ),
-      );
-
-    return ok(reply, { affected: rows.length });
   });
 
   app.post('/:id/categories/match', async (req, reply) => {

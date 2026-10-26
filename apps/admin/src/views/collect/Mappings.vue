@@ -40,6 +40,7 @@ const categoryOptions = ref<{ id: number; label: string }[]>([]);
 
 type StatusFilter = 'all' | '1' | '0' | '2';
 const statusFilter = ref<StatusFilter>('all');
+const selected = ref<SourceCategoryRow[]>([]);
 
 const filteredRows = computed(() => {
   if (statusFilter.value === 'all') return rows.value;
@@ -179,24 +180,37 @@ async function restoreRow(row: SourceCategoryRow) {
   }
 }
 
-async function resetAll() {
-  const total = summary.value.mapped + summary.value.ignored;
+async function batchApply(payload: { status: number }, action: string) {
+  const count = selected.value.length;
+  const names = selected.value.slice(0, 3).map((row) => row.sourceTypeName).join('、');
+  const more = count > 3 ? ` 等 ${count} 个` : '';
   try {
     await ElMessageBox.confirm(
-      `将取消该采集源全部 ${total} 条映射（含已忽略），之后采集到的影片需要重新映射才会入库；已入库影片的分类不变。`,
-      '取消全部映射',
-      { type: 'warning', confirmButtonText: '全部取消', cancelButtonText: '返回' },
+      `将对「${names}」${more} 执行${action}。已入库影片的分类不变。`,
+      action,
+      { type: 'warning', confirmButtonText: action, cancelButtonText: '返回' },
     );
   } catch {
     return;
   }
   try {
-    const data = await api.post<{ affected: number }>(`/sources/${sourceId.value}/categories/reset`);
-    ElMessage.success(`已取消 ${data.affected} 条映射`);
+    const data = await api.put<{ affected: number }>(`/sources/${sourceId.value}/categories/batch`, {
+      ids: selected.value.map((row) => row.id),
+      ...payload,
+    });
+    ElMessage.success(`已${action} ${data.affected} 个分类`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
   }
+}
+
+async function unmapSelected() {
+  await batchApply({ status: 0 }, '取消映射');
+}
+
+async function ignoreSelected() {
+  await batchApply({ status: 2 }, '忽略');
 }
 
 async function unmapRow(row: SourceCategoryRow) {
@@ -285,7 +299,8 @@ onBeforeUnmount(() => {
       </el-select>
       <el-button type="primary" :loading="fetching" @click="fetchCategories">获取分类</el-button>
       <el-button :loading="matching" @click="autoMatch">自动匹配</el-button>
-      <el-button :disabled="summary.mapped + summary.ignored === 0" @click="resetAll">取消全部映射</el-button>
+      <el-button :disabled="selected.length === 0" @click="unmapSelected">取消映射</el-button>
+      <el-button :disabled="selected.length === 0" @click="ignoreSelected">忽略</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
 
@@ -313,12 +328,14 @@ onBeforeUnmount(() => {
       v-loading="loading"
       :data="treeRows"
       row-key="id"
+      @selection-change="(rows: SourceCategoryRow[]) => (selected = rows)"
       default-expand-all
       :tree-props="{ children: 'children' }"
       border
       stripe
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
     >
+      <el-table-column type="selection" width="46" />
       <el-table-column prop="sourceTypeName" label="源站分类" min-width="200" />
       <el-table-column prop="sourceTypeId" label="源站分类ID" width="110" align="center" />
       <el-table-column label="本站分类" min-width="220">
