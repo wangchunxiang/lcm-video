@@ -384,14 +384,18 @@ onMounted(load);
           </el-col>
         </el-row>
 
-        <el-form-item label="排序">
-          <el-input v-model="form.sort" placeholder="0" />
-          <div class="hint">数字越小越靠前，只影响后台列表顺序</div>
-        </el-form-item>
-
-        <el-form-item label="启用">
-          <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="排序">
+              <el-input v-model="form.sort" placeholder="0" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="启用">
+              <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
