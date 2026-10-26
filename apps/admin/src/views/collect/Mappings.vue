@@ -35,12 +35,8 @@ const summary = ref({ total: 0, mapped: 0, ignored: 0, unmapped: 0 });
 const loading = ref(false);
 const fetching = ref(false);
 const matching = ref(false);
-const selection = ref<SourceCategoryRow[]>([]);
 
 const categoryOptions = ref<{ id: number; label: string }[]>([]);
-const batchCategoryId = ref(0);
-
-const selectedIds = computed(() => selection.value.map((row) => row.id));
 
 async function loadSources() {
   const data = await api.get<{ items: SourceRow[] }>('/sources');
@@ -142,21 +138,6 @@ async function restoreRow(row: SourceCategoryRow) {
   }
 }
 
-async function batchMap() {
-  if (selectedIds.value.length === 0) return ElMessage.warning('请先勾选源站分类');
-  if (batchCategoryId.value <= 0) return ElMessage.warning('请选择要映射到的本站分类');
-  try {
-    const data = await api.put<{ affected: number }>(`/sources/${sourceId.value}/categories/batch`, {
-      ids: selectedIds.value,
-      category_id: batchCategoryId.value,
-    });
-    ElMessage.success(`已映射 ${data.affected} 个分类`);
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '批量映射失败');
-  }
-}
-
 async function remapVods(row: SourceCategoryRow) {
   try {
     await ElMessageBox.confirm(
@@ -236,14 +217,6 @@ onBeforeUnmount(() => {
       <el-tag type="info">已忽略 {{ summary.ignored }}</el-tag>
     </div>
 
-    <div class="batch">
-      <span class="hint">批量映射到：</span>
-      <el-select v-model="batchCategoryId" filterable placeholder="本站分类" style="width: 220px" clearable>
-        <el-option v-for="item in categoryOptions" :key="item.id" :label="item.label" :value="item.id" />
-      </el-select>
-      <el-button :disabled="selectedIds.length === 0" @click="batchMap">批量映射</el-button>
-    </div>
-
     <div ref="wrapRef" class="table-wrap">
     <el-table
       :height="tableHeight"
@@ -252,9 +225,7 @@ onBeforeUnmount(() => {
       border
       stripe
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
-      @selection-change="(rows: SourceCategoryRow[]) => (selection = rows)"
     >
-      <el-table-column type="selection" width="45" />
       <el-table-column label="源站分类" min-width="200">
         <template #default="{ row }">
           <span :class="row.sourceTypePid !== '0' ? 'child' : ''">{{ row.sourceTypeName }}</span>
@@ -334,12 +305,6 @@ onBeforeUnmount(() => {
 .summary {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
-}
-.batch {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 .child {
