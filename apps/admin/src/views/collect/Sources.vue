@@ -127,16 +127,39 @@ function openEdit(row: SourceRow) {
   dialogVisible.value = true;
 }
 
+function readNumber(value: unknown, fallback: number, min: number, max: number, label: string): number | null {
+  const raw = typeof value === 'string' ? value.trim() : value;
+  const n = Number(raw === '' || raw === undefined || raw === null ? fallback : raw);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) {
+    ElMessage.warning(`${label}必须是不小于 ${min}、不大于 ${max} 的整数`);
+    return null;
+  }
+  return n;
+}
+
 async function submit() {
   if (!form.name.trim()) return ElMessage.warning('请填写名称');
   if (!/^https?:\/\//i.test(form.api_url.trim())) return ElMessage.warning('接口地址必须以 http:// 或 https:// 开头');
   if (paramsError.value) return ElMessage.warning(paramsError.value);
 
+  const pagesize = readNumber(form.pagesize, 100, 1, 100, '每页条数');
+  if (pagesize === null) return;
+  const intervalSec = readNumber(form.interval_sec, 3, 1, 600, '请求间隔');
+  if (intervalSec === null) return;
+  const timeout = readNumber(form.timeout, 30, 1, 300, '超时时间');
+  if (timeout === null) return;
+  const retryTimes = readNumber(form.retry_times, 2, 0, 10, '重试次数');
+  if (retryTimes === null) return;
+  const sort = readNumber(form.sort, 0, 0, 9999, '排序');
+  if (sort === null) return;
+
+  const payload = { ...form, pagesize, interval_sec: intervalSec, timeout, retry_times: retryTimes, sort };
+
   try {
     if (editingId.value > 0) {
-      await api.put(`/sources/${editingId.value}`, form);
+      await api.put(`/sources/${editingId.value}`, payload);
     } else {
-      await api.post('/sources', form);
+      await api.post('/sources', payload);
     }
     ElMessage.success('已保存');
     dialogVisible.value = false;
@@ -308,7 +331,7 @@ onMounted(load);
       @size-change="(size: number) => ((pageSize = size), search())"
     />
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" destroy-on-close>
       <el-form label-width="110px">
         <el-form-item label="名称" required>
           <el-input v-model="form.name" maxlength="50" placeholder="如：西瓜资源" />
@@ -316,12 +339,21 @@ onMounted(load);
         <el-form-item label="接口地址" required>
           <el-input v-model="form.api_url" placeholder="https://example.com/api.php/provide/vod/" />
         </el-form-item>
-        <el-form-item label="返回格式">
-          <el-radio-group v-model="form.api_format">
-            <el-radio value="json">JSON</el-radio>
-            <el-radio value="xml">XML</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="返回格式">
+              <el-radio-group v-model="form.api_format">
+                <el-radio value="json">JSON</el-radio>
+                <el-radio value="xml">XML</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="启用">
+              <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="额外参数">
           <el-input v-model="form.api_params" placeholder="如 t=1&amp;year=2024，可留空" />
           <div class="hint" :class="{ danger: paramsError }">
@@ -331,26 +363,39 @@ onMounted(load);
         <el-form-item label="解析接口">
           <el-input v-model="form.parse_url" placeholder="留空表示直连播放，可含 {url} 占位符" />
         </el-form-item>
-        <el-form-item label="每页条数">
-          <el-input-number v-model="form.pagesize" :min="1" :max="100" />
-          <span class="hint inline">接口上限 100</span>
-        </el-form-item>
-        <el-form-item label="请求间隔">
-          <el-input-number v-model="form.interval_sec" :min="1" :max="600" />
-          <span class="hint inline">秒，上次请求结束到下次开始</span>
-        </el-form-item>
-        <el-form-item label="超时时间">
-          <el-input-number v-model="form.timeout" :min="1" :max="300" />
-          <span class="hint inline">秒</span>
-        </el-form-item>
-        <el-form-item label="重试次数">
-          <el-input-number v-model="form.retry_times" :min="0" :max="10" />
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="每页条数">
+              <el-input v-model="form.pagesize" placeholder="100" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="请求间隔">
+              <el-input v-model="form.interval_sec" placeholder="3">
+                <template #append>秒</template>
+              </el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="超时时间">
+              <el-input v-model="form.timeout" placeholder="30">
+                <template #append>秒</template>
+              </el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="重试次数">
+              <el-input v-model="form.retry_times" placeholder="2" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <el-form-item label="排序">
-          <el-input-number v-model="form.sort" :min="0" :max="9999" />
-        </el-form-item>
-        <el-form-item label="启用">
-          <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
+          <el-input v-model="form.sort" placeholder="0" />
+          <div class="hint">数字越小越靠前，只影响后台列表顺序</div>
         </el-form-item>
       </el-form>
       <template #footer>
