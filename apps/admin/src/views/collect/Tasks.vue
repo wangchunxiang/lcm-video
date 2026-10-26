@@ -390,7 +390,11 @@ onUnmounted(() => {
               <el-radio v-for="item in rangeOptions" :key="item.value" :value="item.value">{{ item.label }}</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="定时执行">
+          <el-form-item label="定时表达式">
+            <el-input v-model="form.cron" class="cron-input" placeholder="留空表示只能手动执行，如 0 3 * * *" />
+            <div class="hint">五段式「分 时 日 月 周」，按 Asia/Shanghai 时区解释</div>
+          </el-form-item>
+          <el-form-item label="定时可视化">
             <CronEditor v-model="form.cron" />
           </el-form-item>
           <el-form-item label="启用">
@@ -455,5 +459,8 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+.cron-input :deep(.el-input__inner) {
+  font-family: Consolas, Monaco, monospace;
 }
 </style>

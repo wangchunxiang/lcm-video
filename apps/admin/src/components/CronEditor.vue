@@ -251,17 +251,11 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
       <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
     </div>
 
-    <div class="line">
-      <span class="label">表达式</span>
-      <el-input v-model="text" class="expr-input" placeholder="分 时 日 月 周，如 0 3 * * *" />
-      <span v-if="description" class="desc">{{ description }}</span>
-    </div>
-
     <div v-if="error" class="line error">{{ error }}</div>
     <div v-else-if="monthdayWarning" class="line warning">{{ monthdayWarning }}</div>
 
     <div v-if="upcoming.length > 0" class="line upcoming">
-      <span class="label">下次运行</span>
+      <span class="label">{{ description || '下次运行' }}</span>
       <div class="times">
         <span v-for="item in upcoming" :key="item.text" class="time">
           {{ item.text }}<span class="relative">{{ item.relative }}</span>
@@ -294,18 +288,6 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
   min-width: 56px;
   color: var(--el-text-color-secondary);
   font-size: 13px;
-}
-.expr-input {
-  flex: 1;
-  min-width: 200px;
-}
-.expr-input :deep(.el-input__inner) {
-  font-family: Consolas, Monaco, monospace;
-}
-.desc {
-  flex: none;
-  color: var(--el-text-color-regular);
-  font-size: 12px;
 }
 .times {
   display: flex;
