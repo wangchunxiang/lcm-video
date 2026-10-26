@@ -85,6 +85,8 @@ async function onLogout() {
   color: var(--el-color-white);
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .header {
   height: var(--lcm-header-height);
