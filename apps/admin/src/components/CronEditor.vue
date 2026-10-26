@@ -164,9 +164,9 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
       </el-radio-group>
     </div>
 
-    <div v-if="mode === 'interval'" class="line">
-      <span class="label">每</span>
-      <el-select v-model="intervalValue" style="width: 90px">
+    <div v-if="mode === 'interval'" class="row">
+      <span class="label">间隔</span>
+      <el-select v-model="intervalValue" style="width: 110px">
         <el-option
           v-for="item in intervalUnit === 'minute' ? intervalMinuteOptions : intervalHourOptions"
           :key="item"
@@ -174,44 +174,61 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
           :value="item"
         />
       </el-select>
-      <el-radio-group :model-value="intervalUnit" @change="(value) => onIntervalUnitChange(value as 'minute' | 'hour')">
-        <el-radio value="minute">分钟</el-radio>
-        <el-radio value="hour">小时</el-radio>
-      </el-radio-group>
-    </div>
-
-    <div v-if="mode === 'hour'" class="line">
-      <span class="label">每小时的</span>
-      <el-select v-model="minuteOfHour" style="width: 100px">
-        <el-option v-for="item in minuteOptions" :key="item" :label="`${item} 分`" :value="item" />
+      <el-select
+        :model-value="intervalUnit"
+        style="width: 90px"
+        @update:model-value="(value) => onIntervalUnitChange(value as 'minute' | 'hour')"
+      >
+        <el-option label="分钟" value="minute" />
+        <el-option label="小时" value="hour" />
       </el-select>
+      <span class="suffix">执行一次</span>
     </div>
 
-    <div v-if="mode === 'day'" class="line">
+    <div v-if="mode === 'hour'" class="row">
+      <span class="label">每小时</span>
+      <el-select v-model="minuteOfHour" style="width: 110px">
+        <el-option v-for="item in minuteOptions" :key="item" :label="`第 ${item} 分`" :value="item" />
+      </el-select>
+      <span class="suffix">执行一次</span>
+    </div>
+
+    <div v-if="mode === 'day'" class="row">
       <span class="label">时间</span>
       <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
+      <span class="suffix">每天执行一次</span>
     </div>
 
-    <div v-if="mode === 'week'" class="line">
-      <span class="label">星期</span>
-      <el-select v-model="weekdays" multiple collapse-tags style="width: 180px" placeholder="选择星期">
-        <el-option v-for="item in WEEK_LABELS" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
-      <span class="label">时间</span>
-      <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-    </div>
+    <template v-if="mode === 'week'">
+      <div class="row">
+        <span class="label">星期</span>
+        <el-select v-model="weekdays" multiple collapse-tags style="width: 220px" placeholder="选择星期">
+          <el-option v-for="item in WEEK_LABELS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </div>
+      <div class="row">
+        <span class="label">时间</span>
+        <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
+        <span class="suffix">这些星期的这个时间执行</span>
+      </div>
+    </template>
 
-    <div v-if="mode === 'month'" class="line">
-      <span class="label">日期</span>
-      <el-select v-model="monthdays" multiple collapse-tags style="width: 180px" placeholder="选择日期">
-        <el-option v-for="item in monthdayOptions" :key="item" :label="`${item} 号`" :value="item" />
-      </el-select>
-      <span class="label">时间</span>
-      <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-    </div>
+    <template v-if="mode === 'month'">
+      <div class="row">
+        <span class="label">日期</span>
+        <el-select v-model="monthdays" multiple collapse-tags style="width: 220px" placeholder="选择日期">
+          <el-option v-for="item in monthdayOptions" :key="item" :label="`${item} 号`" :value="item" />
+        </el-select>
+      </div>
+      <div class="row">
+        <span class="label">时间</span>
+        <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
+        <span class="suffix">这些日期的这个时间执行</span>
+      </div>
+    </template>
 
-    <div v-if="error" class="line error">{{ error }}</div>
-    <div v-else-if="monthdayWarning" class="line warning">{{ monthdayWarning }}</div>
+    <div v-if="error" class="row message error">{{ error }}</div>
+    <div v-else-if="monthdayWarning" class="row message warning">{{ monthdayWarning }}</div>
 
   </div>
 </template>
@@ -225,19 +242,25 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
   flex-wrap: nowrap;
   margin-bottom: 8px;
 }
-.line {
+.row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-  row-gap: 8px;
+  margin-top: 8px;
 }
 .label {
   flex: none;
-  min-width: 56px;
+  width: 56px;
+  text-align: right;
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+.suffix {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+.message {
+  padding-left: 64px;
 }
 .error {
   color: var(--el-color-danger);
