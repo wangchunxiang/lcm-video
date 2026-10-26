@@ -153,6 +153,35 @@ async function testSource(row: SourceRow) {
   }
 }
 
+function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
+  return {
+    name: row.name,
+    api_url: row.apiUrl,
+    api_format: row.apiFormat,
+    api_params: row.apiParams,
+    parse_url: row.parseUrl,
+    sort: row.sort,
+    is_enabled: row.isEnabled,
+    interval_sec: row.intervalSec,
+    pagesize: row.pagesize,
+    timeout: row.timeout,
+    retry_times: row.retryTimes,
+    ...patch,
+  };
+}
+
+async function toggleStatus(row: SourceRow) {
+  const next = row.isEnabled === 1 ? 0 : 1;
+  try {
+    await api.put(`/sources/${row.id}`, toBody(row, { is_enabled: next }));
+    ElMessage.success(next === 1 ? '已启用' : '已停用');
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    await load();
+  }
+}
+
 async function remove(row: SourceRow) {
   try {
     await ElMessageBox.confirm(`确定删除采集源「${row.name}」吗？`, '删除采集源', {
@@ -235,11 +264,9 @@ onMounted(load);
       <el-table-column label="间隔" width="80" align="center">
         <template #default="{ row }">{{ row.intervalSec }}s</template>
       </el-table-column>
-      <el-table-column label="状态" width="80" align="center">
+      <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.isEnabled === 1 ? 'success' : 'info'" size="small">
-            {{ row.isEnabled === 1 ? '启用' : '停用' }}
-          </el-tag>
+          <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
       <el-table-column label="最后同步" width="180">
