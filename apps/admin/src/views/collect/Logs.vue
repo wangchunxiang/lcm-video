@@ -396,7 +396,7 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
 }
 .num-zero {
-  color: var(--el-text-color-placeholder);
+  color: inherit;
 }
 .num-total {
   color: var(--el-text-color-primary);
