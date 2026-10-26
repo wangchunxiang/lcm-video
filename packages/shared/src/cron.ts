@@ -157,6 +157,11 @@ function pad(value: number): string {
 
 /** 人类可读的描述，识别不了的表达式原样返回。 */
 export function describeCron(expr: string): string {
+  const stepMinute = /^\*\/(\d+) \* \* \* \*$/.exec(expr.trim());
+  if (stepMinute) return `每 ${stepMinute[1]} 分钟`;
+  const stepHour = /^0 \*\/(\d+) \* \* \*$/.exec(expr.trim());
+  if (stepHour) return `每 ${stepHour[1]} 小时`;
+
   const parsed = parseCron(expr);
   if (typeof parsed === 'string') return expr;
 
