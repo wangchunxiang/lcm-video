@@ -41,7 +41,15 @@ function clear() {
 <template>
   <div class="image-upload">
     <div class="preview" v-if="modelValue">
-      <el-image :src="modelValue" fit="contain" class="thumb" />
+      <el-image
+        :src="modelValue"
+        fit="cover"
+        class="thumb"
+        :preview-src-list="[modelValue]"
+        preview-teleported
+        hide-on-click-modal
+        :preview-index="0"
+      />
     </div>
     <div class="actions">
       <label class="picker">
@@ -67,12 +75,12 @@ function clear() {
   width: 100%;
 }
 .preview .thumb {
-  max-width: 160px;
-  max-height: 60px;
+  width: 84px;
+  height: 112px;
   border: 1px solid var(--el-border-color-light);
   border-radius: 4px;
-  padding: 4px;
   background: var(--el-fill-color-light);
+  cursor: zoom-in;
 }
 .actions {
   display: flex;
