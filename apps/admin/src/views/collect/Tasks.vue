@@ -370,12 +370,6 @@ onUnmounted(() => {
               <span v-else class="muted">仅手动</span>
             </template>
           </el-table-column>
-          <el-table-column label="下次执行" width="165" align="center">
-            <template #default="{ row }">
-              <span v-if="row.nextRunAt">{{ row.nextRunAt }}</span>
-              <span v-else class="muted">—</span>
-            </template>
-          </el-table-column>
           <el-table-column label="状态" width="80" align="center">
             <template #default="{ row }">
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
