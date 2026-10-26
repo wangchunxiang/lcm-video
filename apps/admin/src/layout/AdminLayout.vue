@@ -67,6 +67,8 @@ async function onLogout() {
 <style scoped>
 .layout {
   height: 100vh;
+  /* 左侧 logo 与顶栏共用同一高度 */
+  --lcm-header-height: 60px;
 }
 .aside {
   --el-menu-bg-color: #1f2d3d;
@@ -77,8 +79,8 @@ async function onLogout() {
   overflow-y: auto;
 }
 .logo {
-  height: 56px;
-  line-height: 56px;
+  height: var(--lcm-header-height);
+  line-height: var(--lcm-header-height);
   text-align: center;
   color: var(--el-color-white);
   font-size: 16px;
@@ -89,10 +91,8 @@ async function onLogout() {
 .menu {
   border-right: none;
 }
-.menu :deep(.el-menu-item.is-active) {
-  background: color-mix(in srgb, var(--el-color-primary) 22%, transparent);
-}
 .header {
+  height: var(--lcm-header-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
