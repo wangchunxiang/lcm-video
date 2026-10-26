@@ -207,47 +207,47 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('upload_max_mb', '2');
 
 -- 初始分类：4 个一级分类 + 30 个二级分类
-INSERT IGNORE INTO `lcm_category` (`id`,`pid`,`name`,`alias`,`match_names`,`sort`,`is_show`) VALUES
+INSERT IGNORE INTO `lcm_category` (`id`,`pid`,`name`,`alias`,`sort`,`is_show`) VALUES
   -- 一级分类
-  (1, 0, '电影', 'dianying', '电影,影片', 1, 1),
-  (2, 0, '剧集', 'juji',       '剧集,连续剧,电视剧', 2, 1),
-  (3, 0, '综艺', 'zongyi',     '综艺,综艺节目', 3, 1),
-  (4, 0, '动漫', 'dongman',    '动漫,动画', 4, 1),
+  (1, 0, '电影', 'dianying', 1, 1),
+  (2, 0, '剧集', 'juji', 2, 1),
+  (3, 0, '综艺', 'zongyi', 3, 1),
+  (4, 0, '动漫', 'dongman', 4, 1),
 
   -- 电影子类（15）
-  (5,  1, '动作片', 'dongzuopian', '动作片,动作', 1, 1),
-  (6,  1, '喜剧片', 'xijupian',    '喜剧片,喜剧', 2, 1),
-  (7,  1, '爱情片', 'aiqingpian',  '爱情片,爱情', 3, 1),
-  (8,  1, '科幻片', 'kehuanpian',  '科幻片,科幻', 4, 1),
-  (9,  1, '恐怖片', 'kongbupian',  '恐怖片,恐怖', 5, 1),
-  (10, 1, '剧情片', 'juqingpian',  '剧情片,剧情', 6, 1),
-  (11, 1, '战争片', 'zhanzhengpian','战争片,战争', 7, 1),
-  (12, 1, '惊悚片', 'jingsongpian', '惊悚片,惊悚', 8, 1),
-  (13, 1, '悬疑片', 'xuanyipian',   '悬疑片,悬疑', 9, 1),
-  (14, 1, '犯罪片', 'fanzuipian',   '犯罪片,犯罪', 10, 1),
-  (15, 1, '灾难片', 'zainanpian',   '灾难片,灾难', 11, 1),
-  (16, 1, '奇幻片', 'qihuanpian',   '奇幻片,奇幻', 12, 1),
-  (17, 1, '纪录片', 'jilupian',     '纪录片,记录片', 13, 1),
-  (18, 1, '伦理片', 'lunlipian',    '伦理片,伦理', 14, 1),
-  (19, 1, '动画片', 'donghuapian',  '动画片,动画电影', 15, 1),
+  (5, 1, '动作片', 'dongzuopian', 1, 1),
+  (6, 1, '喜剧片', 'xijupian', 2, 1),
+  (7, 1, '爱情片', 'aiqingpian', 3, 1),
+  (8, 1, '科幻片', 'kehuanpian', 4, 1),
+  (9, 1, '恐怖片', 'kongbupian', 5, 1),
+  (10, 1, '剧情片', 'juqingpian', 6, 1),
+  (11, 1, '战争片', 'zhanzhengpian', 7, 1),
+  (12, 1, '惊悚片', 'jingsongpian', 8, 1),
+  (13, 1, '悬疑片', 'xuanyipian', 9, 1),
+  (14, 1, '犯罪片', 'fanzuipian', 10, 1),
+  (15, 1, '灾难片', 'zainanpian', 11, 1),
+  (16, 1, '奇幻片', 'qihuanpian', 12, 1),
+  (17, 1, '纪录片', 'jilupian', 13, 1),
+  (18, 1, '伦理片', 'lunlipian', 14, 1),
+  (19, 1, '动画片', 'donghuapian', 15, 1),
 
   -- 剧集子类（5）
-  (20, 2, '国产剧', 'guochanju', '国产剧,国产电视剧,内地剧', 1, 1),
-  (21, 2, '港台剧', 'gangtaiju', '港台剧,香港剧,台湾剧', 2, 1),
-  (22, 2, '日韩剧', 'rihanju',   '日韩剧,日剧,韩剧', 3, 1),
-  (23, 2, '欧美剧', 'oumeiju',   '欧美剧,美剧', 4, 1),
-  (24, 2, '海外剧', 'hawaiju',   '海外剧', 5, 1),
+  (20, 2, '国产剧', 'guochanju', 1, 1),
+  (21, 2, '港台剧', 'gangtaiju', 2, 1),
+  (22, 2, '日韩剧', 'rihanju', 3, 1),
+  (23, 2, '欧美剧', 'oumeiju', 4, 1),
+  (24, 2, '海外剧', 'hawaiju', 5, 1),
 
   -- 综艺子类（5）
-  (25, 3, '大陆综艺', 'daluzongyi',    '大陆综艺,内地综艺', 1, 1),
-  (26, 3, '港台综艺', 'gangtaizongyi', '港台综艺', 2, 1),
-  (27, 3, '日韩综艺', 'rihanzongyi',   '日韩综艺', 3, 1),
-  (28, 3, '欧美综艺', 'oumeizongyi',   '欧美综艺', 4, 1),
-  (29, 3, '海外综艺', 'haiwaizongyi',  '海外综艺', 5, 1),
+  (25, 3, '大陆综艺', 'daluzongyi', 1, 1),
+  (26, 3, '港台综艺', 'gangtaizongyi', 2, 1),
+  (27, 3, '日韩综艺', 'rihanzongyi', 3, 1),
+  (28, 3, '欧美综艺', 'oumeizongyi', 4, 1),
+  (29, 3, '海外综艺', 'haiwaizongyi', 5, 1),
 
   -- 动漫子类（5）
-  (30, 4, '国产动漫', 'guochandongman', '国产动漫,国漫', 1, 1),
-  (31, 4, '港台动漫', 'gangtaidongman', '港台动漫', 2, 1),
-  (32, 4, '日韩动漫', 'rihandongman',   '日韩动漫,日漫,韩漫', 3, 1),
-  (33, 4, '欧美动漫', 'oumeidongman',   '欧美动漫', 4, 1),
-  (34, 4, '海外动漫', 'hawaidongman',   '海外动漫', 5, 1);
+  (30, 4, '国产动漫', 'guochandongman', 1, 1),
+  (31, 4, '港台动漫', 'gangtaidongman', 2, 1),
+  (32, 4, '日韩动漫', 'rihandongman', 3, 1),
+  (33, 4, '欧美动漫', 'oumeidongman', 4, 1),
+  (34, 4, '海外动漫', 'hawaidongman', 5, 1);
