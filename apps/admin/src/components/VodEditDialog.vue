@@ -87,6 +87,7 @@ const form = reactive({
 });
 
 const lines = ref<PlayLine[]>([]);
+const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 const flatCategories = computed(() => {
   const result: { id: number; label: string }[] = [];
@@ -346,6 +347,13 @@ function lineTitle(line: PlayLine): string {
                 hide-on-click-modal
               />
               <div v-else class="poster poster-empty">无封面</div>
+
+              <ul class="side-info">
+                <li><span>ID</span><b>{{ vodId }}</b></li>
+                <li><span>线路</span><b>{{ lines.length }} 条</b></li>
+                <li><span>剧集</span><b>{{ totalEpisodes }} 集</b></li>
+                <li><span>采集</span><b>{{ (form.collectedAt || '—').slice(0, 10) }}</b></li>
+              </ul>
             </div>
 
             <div class="base-main">
@@ -551,7 +559,7 @@ function lineTitle(line: PlayLine): string {
   align-items: flex-start;
 }
 .base-side {
-  width: 130px;
+  width: 132px;
   flex: none;
 }
 .poster {
@@ -561,6 +569,23 @@ function lineTitle(line: PlayLine): string {
   border-radius: 4px;
   background: var(--el-fill-color-light);
   cursor: zoom-in;
+}
+.side-info {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--el-text-color-secondary);
+}
+.side-info li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.side-info b {
+  font-weight: 400;
+  color: var(--el-text-color-primary);
 }
 .poster-empty {
   display: flex;
