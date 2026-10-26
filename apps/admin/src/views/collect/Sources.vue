@@ -566,12 +566,8 @@ onBeforeUnmount(() => {
 }
 .toolbar {
   display: flex;
-  gap: 8px;
   align-items: center;
   margin-bottom: 12px;
-}
-.toolbar :deep(.el-button + .el-button) {
-  margin-left: 0;
 }
 .hint {
   color: var(--el-text-color-secondary);
