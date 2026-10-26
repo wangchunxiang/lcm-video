@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 .tip {

@@ -214,14 +214,13 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="batch-bar">
-      <span class="selection-hint">已选 {{ selection.length }} 部</span>
       <el-select v-model="batchCategory" placeholder="目标分类" clearable filterable style="width: 180px">
         <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
       </el-select>
       <el-button :disabled="selection.length === 0" @click="batch('category')">批量改分类</el-button>
-      <el-button :disabled="selection.length === 0" @click="batch('status', 1)">批量上架</el-button>
-      <el-button :disabled="selection.length === 0" @click="batch('status', 0)">批量下架</el-button>
-      <el-button type="danger" plain :disabled="selection.length === 0" @click="batch('delete')">批量删除</el-button>
+      <el-button type="success" :disabled="selection.length === 0" @click="batch('status', 1)">批量上架</el-button>
+      <el-button type="warning" :disabled="selection.length === 0" @click="batch('status', 0)">批量下架</el-button>
+      <el-button type="danger" :disabled="selection.length === 0" @click="batch('delete')">批量删除</el-button>
       <span class="hint">「删除」等于下架，影片仍在库里</span>
     </div>
 
@@ -316,17 +315,12 @@ onBeforeUnmount(() => {
 }
 .batch-bar {
   display: flex;
-  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
   padding: 8px 12px;
   margin-bottom: 12px;
   background: var(--el-fill-color-lighter);
   border-radius: 4px;
-}
-.selection-hint {
-  font-size: 13px;
-  color: var(--el-text-color-regular);
 }
 .hint {
   font-size: 12px;

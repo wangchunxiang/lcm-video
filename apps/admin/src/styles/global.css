@@ -21,3 +21,24 @@ body {
   background: var(--el-bg-color-page);
   -webkit-font-smoothing: antialiased;
 }
+
+/* 列表页工具栏：按钮间距沿用 Element Plus 自带外边距，
+   只给选择框、输入框、说明文字这类非按钮元素补 12px，避免间距叠加 */
+.toolbar .el-select + .el-button,
+.toolbar .el-input + .el-button,
+.toolbar .el-date-editor + .el-button,
+.toolbar .el-button + .el-select,
+.toolbar .el-input + .el-select,
+.toolbar .el-select + .el-select,
+.toolbar .el-button + .hint,
+.toolbar .el-select + .hint,
+.toolbar .tip,
+.batch .el-select + .el-button,
+.batch-bar .el-select + .el-button,
+.toolbar .el-button + .hint,
+.batch .el-button + .hint,
+.batch-bar .el-button + .hint,
+.batch-bar .el-select + .el-button,
+.batch .el-input + .el-button {
+  margin-left: 12px;
+}

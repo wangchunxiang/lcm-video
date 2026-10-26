@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="batch">
-      <span class="hint">已选 {{ selectedIds.length }} 项，批量映射到：</span>
+      <span class="hint">批量映射到：</span>
       <el-select v-model="batchCategoryId" filterable placeholder="本站分类" style="width: 220px" clearable>
         <el-option v-for="item in categoryOptions" :key="item.id" :label="item.label" :value="item.id" />
       </el-select>
@@ -327,7 +327,8 @@ onBeforeUnmount(() => {
 }
 .toolbar {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 .summary {
@@ -337,8 +338,8 @@ onBeforeUnmount(() => {
 }
 .batch {
   display: flex;
-  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 12px;
 }
 .child {
