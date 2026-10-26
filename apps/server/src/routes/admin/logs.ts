@@ -109,7 +109,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
       .select()
       .from(collectLogDetail)
       .where(eq(collectLogDetail.logId, id))
-      .orderBy(collectLogDetail.page)
+      .orderBy(desc(collectLogDetail.page))
       .limit(pageSize)
       .offset(offset);
 
