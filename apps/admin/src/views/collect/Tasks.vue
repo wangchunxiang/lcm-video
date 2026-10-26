@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
+import { computed } from 'vue';
 import { describeCron } from '@lcm/shared/cron';
 import { api } from '../../api/client.ts';
 import CronEditor from '../../components/CronEditor.vue';
@@ -250,6 +251,20 @@ function runStatus(row: TaskRow): { text: string; type: 'success' | 'danger' | '
   return { text: '未执行', type: 'info' };
 }
 
+const currentTask = computed(() => items.value.find((row) => row.id === editingId.value) ?? null);
+
+function agoText(value: string | null): string {
+  if (!value) return '';
+  const time = new Date(value.replace(' ', 'T')).getTime();
+  if (!Number.isFinite(time)) return '';
+  const minutes = Math.round((Date.now() - time) / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} 小时前`;
+  return `${Math.round(hours / 24)} 天前`;
+}
+
 const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
 let resizeObserver: ResizeObserver | null = null;
@@ -397,6 +412,15 @@ onUnmounted(() => {
           <el-form-item label="定时可视化">
             <CronEditor v-model="form.cron" />
           </el-form-item>
+          <el-form-item v-if="editingId > 0" label="最近执行">
+            <div v-if="currentTask && currentTask.lastRunAt" class="last-run">
+              <span>{{ currentTask.lastRunAt }}</span>
+              <el-tag size="small" :type="runStatus(currentTask).type">{{ runStatus(currentTask).text }}</el-tag>
+              <span class="muted">{{ agoText(currentTask.lastRunAt) }}</span>
+              <span v-if="currentTask.lastRunMsg" class="last-msg">{{ currentTask.lastRunMsg }}</span>
+            </div>
+            <span v-else class="muted">还没有执行过</span>
+          </el-form-item>
           <el-form-item label="启用">
             <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
           </el-form-item>
@@ -462,5 +486,16 @@ onUnmounted(() => {
 }
 .cron-input :deep(.el-input__inner) {
   font-family: Consolas, Monaco, monospace;
+}
+.last-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.last-msg {
+  color: var(--el-text-color-regular);
+  font-size: 12px;
 }
 </style>
