@@ -353,7 +353,6 @@ onBeforeUnmount(() => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="message" label="信息" min-width="120" show-overflow-tooltip />
       </el-table>
       </div>
 
