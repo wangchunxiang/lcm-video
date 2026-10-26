@@ -36,7 +36,7 @@ const loading = ref(false);
 const fetching = ref(false);
 const matching = ref(false);
 
-const categoryOptions = ref<{ id: number; label: string }[]>([]);
+const categoryTree = ref<CategoryNode[]>([]);
 
 type StatusFilter = 'all' | '1' | '0' | '2';
 const statusFilter = ref<StatusFilter>('all');
@@ -89,14 +89,7 @@ async function loadSources() {
 
 async function loadCategories() {
   const data = await api.get<{ items: CategoryNode[] }>('/categories');
-  const options: { id: number; label: string }[] = [];
-  for (const node of data.items) {
-    options.push({ id: node.id, label: node.name });
-    for (const child of node.children ?? []) {
-      options.push({ id: child.id, label: `${node.name} / ${child.name}` });
-    }
-  }
-  categoryOptions.value = options;
+  categoryTree.value = data.items;
 }
 
 async function load() {
@@ -340,16 +333,20 @@ onBeforeUnmount(() => {
       <el-table-column prop="sourceTypeId" label="源站分类ID" width="110" align="center" />
       <el-table-column label="本站分类" min-width="220">
         <template #default="{ row }">
-          <el-select
+          <el-tree-select
             :model-value="row.categoryId || undefined"
+            :data="categoryTree"
+            :props="{ label: 'name', children: 'children' }"
+            node-key="id"
+            check-strictly
+            :render-after-expand="false"
+            default-expand-all
             filterable
             clearable
             placeholder="未映射"
             size="small"
             @update:model-value="(value: number | undefined) => applyRow(row, value ?? 0)"
-          >
-            <el-option v-for="item in categoryOptions" :key="item.id" :label="item.label" :value="item.id" />
-          </el-select>
+          />
         </template>
       </el-table-column>
       <el-table-column label="本站分类ID" width="110" align="center">
