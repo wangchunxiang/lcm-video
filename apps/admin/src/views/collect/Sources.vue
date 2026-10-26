@@ -44,7 +44,6 @@ const form = reactive({
   api_format: 'json',
   api_params: '',
   parse_url: '',
-  sort: 0,
   is_enabled: 1,
   pagesize: 100,
   interval_sec: 3,
@@ -102,7 +101,6 @@ function resetForm() {
   form.api_format = 'json';
   form.api_params = '';
   form.parse_url = '';
-  form.sort = 0;
   form.is_enabled = 1;
   form.pagesize = 100;
   form.interval_sec = 3;
@@ -125,7 +123,6 @@ function openEdit(row: SourceRow) {
   form.api_format = row.apiFormat;
   form.api_params = row.apiParams;
   form.parse_url = row.parseUrl;
-  form.sort = row.sort;
   form.is_enabled = row.isEnabled;
   form.pagesize = row.pagesize;
   form.interval_sec = row.intervalSec;
@@ -158,10 +155,7 @@ async function submit() {
   if (timeout === null) return;
   const retryTimes = readNumber(form.retry_times, 2, 0, 10, '重试次数');
   if (retryTimes === null) return;
-  const sort = readNumber(form.sort, 0, 0, 9999, '排序');
-  if (sort === null) return;
-
-  const payload = { ...form, pagesize, interval_sec: intervalSec, timeout, retry_times: retryTimes, sort };
+  const payload = { ...form, pagesize, interval_sec: intervalSec, timeout, retry_times: retryTimes };
 
   try {
     if (editingId.value > 0) {
@@ -286,7 +280,6 @@ function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
     api_format: row.apiFormat,
     api_params: row.apiParams,
     parse_url: row.parseUrl,
-    sort: row.sort,
     is_enabled: row.isEnabled,
     interval_sec: row.intervalSec,
     pagesize: row.pagesize,
@@ -509,18 +502,9 @@ onBeforeUnmount(() => {
           </el-col>
         </el-row>
 
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="排序">
-              <el-input v-model="form.sort" placeholder="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="启用">
-              <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="启用">
+          <el-switch v-model="form.is_enabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>

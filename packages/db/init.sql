@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS `lcm_collect_source` (
   `api_format`       VARCHAR(10)    NOT NULL DEFAULT 'json'   COMMENT '接口类型 json / xml',
   `api_params`       VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '接口额外参数，如 t=1；不许写 ac/pg/pagesize/at/h',
   `parse_url`        VARCHAR(255)   NOT NULL DEFAULT ''       COMMENT '解析接口地址，空=直连播放',
-  `sort`             INT UNSIGNED   NOT NULL DEFAULT 0        COMMENT '后台列表排序',
   `is_enabled`       TINYINT UNSIGNED NOT NULL DEFAULT 1      COMMENT '1启用 0停用',
   `interval_sec`     INT UNSIGNED   NOT NULL DEFAULT 3        COMMENT '两次请求的间隔秒数',
   `pagesize`         INT UNSIGNED   NOT NULL DEFAULT 100      COMMENT '每页条数，1-100',
@@ -83,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `lcm_collect_source` (
   `created_at`       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_enabled_sort` (`is_enabled`,`sort`)
+  KEY `idx_enabled` (`is_enabled`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_collect_source_category` (

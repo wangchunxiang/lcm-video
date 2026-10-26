@@ -1,4 +1,4 @@
-import { and, eq, inArray, like, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
@@ -87,7 +87,6 @@ function validateBody(body: SourceBody): { data: typeof collectSource.$inferInse
       apiFormat,
       apiParams,
       parseUrl,
-      sort: toInt(body.sort, 0),
       isEnabled: body.is_enabled === 0 || body.is_enabled === false ? 0 : 1,
       intervalSec,
       pagesize,
@@ -126,7 +125,7 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       .select()
       .from(collectSource)
       .where(where)
-      .orderBy(collectSource.sort, collectSource.id)
+      .orderBy(desc(collectSource.createdAt), desc(collectSource.id))
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 

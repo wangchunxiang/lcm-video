@@ -104,7 +104,6 @@ export const collectSource = mysqlTable(
     apiFormat: varchar('api_format', { length: 10 }).notNull().default('json'),
     apiParams: varchar('api_params', { length: 500 }).notNull().default(''),
     parseUrl: varchar('parse_url', { length: 255 }).notNull().default(''),
-    sort: int('sort', { unsigned: true }).notNull().default(0),
     isEnabled: tinyint('is_enabled', { unsigned: true }).notNull().default(1),
     intervalSec: int('interval_sec', { unsigned: true }).notNull().default(3),
     pagesize: int('pagesize', { unsigned: true }).notNull().default(100),
@@ -116,7 +115,7 @@ export const collectSource = mysqlTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('idx_enabled_sort').on(t.isEnabled, t.sort)],
+  (t) => [index('idx_enabled').on(t.isEnabled)],
 );
 
 /** 源站分类与本站分类的映射 */
