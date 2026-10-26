@@ -35,7 +35,7 @@ let resizeObserver: ResizeObserver | null = null;
 const loading = ref(false);
 const testing = ref(0);
 const dialogVisible = ref(false);
-const dialogTitle = ref('新增采集源');
+const dialogTitle = ref('新增源站');
 const editingId = ref(0);
 
 const form = reactive({
@@ -113,7 +113,7 @@ function resetForm() {
 
 function openCreate() {
   resetForm();
-  dialogTitle.value = '新增采集源';
+  dialogTitle.value = '新增源站';
   dialogVisible.value = true;
 }
 
@@ -131,7 +131,7 @@ function openEdit(row: SourceRow) {
   form.interval_sec = row.intervalSec;
   form.timeout = row.timeout;
   form.retry_times = row.retryTimes;
-  dialogTitle.value = '编辑采集源';
+  dialogTitle.value = '编辑源站';
   dialogVisible.value = true;
 }
 
@@ -386,7 +386,7 @@ onBeforeUnmount(() => {
 
   <el-card shadow="never" class="table-card">
     <div class="toolbar">
-      <el-button type="primary" @click="openCreate">新增采集源</el-button>
+      <el-button type="primary" @click="openCreate">新增源站</el-button>
       <el-button type="success" :disabled="selection.length === 0" @click="batchStatus('enable')">批量启用</el-button>
       <el-button type="warning" :disabled="selection.length === 0" @click="batchStatus('disable')">批量停用</el-button>
       <el-button type="danger" :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
