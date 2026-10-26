@@ -346,24 +346,23 @@ function lineTitle(line: PlayLine): string {
                 hide-on-click-modal
               />
               <div v-else class="poster poster-empty">无封面</div>
-              <div class="side-meta">采集于 {{ form.collectedAt || '—' }}</div>
             </div>
 
             <div class="base-main">
               <el-form label-width="80px">
                 <el-row :gutter="16">
-                  <el-col :span="10">
+                  <el-col :span="12">
                     <el-form-item label="影片名称">
                       <el-input v-model="form.name" maxlength="255" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="副标题">
                       <el-input v-model="form.sub_name" maxlength="255" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="8">
-                    <el-form-item label="封面地址">
+                  <el-col :span="24">
+                    <el-form-item label="封面图地址">
                       <el-input v-model="form.cover" placeholder="https://…" />
                     </el-form-item>
                   </el-col>
@@ -571,12 +570,6 @@ function lineTitle(line: PlayLine): string {
   font-size: 12px;
   color: var(--el-text-color-placeholder);
   cursor: default;
-}
-.side-meta {
-  margin-top: 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--el-text-color-secondary);
 }
 .base-main {
   flex: 1;
