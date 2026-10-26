@@ -268,6 +268,18 @@ function formatRelative(date: Date, now: Date): string {
   return `${Math.round(hours / 24)} 天后`;
 }
 
+const cronError = computed(() => {
+  const expr = form.cron.trim();
+  return expr ? isValidCron(expr) : null;
+});
+
+const cronHint = computed(() => {
+  const expr = form.cron.trim();
+  if (!expr) return '留空表示只能手动执行';
+  if (cronError.value) return cronError.value;
+  return describeCron(expr);
+});
+
 const upcomingRuns = computed(() => {
   const expr = form.cron.trim();
   if (!expr) return [];
@@ -420,7 +432,7 @@ onUnmounted(() => {
           </el-form-item>
           <el-form-item label="定时表达式">
             <el-input v-model="form.cron" class="cron-input" placeholder="留空表示只能手动执行，如 0 3 * * *" />
-            <div class="hint">五段式「分 时 日 月 周」，按 Asia/Shanghai 时区解释</div>
+            <div class="hint" :class="{ 'hint-error': cronError }">{{ cronHint }}</div>
           </el-form-item>
           <el-form-item label="定时可视化">
             <CronEditor v-model="form.cron" />
@@ -489,6 +501,9 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1.6;
+}
+.hint-error {
+  color: var(--el-color-danger);
 }
 .toolbar .hint {
   margin-left: auto;
