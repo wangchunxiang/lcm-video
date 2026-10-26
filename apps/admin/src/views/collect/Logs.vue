@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, onBeforeUnmount } from 'vue';
 import { ElMessage } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -115,10 +115,29 @@ onMounted(async () => {
 onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!wrapRef.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+  });
+  resizeObserver.observe(wrapRef.value);
+  tableHeight.value = wrapRef.value.clientHeight;
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
+
 </script>
 
 <template>
-  <el-card shadow="never">
+  <div class="page">
+  <el-card shadow="never" class="fill-card">
     <div class="toolbar">
       <el-select v-model="filters.status" placeholder="状态" style="width: 130px" clearable>
         <el-option label="进行中" value="0" />
@@ -131,7 +150,8 @@ onUnmounted(() => {
       <span class="hint">保留最近 30 天记录</span>
     </div>
 
-    <el-table v-loading="loading" :data="items" border stripe empty-text="还没有采集记录">
+    <div ref="wrapRef" class="table-wrap">
+    <el-table :height="tableHeight" v-loading="loading" :data="items" border stripe empty-text="还没有采集记录">
       <el-table-column prop="id" label="#" width="70" />
       <el-table-column label="任务 / 采集源" min-width="180">
         <template #default="{ row }">
@@ -164,6 +184,7 @@ onUnmounted(() => {
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-pagination
       class="pager"
@@ -211,12 +232,40 @@ onUnmounted(() => {
       />
     </el-drawer>
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar,
+.summary,
+.batch,
+.batch-bar,
+.pager {
+  flex: none;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .toolbar {
   display: flex;
-  gap: 8px;
   align-items: center;
   margin-bottom: 12px;
 }

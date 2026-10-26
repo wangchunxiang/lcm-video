@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -197,10 +197,29 @@ onMounted(async () => {
   await loadCategories();
   await load();
 });
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!wrapRef.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+  });
+  resizeObserver.observe(wrapRef.value);
+  tableHeight.value = wrapRef.value.clientHeight;
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
+
 </script>
 
 <template>
-  <el-card shadow="never">
+  <div class="page">
+  <el-card shadow="never" class="fill-card">
     <div class="toolbar">
       <el-select v-model="sourceId" placeholder="选择采集源" style="width: 200px">
         <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
@@ -225,7 +244,9 @@ onMounted(async () => {
       <el-button :disabled="selectedIds.length === 0" @click="batchMap">批量映射</el-button>
     </div>
 
+    <div ref="wrapRef" class="table-wrap">
     <el-table
+      :height="tableHeight"
       v-loading="loading"
       :data="rows"
       border
@@ -270,10 +291,40 @@ onMounted(async () => {
         </template>
       </el-table-column>
     </el-table>
+    </div>
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar,
+.summary,
+.batch,
+.batch-bar,
+.pager {
+  flex: none;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .toolbar {
   display: flex;
   gap: 8px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api, ApiError } from '../../api/client.ts';
 
@@ -147,16 +147,37 @@ async function remove(row: CategoryNode) {
 }
 
 onMounted(load);
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!wrapRef.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+  });
+  resizeObserver.observe(wrapRef.value);
+  tableHeight.value = wrapRef.value.clientHeight;
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
+
 </script>
 
 <template>
-  <el-card shadow="never">
+  <div class="page">
+  <el-card shadow="never" class="fill-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate(0)">新增一级分类</el-button>
       <span class="tip">分类最多两级；二级分类通过「类型」参数在一级分类页里筛选</span>
     </div>
 
+    <div ref="wrapRef" class="table-wrap">
     <el-table
+      :height="tableHeight"
       v-loading="loading"
       :data="items"
       row-key="id"
@@ -188,6 +209,7 @@ onMounted(load);
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
       <el-form label-width="100px">
@@ -217,9 +239,38 @@ onMounted(load);
       </template>
     </el-dialog>
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar,
+.summary,
+.batch,
+.batch-bar,
+.pager {
+  flex: none;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .toolbar {
   display: flex;
   align-items: center;

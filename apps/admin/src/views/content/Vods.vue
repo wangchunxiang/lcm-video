@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
@@ -173,10 +173,29 @@ onMounted(async () => {
   await loadCategories();
   await load();
 });
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!wrapRef.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+  });
+  resizeObserver.observe(wrapRef.value);
+  tableHeight.value = wrapRef.value.clientHeight;
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
+
 </script>
 
 <template>
-  <el-card shadow="never">
+  <div class="page">
+  <el-card shadow="never" class="fill-card">
     <div class="toolbar">
       <el-input v-model="filters.keyword" placeholder="影片名称" clearable style="width: 200px" @keyup.enter="search" />
       <el-select v-model="filters.category_id" placeholder="全部分类" clearable filterable style="width: 180px">
@@ -206,7 +225,9 @@ onMounted(async () => {
       <span class="hint">「删除」等于下架，影片仍在库里</span>
     </div>
 
+    <div ref="wrapRef" class="table-wrap">
     <el-table
+      :height="tableHeight"
       v-loading="loading"
       :data="items"
       border
@@ -242,6 +263,7 @@ onMounted(async () => {
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-pagination
       class="pager"
@@ -254,12 +276,40 @@ onMounted(async () => {
       @size-change="(size: number) => ((pageSize = size), search())"
     />
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar,
+.summary,
+.batch,
+.batch-bar,
+.pager {
+  flex: none;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .toolbar {
   display: flex;
-  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 12px;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -171,17 +171,37 @@ onMounted(async () => {
 onUnmounted(() => {
   if (timer) clearInterval(timer);
 });
+const wrapRef = ref<HTMLElement | null>(null);
+const tableHeight = ref(400);
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!wrapRef.value) return;
+  resizeObserver = new ResizeObserver(() => {
+    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
+  });
+  resizeObserver.observe(wrapRef.value);
+  tableHeight.value = wrapRef.value.clientHeight;
+});
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+});
+
 </script>
 
 <template>
-  <el-card shadow="never">
+  <div class="page">
+  <el-card shadow="never" class="fill-card">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增任务</el-button>
       <el-button :loading="loading" @click="load">刷新</el-button>
       <span class="hint">列表每 5 秒自动刷新；同一采集源同一时间只运行一个任务</span>
     </div>
 
-    <el-table v-loading="loading" :data="items" border stripe empty-text="还没有采集任务">
+    <div ref="wrapRef" class="table-wrap">
+    <el-table :height="tableHeight" v-loading="loading" :data="items" border stripe empty-text="还没有采集任务">
       <el-table-column prop="name" label="任务名称" width="160" show-overflow-tooltip />
       <el-table-column prop="sourceName" label="采集源" width="140" show-overflow-tooltip />
       <el-table-column label="采集范围" width="110" align="center">
@@ -215,6 +235,7 @@ onUnmounted(() => {
         </template>
       </el-table-column>
     </el-table>
+    </div>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px" destroy-on-close>
       <el-form label-width="90px">
@@ -245,12 +266,40 @@ onUnmounted(() => {
       </template>
     </el-dialog>
   </el-card>
+  </div>
 </template>
 
 <style scoped>
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fill-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.toolbar,
+.summary,
+.batch,
+.batch-bar,
+.pager {
+  flex: none;
+}
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
 .toolbar {
   display: flex;
-  gap: 8px;
   align-items: center;
   margin-bottom: 12px;
 }
