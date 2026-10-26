@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { api, ApiError } from '../../api/client.ts';
 
 interface SourceRow {
@@ -175,17 +175,47 @@ async function submit() {
 
 async function testSource(row: SourceRow) {
   testing.value = row.id;
+  const notice = ElNotification({
+    title: '正在测试',
+    message: `正在测试 ${row.name}…`,
+    type: 'info',
+    position: 'top-right',
+    duration: 0,
+    showClose: false,
+  });
   try {
     const data = await api.post<{ ok: boolean; elapsed_ms: number; categories: number; sample: string[]; message?: string }>(
       `/sources/${row.id}/test`,
     );
+    notice.close();
     if (data.ok) {
-      ElMessage.success(`接口正常，耗时 ${data.elapsed_ms}ms，返回 ${data.categories} 个分类`);
+      ElNotification({
+        title: '测试通过',
+        message: `${row.name}：接口正常，耗时 ${data.elapsed_ms}ms，返回 ${data.categories} 个分类`,
+        type: 'success',
+        position: 'top-right',
+        duration: 4000,
+      });
     } else {
-      ElMessage.error(data.message ?? '接口返回异常');
+      ElNotification({
+        title: '测试失败',
+        message: `${row.name}：${data.message ?? '接口返回异常'}`,
+        type: 'error',
+        position: 'top-right',
+        duration: 0,
+        showClose: true,
+      });
     }
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '测试失败');
+    notice.close();
+    ElNotification({
+      title: '测试失败',
+      message: `${row.name}：${error instanceof Error ? error.message : '测试失败'}`,
+      type: 'error',
+      position: 'top-right',
+      duration: 0,
+      showClose: true,
+    });
   } finally {
     testing.value = 0;
   }
