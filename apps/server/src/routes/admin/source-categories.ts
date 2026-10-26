@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { category, collectSource, collectSourceCategory, vod } from '@lcm/db';
@@ -145,6 +145,34 @@ export const sourceCategoryRoutes: FastifyPluginAsync<SourceCategoryRouteOpts> =
     const error = await applyMapping(id, (req.body ?? {}) as MappingBody);
     if (error) return fail(reply, 400, ErrorCode.BAD_REQUEST, error);
     return ok(reply, { id });
+  });
+
+  app.post('/:id/categories/reset', async (req, reply) => {
+    const sourceId = toInt((req.params as { id: string }).id);
+    if (!(await requireSource(sourceId))) return fail(reply, 404, ErrorCode.NOT_FOUND, '采集源不存在');
+
+    const rows = await db
+      .select({ id: collectSourceCategory.id })
+      .from(collectSourceCategory)
+      .where(
+        and(
+          eq(collectSourceCategory.sourceId, sourceId),
+          ne(collectSourceCategory.status, 0),
+        ),
+      );
+    if (rows.length === 0) return ok(reply, { affected: 0 });
+
+    await db
+      .update(collectSourceCategory)
+      .set({ categoryId: 0, status: 0, matchType: 0 })
+      .where(
+        and(
+          eq(collectSourceCategory.sourceId, sourceId),
+          ne(collectSourceCategory.status, 0),
+        ),
+      );
+
+    return ok(reply, { affected: rows.length });
   });
 
   app.post('/:id/categories/match', async (req, reply) => {

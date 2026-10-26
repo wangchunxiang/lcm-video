@@ -179,6 +179,26 @@ async function restoreRow(row: SourceCategoryRow) {
   }
 }
 
+async function resetAll() {
+  const total = summary.value.mapped + summary.value.ignored;
+  try {
+    await ElMessageBox.confirm(
+      `将取消该采集源全部 ${total} 条映射（含已忽略），之后采集到的影片需要重新映射才会入库；已入库影片的分类不变。`,
+      '取消全部映射',
+      { type: 'warning', confirmButtonText: '全部取消', cancelButtonText: '返回' },
+    );
+  } catch {
+    return;
+  }
+  try {
+    const data = await api.post<{ affected: number }>(`/sources/${sourceId.value}/categories/reset`);
+    ElMessage.success(`已取消 ${data.affected} 条映射`);
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+  }
+}
+
 async function unmapRow(row: SourceCategoryRow) {
   try {
     await ElMessageBox.confirm(
@@ -265,6 +285,7 @@ onBeforeUnmount(() => {
       </el-select>
       <el-button type="primary" :loading="fetching" @click="fetchCategories">获取分类</el-button>
       <el-button :loading="matching" @click="autoMatch">自动匹配</el-button>
+      <el-button :disabled="summary.mapped + summary.ignored === 0" @click="resetAll">取消全部映射</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
 
