@@ -249,7 +249,7 @@ onMounted(load);
     </div>
 
     <el-table v-loading="loading" :data="items" border stripe>
-      <el-table-column prop="name" label="名称" width="140" show-overflow-tooltip />
+      <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
       <el-table-column prop="apiUrl" label="接口地址" min-width="240" show-overflow-tooltip />
       <el-table-column prop="apiFormat" label="格式" width="70" align="center" />
       <el-table-column label="解析接口" min-width="160" show-overflow-tooltip>
@@ -261,15 +261,15 @@ onMounted(load);
       <el-table-column label="页大小" width="80" align="center">
         <template #default="{ row }">{{ row.pagesize }}</template>
       </el-table-column>
-      <el-table-column label="间隔" width="80" align="center">
+      <el-table-column label="间隔" width="70" align="center">
         <template #default="{ row }">{{ row.intervalSec }}s</template>
       </el-table-column>
-      <el-table-column label="状态" width="90" align="center">
+      <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
-      <el-table-column label="最后同步" width="180">
+      <el-table-column label="最后同步" width="165">
         <template #default="{ row }">
           <el-tooltip v-if="row.lastSyncStatus !== 0" :content="row.lastSyncMsg || '无'">
             <span :class="row.lastSyncStatus === 2 ? 'danger' : ''">{{ row.lastSyncAt || '—' }}</span>
@@ -277,7 +277,7 @@ onMounted(load);
           <span v-else class="muted">未同步</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="260" fixed="right">
+      <el-table-column label="操作" width="150" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" :loading="testing === row.id" @click="testSource(row)">测试</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
