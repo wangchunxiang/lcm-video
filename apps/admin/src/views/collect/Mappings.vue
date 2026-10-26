@@ -255,41 +255,18 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="summary">
-      <el-tag
-        size="large"
-        :effect="statusFilter === 'all' ? 'dark' : 'plain'"
-        class="clickable"
-        @click="statusFilter = 'all'"
-      >
+      <el-button :type="statusFilter === 'all' ? 'primary' : ''" @click="statusFilter = 'all'">
         共 {{ summary.total }}
-      </el-tag>
-      <el-tag
-        size="large"
-        type="success"
-        :effect="statusFilter === '1' ? 'dark' : 'plain'"
-        class="clickable"
-        @click="toggleFilter('1')"
-      >
+      </el-button>
+      <el-button :type="statusFilter === '1' ? 'success' : ''" @click="toggleFilter('1')">
         已映射 {{ summary.mapped }}
-      </el-tag>
-      <el-tag
-        size="large"
-        type="warning"
-        :effect="statusFilter === '0' ? 'dark' : 'plain'"
-        class="clickable"
-        @click="toggleFilter('0')"
-      >
+      </el-button>
+      <el-button :type="statusFilter === '0' ? 'warning' : ''" @click="toggleFilter('0')">
         未映射 {{ summary.unmapped }}
-      </el-tag>
-      <el-tag
-        size="large"
-        type="info"
-        :effect="statusFilter === '2' ? 'dark' : 'plain'"
-        class="clickable"
-        @click="toggleFilter('2')"
-      >
+      </el-button>
+      <el-button :type="statusFilter === '2' ? 'info' : ''" @click="toggleFilter('2')">
         已忽略 {{ summary.ignored }}
-      </el-tag>
+      </el-button>
     </div>
     </div>
   </el-card>
@@ -400,13 +377,8 @@ onBeforeUnmount(() => {
 }
 .summary {
   display: flex;
-  gap: 8px;
   align-items: center;
   flex-wrap: nowrap;
-}
-.clickable {
-  cursor: pointer;
-  user-select: none;
 }
 .muted {
   color: var(--el-text-color-secondary);
