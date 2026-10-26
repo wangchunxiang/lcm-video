@@ -280,20 +280,13 @@ const cronHint = computed(() => {
   return describeCron(expr);
 });
 
-const upcomingRuns = computed(() => {
+const nextRun = computed(() => {
   const expr = form.cron.trim();
-  if (!expr) return [];
-  if (isValidCron(expr) !== null) return [];
+  if (!expr || isValidCron(expr) !== null) return null;
   const now = new Date();
-  const result: Array<{ text: string; relative: string }> = [];
-  let from = now;
-  for (let index = 0; index < 3; index++) {
-    const next = nextRunAt(expr, from);
-    if (!next) break;
-    result.push({ text: formatRunTime(next), relative: formatRelative(next, now) });
-    from = next;
-  }
-  return result;
+  const next = nextRunAt(expr, now);
+  if (!next) return null;
+  return { text: formatRunTime(next), relative: formatRelative(next, now) };
 });
 
 const wrapRef = ref<HTMLElement | null>(null);
@@ -438,10 +431,8 @@ onUnmounted(() => {
             <CronEditor v-model="form.cron" />
           </el-form-item>
           <el-form-item label="下次执行">
-            <div v-if="upcomingRuns.length > 0" class="runs">
-              <span v-for="item in upcomingRuns" :key="item.text" class="run">
-                {{ item.text }}<span class="relative">{{ item.relative }}</span>
-              </span>
+            <div v-if="nextRun" class="runs">
+              <span class="run">{{ nextRun.text }}<span class="relative">{{ nextRun.relative }}</span></span>
             </div>
             <span v-else-if="!form.cron.trim()" class="muted">留空表示只能手动执行</span>
             <span v-else class="muted">表达式无效，无法计算下次执行时间</span>
