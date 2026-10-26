@@ -1,4 +1,4 @@
-import { and, eq, inArray, like } from 'drizzle-orm';
+import { and, count, eq, inArray, like } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, collectTask } from '@lcm/db';
@@ -42,6 +42,9 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
       conditions.push(eq(collectTask.isEnabled, toInt(query.status)));
     }
 
+    const page = Math.max(1, toInt(query.page, 1));
+    const pageSize = Math.min(100, Math.max(1, toInt(query.page_size, 20)));
+
     const rows = await db
       .select({
         id: collectTask.id,
@@ -59,14 +62,22 @@ export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) =
       .from(collectTask)
       .leftJoin(collectSource, eq(collectSource.id, collectTask.sourceId))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(collectTask.id);
+      .orderBy(collectTask.id)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
 
     const items = rows.map((row) => ({
       ...row,
       runningLogId: getRunningLogId(row.id) ?? null,
       nextRunAt: row.cron && row.isEnabled === 1 ? nextRunAt(row.cron) : null,
     }));
-    return ok(reply, { items });
+
+    const totalRows = await db
+      .select({ value: count() })
+      .from(collectTask)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    return ok(reply, { items, total: Number(totalRows[0]?.value ?? 0), page, page_size: pageSize });
   });
 
   app.post('/', async (req, reply) => {

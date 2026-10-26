@@ -30,6 +30,9 @@ interface SourceRow {
 const items = ref<TaskRow[]>([]);
 const sources = ref<SourceRow[]>([]);
 const loading = ref(false);
+const page = ref(1);
+const pageSize = ref(20);
+const total = ref(0);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增采集任务');
 const editingId = ref(0);
@@ -61,13 +64,17 @@ const form = reactive({
 async function load(silent = false) {
   if (!silent) loading.value = true;
   try {
-    const query = new URLSearchParams();
+    const query = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) });
     if (filters.keyword.trim()) query.set('keyword', filters.keyword.trim());
     if (filters.source_id !== '') query.set('source_id', filters.source_id);
     if (filters.status !== '') query.set('status', filters.status);
-    const suffix = query.size > 0 ? `?${query}` : '';
-    const data = await api.get<{ items: TaskRow[] }>(`/tasks${suffix}`);
+    const data = await api.get<{ items: TaskRow[]; total: number }>(`/tasks?${query.toString()}`);
     items.value = data.items;
+    total.value = data.total;
+    if (items.value.length === 0 && page.value > 1) {
+      page.value -= 1;
+      await load(silent);
+    }
   } catch (error) {
     if (!silent) ElMessage.error(error instanceof Error ? error.message : '加载任务失败');
   } finally {
@@ -85,6 +92,12 @@ async function loadSources() {
 }
 
 function search() {
+  page.value = 1;
+  void load();
+}
+
+function onPageChange(current: number) {
+  page.value = current;
   void load();
 }
 
@@ -420,6 +433,17 @@ onUnmounted(() => {
         </el-table>
       </div>
 
+      <el-pagination
+        class="pager"
+        layout="total, sizes, prev, pager, next"
+        :total="total"
+        :page-sizes="[20, 50, 100]"
+        :page-size="pageSize"
+        :current-page="page"
+        @current-change="onPageChange"
+        @size-change="(size: number) => ((pageSize = size), search())"
+      />
+
       <el-dialog v-model="dialogVisible" :title="dialogTitle" width="660px" destroy-on-close>
         <el-form label-width="90px">
           <el-form-item label="任务名称" required>
@@ -498,6 +522,11 @@ onUnmounted(() => {
 .table-wrap {
   flex: 1;
   min-height: 0;
+}
+.pager {
+  flex: none;
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 .hint {
   color: var(--el-text-color-secondary);
