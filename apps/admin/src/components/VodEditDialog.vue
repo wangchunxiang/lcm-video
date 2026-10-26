@@ -429,10 +429,10 @@ function lineTitle(line: PlayLine): string {
                 </el-row>
 
                 <div class="group-gap"></div>
-                <el-form-item label-width="0">
+                <el-form-item label="简介">
                   <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit placeholder="列表页展示的简短简介" />
                 </el-form-item>
-                <el-form-item label-width="0">
+                <el-form-item label="详细介绍">
                   <el-input v-model="form.content" type="textarea" :rows="4" placeholder="详情页展示的详细介绍" />
                 </el-form-item>
 
