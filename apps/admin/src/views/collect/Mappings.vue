@@ -304,6 +304,7 @@ onBeforeUnmount(() => {
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
     >
       <el-table-column prop="sourceTypeName" label="源站分类" min-width="200" />
+      <el-table-column prop="sourceTypeId" label="源站分类ID" width="110" align="center" />
       <el-table-column label="本站分类" min-width="220">
         <template #default="{ row }">
           <el-select
@@ -316,6 +317,12 @@ onBeforeUnmount(() => {
           >
             <el-option v-for="item in categoryOptions" :key="item.id" :label="item.label" :value="item.id" />
           </el-select>
+        </template>
+      </el-table-column>
+      <el-table-column label="本站分类ID" width="110" align="center">
+        <template #default="{ row }">
+          <span v-if="row.categoryId">{{ row.categoryId }}</span>
+          <span v-else class="muted">—</span>
         </template>
       </el-table-column>
       <el-table-column label="匹配方式" width="90" align="center">
