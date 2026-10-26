@@ -219,10 +219,8 @@ async function batchDelete(force = false) {
 }
 
 async function confirmBatchDelete() {
-  const names = selection.value.slice(0, 3).map((row) => row.name).join('、');
-  const more = selection.value.length > 3 ? ` 等 ${selection.value.length} 个源` : '';
   try {
-    await ElMessageBox.confirm(`确定删除 ${names}${more} 吗？`, '批量删除', {
+    await ElMessageBox.confirm(`确定删除选中的 ${selection.value.length} 个采集源吗？`, '批量删除', {
       type: 'warning',
       confirmButtonText: '删除',
       cancelButtonText: '取消',
