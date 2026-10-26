@@ -349,7 +349,7 @@ onUnmounted(() => {
         <el-button type="success" :disabled="selection.length === 0" @click="batchStatus('enable')">批量启用</el-button>
         <el-button type="warning" :disabled="selection.length === 0" @click="batchStatus('disable')">批量停用</el-button>
         <el-button type="danger" :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
-        <span class="hint">列表每 5 秒自动刷新；同一个采集源同一时间只运行一个任务</span>
+        <span class="hint">列表每 5 秒自动刷新</span>
       </div>
 
       <div ref="wrapRef" class="table-wrap">
@@ -378,6 +378,12 @@ onUnmounted(() => {
           <el-table-column label="状态" width="80" align="center">
             <template #default="{ row }">
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
+            </template>
+          </el-table-column>
+          <el-table-column label="执行状态" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.runningLogId" type="primary" size="small" effect="light">运行中</el-tag>
+              <span v-else class="muted">空闲</span>
             </template>
           </el-table-column>
           <el-table-column label="上次执行" width="165" align="center">
