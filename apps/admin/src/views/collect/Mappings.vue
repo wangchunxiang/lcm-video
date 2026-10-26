@@ -364,12 +364,12 @@ onBeforeUnmount(() => {
           <el-tag :type="statusTag(row).type" size="small">{{ statusTag(row).text }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="230" fixed="right" align="center">
+      <el-table-column label="操作" width="170" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略分类</el-button>
+          <el-button v-if="row.status !== 2" link type="warning" @click="ignoreRow(row)">忽略</el-button>
           <el-button v-else link type="primary" @click="restoreRow(row)">恢复</el-button>
-          <el-button v-if="row.status === 1" link type="info" @click="unmapRow(row)">取消映射</el-button>
-          <el-button v-if="row.status === 1" link type="danger" @click="remapVods(row)">重刷影片</el-button>
+          <el-button v-if="row.status === 1" link type="info" @click="unmapRow(row)">取消</el-button>
+          <el-button v-if="row.status === 1" link type="danger" @click="remapVods(row)">重刷</el-button>
         </template>
       </el-table-column>
     </el-table>
