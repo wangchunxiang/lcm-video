@@ -145,6 +145,10 @@ function reset() {
   search();
 }
 
+function rowIndex(index: number): number {
+  return (page.value - 1) * pageSize.value + index + 1;
+}
+
 function onPageChange(value: number) {
   page.value = value;
   void load();
@@ -236,7 +240,7 @@ onBeforeUnmount(() => {
           :height="tableHeight"
           empty-text="还没有采集记录"
         >
-          <el-table-column prop="id" label="#" width="80" align="center" />
+          <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
           <el-table-column prop="taskName" label="任务" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.taskName">{{ row.taskName }}</span>
