@@ -542,7 +542,7 @@ function lineTitle(line: PlayLine): string {
   align-items: flex-start;
 }
 .base-side {
-  width: 84px;
+  width: 168px;
   flex: none;
 }
 .field-label {
@@ -550,14 +550,12 @@ function lineTitle(line: PlayLine): string {
   font-size: 13px;
   line-height: 22px;
   color: var(--el-text-color-regular);
-  text-align: right;
 }
 .side-meta {
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 12px;
   line-height: 1.5;
   color: var(--el-text-color-secondary);
-  text-align: right;
 }
 .base-main {
   flex: 1;
