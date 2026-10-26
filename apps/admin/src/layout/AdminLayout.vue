@@ -69,21 +69,28 @@ async function onLogout() {
   height: 100vh;
 }
 .aside {
-  background: var(--el-bg-color);
+  --el-menu-bg-color: #1f2d3d;
+  --el-menu-text-color: #c0c4cc;
+  --el-menu-hover-bg-color: #16202b;
+  --el-menu-active-color: var(--el-color-primary-light-3);
+  background: var(--el-menu-bg-color);
   overflow-y: auto;
 }
 .logo {
   height: 56px;
   line-height: 56px;
   text-align: center;
-  color: var(--el-text-color-primary);
+  color: var(--el-color-white);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 1px;
-  border-bottom: 1px solid var(--el-border-color-light);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .menu {
   border-right: none;
+}
+.menu :deep(.el-menu-item.is-active) {
+  background: color-mix(in srgb, var(--el-color-primary) 22%, transparent);
 }
 .header {
   display: flex;
