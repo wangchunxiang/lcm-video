@@ -364,7 +364,7 @@ onUnmounted(() => {
           @selection-change="onSelectionChange"
         >
           <el-table-column type="selection" width="44" fixed="left" />
-          <el-table-column prop="name" label="任务名称" min-width="180" show-overflow-tooltip />
+          <el-table-column prop="name" label="任务名称" min-width="140" show-overflow-tooltip />
           <el-table-column prop="sourceName" label="采集源" width="140" show-overflow-tooltip />
           <el-table-column label="采集范围" width="110" align="center">
             <template #default="{ row }">{{ rangeLabel(row.rangeType) }}</template>
@@ -394,6 +394,12 @@ onUnmounted(() => {
           <el-table-column label="说明" min-width="180" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.lastRunMsg">{{ row.lastRunMsg }}</span>
+              <span v-else class="muted">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="下次执行" width="165" align="center">
+            <template #default="{ row }">
+              <span v-if="row.nextRunAt">{{ row.nextRunAt }}</span>
               <span v-else class="muted">—</span>
             </template>
           </el-table-column>
