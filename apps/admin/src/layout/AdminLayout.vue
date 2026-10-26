@@ -23,7 +23,7 @@ async function onLogout() {
   <el-container class="layout">
     <el-aside width="220px" class="aside">
       <div class="logo">蓝草莓影视</div>
-      <el-menu :default-active="activeMenu" router>
+      <el-menu :default-active="activeMenu" router class="menu">
         <template v-for="item in menus" :key="item.path">
           <el-sub-menu v-if="item.children?.length" :index="item.path">
             <template #title>
@@ -87,6 +87,9 @@ async function onLogout() {
   font-weight: 600;
   letter-spacing: 1px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.menu {
+  border-right: none;
 }
 .header {
   height: var(--lcm-header-height);
