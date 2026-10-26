@@ -1,0 +1,30 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="/">
+      {% if site.logo != blank %}
+      <img src="{{ site.logo }}" alt="{{ site.name }}">
+      {% else %}
+      <span>{{ site.name }}</span>
+      {% endif %}
+    </a>
+    <nav class="main-nav">
+      <a href="/" class="{% if current == '' %}active{% endif %}">首页</a>
+      {% for item in nav %}
+      <div class="nav-item">
+        <a href="/list/{{ item.alias }}" class="{% if current == item.alias %}active{% endif %}">{{ item.name }}</a>
+        {% if item.children.size > 0 %}
+        <div class="sub-nav">
+          {% for child in item.children %}
+          <a href="/list/{{ item.alias }}?type={{ child.alias }}">{{ child.name }}</a>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </nav>
+    <form class="search-box" action="/search" method="get">
+      <input type="search" name="wd" placeholder="搜索影片" maxlength="50" value="{{ keyword }}">
+      <button type="submit" aria-label="搜索">搜索</button>
+    </form>
+  </div>
+</header>

@@ -1,0 +1,31 @@
+{% layout 'layout' %}
+{% block content %}
+{% assign base = '/search' %}
+
+<nav class="breadcrumb">
+  <a href="/">首页</a>
+  <span>/</span>
+  <span>搜索</span>
+</nav>
+
+<form class="search-page-form" action="/search" method="get">
+  <input type="text" name="wd" value="{{ keyword }}" placeholder="搜索影片名称" maxlength="50" autocomplete="off">
+  <button type="submit">搜索</button>
+</form>
+
+{% if keyword == '' %}
+<p class="empty-tip">输入片名开始搜索。</p>
+{% else %}
+<p class="search-summary">「{{ keyword }}」共找到 {{ pagination.total }} 部影片</p>
+
+<div class="vod-grid">
+  {% for v in vods %}
+  {% render 'partials/vod-card', card: v %}
+  {% else %}
+  <p class="empty-tip">没有找到与「{{ keyword }}」相关的影片，换个关键词试试。</p>
+  {% endfor %}
+</div>
+
+{% render 'partials/pagination', pagination: pagination, base: base, filter: filter %}
+{% endif %}
+{% endblock %}

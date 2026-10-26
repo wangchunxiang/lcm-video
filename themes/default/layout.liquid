@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ meta.title }}</title>
+<meta name="description" content="{{ meta.description }}">
+{% if site.keywords != blank %}<meta name="keywords" content="{{ site.keywords }}">{% endif %}
+{% if meta.noindex %}<meta name="robots" content="noindex, nofollow">{% else %}<meta name="robots" content="index, follow">{% endif %}
+{% if meta.canonical != blank %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
+{% if site.favicon != blank %}<link rel="icon" href="{{ site.favicon }}">{% endif %}
+<link rel="stylesheet" href="{{ 'style.css' | asset }}">
+</head>
+<body>
+{% render 'partials/header', site: site, nav: nav, current: nav_path, keyword: keyword %}
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+{% render 'partials/footer', site: site %}
+{% block scripts %}{% endblock %}
+<script src="{{ 'app.js' | asset }}" defer></script>
+{% if site.stats_code != blank %}{{ site.stats_code }}{% endif %}
+</body>
+</html>

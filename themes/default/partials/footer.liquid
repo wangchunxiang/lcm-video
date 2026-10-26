@@ -1,0 +1,9 @@
+<footer class="site-footer">
+  <div class="container">
+    {% if site.disclaimer != blank %}<p class="disclaimer">{{ site.disclaimer }}</p>{% endif %}
+    <p class="copyright">
+      © {{ site.name }}
+      {% if site.icp != blank %}<a href="https://beian.miit.gov.cn/" rel="nofollow noopener" target="_blank">{{ site.icp }}</a>{% endif %}
+    </p>
+  </div>
+</footer>

@@ -1,0 +1,8 @@
+参考项目/
+node_modules/
+dist/
+.env
+*.log
+logs/
+tmp/
+uploads/

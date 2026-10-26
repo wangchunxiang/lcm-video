@@ -1,0 +1,74 @@
+{% layout 'layout' %}
+{% block content %}
+{% assign play_base = '/play/' | append: vod.id | append: '/' | append: line.id %}
+
+<nav class="breadcrumb">
+  <a href="/">首页</a>
+  <span>/</span>
+  <a href="/detail/{{ vod.id }}">{{ vod.name }}</a>
+  <span>/</span>
+  <span>{{ current_ep_name }}</span>
+</nav>
+
+<section class="player-wrap">
+  <div class="player">
+    {% if iframe_url != blank %}
+    <iframe
+      src="{{ iframe_url }}"
+      allowfullscreen
+      allow="autoplay; fullscreen; encrypted-media"
+      frameborder="0"
+      scrolling="no"
+    ></iframe>
+    {% else %}
+    <video
+      id="player"
+      controls
+      autoplay
+      playsinline
+      preload="metadata"
+      {% if is_hls %}data-hls="{{ play_url }}"{% else %}src="{{ play_url }}"{% endif %}
+    ></video>
+    {% endif %}
+  </div>
+
+  <div class="play-head">
+    <h1>{{ vod.name }}</h1>
+    <span class="play-ep">{{ current_ep_name }}</span>
+    {% if current_ep > 1 %}
+    <a class="btn" href="{{ play_base }}/{{ current_ep | minus: 1 }}">上一集</a>
+    {% endif %}
+    {% if current_ep < line.episode_count %}
+    <a class="btn" href="{{ play_base }}/{{ current_ep | plus: 1 }}">下一集</a>
+    {% endif %}
+    <a class="btn" href="/detail/{{ vod.id }}">返回详情</a>
+  </div>
+</section>
+
+<section class="section">
+  <h2>播放线路</h2>
+  <div class="line-tabs">
+    {% for l in lines %}
+    <a class="line-tab{% if l.id == line.id %} active{% endif %}"
+       href="/play/{{ vod.id }}/{{ l.id }}/1">{{ l.name }}
+      <span class="count">{{ l.episode_count }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% render 'partials/episode-list', episodes: episodes, current_ep: current_ep, play_base: play_base %}
+
+  {% if pagination.total_pages > 1 %}
+  <div class="episode-pager">
+    {% if pagination.page > 1 %}
+    <a class="page-btn" href="{{ play_base }}/1?page={{ pagination.page | minus: 1 }}">上一页</a>
+    {% endif %}
+    <span class="page-info">{{ pagination.page }} / {{ pagination.total_pages }}</span>
+    {% if pagination.page < pagination.total_pages %}
+    <a class="page-btn" href="{{ play_base }}/1?page={{ pagination.page | plus: 1 }}">下一页</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}{% if is_hls and iframe_url == blank %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}{% endblock %}

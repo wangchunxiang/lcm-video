@@ -1,0 +1,8 @@
+{% layout 'layout' %}
+{% block content %}
+<section class="error-page">
+  <h1>{{ status | default: 404 }}</h1>
+  <p>{{ message | default: '页面不存在或已被移除' }}</p>
+  <p><a class="btn-primary" href="/">回到首页</a></p>
+</section>
+{% endblock %}

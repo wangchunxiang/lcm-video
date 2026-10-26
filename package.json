@@ -1,0 +1,29 @@
+{
+  "name": "lcm-video",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,admin -c cyan,green \"npm:dev:server\" \"npm:dev:admin\"",
+    "dev:server": "npm run dev -w apps/server",
+    "dev:admin": "npm run dev -w apps/admin",
+    "build": "npm run build -w apps/admin",
+    "start": "npm run start -w apps/server",
+    "typecheck": "tsc --noEmit",
+    "db:init": "node --env-file=.env packages/db/scripts/init.ts",
+    "db:generate": "npm run generate -w packages/db",
+    "db:migrate": "npm run migrate -w packages/db"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}

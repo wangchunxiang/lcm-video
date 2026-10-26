@@ -1,0 +1,162 @@
+import { eq } from 'drizzle-orm';
+import type { FastifyPluginAsync } from 'fastify';
+import type { Db } from '@lcm/db';
+import { collectSource, collectTask } from '@lcm/db';
+import { isValidCron } from '../../lib/collect/cron.ts';
+import { cancelRun, getRunningLogId, startTask } from '../../lib/collect/runner.ts';
+import { ErrorCode, fail, ok } from '../../lib/http.ts';
+
+export interface TaskRouteOpts {
+  db: Db;
+}
+
+function toInt(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
+function toText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+interface TaskBody {
+  name?: unknown;
+  source_id?: unknown;
+  range_type?: unknown;
+  cron?: unknown;
+  is_enabled?: unknown;
+}
+
+export const taskRoutes: FastifyPluginAsync<TaskRouteOpts> = async (app, opts) => {
+  const { db } = opts;
+
+  app.get('/', async (_req, reply) => {
+    const rows = await db
+      .select({
+        id: collectTask.id,
+        name: collectTask.name,
+        sourceId: collectTask.sourceId,
+        sourceName: collectSource.name,
+        rangeType: collectTask.rangeType,
+        cron: collectTask.cron,
+        isEnabled: collectTask.isEnabled,
+        lastRunAt: collectTask.lastRunAt,
+        lastRunStatus: collectTask.lastRunStatus,
+        lastRunMsg: collectTask.lastRunMsg,
+        createdAt: collectTask.createdAt,
+      })
+      .from(collectTask)
+      .leftJoin(collectSource, eq(collectSource.id, collectTask.sourceId))
+      .orderBy(collectTask.id);
+
+    const items = rows.map((row) => ({ ...row, runningLogId: getRunningLogId(row.id) ?? null }));
+    return ok(reply, { items });
+  });
+
+  app.post('/', async (req, reply) => {
+    const body = (req.body ?? {}) as TaskBody;
+    const name = toText(body.name);
+    if (!name) return fail(reply, 400, ErrorCode.BAD_REQUEST, '任务名称不能为空');
+    if (name.length > 50) return fail(reply, 400, ErrorCode.BAD_REQUEST, '任务名称不能超过 50 个字符');
+
+    const sourceId = toInt(body.source_id);
+    const source = await db.select({ id: collectSource.id }).from(collectSource).where(eq(collectSource.id, sourceId)).limit(1);
+    if (!source[0]) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请选择有效的采集源');
+
+    const rangeType = toInt(body.range_type, 1);
+    if (rangeType < 1 || rangeType > 4) return fail(reply, 400, ErrorCode.BAD_REQUEST, '采集范围不合法');
+
+    const cron = toText(body.cron);
+    if (cron) {
+      const error = isValidCron(cron);
+      if (error) return fail(reply, 400, ErrorCode.BAD_REQUEST, `cron 表达式不合法：${error}`);
+    }
+
+    const inserted = await db
+      .insert(collectTask)
+      .values({
+        name,
+        sourceId,
+        rangeType,
+        cron,
+        isEnabled: body.is_enabled === 0 || body.is_enabled === false ? 0 : 1,
+      })
+      .$returningId();
+
+    return ok(reply, { id: inserted[0]?.id ?? 0 });
+  });
+
+  app.put('/:id', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    const rows = await db.select().from(collectTask).where(eq(collectTask.id, id)).limit(1);
+    if (!rows[0]) return fail(reply, 404, ErrorCode.NOT_FOUND, '任务不存在');
+
+    const body = (req.body ?? {}) as TaskBody;
+    const patch: Partial<typeof collectTask.$inferInsert> = {};
+
+    if (body.name !== undefined) {
+      const name = toText(body.name);
+      if (!name) return fail(reply, 400, ErrorCode.BAD_REQUEST, '任务名称不能为空');
+      if (name.length > 50) return fail(reply, 400, ErrorCode.BAD_REQUEST, '任务名称不能超过 50 个字符');
+      patch.name = name;
+    }
+
+    if (body.source_id !== undefined) {
+      const sourceId = toInt(body.source_id);
+      const source = await db
+        .select({ id: collectSource.id })
+        .from(collectSource)
+        .where(eq(collectSource.id, sourceId))
+        .limit(1);
+      if (!source[0]) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请选择有效的采集源');
+      patch.sourceId = sourceId;
+    }
+
+    if (body.range_type !== undefined) {
+      const rangeType = toInt(body.range_type, 1);
+      if (rangeType < 1 || rangeType > 4) return fail(reply, 400, ErrorCode.BAD_REQUEST, '采集范围不合法');
+      patch.rangeType = rangeType;
+    }
+
+    if (body.cron !== undefined) {
+      const cron = toText(body.cron);
+      if (cron) {
+        const error = isValidCron(cron);
+        if (error) return fail(reply, 400, ErrorCode.BAD_REQUEST, `cron 表达式不合法：${error}`);
+      }
+      patch.cron = cron;
+    }
+
+    if (body.is_enabled !== undefined) {
+      patch.isEnabled = body.is_enabled === 0 || body.is_enabled === false ? 0 : 1;
+    }
+
+    await db.update(collectTask).set(patch).where(eq(collectTask.id, id));
+    return ok(reply, { id });
+  });
+
+  app.delete('/:id', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    const rows = await db.select({ id: collectTask.id }).from(collectTask).where(eq(collectTask.id, id)).limit(1);
+    if (!rows[0]) return fail(reply, 404, ErrorCode.NOT_FOUND, '任务不存在');
+    if (getRunningLogId(id) !== undefined) {
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, '任务正在执行，请先取消');
+    }
+    await db.delete(collectTask).where(eq(collectTask.id, id));
+    return ok(reply, { id });
+  });
+
+  app.post('/:id/run', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    const result = await startTask(db, id);
+    if (!result.started) return fail(reply, 400, ErrorCode.BAD_REQUEST, result.message);
+    return ok(reply, { logId: result.logId ?? 0 });
+  });
+
+  app.post('/:id/cancel', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    const logId = cancelRun(id);
+    if (logId === undefined) return fail(reply, 400, ErrorCode.BAD_REQUEST, '该任务没有正在执行');
+    return ok(reply, { logId });
+  });
+};

@@ -1,0 +1,13 @@
+{% if episodes.size > 0 %}
+<div class="episode-grid">
+  {% for ep in episodes %}
+  <a
+    class="episode-btn{% if ep.index == current_ep %} current{% endif %}"
+    href="{{ play_base }}/{{ ep.index }}"
+    title="{{ ep.name }}"
+  >{{ ep.name }}</a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty-tip">该线路还没有剧集</p>
+{% endif %}
