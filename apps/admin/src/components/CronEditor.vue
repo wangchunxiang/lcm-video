@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { isValidCron, WEEK_LABELS } from '@lcm/shared/cron';
+import { isValidCron } from '@lcm/shared/cron';
 
 const props = defineProps<{ modelValue: string }>();
 const emit = defineEmits<{ 'update:modelValue': [string] }>();
 
-type Mode = 'manual' | 'interval' | 'hour' | 'day' | 'week' | 'month' | 'custom';
+type Mode = 'manual' | 'interval' | 'hour' | 'day' | 'custom';
 
 const MODES: Array<{ value: Mode; label: string }> = [
   { value: 'manual', label: '仅手动' },
   { value: 'interval', label: '间隔' },
   { value: 'hour', label: '每小时' },
   { value: 'day', label: '每天' },
-  { value: 'week', label: '每周' },
-  { value: 'month', label: '每月' },
   { value: 'custom', label: '自定义' },
 ];
 
@@ -21,13 +19,10 @@ const mode = ref<Mode>('manual');
 const text = ref('');
 const minuteOfHour = ref(0);
 const time = ref('03:00');
-const weekdays = ref<number[]>([1]);
-const monthdays = ref<number[]>([1]);
 const intervalUnit = ref<'minute' | 'hour'>('hour');
 const intervalValue = ref(6);
 
 const minuteOptions = Array.from({ length: 60 }, (_, index) => index);
-const monthdayOptions = Array.from({ length: 31 }, (_, index) => index + 1);
 const intervalMinuteOptions = [1, 2, 5, 10, 15, 20, 30];
 const intervalHourOptions = [1, 2, 3, 4, 6, 8, 12];
 
@@ -52,13 +47,7 @@ function generate(): string {
   if (mode.value === 'hour') return `${minuteOfHour.value} * * * *`;
 
   const [h, m] = hourMinute();
-  if (mode.value === 'day') return `${m} ${h} * * *`;
-  if (mode.value === 'week') {
-    const days = weekdays.value.length > 0 ? [...weekdays.value].sort((a, b) => a - b) : [1];
-    return `${m} ${h} * * ${days.join(',')}`;
-  }
-  const days = monthdays.value.length > 0 ? [...monthdays.value].sort((a, b) => a - b) : [1];
-  return `${m} ${h} ${days.join(',')} * *`;
+  return `${m} ${h} * * *`;
 }
 
 /** 由表达式反推模式与参数；认不出的落到自定义 */
@@ -99,22 +88,6 @@ function applyExpr(value: string) {
     return;
   }
 
-  matched = /^(\d+) (\d+) \* \* ([\d,]+)$/.exec(expr);
-  if (matched) {
-    mode.value = 'week';
-    time.value = `${pad(Number(matched[2]))}:${pad(Number(matched[1]))}`;
-    weekdays.value = matched[3]!.split(',').map(Number).map((item) => (item === 7 ? 0 : item));
-    return;
-  }
-
-  matched = /^(\d+) (\d+) ([\d,]+) \* \*$/.exec(expr);
-  if (matched) {
-    mode.value = 'month';
-    time.value = `${pad(Number(matched[2]))}:${pad(Number(matched[1]))}`;
-    monthdays.value = matched[3]!.split(',').map(Number);
-    return;
-  }
-
   mode.value = 'custom';
 }
 
@@ -129,7 +102,7 @@ watch(
 );
 
 // 参数变化 → 重写输入框
-watch([mode, minuteOfHour, time, weekdays, monthdays, intervalUnit, intervalValue], () => {
+watch([mode, minuteOfHour, time, intervalUnit, intervalValue], () => {
   if (mode.value === 'custom') return;
   const next = generate();
   if (next === text.value) return;
@@ -144,12 +117,6 @@ watch(text, (value) => {
 });
 
 const error = computed(() => (text.value.trim() ? isValidCron(text.value.trim()) : null));
-const monthdayWarning = computed(() =>
-  mode.value === 'month' && monthdays.value.some((day) => day >= 29)
-    ? '29、30、31 号在部分月份不存在，那些月份不执行'
-    : '',
-);
-
 function onIntervalUnitChange(unit: 'minute' | 'hour') {
   intervalUnit.value = unit;
   intervalValue.value = unit === 'minute' ? 30 : 6;
@@ -195,26 +162,11 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
         <span class="suffix">每天执行一次</span>
       </template>
 
-      <template v-else-if="mode === 'week'">
-        <el-select v-model="weekdays" multiple collapse-tags style="width: 200px" placeholder="选择星期">
-          <el-option v-for="item in WEEK_LABELS" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-        <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-      </template>
-
-      <template v-else-if="mode === 'month'">
-        <el-select v-model="monthdays" multiple collapse-tags style="width: 200px" placeholder="选择日期">
-          <el-option v-for="item in monthdayOptions" :key="item" :label="`${item} 号`" :value="item" />
-        </el-select>
-        <el-time-picker v-model="time" value-format="HH:mm" format="HH:mm" style="width: 120px" />
-      </template>
-
       <span v-else-if="mode === 'manual'" class="suffix">不做定时，只在手动触发时执行</span>
       <span v-else class="suffix">在定时表达式中自行填写</span>
     </div>
 
     <div v-if="error" class="row message error">{{ error }}</div>
-    <div v-else-if="monthdayWarning" class="row message warning">{{ monthdayWarning }}</div>
 
   </div>
 </template>
@@ -237,10 +189,6 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
 }
 .error {
   color: var(--el-color-danger);
-  font-size: 12px;
-}
-.warning {
-  color: var(--el-color-warning);
   font-size: 12px;
 }
 </style>
