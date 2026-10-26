@@ -200,7 +200,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page">
-  <el-card shadow="never" class="fill-card">
+  <el-card shadow="never" class="search-card">
     <div class="toolbar">
       <el-select v-model="sourceId" placeholder="选择采集源" style="width: 200px">
         <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
@@ -216,7 +216,9 @@ onBeforeUnmount(() => {
       <el-tag type="warning">未映射 {{ summary.unmapped }}</el-tag>
       <el-tag type="info">已忽略 {{ summary.ignored }}</el-tag>
     </div>
+  </el-card>
 
+  <el-card shadow="never" class="fill-card">
     <div ref="wrapRef" class="table-wrap">
     <el-table
       :height="tableHeight"
@@ -272,6 +274,10 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+.search-card {
+  flex: none;
 }
 .fill-card {
   flex: 1;
@@ -305,7 +311,7 @@ onBeforeUnmount(() => {
 .summary {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  align-items: center;
 }
 .child {
   padding-left: 16px;
