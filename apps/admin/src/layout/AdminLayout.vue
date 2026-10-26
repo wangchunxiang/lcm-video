@@ -31,7 +31,8 @@ async function onLogout() {
               <span>{{ item.title }}</span>
             </template>
             <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
-              {{ child.title }}
+              <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
+              <span>{{ child.title }}</span>
             </el-menu-item>
           </el-sub-menu>
           <el-menu-item v-else :index="item.path">

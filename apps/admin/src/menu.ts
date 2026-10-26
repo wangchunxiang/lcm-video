@@ -12,10 +12,10 @@ export const menus: MenuItem[] = [
     title: '采集管理',
     icon: 'Download',
     children: [
-      { path: '/collect/sources', title: '采集源站' },
-      { path: '/collect/mapping', title: '分类映射' },
-      { path: '/collect/tasks', title: '采集任务' },
-      { path: '/collect/logs', title: '采集记录' },
+      { path: '/collect/sources', title: '采集源站', icon: 'Link' },
+      { path: '/collect/mapping', title: '分类映射', icon: 'Share' },
+      { path: '/collect/tasks', title: '采集任务', icon: 'AlarmClock' },
+      { path: '/collect/logs', title: '采集记录', icon: 'Tickets' },
     ],
   },
   {
@@ -23,24 +23,24 @@ export const menus: MenuItem[] = [
     title: '内容管理',
     icon: 'Film',
     children: [
-      { path: '/content/vods', title: '影视管理' },
-      { path: '/content/categories', title: '分类管理' },
+      { path: '/content/vods', title: '影视管理', icon: 'VideoCamera' },
+      { path: '/content/categories', title: '分类管理', icon: 'CollectionTag' },
     ],
   },
   {
     path: '/tools',
     title: '高级工具',
     icon: 'Tools',
-    children: [{ path: '/tools/data', title: '数据处理' }],
+    children: [{ path: '/tools/data', title: '数据处理', icon: 'MagicStick' }],
   },
   {
     path: '/setting',
     title: '系统设置',
     icon: 'Setting',
     children: [
-      { path: '/setting/base', title: '基础设置' },
-      { path: '/setting/site', title: '站点设置' },
-      { path: '/setting/account', title: '账号设置' },
+      { path: '/setting/base', title: '基础设置', icon: 'Operation' },
+      { path: '/setting/site', title: '站点设置', icon: 'Monitor' },
+      { path: '/setting/account', title: '账号设置', icon: 'User' },
     ],
   },
 ];
