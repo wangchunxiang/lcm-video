@@ -63,8 +63,8 @@ let resizeObserver: ResizeObserver | null = null;
 
 type NumKind = 'total' | 'inserted' | 'updated' | 'skipped' | 'ignored' | 'failed';
 
-function numClass(kind: NumKind, value: number): string {
-  return value > 0 ? `num num-${kind}` : 'num num-zero';
+function numClass(kind: NumKind): string {
+  return `num num-${kind}`;
 }
 
 function statusOf(row: { status: number }): { text: string; type: TagProps['type'] } {
@@ -237,22 +237,22 @@ onBeforeUnmount(() => {
             </template>
           </el-table-column>
           <el-table-column label="采集数" width="90" align="center">
-            <template #default="{ row }"><span :class="numClass('total', row.total)">{{ row.total }}</span></template>
+            <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
           </el-table-column>
           <el-table-column label="新增" width="80" align="center">
-            <template #default="{ row }"><span :class="numClass('inserted', row.inserted)">{{ row.inserted }}</span></template>
+            <template #default="{ row }"><span :class="numClass('inserted')">{{ row.inserted }}</span></template>
           </el-table-column>
           <el-table-column label="更新" width="80" align="center">
-            <template #default="{ row }"><span :class="numClass('updated', row.updated)">{{ row.updated }}</span></template>
+            <template #default="{ row }"><span :class="numClass('updated')">{{ row.updated }}</span></template>
           </el-table-column>
           <el-table-column label="跳过" width="80" align="center">
-            <template #default="{ row }"><span :class="numClass('skipped', row.skipped)">{{ row.skipped }}</span></template>
+            <template #default="{ row }"><span :class="numClass('skipped')">{{ row.skipped }}</span></template>
           </el-table-column>
           <el-table-column label="忽略" width="80" align="center">
-            <template #default="{ row }"><span :class="numClass('ignored', row.ignored)">{{ row.ignored }}</span></template>
+            <template #default="{ row }"><span :class="numClass('ignored')">{{ row.ignored }}</span></template>
           </el-table-column>
           <el-table-column label="失败" width="80" align="center">
-            <template #default="{ row }"><span :class="numClass('failed', row.failed)">{{ row.failed }}</span></template>
+            <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
           </el-table-column>
           <el-table-column prop="startedAt" label="开始时间" width="165" align="center" />
           <el-table-column label="耗时" width="100" align="center">
@@ -303,22 +303,22 @@ onBeforeUnmount(() => {
       <el-table v-loading="detailLoading" :data="details" border class="detail-table" empty-text="没有页级明细">
         <el-table-column prop="page" label="页" width="70" align="center" />
         <el-table-column label="本页条数" width="100" align="center">
-          <template #default="{ row }"><span :class="numClass('total', row.total)">{{ row.total }}</span></template>
+          <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
         </el-table-column>
         <el-table-column label="新增" width="80" align="center">
-          <template #default="{ row }"><span :class="numClass('inserted', row.inserted)">{{ row.inserted }}</span></template>
+          <template #default="{ row }"><span :class="numClass('inserted')">{{ row.inserted }}</span></template>
         </el-table-column>
         <el-table-column label="更新" width="80" align="center">
-          <template #default="{ row }"><span :class="numClass('updated', row.updated)">{{ row.updated }}</span></template>
+          <template #default="{ row }"><span :class="numClass('updated')">{{ row.updated }}</span></template>
         </el-table-column>
         <el-table-column label="跳过" width="80" align="center">
-          <template #default="{ row }"><span :class="numClass('skipped', row.skipped)">{{ row.skipped }}</span></template>
+          <template #default="{ row }"><span :class="numClass('skipped')">{{ row.skipped }}</span></template>
         </el-table-column>
         <el-table-column label="忽略" width="80" align="center">
-          <template #default="{ row }"><span :class="numClass('ignored', row.ignored)">{{ row.ignored }}</span></template>
+          <template #default="{ row }"><span :class="numClass('ignored')">{{ row.ignored }}</span></template>
         </el-table-column>
         <el-table-column label="失败" width="80" align="center">
-          <template #default="{ row }"><span :class="numClass('failed', row.failed)">{{ row.failed }}</span></template>
+          <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
         </el-table-column>
         <el-table-column label="失败原因" min-width="240">
           <template #default="{ row }">
@@ -394,9 +394,6 @@ onBeforeUnmount(() => {
 }
 .num {
   font-variant-numeric: tabular-nums;
-}
-.num-zero {
-  color: inherit;
 }
 .num-total {
   color: var(--el-text-color-primary);
