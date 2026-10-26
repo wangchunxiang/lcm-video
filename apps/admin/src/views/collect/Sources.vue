@@ -408,7 +408,9 @@ onBeforeUnmount(() => {
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="每页条数">
-              <el-input v-model="form.pagesize" placeholder="100" />
+              <el-input v-model="form.pagesize" placeholder="100">
+                <template #append>条</template>
+              </el-input>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -430,7 +432,9 @@ onBeforeUnmount(() => {
           </el-col>
           <el-col :span="12">
             <el-form-item label="重试次数">
-              <el-input v-model="form.retry_times" placeholder="2" />
+              <el-input v-model="form.retry_times" placeholder="2">
+                <template #append>次</template>
+              </el-input>
             </el-form-item>
           </el-col>
         </el-row>
