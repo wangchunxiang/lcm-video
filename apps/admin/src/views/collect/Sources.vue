@@ -213,7 +213,7 @@ onMounted(load);
 </script>
 
 <template>
-  <el-card shadow="never">
+  <el-card shadow="never" class="search-card">
     <div class="search-bar">
       <el-input
         v-model="filters.keyword"
@@ -229,7 +229,9 @@ onMounted(load);
       <el-button type="primary" @click="search">查询</el-button>
       <el-button @click="reset">重置</el-button>
     </div>
+  </el-card>
 
+  <el-card shadow="never">
     <div class="toolbar">
       <el-button type="primary" @click="openCreate">新增采集源</el-button>
       <el-button :loading="loading" @click="load">刷新</el-button>
@@ -339,11 +341,13 @@ onMounted(load);
 </template>
 
 <style scoped>
+.search-card {
+  margin-bottom: 12px;
+}
 .search-bar {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
 }
 .toolbar {
   display: flex;
