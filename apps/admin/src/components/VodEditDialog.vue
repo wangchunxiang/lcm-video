@@ -362,7 +362,7 @@ function lineTitle(line: PlayLine): string {
                     </el-form-item>
                   </el-col>
                   <el-col :span="24">
-                    <el-form-item label="封面图地址">
+                    <el-form-item label="封面地址">
                       <el-input v-model="form.cover" placeholder="https://…" />
                     </el-form-item>
                   </el-col>
