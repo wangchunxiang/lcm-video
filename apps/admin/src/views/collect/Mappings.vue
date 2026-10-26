@@ -379,6 +379,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
+  margin-left: auto;
 }
 .muted {
   color: var(--el-text-color-secondary);
