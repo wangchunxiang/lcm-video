@@ -131,6 +131,9 @@ async function onLogout() {
 .menu :deep(.el-sub-menu__title .el-icon),
 .menu :deep(.el-menu-item .el-icon) {
   flex: none;
+  /* 侧栏展开子菜单时会动画改变高度，Chromium 会重绘整片区域，
+     SVG 图标偶尔出现一帧空白。单独提升为合成层可避免被重绘。 */
+  transform: translateZ(0);
 }
 .menu :deep(.el-sub-menu__title .el-icon svg),
 .menu :deep(.el-menu-item .el-icon svg) {
