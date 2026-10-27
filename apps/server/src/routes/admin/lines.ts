@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
-import { collectSource, playLine, vodPlay } from '@lcm/db';
+import { collectSource, playLine } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
 export interface LineRouteOpts {
@@ -54,22 +54,21 @@ export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) =
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    // 每个标识对应的采集源名称与线路条数，用于展示来源
-    const stats = await db
-      .select({
-        sourceFrom: vodPlay.sourceFrom,
-        sourceName: sql<string | null>`MAX(${collectSource.name})`,
-        total: sql<number>`COUNT(*)`,
-      })
-      .from(vodPlay)
-      .leftJoin(collectSource, eq(collectSource.id, vodPlay.sourceId))
-      .groupBy(vodPlay.sourceFrom);
+    // 来源：按采集源登记的线路标识反查，不扫 lcm_vod_play
+    const sources = await db
+      .select({ name: collectSource.name, playFrom: collectSource.playFrom })
+      .from(collectSource);
+    const sourceMap = new Map<string, string>();
+    for (const source of sources) {
+      for (const from of source.playFrom.split(',')) {
+        const value = from.trim();
+        if (value && !sourceMap.has(value)) sourceMap.set(value, source.name);
+      }
+    }
 
-    const statMap = new Map(stats.map((row) => [row.sourceFrom, row]));
     const items = rows.map((row) => ({
       ...row,
-      sourceName: statMap.get(row.sourceFrom)?.sourceName ?? '',
-      vodCount: Number(statMap.get(row.sourceFrom)?.total ?? 0),
+      sourceName: sourceMap.get(row.sourceFrom) ?? '',
     }));
 
     return ok(reply, { items, total, page, page_size: pageSize });

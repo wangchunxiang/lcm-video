@@ -10,7 +10,6 @@ interface LineItem {
   sort: number;
   isEnabled: number;
   sourceName: string;
-  vodCount: number;
 }
 
 const loading = ref(false);
@@ -278,7 +277,6 @@ onBeforeUnmount(() => {
               <span v-else class="muted">—</span>
             </template>
           </el-table-column>
-          <el-table-column prop="vodCount" label="线路数" width="90" align="center" />
           <el-table-column prop="sort" label="排序" width="90" align="center" />
           <el-table-column label="操作" width="120" align="center" fixed="right">
             <template #default="{ row }">
