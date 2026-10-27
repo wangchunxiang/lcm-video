@@ -183,10 +183,10 @@ onMounted(loadSources);
 .tools {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 .tip {
-  margin: 0 0 16px;
+  margin: 0 0 12px;
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
