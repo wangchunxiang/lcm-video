@@ -16,7 +16,6 @@ interface Field {
 
 const all = SETTINGS as Field[];
 const playbackFields = all.filter((item) => item.group === 'playback');
-const adFields = all.filter((item) => item.group === 'ads');
 
 const values = ref<Record<string, string>>({});
 let snapshot: Record<string, string> = {};
@@ -28,7 +27,7 @@ async function load() {
   try {
     const res = await api.get<{ items: { key: string; value: string }[] }>('/settings');
     const next: Record<string, string> = {};
-    for (const field of [...playbackFields, ...adFields]) {
+    for (const field of playbackFields) {
       const hit = res.items.find((item) => item.key === field.key);
       next[field.key] = hit ? hit.value : field.default;
     }
@@ -68,33 +67,6 @@ onMounted(load);
         <PlayerPreview :options="values" />
       </el-card>
 
-      <el-card shadow="never" class="ads-card">
-
-        <div class="form">
-          <div v-for="field in adFields" :key="field.key" class="form-row">
-            <span class="label">{{ field.label }}</span>
-            <div class="control">
-              <el-switch
-                v-if="field.type === 'switch'"
-                :model-value="values[field.key] === '1'"
-                @change="(checked: any) => (values[field.key] = checked ? '1' : '0')"
-              />
-              <el-input
-                v-else
-                :model-value="values[field.key]"
-                :class="{ short: field.type === 'number' }"
-                @update:model-value="(value: string) => (values[field.key] = value)"
-              />
-              <div class="hint">{{ field.hint }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="foot">
-          <el-button @click="reset(adFields)">重置</el-button>
-          <el-button type="primary" :loading="saving" @click="save(adFields)">保存</el-button>
-        </div>
-      </el-card>
     </div>
 
     <el-card shadow="never" class="right">
@@ -146,21 +118,17 @@ onMounted(load);
   min-height: 0;
 }
 .preview-card {
-  flex: none;
-}
-.ads-card {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.ads-card :deep(.el-card__body) {
+.preview-card :deep(.el-card__body) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 0;
-  overflow-y: auto;
+  justify-content: center;
 }
 .right {
   min-height: 0;
@@ -173,31 +141,6 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   padding: 0;
-}
-.form {
-  padding: 4px 20px 16px;
-}
-.form-row {
-  display: flex;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.form-row:last-child {
-  border-bottom: none;
-}
-.label {
-  flex: none;
-  width: 96px;
-  color: var(--el-text-color-regular);
-  line-height: 32px;
-}
-.control {
-  flex: 1;
-  min-width: 0;
-}
-.short {
-  width: 120px;
 }
 .hint {
   margin-top: 4px;

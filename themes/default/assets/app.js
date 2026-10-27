@@ -104,9 +104,6 @@
       });
     }
 
-    var skip = parseInt(container.getAttribute('data-skip') || '0', 10) || 0;
-    var restored = false;
-
     if (resume && storageKey && ep) {
       var saved = readProgress(storageKey);
       if (saved && String(saved.ep) === String(ep) && saved.time > 5) {
@@ -132,18 +129,6 @@
       });
     }
 
-    if (!restored && skip > 0) {
-      element.addEventListener('loadedmetadata', function seekSkip() {
-        if (!element.duration || skip < element.duration - 5) {
-          try {
-            element.currentTime = skip;
-          } catch (error) {
-            /* 忽略：部分流不支持跳转 */
-          }
-        }
-        element.removeEventListener('loadedmetadata', seekSkip);
-      });
-    }
   }
 
   function readProgress(key) {

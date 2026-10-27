@@ -30,9 +30,6 @@ export interface SiteConfig {
   webfullscreen: boolean;
   setting: boolean;
   loop: boolean;
-  adsEnabled: boolean;
-  adKeywords: string[];
-  adSkipSeconds: number;
 }
 
 export interface NavItem {
@@ -79,12 +76,6 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     webfullscreen: settings['player_webfullscreen'] === '1',
     setting: settings['player_setting'] !== '0',
     loop: settings['player_loop'] === '1',
-    adsEnabled: settings['ads_enabled'] === '1',
-    adKeywords: (settings['ads_episode_keywords'] ?? '')
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0),
-    adSkipSeconds: Math.max(0, Math.trunc(Number(settings['ads_skip_seconds'] ?? '0')) || 0),
   };
 
   cachedConfig = { at: Date.now(), value };
