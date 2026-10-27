@@ -87,6 +87,8 @@ const form = reactive({
 });
 
 const lines = ref<PlayLine[]>([]);
+const collectedDate = computed(() => (form.collectedAt || '').slice(0, 10) || '—')
+const collectedTime = computed(() => (form.collectedAt || '').slice(11, 19))
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 const flatCategories = computed(() => {
@@ -336,6 +338,11 @@ function lineTitle(line: PlayLine): string {
                 <li><span>ID</span><b>{{ vodId }}</b></li>
                 <li><span>线路</span><b>{{ lines.length }} 条</b></li>
                 <li><span>剧集</span><b>{{ totalEpisodes }} 集</b></li>
+                <li class="stack">
+                  <span>最后采集</span>
+                  <b>{{ collectedDate }}</b>
+                  <b class="dim">{{ collectedTime }}</b>
+                </li>
               </ul>
             </div>
 
@@ -546,6 +553,14 @@ function lineTitle(line: PlayLine): string {
 .side-info b {
   font-weight: 400;
   color: var(--el-text-color-primary);
+}
+.side-info li.stack {
+  display: block;
+  margin-top: 4px;
+}
+.side-info li.stack .dim {
+  display: block;
+  color: var(--el-text-color-secondary);
 }
 .poster-empty {
   display: flex;
