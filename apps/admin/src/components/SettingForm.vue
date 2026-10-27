@@ -183,11 +183,12 @@ onMounted(async () => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <div v-for="(section, index) in sections" :key="index" class="section">
-        <div v-if="section.title" class="section-title" :class="{ 'is-first': index === 0 }">
-          {{ section.title }}
-        </div>
-
+      <div
+        v-for="(section, index) in sections"
+        :key="index"
+        class="section"
+        :class="{ 'is-first': index === 0 }"
+      >
         <div
           v-for="field in section.fields"
           :key="field.key"
@@ -295,14 +296,8 @@ onMounted(async () => {
 .group-card :deep(.el-card__body) {
   padding: 4px 20px 0;
 }
-.section-title {
-  padding: 20px 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-.section-title.is-first {
-  padding-top: 12px;
+.section + .section {
+  margin-top: 14px;
 }
 .row {
   display: flex;
@@ -411,6 +406,8 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 20px 0 16px;
+  margin-top: 8px;
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--el-border-color);
 }
 </style>
