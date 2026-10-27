@@ -190,4 +190,16 @@ onMounted(loadSources);
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
+.tools :deep(.el-form--inline) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tools :deep(.el-form--inline .el-form-item) {
+  margin-right: 12px;
+  margin-bottom: 0;
+}
+.tools :deep(.el-form--inline .el-form-item:last-child) {
+  margin-right: 0;
+}
 </style>
