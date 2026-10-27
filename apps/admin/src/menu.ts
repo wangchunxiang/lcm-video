@@ -28,6 +28,15 @@ export const menus: MenuItem[] = [
     ],
   },
   {
+    path: '/playback',
+    title: '播放管理',
+    icon: 'VideoPlay',
+    children: [
+      { path: '/playback/config', title: '播放管理', icon: 'VideoPlay' },
+      { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
+    ],
+  },
+  {
     path: '/tools',
     title: '高级工具',
     icon: 'SetUp',
