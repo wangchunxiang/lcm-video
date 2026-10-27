@@ -295,7 +295,7 @@ function applyPaste() {
   line.episodes = episodes;
   line.dirty = true;
   pasteVisible.value = false;
-  ElMessage.success(`已导入 ${episodes.length} 集，记得点「保存线路」`);
+  void saveLine(line);
 }
 
 function lineTitle(line: PlayLine): string {
@@ -458,7 +458,6 @@ function lineTitle(line: PlayLine): string {
               </div>
               <div>
                 <el-button size="small" @click="openPaste(activeLine)">编辑</el-button>
-                <el-button size="small" type="primary" :loading="activeLine.saving" @click="saveLine(activeLine)">保存线路</el-button>
                 <el-button size="small" type="danger" plain @click="removeLine(activeLine)">删除线路</el-button>
               </div>
             </div>
@@ -504,12 +503,12 @@ function lineTitle(line: PlayLine): string {
     <el-dialog v-model="pasteVisible" title="编辑剧集" width="620px" append-to-body>
       <p class="muted">
         每行一集，支持三种写法：<code>第01集$https://…</code>、<code>第01集 https://…</code>、<code>https://…</code>（只有地址时自动补「第 N 集」）。
-        也可以直接粘贴用 <code>#</code> 分隔的一整串。应用后会覆盖当前线路的剧集列表，需再点「保存线路」。
+        也可以直接粘贴用 <code>#</code> 分隔的一整串。保存后会覆盖当前线路的剧集列表。
       </p>
       <el-input v-model="pasteText" type="textarea" :rows="12" placeholder="第01集$https://example.com/1.m3u8" />
       <template #footer>
         <el-button @click="pasteVisible = false">取消</el-button>
-        <el-button type="primary" @click="applyPaste">应用</el-button>
+        <el-button type="primary" @click="applyPaste">保存</el-button>
       </template>
     </el-dialog>
 
