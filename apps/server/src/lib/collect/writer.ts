@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
-import { countEpisodes, nameHash, normalizeName } from '@lcm/shared';
+import { countEpisodes, htmlToSummary, htmlToText, nameHash, normalizeName } from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
 import { splitPlayGroups } from './parser.ts';
 
@@ -222,8 +222,8 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
           actor: item.actor,
           director: item.director,
           writer: item.writer,
-          intro: item.intro,
-          content: item.content,
+          intro: htmlToSummary(item.intro, 500),
+          content: htmlToText(item.content),
           remarks: item.remarks,
           releaseDate: item.releaseDate,
           episodeCount: item.episodeCount,

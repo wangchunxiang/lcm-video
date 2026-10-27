@@ -62,7 +62,7 @@
 {% if vod.intro != blank %}
 <section class="section">
   <h2>剧情简介</h2>
-  <p class="intro">{{ vod.intro }}</p>
+  <p class="intro">{{ vod.intro | escape }}</p>
 </section>
 {% endif %}
 
@@ -92,7 +92,7 @@
 {% if vod.content != blank %}
 <section class="section">
   <h2>详细剧情</h2>
-  <div class="content-text">{{ vod.content }}</div>
+  <div class="content-text">{{ vod.content | escape }}</div>
 </section>
 {% endif %}
 {% endblock %}
