@@ -88,8 +88,6 @@ const form = reactive({
 });
 
 const lines = ref<PlayLine[]>([]);
-const collectedDate = computed(() => (form.collectedAt || '').slice(0, 10) || '—')
-const createdDate = computed(() => (form.createdAt || '').slice(0, 10) || '—')
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 
@@ -337,12 +335,10 @@ function lineTitle(line: PlayLine): string {
               <ul class="side-times">
                 <li>
                   <el-tag size="small" type="info" effect="light">入库日期</el-tag>
-                  <b>{{ createdDate }}</b>
                 </li>
                 <li class="dim">{{ form.createdAt || '—' }}</li>
                 <li>
                   <el-tag size="small" type="success" effect="light">最后采集</el-tag>
-                  <b>{{ collectedDate }}</b>
                 </li>
                 <li class="dim">{{ form.collectedAt || '—' }}</li>
               </ul>
@@ -601,6 +597,10 @@ function lineTitle(line: PlayLine): string {
 .side-times li b {
   font-weight: 400;
   color: var(--el-text-color-primary);
+}
+.side-times :deep(.el-tag) {
+  width: 100%;
+  justify-content: center;
 }
 .side-times li.dim {
   display: block;
