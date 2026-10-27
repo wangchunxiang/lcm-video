@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>站点设置 - 布局方案</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #303133;
+    background: #f0f2f5;
+  }
+  .tabs {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 24px; background: #fff; border-bottom: 1px solid #e4e7ed;
+  }
+  .tab {
+    padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    color: #606266; border: 1px solid #dcdfe6; background: #fff;
+  }
+  .tab.active { color: #fff; background: #409eff; border-color: #409eff; }
+  .tab-note { margin-left: auto; color: #909399; font-size: 12px; }
+
+  .stage { padding: 20px 24px 60px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* 通用卡片 */
+  .card {
+    background: #fff; border: 1px solid #e4e7ed; border-radius: 4px; overflow: hidden;
+  }
+  .card + .card { margin-top: 12px; }
+  .card-head {
+    padding: 11px 16px; font-size: 13px; font-weight: 600;
+    border-bottom: 1px solid #ebeef5; background: #fafafa;
+  }
+  .card-body { padding: 4px 16px 8px; }
+
+  /* 行 */
+  .row { display: flex; align-items: flex-start; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f2f3f5; }
+  .row:last-child { border-bottom: none; }
+  .row-main { flex: 0 0 150px; padding-top: 6px; }
+  .row-title { line-height: 1.4; color: #606266; }
+  .row-desc { margin-top: 2px; font-size: 12px; color: #a8abb2; line-height: 1.5; }
+  .row-ctrl { flex: 1; min-width: 0; }
+  .input, .select, .textarea {
+    width: 100%; border: 1px solid #dcdfe6; border-radius: 4px;
+    font-size: 14px; color: #606266; outline: none; font-family: inherit;
+    background: #fff;
+  }
+  .input { height: 32px; padding: 0 11px; }
+  .select { height: 32px; padding: 0 11px; appearance: none; background-image: none; }
+  .textarea { padding: 6px 11px; line-height: 1.6; resize: vertical; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+  /* 上传控件 */
+  .upload { display: flex; align-items: center; gap: 12px; }
+  .thumb {
+    width: 64px; height: 64px; flex: none;
+    border: 1px dashed #dcdfe6; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #c0c4cc; font-size: 12px; background: #fafafa;
+  }
+  .thumb.round { border-radius: 50%; width: 48px; height: 48px; }
+  .upload-main { flex: 1; min-width: 0; }
+  .upload-main .input { margin-bottom: 6px; }
+  .btn-sm {
+    height: 28px; padding: 0 12px; font-size: 12px; border-radius: 4px;
+    border: 1px solid #dcdfe6; background: #fff; color: #606266; cursor: pointer;
+  }
+
+  .counter { margin-top: 4px; font-size: 12px; color: #a8abb2; text-align: right; }
+  .counter.warn { color: #e6a23c; }
+
+  /* ============ 方案 A 布局 ============ */
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 12px;
+    align-items: start;
+  }
+  .preview-col { position: sticky; top: 68px; }
+
+  .actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 0 6px; border-top: 1px solid #ebeef5; margin-top: 4px; }
+  .btn { height: 32px; padding: 0 16px; border-radius: 4px; font-size: 14px; border: 1px solid #dcdfe6; background: #fff; color: #606266; cursor: pointer; }
+  .btn-primary { background: #409eff; border-color: #409eff; color: #fff; }
+
+  /* 预览：模拟前台 */
+  .pv { background: #fff; border-radius: 6px; overflow: hidden; }
+  .pv-label {
+    padding: 8px 12px; font-size: 12px; color: #909399;
+    border-bottom: 1px solid #f2f3f5; background: #fafafa;
+  }
+  .pv-site {
+    background: #fff; border-bottom: 1px solid #e8eaed; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pv-logo {
+    width: 34px; height: 34px; border-radius: 8px; background: #e4353b;
+    color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; flex: none;
+  }
+  .pv-name { color: #e4353b; font-size: 18px; font-weight: 700; line-height: 1.2; }
+  .pv-sub { color: #8f959e; font-size: 12px; margin-top: 2px; }
+
+  .pv-nav { display: flex; gap: 16px; padding: 10px 16px; border-bottom: 1px solid #e8eaed; }
+  .pv-nav span { font-size: 13px; color: #646a73; }
+  .pv-nav span:first-child { color: #e4353b; font-weight: 600; }
+
+  .serp { padding: 14px 16px; }
+  .serp-title { color: #1a0dab; font-size: 16px; line-height: 1.3; }
+  .serp-url { color: #006621; font-size: 12px; margin-top: 4px; }
+  .serp-desc { color: #545454; font-size: 12px; line-height: 1.6; margin-top: 4px; }
+
+  .pv-footer {
+    padding: 14px 16px; background: #fafbfc; border-top: 1px solid #e8eaed;
+    font-size: 12px; color: #8f959e; line-height: 1.7;
+  }
+  .pv-footer .icp { margin-top: 4px; }
+
+  .tip { margin-top: 8px; padding: 8px 12px; background: #fff; border: 1px dashed #dcdfe6; border-radius: 4px; color: #909399; font-size: 12px; line-height: 1.7; }
+
+  .compare {
+    margin-top: 16px; padding: 12px 16px; background: #fff;
+    border: 1px dashed #dcdfe6; border-radius: 4px; color: #909399; font-size: 12px; line-height: 1.7;
+  }
+  b { color: #606266; }
+
+  @media (max-width: 1180px) {
+    .split { grid-template-columns: minmax(0, 1fr); }
+    .preview-col { position: static; }
+  }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" data-panel="a">方案 A · 分组卡片 + 实时预览</div>
+  <div class="tab" data-panel="b">方案 B · 仅分组卡片</div>
+  <span class="tab-note">站点设置 · 10 项真实配置</span>
+</div>
+
+<div class="stage">
+
+  <!-- ==================== 方案 A ==================== -->
+  <div class="panel active" id="panel-a">
+    <div class="split">
+
+      <!-- 左：设置 -->
+      <div>
+        <div class="card">
+          <div class="card-head">站点信息</div>
+          <div class="card-body">
+            <div class="row">
+              <div class="row-main"><div class="row-title">站点名称</div></div>
+              <div class="row-ctrl">
+                <input class="input" id="pv-name-input" value="蓝草莓影视" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">站点副标题</div></div>
+              <div class="row-ctrl">
+                <input class="input" id="pv-sub-input" value="高清影视在线观看" />
+                <div class="row-desc">显示在站点名称右侧，也会用在首页 title 里。</div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">备案号</div></div>
+              <div class="row-ctrl">
+                <input class="input" id="pv-icp-input" value="京ICP备 2024000000 号-1" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">品牌与外观</div>
+          <div class="card-body">
+            <div class="row">
+              <div class="row-main">
+                <div class="row-title">站点 LOGO</div>
+                <div class="row-desc">留空则显示站点名称文字</div>
+              </div>
+              <div class="row-ctrl">
+                <div class="upload">
+                  <div class="thumb" id="pv-logo-thumb">LOGO</div>
+                  <div class="upload-main">
+                    <input class="input" value="" placeholder="/uploads/2026/10/logo.png" />
+                    <button class="btn-sm">上传图片</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">站点图标</div></div>
+              <div class="row-ctrl">
+                <div class="upload">
+                  <div class="thumb round">ICO</div>
+                  <div class="upload-main">
+                    <input class="input" value="" placeholder="/uploads/2026/10/favicon.ico" />
+                    <button class="btn-sm">上传图片</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">当前模板</div></div>
+              <div class="row-ctrl">
+                <select class="select"><option>默认模板（default）</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">SEO 与页脚</div>
+          <div class="card-body">
+            <div class="row">
+              <div class="row-main"><div class="row-title">SEO 关键词</div></div>
+              <div class="row-ctrl">
+                <textarea class="textarea" rows="2">蓝草莓影视,免费影视,高清电影,在线观看</textarea>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">SEO 描述</div></div>
+              <div class="row-ctrl">
+                <textarea class="textarea" rows="3" id="pv-desc-input">蓝草莓影视，提供最新电影、电视剧、综艺、动漫在线观看，每天第一时间更新。</textarea>
+                <div class="counter" id="pv-desc-counter">38 / 78 字</div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main"><div class="row-title">免责声明</div></div>
+              <div class="row-ctrl">
+                <textarea class="textarea" rows="3" id="pv-disclaimer-input">本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</textarea>
+                <div class="row-desc">显示在前台页面底部。</div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-main">
+                <div class="row-title">统计代码</div>
+                <div class="row-desc">原样输出到页面底部</div>
+              </div>
+              <div class="row-ctrl">
+                <textarea class="textarea mono" rows="3">&lt;script&gt;/* 统计代码 */&lt;/script&gt;</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn">重置</button>
+          <button class="btn btn-primary">保存</button>
+        </div>
+      </div>
+
+      <!-- 右：预览 -->
+      <div class="preview-col">
+        <div class="card">
+          <div class="card-head">效果预览</div>
+          <div class="card-body" style="padding:0">
+
+            <div class="pv-label">页头</div>
+            <div class="pv">
+              <div class="pv-site">
+                <div class="pv-logo">🍓</div>
+                <div>
+                  <div class="pv-name" id="pv-name">蓝草莓影视</div>
+                  <div class="pv-sub" id="pv-sub">高清影视在线观看</div>
+                </div>
+              </div>
+              <div class="pv-nav">
+                <span>首页</span><span>电影</span><span>剧集</span><span>综艺</span><span>动漫</span>
+              </div>
+            </div>
+
+            <div class="pv-label">搜索结果</div>
+            <div class="pv">
+              <div class="serp">
+                <div class="serp-title" id="serp-title">蓝草莓影视 - 高清影视在线观看</div>
+                <div class="serp-url">https://example.com</div>
+                <div class="serp-desc" id="serp-desc">蓝草莓影视，提供最新电影、电视剧、综艺、动漫在线观看，每天第一时间更新。</div>
+              </div>
+            </div>
+
+            <div class="pv-label">页脚</div>
+            <div class="pv">
+              <div class="pv-footer">
+                <div id="pv-disclaimer">本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</div>
+                <div class="icp" id="pv-icp">京ICP备 2024000000 号-1</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="tip">
+          预览是<b>实时</b>的：改左边站名、副标题、SEO 描述、免责声明、备案号，右边立刻变，不用保存。SEO 描述超过 78 字会变黄，提示搜索引擎会截断。
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== 方案 B ==================== -->
+  <div class="panel" id="panel-b">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:12px;align-items:start">
+
+      <div class="card" style="margin:0">
+        <div class="card-head">站点信息</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main"><div class="row-title">站点名称</div></div>
+            <div class="row-ctrl"><input class="input" value="蓝草莓影视" /></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">站点副标题</div></div>
+            <div class="row-ctrl"><input class="input" value="高清影视在线观看" /></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">备案号</div></div>
+            <div class="row-ctrl"><input class="input" value="京ICP备 2024000000 号-1" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin:0">
+        <div class="card-head">品牌与外观</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main"><div class="row-title">站点 LOGO</div></div>
+            <div class="row-ctrl">
+              <div class="upload">
+                <div class="thumb">LOGO</div>
+                <div class="upload-main">
+                  <input class="input" placeholder="/uploads/2026/10/logo.png" />
+                  <button class="btn-sm">上传图片</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">站点图标</div></div>
+            <div class="row-ctrl">
+              <div class="upload">
+                <div class="thumb round">ICO</div>
+                <div class="upload-main">
+                  <input class="input" placeholder="/uploads/2026/10/favicon.ico" />
+                  <button class="btn-sm">上传图片</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">当前模板</div></div>
+            <div class="row-ctrl">
+              <select class="select"><option>默认模板（default）</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin:0;grid-column:1/-1">
+        <div class="card-head">SEO 与页脚</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main"><div class="row-title">SEO 关键词</div></div>
+            <div class="row-ctrl"><textarea class="textarea" rows="2">蓝草莓影视,免费影视,高清电影,在线观看</textarea></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">SEO 描述</div></div>
+            <div class="row-ctrl">
+              <textarea class="textarea" rows="3">蓝草莓影视，提供最新电影、电视剧、综艺、动漫在线观看，每天第一时间更新。</textarea>
+              <div class="counter">38 / 78 字</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">免责声明</div></div>
+            <div class="row-ctrl"><textarea class="textarea" rows="3">本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</textarea></div>
+          </div>
+          <div class="row">
+            <div class="row-main"><div class="row-title">统计代码</div></div>
+            <div class="row-ctrl"><textarea class="textarea mono" rows="3">&lt;script&gt;/* 统计代码 */&lt;/script&gt;</textarea></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="actions" style="margin-top:12px;background:#fff;border:1px solid #e4e7ed;border-radius:4px;padding:12px 16px">
+      <button class="btn">重置</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+
+    <div class="compare">
+      B 的特点：只分三组卡片，宽屏两列（第三组占整行），没有预览。<b>优点</b> 信息密度高、一屏基本看完。<b>缺点</b> LOGO、站名、免责声明这些“看得见效果”的字段，改完还得去前台刷新才知道对不对。
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+    });
+  });
+
+  var nameInput = document.getElementById('pv-name-input');
+  var subInput = document.getElementById('pv-sub-input');
+  var descInput = document.getElementById('pv-desc-input');
+  var disclaimerInput = document.getElementById('pv-disclaimer-input');
+  var icpInput = document.getElementById('pv-icp-input');
+  var counter = document.getElementById('pv-desc-counter');
+
+  function sync() {
+    document.getElementById('pv-name').textContent = nameInput.value || '站点名称';
+    document.getElementById('pv-sub').textContent = subInput.value || '站点副标题';
+    document.getElementById('pv-disclaimer').textContent = disclaimerInput.value || '（免责声明为空）';
+    document.getElementById('pv-icp').textContent = icpInput.value || '（未填备案号）';
+
+    var desc = descInput.value;
+    document.getElementById('serp-title').textContent =
+      (nameInput.value || '站点名称') + ' - ' + (subInput.value || '站点副标题');
+    document.getElementById('serp-desc').textContent = desc.slice(0, 120) + (desc.length > 120 ? '…' : '');
+
+    counter.textContent = desc.length + ' / 78 字';
+    counter.classList.toggle('warn', desc.length > 78);
+  }
+
+  [nameInput, subInput, descInput, disclaimerInput, icpInput].forEach(function (el) {
+    el.addEventListener('input', sync);
+  });
+  sync();
+</script>
+</body>
+</html>
