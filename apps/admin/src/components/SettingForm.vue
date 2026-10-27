@@ -310,7 +310,7 @@ onMounted(async () => {
 .card-body .main {
   flex: 1;
   min-width: 0;
-  max-width: 980px;
+  max-width: 760px;
 }
 .section-title {
   padding: 16px 0 6px;
@@ -324,7 +324,7 @@ onMounted(async () => {
 .row {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   padding: 12px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
@@ -332,7 +332,7 @@ onMounted(async () => {
   border-bottom: none;
 }
 .row-main {
-  flex: 1;
+  flex: 0 0 240px;
   min-width: 0;
 }
 .row-title {
@@ -346,10 +346,9 @@ onMounted(async () => {
   line-height: 1.5;
 }
 .row-ctrl {
-  flex: none;
-  width: 200px;
+  flex: 0 0 340px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
 }
 .row-block {
@@ -358,8 +357,8 @@ onMounted(async () => {
   gap: 10px;
 }
 .row-block .row-ctrl {
+  flex: 1 1 auto;
   width: 100%;
-  justify-content: stretch;
 }
 .field {
   width: 100%;
