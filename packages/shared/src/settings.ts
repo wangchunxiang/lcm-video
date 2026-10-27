@@ -125,7 +125,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_type',
     group: 'playback',
-    section: '播放器',
     label: '播放器',
     type: 'select',
     default: 'dplayer',
@@ -138,7 +137,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_autoplay',
     group: 'playback',
-    section: '观看体验',
     label: '自动播放',
     type: 'switch',
     default: '0',
@@ -147,7 +145,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_autonext',
     group: 'playback',
-    section: '观看体验',
     label: '自动连播',
     type: 'switch',
     default: '1',
@@ -156,7 +153,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_resume',
     group: 'playback',
-    section: '观看体验',
     label: '进度记忆',
     type: 'switch',
     default: '1',
@@ -165,7 +161,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_volume',
     group: 'playback',
-    section: '播放控制',
     label: '默认音量',
     type: 'number',
     default: '80',
@@ -174,7 +169,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_muted',
     group: 'playback',
-    section: '播放控制',
     label: '静音起播',
     type: 'switch',
     default: '0',
@@ -183,7 +177,6 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_hotkey',
     group: 'playback',
-    section: '播放控制',
     label: '键盘快捷键',
     type: 'switch',
     default: '1',
