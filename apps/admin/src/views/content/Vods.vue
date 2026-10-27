@@ -298,10 +298,13 @@ onBeforeUnmount(() => {
       <el-table-column label="年份" width="80" align="center">
         <template #default="{ row }">{{ row.year || '—' }}</template>
       </el-table-column>
-      <el-table-column label="线路 / 集数" width="110" align="center">
-        <template #default="{ row }">{{ row.playCount }} / {{ row.episodeCount }}</template>
+      <el-table-column label="线路" width="80" align="center">
+        <template #default="{ row }">{{ row.playCount }}</template>
       </el-table-column>
-      <el-table-column prop="remarks" label="备注" min-width="160" show-overflow-tooltip />
+      <el-table-column label="集数" width="80" align="center">
+        <template #default="{ row }">{{ row.episodeCount }}</template>
+      </el-table-column>
+      <el-table-column prop="remarks" label="备注" min-width="120" show-overflow-tooltip />
       <el-table-column label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" />
