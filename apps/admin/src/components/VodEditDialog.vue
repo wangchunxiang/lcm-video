@@ -625,6 +625,9 @@ function lineTitle(line: PlayLine): string {
   gap: 8px;
   margin-bottom: 12px;
 }
+.line-toolbar :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
 .option-meta {
   float: right;
   margin-left: 12px;
