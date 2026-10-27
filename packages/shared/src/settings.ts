@@ -50,6 +50,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_name',
+    section: '站点信息',
     group: 'site',
     label: '站点名称',
     type: 'text',
@@ -57,6 +58,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_subtitle',
+    section: '站点信息',
     group: 'site',
     label: '站点副标题',
     type: 'text',
@@ -64,6 +66,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_logo',
+    section: '品牌与外观',
     group: 'site',
     label: '站点 LOGO',
     type: 'text',
@@ -72,6 +75,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_favicon',
+    section: '品牌与外观',
     group: 'site',
     label: '站点图标',
     type: 'text',
@@ -79,6 +83,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_icp',
+    section: '站点信息',
     group: 'site',
     label: '备案号',
     type: 'text',
@@ -86,6 +91,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_keywords',
+    section: 'SEO 与页脚',
     group: 'site',
     label: 'SEO 关键词',
     type: 'textarea',
@@ -93,6 +99,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_description',
+    section: 'SEO 与页脚',
     group: 'site',
     label: 'SEO 描述',
     type: 'textarea',
@@ -100,6 +107,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_disclaimer',
+    section: 'SEO 与页脚',
     group: 'site',
     label: '免责声明',
     type: 'textarea',
@@ -108,6 +116,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_stats_code',
+    section: 'SEO 与页脚',
     group: 'site',
     label: '统计代码',
     type: 'textarea',
@@ -116,6 +125,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'site_theme',
+    section: '品牌与外观',
     group: 'site',
     label: '当前模板',
     type: 'select',
