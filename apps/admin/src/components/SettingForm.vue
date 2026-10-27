@@ -273,7 +273,7 @@ onMounted(async () => {
               v-model="field.value"
               type="textarea"
               :rows="3"
-              class="field field-wide"
+              class="field"
               @input="emit('change', field.key, field.value)"
             />
             <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
@@ -339,9 +339,6 @@ onMounted(async () => {
 .field {
   width: 100%;
   max-width: 360px;
-}
-.field-wide {
-  max-width: 560px;
 }
 .order-field {
   width: 100%;
