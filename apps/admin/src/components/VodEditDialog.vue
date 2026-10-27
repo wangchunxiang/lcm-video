@@ -89,6 +89,7 @@ const form = reactive({
 
 const lines = ref<PlayLine[]>([]);
 const collectedDate = computed(() => (form.collectedAt || '').slice(0, 10) || '—')
+const createdDate = computed(() => (form.createdAt || '').slice(0, 10) || '—')
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 
@@ -333,14 +334,12 @@ function lineTitle(line: PlayLine): string {
                 <div class="metric-row"><span>剧集</span><b>{{ totalEpisodes }} 集</b></div>
               </div>
 
-              <div class="side-tags">
-                <el-tooltip :content="form.createdAt || '—'" placement="top">
-                  <el-tag size="small" type="info" effect="light">入库 {{ (form.createdAt || '').slice(0, 10) || '—' }}</el-tag>
-                </el-tooltip>
-                <el-tooltip :content="form.collectedAt || '—'" placement="top">
-                  <el-tag size="small" type="success" effect="light">采集 {{ collectedDate }}</el-tag>
-                </el-tooltip>
-              </div>
+              <ul class="side-times">
+                <li><span>入库</span><b>{{ createdDate }}</b></li>
+                <li class="dim">{{ form.createdAt || '—' }}</li>
+                <li><span>采集</span><b>{{ collectedDate }}</b></li>
+                <li class="dim">{{ form.collectedAt || '—' }}</li>
+              </ul>
             </div>
 
             <div class="base-main">
@@ -578,15 +577,30 @@ function lineTitle(line: PlayLine): string {
   color: var(--el-text-color-primary);
   font-variant-numeric: tabular-nums;
 }
-.side-tags {
+.side-times {
   width: 100%;
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--el-text-color-secondary);
 }
-.side-tags :deep(.el-tag) {
+.side-times li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   font-variant-numeric: tabular-nums;
+}
+.side-times li b {
+  font-weight: 400;
+  color: var(--el-text-color-primary);
+}
+.side-times li.dim {
+  display: block;
+  font-size: 11px;
+  color: var(--el-text-color-placeholder);
+  margin-bottom: 4px;
 }
 .poster-empty {
   display: flex;
