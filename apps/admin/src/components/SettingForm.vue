@@ -163,6 +163,11 @@ onMounted(async () => {
 
 <template>
   <el-card shadow="never" v-loading="loading">
+    <div class="card-body" :class="{ 'has-side': $slots.side }">
+      <div v-if="$slots.side" class="side">
+        <slot name="side" />
+      </div>
+      <div class="main">
     <slot name="top" />
     <el-form :label-width="labelWidth" class="setting-form">
       <template v-for="(section, index) in sections" :key="index">
@@ -247,10 +252,23 @@ onMounted(async () => {
         <el-button @click="load">重置</el-button>
       </el-form-item>
     </el-form>
+      </div>
+    </div>
   </el-card>
 </template>
 
 <style scoped>
+.card-body {
+  display: flex;
+  gap: 24px;
+}
+.card-body .side {
+  flex: none;
+}
+.card-body .main {
+  flex: 1;
+  min-width: 0;
+}
 .setting-form {
   max-width: 720px;
 }
