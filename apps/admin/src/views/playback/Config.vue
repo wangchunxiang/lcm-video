@@ -2,7 +2,6 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { SETTINGS } from '@lcm/shared/settings';
-import PlayerPreview from '../../components/PlayerPreview.vue';
 import { api } from '../../api/client';
 
 interface Field {
@@ -14,8 +13,7 @@ interface Field {
   group: string;
 }
 
-const all = SETTINGS as Field[];
-const playbackFields = all.filter((item) => item.group === 'playback');
+const fields = (SETTINGS as Field[]).filter((item) => item.group === 'playback');
 
 const values = ref<Record<string, string>>({});
 let snapshot: Record<string, string> = {};
@@ -27,7 +25,7 @@ async function load() {
   try {
     const res = await api.get<{ items: { key: string; value: string }[] }>('/settings');
     const next: Record<string, string> = {};
-    for (const field of playbackFields) {
+    for (const field of fields) {
       const hit = res.items.find((item) => item.key === field.key);
       next[field.key] = hit ? hit.value : field.default;
     }
@@ -38,13 +36,13 @@ async function load() {
   }
 }
 
-function reset(fields: Field[]) {
+function reset() {
   const next = { ...values.value };
   for (const field of fields) next[field.key] = snapshot[field.key] ?? field.default;
   values.value = next;
 }
 
-async function save(fields: Field[]) {
+async function save() {
   saving.value = true;
   try {
     const payload: Record<string, string> = {};
@@ -62,19 +60,12 @@ onMounted(load);
 
 <template>
   <div v-loading="loading" class="page">
-    <div class="left">
-      <el-card shadow="never" class="preview-card">
-        <PlayerPreview :options="values" />
-      </el-card>
-
-    </div>
-
-    <el-card shadow="never" class="right">
-      <el-table :data="playbackFields" border class="setting-table">
-        <el-table-column label="设置项" width="180">
+    <el-card shadow="never" class="card">
+      <el-table :data="fields" border class="setting-table">
+        <el-table-column label="设置项" width="200">
           <template #default="{ row }">{{ row.label }}</template>
         </el-table-column>
-        <el-table-column label="设置值" width="200">
+        <el-table-column label="设置值" width="300">
           <template #default="{ row }">
             <el-switch
               v-if="row.type === 'switch'"
@@ -96,8 +87,8 @@ onMounted(load);
       </el-table>
 
       <div class="foot">
-        <el-button @click="reset(playbackFields)">重置</el-button>
-        <el-button type="primary" :loading="saving" @click="save(playbackFields)">保存</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </div>
     </el-card>
   </div>
@@ -106,47 +97,22 @@ onMounted(load);
 <style scoped>
 .page {
   height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  min-height: 0;
-}
-.left {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   min-height: 0;
 }
-.preview-card {
+.card {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.preview-card :deep(.el-card__body) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.right {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.right :deep(.el-card__body) {
+.card :deep(.el-card__body) {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 0;
-}
-.hint {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-  line-height: 1.5;
 }
 .setting-table {
   flex: none;
@@ -154,8 +120,10 @@ onMounted(load);
 .setting-table :deep(.el-table__cell) {
   padding: 10px 0;
 }
-.setting-table .hint {
-  margin-top: 0;
+.hint {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  line-height: 1.5;
 }
 .foot {
   margin-top: auto;
