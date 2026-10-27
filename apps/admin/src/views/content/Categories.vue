@@ -364,7 +364,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
 }
 .match {
   color: var(--el-text-color-regular);
