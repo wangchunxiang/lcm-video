@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, playLine, vodPlay } from '@lcm/db';
@@ -22,7 +22,23 @@ function toInt(value: unknown): number {
 export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
-  app.get('/', async (_req, reply) => {
+  app.get('/', async (req, reply) => {
+    const query = req.query as { keyword?: string; status?: string; page?: string; page_size?: string };
+    const keyword = (query.keyword ?? '').trim();
+    const status = query.status ?? '';
+    const page = Math.max(1, toInt(query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, toInt(query.page_size) || 20));
+
+    const conditions = [];
+    if (keyword) {
+      conditions.push(or(like(playLine.sourceFrom, `%${keyword}%`), like(playLine.name, `%${keyword}%`)));
+    }
+    if (status === '0' || status === '1') conditions.push(eq(playLine.isEnabled, Number(status)));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const totalRows = await db.select({ value: sql<number>`COUNT(*)` }).from(playLine).where(where);
+    const total = Number(totalRows[0]?.value ?? 0);
+
     const rows = await db
       .select({
         id: playLine.id,
@@ -33,7 +49,10 @@ export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) =
         updatedAt: playLine.updatedAt,
       })
       .from(playLine)
-      .orderBy(asc(playLine.sort), asc(playLine.id));
+      .where(where)
+      .orderBy(asc(playLine.sort), asc(playLine.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
 
     // 每个标识对应的采集源名称与线路条数，用于展示来源
     const stats = await db
@@ -53,7 +72,25 @@ export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) =
       vodCount: Number(statMap.get(row.sourceFrom)?.total ?? 0),
     }));
 
-    return ok(reply, { items });
+    return ok(reply, { items, total, page, page_size: pageSize });
+  });
+
+  app.post('/batch', async (req, reply) => {
+    const body = (req.body ?? {}) as { ids?: unknown; action?: unknown };
+    const ids = Array.isArray(body.ids) ? body.ids.map((item) => toInt(item)).filter((id) => id > 0) : [];
+    if (ids.length === 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请先选择线路');
+
+    const action = String(body.action ?? '');
+    if (action !== 'enable' && action !== 'disable') {
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, '不支持的操作');
+    }
+
+    await db
+      .update(playLine)
+      .set({ isEnabled: action === 'enable' ? 1 : 0 })
+      .where(inArray(playLine.id, ids));
+
+    return ok(reply, null);
   });
 
   app.put('/:id', async (req, reply) => {
