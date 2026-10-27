@@ -180,111 +180,107 @@ onMounted(async () => {
   await Promise.all([load(), loadLineOptions()]);
 });
 </script>
-
 <template>
   <div v-loading="loading" class="page">
-    <el-card
-      v-for="(section, index) in sections"
-      :key="index"
-      shadow="never"
-      class="group-card"
-    >
-      <template v-if="section.title" #header>
-        <span class="card-title">{{ section.title }}</span>
-      </template>
-
-      <div
-        v-for="field in section.fields"
-        :key="field.key"
-        class="row"
-        :class="{ 'row-block': isBlock(field) }"
-      >
-        <div class="row-main">
-          <div class="row-title">{{ field.label }}</div>
-          <div v-if="field.hint && field.type !== 'order' && !isImage(field)" class="row-desc">
-            {{ field.hint }}
-          </div>
+    <el-card shadow="never" class="group-card">
+      <div v-for="(section, index) in sections" :key="index" class="section">
+        <div v-if="section.title" class="section-title" :class="{ 'is-first': index === 0 }">
+          {{ section.title }}
         </div>
-        <div class="row-ctrl">
-          <ImageUpload
-            v-if="isImage(field)"
-            v-model="field.value"
-            :shape="imageShape(field)"
-          />
-          <div v-else-if="field.type === 'order'" class="order-field">
-            <div v-if="orderItems(field).length > 0" class="order-list">
-              <div
-                v-for="(item, orderIndex) in orderItems(field)"
-                :key="item"
-                class="order-row"
-                :class="{ 'is-dragging': dragFieldKey === field.key && dragIndex === orderIndex }"
-                draggable="true"
-                @dragstart="startDrag(field, orderIndex)"
-                @dragover.prevent="dragOver(field, orderIndex)"
-                @dragend="endDrag"
-              >
-                <span class="order-index">{{ orderIndex + 1 }}</span>
-                <span class="order-label">{{ labelOf(item) }}</span>
-                <span class="order-code">{{ item }}</span>
-                <el-button class="order-remove" link type="danger" @click="removeOrder(field, orderIndex)">
-                  移除
-                </el-button>
+
+        <div
+          v-for="field in section.fields"
+          :key="field.key"
+          class="row"
+          :class="{ 'row-block': isBlock(field) }"
+        >
+          <div class="row-main">
+            <div class="row-title">{{ field.label }}</div>
+            <div v-if="field.hint && field.type !== 'order' && !isImage(field)" class="row-desc">
+              {{ field.hint }}
+            </div>
+          </div>
+          <div class="row-ctrl">
+            <ImageUpload
+              v-if="isImage(field)"
+              v-model="field.value"
+              :shape="imageShape(field)"
+            />
+            <div v-else-if="field.type === 'order'" class="order-field">
+              <div v-if="orderItems(field).length > 0" class="order-list">
+                <div
+                  v-for="(item, orderIndex) in orderItems(field)"
+                  :key="item"
+                  class="order-row"
+                  :class="{ 'is-dragging': dragFieldKey === field.key && dragIndex === orderIndex }"
+                  draggable="true"
+                  @dragstart="startDrag(field, orderIndex)"
+                  @dragover.prevent="dragOver(field, orderIndex)"
+                  @dragend="endDrag"
+                >
+                  <span class="order-index">{{ orderIndex + 1 }}</span>
+                  <span class="order-label">{{ labelOf(item) }}</span>
+                  <span class="order-code">{{ item }}</span>
+                  <el-button class="order-remove" link type="danger" @click="removeOrder(field, orderIndex)">
+                    移除
+                  </el-button>
+                </div>
+              </div>
+              <div v-else class="order-empty">还没有配置，播放页按线路入库先后排列</div>
+              <div class="order-add">
+                <el-select
+                  v-model="newLine[field.key]"
+                  filterable
+                  allow-create
+                  default-first-option
+                  placeholder="选择或输入线路标识"
+                  style="width: 320px"
+                >
+                  <el-option
+                    v-for="option in availableLineOptions(field)"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                </el-select>
+                <el-button @click="addOrder(field)">添加</el-button>
+                <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
               </div>
             </div>
-            <div v-else class="order-empty">还没有配置，播放页按线路入库先后排列</div>
-            <div class="order-add">
-              <el-select
-                v-model="newLine[field.key]"
-                filterable
-                allow-create
-                default-first-option
-                placeholder="选择或输入线路标识"
-                style="width: 320px"
-              >
-                <el-option
-                  v-for="option in availableLineOptions(field)"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
-                />
-              </el-select>
-              <el-button @click="addOrder(field)">添加</el-button>
-              <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
-            </div>
-          </div>
-          <el-select
-            v-else-if="field.type === 'select'"
-            v-model="field.value"
-            class="field"
-            @change="emit('change', field.key, field.value)"
-          >
-            <el-option
-              v-for="option in optionsOf(field)"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
+            <el-select
+              v-else-if="field.type === 'select'"
+              v-model="field.value"
+              class="field"
+              @change="emit('change', field.key, field.value)"
+            >
+              <el-option
+                v-for="option in optionsOf(field)"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+            <el-switch
+              v-else-if="field.type === 'switch'"
+              v-model="field.value"
+              active-value="1"
+              inactive-value="0"
+              @change="emit('change', field.key, field.value)"
             />
-          </el-select>
-          <el-switch
-            v-else-if="field.type === 'switch'"
-            v-model="field.value"
-            active-value="1"
-            inactive-value="0"
-            @change="emit('change', field.key, field.value)"
-          />
-          <el-input
-            v-else-if="field.type === 'textarea'"
-            v-model="field.value"
-            type="textarea"
-            :rows="3"
-            class="field"
-            @input="emit('change', field.key, field.value)"
-          />
-          <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
+            <el-input
+              v-else-if="field.type === 'textarea'"
+              v-model="field.value"
+              type="textarea"
+              :rows="3"
+              class="field"
+              @input="emit('change', field.key, field.value)"
+            />
+            <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
+          </div>
         </div>
       </div>
 
-      <div v-if="index === sections.length - 1" class="card-foot">
+      <div class="card-foot">
         <el-button @click="load">重置</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </div>
@@ -294,22 +290,21 @@ onMounted(async () => {
 
 <style scoped>
 .page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   max-width: 860px;
 }
-.group-card :deep(.el-card__header) {
-  padding: 11px 16px;
-  background: var(--el-fill-color-light);
-}
 .group-card :deep(.el-card__body) {
-  padding: 0 16px;
+  padding: 4px 20px 0;
 }
-.card-title {
+.section-title {
+  padding: 16px 0 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+  border-top: 1px solid var(--el-border-color);
+}
+.section-title.is-first {
+  padding-top: 12px;
+  border-top: none;
 }
 .row {
   display: flex;
@@ -318,7 +313,7 @@ onMounted(async () => {
   padding: 12px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
-.row:last-child {
+.section .row:last-child {
   border-bottom: none;
 }
 .row-main {
@@ -414,7 +409,7 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 14px 0 6px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--el-border-color);
 }
 </style>
