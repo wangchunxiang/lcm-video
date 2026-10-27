@@ -56,7 +56,7 @@ function isImage(field: SettingField): boolean {
 }
 
 function isBlock(field: SettingField): boolean {
-  return field.type === 'order';
+  return field.type === 'order' || field.type === 'textarea';
 }
 
 function optionsOf(field: SettingField) {
