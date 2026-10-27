@@ -290,7 +290,7 @@ onMounted(async () => {
 
 <style scoped>
 .page {
-  max-width: 860px;
+  width: 100%;
 }
 .group-card :deep(.el-card__body) {
   padding: 4px 20px 0;
