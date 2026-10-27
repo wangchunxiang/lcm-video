@@ -19,7 +19,6 @@ export interface SiteConfig {
   statsCode: string;
   theme: string;
   listPageSize: number;
-  lineOrder: string[];
 }
 
 export interface NavItem {
@@ -49,10 +48,6 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     statsCode: settings['site_stats_code'] || '',
     theme: settings['site_theme'] || 'default',
     listPageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.min(100, Math.trunc(pageSize)) : 24,
-    lineOrder: (settings['line_order'] || '')
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean),
   };
 
   cachedConfig = { at: Date.now(), value };
@@ -84,20 +79,6 @@ export async function loadNav(db: Db): Promise<NavItem[]> {
     index.get(row.pid)?.children.push({ id: row.id, name: row.name, alias: row.alias, children: [] });
   }
   return parents;
-}
-
-/**
- * 线路排序：按全局 line_order 的 source_from 顺序，
- * 未列入的排最后，同一档次按 id 升序。
- */
-export function sortLines<T extends { sourceFrom: string; id: number }>(lines: T[], order: string[]): T[] {
-  const rank = new Map(order.map((key, index) => [key, index]));
-  return [...lines].sort((a, b) => {
-    const ra = rank.get(a.sourceFrom) ?? Number.MAX_SAFE_INTEGER;
-    const rb = rank.get(b.sourceFrom) ?? Number.MAX_SAFE_INTEGER;
-    if (ra !== rb) return ra - rb;
-    return a.id - b.id;
-  });
 }
 
 export interface Pagination {

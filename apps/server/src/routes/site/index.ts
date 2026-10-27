@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
-import { category, collectSource, vod, vodPlay } from '@lcm/db';
+import { category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
 import { parsePlayUrl } from '@lcm/shared';
 import {
@@ -12,7 +12,6 @@ import {
   renderErrorPage,
   loadSiteConfig,
   parsePage,
-  sortLines,
   type NavItem,
   type Pagination,
   type SiteConfig,
@@ -248,7 +247,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   /* ------------------------------- 详情 ------------------------------- */
 
   async function loadLines(vodId: number): Promise<Array<LineView & { playUrl: string }>> {
-    const config = await loadSiteConfig(db);
     const rows = await db
       .select({
         id: vodPlay.id,
@@ -257,21 +255,30 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         playUrl: vodPlay.playUrl,
         sourceName: collectSource.name,
         parseUrl: collectSource.parseUrl,
+        lineName: playLine.name,
+        lineSort: playLine.sort,
+        lineEnabled: playLine.isEnabled,
       })
       .from(vodPlay)
       .leftJoin(collectSource, eq(collectSource.id, vodPlay.sourceId))
+      .leftJoin(playLine, eq(playLine.sourceFrom, vodPlay.sourceFrom))
       .where(eq(vodPlay.vodId, vodId));
 
-    const sorted = sortLines(rows, config.lineOrder);
-    return sorted.map((row) => ({
-      id: row.id,
-      source_id: row.sourceId,
-      source_from: row.sourceFrom,
-      source_name: row.sourceId === 0 ? row.sourceFrom : row.sourceName || '默认线路',
-      parse_url: row.parseUrl ?? '',
-      episode_count: parsePlayUrl(row.playUrl).length,
-      playUrl: row.playUrl,
-    }));
+    return rows
+      .filter((row) => row.lineEnabled !== 0)
+      .sort((a, b) => (a.lineSort ?? 0) - (b.lineSort ?? 0) || a.id - b.id)
+      .map((row) => ({
+        id: row.id,
+        source_id: row.sourceId,
+        source_from: row.sourceFrom,
+        source_name:
+          row.lineName ||
+          (row.sourceId === 0 ? row.sourceFrom : row.sourceName) ||
+          '默认线路',
+        parse_url: row.parseUrl ?? '',
+        episode_count: parsePlayUrl(row.playUrl).length,
+        playUrl: row.playUrl,
+      }));
   }
 
   app.get('/detail/:id', async (req, reply) => {
@@ -361,7 +368,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           parent_name: parent?.name ?? '',
           parent_alias: parent?.alias ?? '',
         },
-        lines,
+        lines: lines.map((item) => ({
+          id: item.id,
+          name: item.source_name,
+          source_from: item.source_from,
+          episode_count: item.episode_count,
+        })),
         episodes,
         current_line: firstLine
           ? { id: firstLine.id, name: firstLine.source_name, episode_count: allEpisodes.length }

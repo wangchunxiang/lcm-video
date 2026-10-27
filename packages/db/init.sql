@@ -85,6 +85,19 @@ CREATE TABLE IF NOT EXISTS `lcm_collect_source` (
   KEY `idx_enabled` (`is_enabled`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `lcm_play_line` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `source_from` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '源站线路标识，如 lzm3u8',
+  `name` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '前台显示名，空则用采集源名称',
+  `sort` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '排序，小的在前',
+  `is_enabled` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 启用 0 停用',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_source_from` (`source_from`),
+  KEY `idx_sort` (`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='全站线路注册表';
+
 CREATE TABLE IF NOT EXISTS `lcm_collect_source_category` (
   `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `source_id`        BIGINT UNSIGNED NOT NULL DEFAULT 0     COMMENT '采集源ID',

@@ -16,6 +16,7 @@ import BaseSetting from '../views/setting/Base.vue';
 import SiteSetting from '../views/setting/Site.vue';
 import AccountSetting from '../views/setting/Account.vue';
 import DataTools from '../views/tools/Data.vue';
+import PlayLines from '../views/playback/Lines.vue';
 
 const implemented: Record<string, Component> = {
   '/collect/sources': Sources,
@@ -28,6 +29,7 @@ const implemented: Record<string, Component> = {
   '/setting/site': SiteSetting,
   '/setting/account': AccountSetting,
   '/tools/data': DataTools,
+  '/playback/lines': PlayLines,
 };
 
 const implementedRoutes = Object.entries(implemented).map(([path, component]) => ({

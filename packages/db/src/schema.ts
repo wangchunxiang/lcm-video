@@ -120,6 +120,21 @@ export const collectSource = mysqlTable(
   (t) => [index('idx_enabled').on(t.isEnabled)],
 );
 
+/** 全站线路注册表：一条 source_from 一行，决定前台显示名、顺序与启停 */
+export const playLine = mysqlTable(
+  'lcm_play_line',
+  {
+    id: pk(),
+    sourceFrom: varchar('source_from', { length: 50 }).notNull().default(''),
+    name: varchar('name', { length: 50 }).notNull().default(''),
+    sort: int('sort', { unsigned: true }).notNull().default(0),
+    isEnabled: tinyint('is_enabled', { unsigned: true }).notNull().default(1),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex('uk_source_from').on(t.sourceFrom), index('idx_sort').on(t.sort)],
+);
+
 /** 源站分类与本站分类的映射 */
 export const collectSourceCategory = mysqlTable(
   'lcm_collect_source_category',

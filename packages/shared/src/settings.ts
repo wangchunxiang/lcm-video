@@ -120,14 +120,6 @@ export const SETTINGS: SettingField[] = [
     options: [{ label: '默认模板', value: 'default' }],
   },
   {
-    key: 'line_order',
-    group: 'site',
-    label: '线路优先级',
-    type: 'order',
-    default: '',
-    hint: '播放页按这里的顺序排列线路，未列出的排在最后；顺序也决定默认播放哪条线路。',
-  },
-  {
     key: 'login_expire_days',
     group: 'account',
     label: '登录有效期（天）',

@@ -32,7 +32,7 @@ export const menus: MenuItem[] = [
     title: '播放管理',
     icon: 'VideoPlay',
     children: [
-      { path: '/playback/config', title: '播放管理', icon: 'VideoPlay' },
+      { path: '/playback/config', title: '播放设置', icon: 'Setting' },
       { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
     ],
   },

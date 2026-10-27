@@ -13,6 +13,7 @@ import { startScheduler } from './lib/collect/scheduler.ts';
 import { adminAuthRoutes } from './routes/admin/auth.ts';
 import { accountRoutes } from './routes/admin/account.ts';
 import { categoryRoutes } from './routes/admin/categories.ts';
+import { lineRoutes } from './routes/admin/lines.ts';
 import { logRoutes } from './routes/admin/logs.ts';
 import { settingRoutes } from './routes/admin/settings.ts';
 import { sourceCategoryRoutes } from './routes/admin/source-categories.ts';
@@ -88,6 +89,7 @@ await app.register(
     await admin.register(sourceCategoryRoutes, { prefix: '/sources', db });
     await admin.register(taskRoutes, { prefix: '/tasks', db });
     await admin.register(logRoutes, { prefix: '/logs', db });
+    await admin.register(lineRoutes, { prefix: '/lines', db });
     await admin.register(vodRoutes, { prefix: '/vods', db });
     await admin.register(playRoutes, { prefix: '/plays', db });
     await admin.register(dashboardRoutes, { prefix: '/dashboard', db });

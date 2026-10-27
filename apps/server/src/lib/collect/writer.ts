@@ -72,6 +72,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
   const counters: Counters = { total: 0, inserted: 0, updated: 0, skipped: 0, ignored: 0, failed: 0 };
   const fails: FailItem[] = [];
   const { sourceId, mapping, categories } = input;
+  const seenLines = new Set<string>();
 
   // 先完成不依赖数据库的过滤：分类映射、必填校验
   const candidates: Array<{ item: SourceVod; categoryId: number; categoryPid: number; name: string; hash: string; year: number }> = [];
@@ -260,6 +261,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
 
         // 线路合并
         for (const group of groups) {
+          if (group.from) seenLines.add(group.from);
           const key = playKey(vodId, sourceId, group.from);
           const prev = playsByKey.get(key);
           const newCount = countEpisodes(group.url);
@@ -319,6 +321,15 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
     }
     }),
   );
+
+  if (seenLines.size > 0) {
+    await db.execute(
+      sql`INSERT IGNORE INTO lcm_play_line (source_from) VALUES ${sql.join(
+        [...seenLines].map((from) => sql`(${from})`),
+        sql`, `,
+      )}`,
+    );
+  }
 
   return { counters, fails };
 }
