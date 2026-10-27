@@ -56,7 +56,11 @@ function isImage(field: SettingField): boolean {
 }
 
 function isBlock(field: SettingField): boolean {
-  return field.type === 'order' || field.type === 'textarea' || isImage(field);
+  return field.type === 'order';
+}
+
+function imageShape(field: SettingField): 'square' | 'circle' {
+  return field.key === 'site_favicon' ? 'circle' : 'square';
 }
 
 function optionsOf(field: SettingField) {
