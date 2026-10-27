@@ -26,6 +26,11 @@ export interface SiteConfig {
   volume: number;
   muted: boolean;
   hotkey: boolean;
+  screenshot: boolean;
+  pip: boolean;
+  webfullscreen: boolean;
+  setting: boolean;
+  loop: boolean;
 }
 
 export interface NavItem {
@@ -68,6 +73,11 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     volume: volumeOf(settings['player_volume']),
     muted: settings['player_muted'] === '1',
     hotkey: settings['player_hotkey'] !== '0',
+    screenshot: settings['player_screenshot'] !== '0',
+    pip: settings['player_pip'] !== '0',
+    webfullscreen: settings['player_webfullscreen'] === '1',
+    setting: settings['player_setting'] !== '0',
+    loop: settings['player_loop'] === '1',
   };
 
   cachedConfig = { at: Date.now(), value };

@@ -12,13 +12,22 @@
     return;
   }
 
+  /* 界面控件开关，见后台「播放设置」 */
+  var flags = {
+    screenshot: box.getAttribute('data-screenshot') === '1',
+    pip: box.getAttribute('data-pip') === '1',
+    webfullscreen: box.getAttribute('data-webfullscreen') === '1',
+    setting: box.getAttribute('data-setting') === '1',
+    loop: box.getAttribute('data-loop') === '1' && box.getAttribute('data-autonext') !== '1',
+  };
+
   var video = null;
   if (kind === 'artplayer' && window.Artplayer) {
-    video = initArtPlayer(box, src, isHls, autoplay);
+    video = initArtPlayer(box, src, isHls, autoplay, flags);
   } else if (kind === 'dplayer' && window.DPlayer) {
-    video = initDPlayer(box, src, isHls, autoplay);
+    video = initDPlayer(box, src, isHls, autoplay, flags);
   } else {
-    video = initNative(box, src, isHls, autoplay);
+    video = initNative(box, src, isHls, autoplay, flags);
   }
 
   if (video) {
@@ -147,8 +156,9 @@
     return { enableWorker: true, lowLatencyMode: false };
   }
 
-  function initDPlayer(container, url, hls, auto) {
-    if (hls && !window.Hls) return initNative(container, url, hls, auto);
+  function initDPlayer(container, url, hls, auto, flags) {
+    flags = flags || {};
+    if (hls && !window.Hls) return initNative(container, url, hls, auto, flags);
 
     var player;
     try {
@@ -156,6 +166,9 @@
         container: container,
         autoplay: auto,
         hotkey: false,
+        screenshot: !!flags.screenshot,
+        setting: !!flags.setting,
+        loop: !!flags.loop,
         preload: 'metadata',
         theme: '#ff5c8a',
         video: {
@@ -181,11 +194,14 @@
       showTip(container, '该线路暂不支持在线播放');
     });
 
+    if (flags.pip) addPipButton(container, player.video);
+
     return player.video || null;
   }
 
-  function initArtPlayer(container, url, hls, auto) {
-    if (hls && !window.Hls) return initNative(container, url, hls, auto);
+  function initArtPlayer(container, url, hls, auto, flags) {
+    flags = flags || {};
+    if (hls && !window.Hls) return initNative(container, url, hls, auto, flags);
 
     var art;
     try {
@@ -197,7 +213,11 @@
         hotkey: false,
         autoSize: false,
         airplay: true,
-        setting: false,
+        screenshot: !!flags.screenshot,
+        pip: !!flags.pip,
+        fullscreenWeb: !!flags.webfullscreen,
+        setting: !!flags.setting,
+        loop: !!flags.loop,
         customType: {
           m3u8: function (element, target) {
             var instance = new window.Hls(hlsConfig());
@@ -216,8 +236,10 @@
     return art.video || null;
   }
 
-  function initNative(container, url, hls, auto) {
+  function initNative(container, url, hls, auto, flags) {
+    flags = flags || {};
     var element = document.createElement('video');
+    element.loop = !!flags.loop;
     element.controls = true;
     element.playsInline = true;
     element.preload = 'metadata';
@@ -249,6 +271,43 @@
     }
 
     return element;
+  }
+
+  /* DPlayer 没有画中画开关，用浏览器原生画中画补一个按钮 */
+  function addPipButton(container, element) {
+    if (!element || !document.pictureInPictureEnabled) return;
+    if (container.querySelector('.lcm-pip')) return;
+
+    var button = document.createElement('button');
+    button.className = 'lcm-pip';
+    button.type = 'button';
+    button.title = '画中画';
+    button.innerHTML =
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">' +
+      '<path d="M19 11h-8v6h8v-6zm4 8V5a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2zm-2 .02H3V5h18v14z"/></svg>';
+    button.style.cssText =
+      'position:absolute;top:10px;right:10px;z-index:15;display:flex;align-items:center;justify-content:center;' +
+      'width:32px;height:32px;padding:0;border:none;border-radius:4px;cursor:pointer;' +
+      'color:#fff;background:rgba(0,0,0,.45);opacity:.8';
+    button.addEventListener('mouseenter', function () {
+      button.style.opacity = '1';
+    });
+    button.addEventListener('mouseleave', function () {
+      button.style.opacity = '0.8';
+    });
+    button.addEventListener('click', function (event) {
+      event.stopPropagation();
+      try {
+        if (document.pictureInPictureElement) {
+          document.exitPictureInPicture();
+        } else {
+          element.requestPictureInPicture();
+        }
+      } catch (error) {
+        /* 忽略：浏览器不支持或用户拒绝 */
+      }
+    });
+    container.appendChild(button);
   }
 
   function showTip(container, text) {
