@@ -26,7 +26,6 @@ const volume = computed(() => props.options.player_volume || '80');
       </div>
       <div class="badge">{{ on('player_muted') ? '静音' : '音量 ' + volume + '%' }}</div>
     </div>
-    <p class="caption">仅示意控件位置，实际效果在播放页生效。</p>
   </div>
 </template>
 
