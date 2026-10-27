@@ -221,18 +221,16 @@ onBeforeUnmount(() => {
           </el-table-column>
         </el-table>
       </div>
-      <div class="pager">
-        <el-pagination
-          :current-page="pager.page"
-          :page-size="pager.page_size"
-          :page-sizes="[20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          background
-          @current-change="changePage"
-          @size-change="changePageSize"
-        />
-      </div>
+      <el-pagination
+        class="pager"
+        :current-page="pager.page"
+        :page-size="pager.page_size"
+        :page-sizes="[20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next"
+        @current-change="changePage"
+        @size-change="changePageSize"
+      />
     </el-card>
   </div>
 </template>
