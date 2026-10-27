@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>编辑影片 · 基本信息 布局方案</title>
+<style>
+  :root {
+    --primary: #409eff;
+    --success: #67c23a;
+    --info: #909399;
+    --warning: #e6a23c;
+    --text-1: #303133;
+    --text-2: #606266;
+    --text-3: #909399;
+    --text-4: #a8abb2;
+    --border: #dcdfe6;
+    --border-light: #e4e7ed;
+    --border-lighter: #ebeef5;
+    --fill: #f5f7fa;
+    --fill-light: #fafafa;
+    --bg: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 24px 64px;
+    background: #f0f2f5;
+    font: 14px/1.5 "Microsoft YaHei", "PingFang SC", -apple-system, sans-serif;
+    color: var(--text-1);
+  }
+  .doc-head { max-width: 1080px; margin: 0 auto 24px; }
+  .doc-head h1 { margin: 0 0 6px; font-size: 20px; }
+  .doc-head p { margin: 0; color: var(--text-3); font-size: 13px; }
+
+  .demo { max-width: 1080px; margin: 0 auto 36px; }
+  .demo-title {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 0 0 10px 2px;
+  }
+  .demo-title b { font-size: 15px; }
+  .demo-title span { font-size: 13px; color: var(--text-3); }
+
+  /* 模拟弹窗 */
+  .dialog {
+    background: var(--bg);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px 4px rgba(0, 0, 0, .06), 0 8px 20px rgba(0, 0, 0, .08);
+    overflow: hidden;
+  }
+  .dialog-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border-lighter);
+    font-size: 16px; font-weight: 600;
+  }
+  .dialog-head .x { color: var(--text-4); font-weight: 400; font-size: 16px; }
+  .tabs { display: flex; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--border-lighter); }
+  .tabs .tab { padding: 10px 0; font-size: 14px; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs .tab.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+  .dialog-body { padding: 20px; }
+
+  /* 通用控件 */
+  .field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .field > label {
+    flex: none; width: 76px; text-align: right;
+    font-size: 14px; color: var(--text-2);
+  }
+  .control {
+    flex: 1; min-width: 0; height: 32px;
+    padding: 0 11px; display: flex; align-items: center;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg); color: var(--text-1);
+    font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .control.readonly { background: var(--fill-light); color: var(--text-2); }
+  .control.textarea { height: auto; min-height: 52px; align-items: flex-start; padding-top: 7px; white-space: normal; color: var(--text-2); }
+  .control.empty { color: var(--text-4); }
+  .control .caret { margin-left: auto; color: var(--text-4); font-size: 12px; }
+  .switch {
+    width: 40px; height: 20px; border-radius: 10px; background: var(--primary);
+    position: relative; flex: none;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; right: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  }
+
+  .grid { display: grid; gap: 16px 16px; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .col-2 { grid-column: span 2; }
+  .col-full { grid-column: 1 / -1; }
+
+  /* 海报 */
+  .poster {
+    width: 130px; height: 180px; border-radius: 4px; flex: none;
+    border: 1px solid var(--border-light);
+    background:
+      linear-gradient(160deg, #2b3a55 0%, #1b2436 45%, #10161f 100%);
+    color: #fff; font-size: 12px; text-align: center;
+    display: flex; align-items: center; justify-content: center; letter-spacing: 2px;
+  }
+  .poster.sm { width: 82px; height: 112px; }
+
+  /* 「现状」左侧信息栏 */
+  .side { width: 132px; flex: none; }
+  .side ul { margin: 10px 0 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.9; color: var(--text-3); }
+  .side li { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .side li b { font-weight: 400; color: var(--text-1); }
+  .side li.sep { border-top: 1px solid var(--border-lighter); margin: 8px 0 6px; height: 0; padding: 0; display: block; }
+  .tag {
+    display: inline-flex; align-items: center; height: 22px; padding: 0 7px;
+    border-radius: 4px; font-size: 12px; line-height: 1;
+    border: 1px solid transparent; font-variant-numeric: tabular-nums;
+  }
+  .tag.info { background: #f4f4f5; border-color: #e9e9eb; color: var(--info); }
+  .tag.success { background: #f0f9eb; border-color: #e1f3d8; color: var(--success); }
+  .tag.primary { background: #ecf5ff; border-color: #d9ecff; color: var(--primary); }
+  .tag.warning { background: #fdf6ec; border-color: #faecd8; color: var(--warning); }
+
+  /* 方案 2 顶部摘要 */
+  .hero { display: flex; gap: 16px; padding: 16px; background: var(--fill-light); border-radius: 6px; margin-bottom: 18px; }
+  .hero-main { flex: 1; min-width: 0; }
+  .hero-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .hero-sub { font-size: 13px; color: var(--text-3); margin-bottom: 10px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hero-side { display: flex; gap: 20px; align-items: center; padding-left: 16px; border-left: 1px solid var(--border-light); }
+  .metric { text-align: center; }
+  .metric b { display: block; font-size: 20px; line-height: 1.2; color: var(--primary); font-variant-numeric: tabular-nums; }
+  .metric span { font-size: 12px; color: var(--text-3); }
+
+  /* 方案 3 分组卡片 */
+  .group { border: 1px solid var(--border-lighter); border-radius: 6px; margin-bottom: 14px; }
+  .group-head {
+    padding: 9px 14px; font-size: 13px; font-weight: 500; color: var(--text-2);
+    background: var(--fill-light); border-bottom: 1px solid var(--border-lighter);
+    border-radius: 6px 6px 0 0;
+  }
+  .group-body { padding: 16px 14px 4px; }
+
+  /* 方案 4 指标块 */
+  .metrics { display: flex; margin-top: 12px; border: 1px solid var(--border-lighter); border-radius: 6px; overflow: hidden; }
+  .metrics div { flex: 1; padding: 10px 4px; text-align: center; }
+  .metrics div + div { border-left: 1px solid var(--border-lighter); }
+  .metrics b { display: block; font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .metrics span { font-size: 11px; color: var(--text-3); }
+  .hint { font-size: 12px; color: var(--text-4); }
+
+  .footer { display: flex; justify-content: flex-end; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--border-lighter); }
+  .btn { height: 32px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--border); background: #fff; color: var(--text-2); font-size: 14px; display: inline-flex; align-items: center; }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="doc-head">
+  <h1>编辑影片 · 基本信息 布局方案</h1>
+  <p>四套视觉稿，数据相同（流浪地球3 · 621 · 3 条线路 · 24 集）。看中哪套告诉我编号，我按它改 Vue 组件。</p>
+</div>
+
+<!-- ============ 方案 1 ============ -->
+<section class="demo">
+  <div class="demo-title"><b>方案 1 · 现状（左海报信息栏 + 右四行表单）</b><span>当前已实现的样子，作为基准</span></div>
+  <div class="dialog">
+    <div class="dialog-head"><span>编辑影片：流浪地球3</span><span class="x">✕</span></div>
+    <div class="tabs"><div class="tab on">基本信息</div><div class="tab">线路与剧集（3）</div></div>
+    <div class="dialog-body">
+      <div style="display:flex;gap:16px;">
+        <div class="side">
+          <div class="poster">海报 130×180</div>
+          <ul>
+            <li><span>ID</span><b>621</b></li>
+            <li><span>线路</span><b>3 条</b></li>
+            <li><span>剧集</span><b>24 集</b></li>
+            <li class="sep"></li>
+            <li><span>入库</span><span class="tag info">2026-10-27</span></li>
+            <li><span>采集</span><span class="tag success">2026-10-26</span></li>
+          </ul>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="grid g2">
+            <div class="field"><label>标题</label><div class="control">流浪地球3</div></div>
+            <div class="field"><label>副标题</label><div class="control empty">—</div></div>
+            <div class="field"><label>分类</label><div class="control">科幻片<span class="caret">▾</span></div></div>
+            <div class="field"><label>年份</label><div class="control">2027</div></div>
+            <div class="field"><label>地区</label><div class="control">中国大陆</div></div>
+            <div class="field"><label>语言</label><div class="control">国语</div></div>
+            <div class="field"><label>首字母</label><div class="control">L</div></div>
+            <div class="field"><label>上映日期</label><div class="control">2027-02-10</div></div>
+            <div class="field"><label>总集数</label><div class="control">24</div></div>
+            <div class="field"><label>备注</label><div class="control">更新至24集</div></div>
+            <div class="field col-full"><label>封面地址</label><div class="control">https://img.example.com/2027/wandering3.jpg</div></div>
+            <div class="field"><label>导演</label><div class="control">郭帆</div></div>
+            <div class="field"><label>编剧</label><div class="control">龚格尔 / 郭帆</div></div>
+            <div class="field col-full"><label>演员</label><div class="control">吴京 / 刘德华 / 李雪健 / 沙溢</div></div>
+            <div class="field col-full"><label>简介</label><div class="control textarea">太阳危机迫在眉睫，人类启动流浪地球计划……</div></div>
+            <div class="field col-full"><label>详细介绍</label><div class="control textarea">2075 年，地球发动机……</div></div>
+            <div class="field col-full"><label>状态</label><div class="switch"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div class="btn">关 闭</div><div class="btn primary">保 存</div></div>
+  </div>
+</section>
+
+<!-- ============ 方案 2 ============ -->
+<section class="demo">
+  <div class="demo-title"><b>方案 2 · 顶部摘要条（海报缩略 + 标题 + 指标）</b><span>把「这是个什么片」提到最上方，表单区全部让给编辑</span></div>
+  <div class="dialog">
+    <div class="dialog-head"><span>编辑影片</span><span class="x">✕</span></div>
+    <div class="tabs"><div class="tab on">基本信息</div><div class="tab">线路与剧集（3）</div></div>
+    <div class="dialog-body">
+      <div class="hero">
+        <div class="poster sm">海报</div>
+        <div class="hero-main">
+          <div class="hero-title">流浪地球3</div>
+          <div class="hero-sub">#621 · 更新至24集</div>
+          <div class="hero-meta">
+            <span class="tag primary">科幻片</span>
+            <span class="tag info">2027</span>
+            <span class="tag info">中国大陆</span>
+            <span class="tag info">国语</span>
+            <span class="tag success">上架</span>
+          </div>
+        </div>
+        <div class="hero-side">
+          <div class="metric"><b>3</b><span>线路</span></div>
+          <div class="metric"><b>24</b><span>剧集</span></div>
+        </div>
+      </div>
+      <div class="grid g4">
+        <div class="field col-2"><label>标题</label><div class="control">流浪地球3</div></div>
+        <div class="field col-2"><label>副标题</label><div class="control empty">—</div></div>
+        <div class="field col-2"><label>分类</label><div class="control">科幻片<span class="caret">▾</span></div></div>
+        <div class="field"><label>年份</label><div class="control">2027</div></div>
+        <div class="field"><label>地区</label><div class="control">中国大陆</div></div>
+        <div class="field"><label>语言</label><div class="control">国语</div></div>
+        <div class="field"><label>首字母</label><div class="control">L</div></div>
+        <div class="field"><label>上映日期</label><div class="control">2027-02-10</div></div>
+        <div class="field"><label>总集数</label><div class="control">24</div></div>
+        <div class="field"><label>备注</label><div class="control">更新至24集</div></div>
+        <div class="field col-full"><label>封面地址</label><div class="control">https://img.example.com/2027/wandering3.jpg</div></div>
+        <div class="field col-2"><label>导演</label><div class="control">郭帆</div></div>
+        <div class="field col-2"><label>编剧</label><div class="control">龚格尔 / 郭帆</div></div>
+        <div class="field col-full"><label>演员</label><div class="control">吴京 / 刘德华 / 李雪健 / 沙溢</div></div>
+        <div class="field col-full"><label>简介</label><div class="control textarea">太阳危机迫在眉睫，人类启动流浪地球计划……</div></div>
+        <div class="field col-full"><label>详细介绍</label><div class="control textarea">2075 年，地球发动机……</div></div>
+        <div class="field col-full"><label>状态</label><div class="switch"></div></div>
+      </div>
+    </div>
+    <div class="footer"><div class="btn">关 闭</div><div class="btn primary">保 存</div></div>
+  </div>
+</section>
+
+<!-- ============ 方案 3 ============ -->
+<section class="demo">
+  <div class="demo-title"><b>方案 3 · 分组卡片（基础 / 人员 / 内容 三段）</b><span>字段多的时候最好找，但纵向更长</span></div>
+  <div class="dialog">
+    <div class="dialog-head"><span>编辑影片：流浪地球3</span><span class="x">✕</span></div>
+    <div class="tabs"><div class="tab on">基本信息</div><div class="tab">线路与剧集（3）</div></div>
+    <div class="dialog-body">
+      <div style="display:flex;gap:16px;">
+        <div class="side">
+          <div class="poster">海报 130×180</div>
+          <div class="metrics" style="margin-top:12px;flex-direction:column;">
+            <div style="display:flex;justify-content:space-between;padding:8px 10px;"><span class="hint">ID</span><b style="font-size:13px;">621</b></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 10px;"><span class="hint">线路</span><b style="font-size:13px;">3 条</b></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 10px;"><span class="hint">剧集</span><b style="font-size:13px;">24 集</b></div>
+          </div>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;">
+            <span class="tag info">入库 2026-10-27</span>
+            <span class="tag success">采集 2026-10-26</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="group">
+            <div class="group-head">基础信息</div>
+            <div class="group-body">
+              <div class="grid g3">
+                <div class="field"><label>标题</label><div class="control">流浪地球3</div></div>
+                <div class="field"><label>副标题</label><div class="control empty">—</div></div>
+                <div class="field"><label>分类</label><div class="control">科幻片<span class="caret">▾</span></div></div>
+                <div class="field"><label>年份</label><div class="control">2027</div></div>
+                <div class="field"><label>地区</label><div class="control">中国大陆</div></div>
+                <div class="field"><label>语言</label><div class="control">国语</div></div>
+                <div class="field"><label>首字母</label><div class="control">L</div></div>
+                <div class="field"><label>上映日期</label><div class="control">2027-02-10</div></div>
+                <div class="field"><label>总集数</label><div class="control">24</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="group">
+            <div class="group-head">人员</div>
+            <div class="group-body">
+              <div class="grid g2">
+                <div class="field"><label>导演</label><div class="control">郭帆</div></div>
+                <div class="field"><label>编剧</label><div class="control">龚格尔 / 郭帆</div></div>
+                <div class="field col-full"><label>演员</label><div class="control">吴京 / 刘德华 / 李雪健 / 沙溢</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="group" style="margin-bottom:0;">
+            <div class="group-head">内容</div>
+            <div class="group-body">
+              <div class="grid">
+                <div class="field"><label>备注</label><div class="control">更新至24集</div></div>
+                <div class="field col-full"><label>封面地址</label><div class="control">https://img.example.com/2027/wandering3.jpg</div></div>
+                <div class="field col-full"><label>简介</label><div class="control textarea">太阳危机迫在眉睫，人类启动流浪地球计划……</div></div>
+                <div class="field col-full"><label>详细介绍</label><div class="control textarea">2075 年，地球发动机……</div></div>
+                <div class="field"><label>状态</label><div class="switch"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div class="btn">关 闭</div><div class="btn primary">保 存</div></div>
+  </div>
+</section>
+
+<!-- ============ 方案 4 ============ -->
+<section class="demo">
+  <div class="demo-title"><b>方案 4 · 指标块 + 两列表单（最紧凑）</b><span>左栏线路/剧集做成数字块，右侧每行两个字段</span></div>
+  <div class="dialog">
+    <div class="dialog-head"><span>编辑影片：流浪地球3</span><span class="x">✕</span></div>
+    <div class="tabs"><div class="tab on">基本信息</div><div class="tab">线路与剧集（3）</div></div>
+    <div class="dialog-body">
+      <div style="display:flex;gap:16px;">
+        <div class="side">
+          <div class="poster">海报 130×180</div>
+          <div class="metrics">
+            <div><b>3</b><span>线路</span></div>
+            <div><b>24</b><span>剧集</span></div>
+          </div>
+          <ul style="margin-top:10px;">
+            <li><span>ID</span><b>621</b></li>
+            <li class="sep"></li>
+            <li><span>入库</span><span class="tag info">2026-10-27</span></li>
+            <li><span>采集</span><span class="tag success">2026-10-26</span></li>
+          </ul>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div class="grid g2">
+            <div class="field"><label>标题</label><div class="control">流浪地球3</div></div>
+            <div class="field"><label>副标题</label><div class="control empty">—</div></div>
+            <div class="field"><label>分类</label><div class="control">科幻片<span class="caret">▾</span></div></div>
+            <div class="field"><label>年份</label><div class="control">2027</div></div>
+            <div class="field"><label>地区</label><div class="control">中国大陆</div></div>
+            <div class="field"><label>语言</label><div class="control">国语</div></div>
+            <div class="field"><label>首字母</label><div class="control">L</div></div>
+            <div class="field"><label>上映日期</label><div class="control">2027-02-10</div></div>
+            <div class="field"><label>总集数</label><div class="control">24</div></div>
+            <div class="field"><label>备注</label><div class="control">更新至24集</div></div>
+            <div class="field col-full"><label>封面地址</label><div class="control">https://img.example.com/2027/wandering3.jpg</div></div>
+            <div class="field"><label>导演</label><div class="control">郭帆</div></div>
+            <div class="field"><label>编剧</label><div class="control">龚格尔 / 郭帆</div></div>
+            <div class="field col-full"><label>演员</label><div class="control">吴京 / 刘德华 / 李雪健 / 沙溢</div></div>
+            <div class="field col-full"><label>简介</label><div class="control textarea">太阳危机迫在眉睫，人类启动流浪地球计划……</div></div>
+            <div class="field col-full"><label>详细介绍</label><div class="control textarea">2075 年，地球发动机……</div></div>
+            <div class="field col-full"><label>状态</label><div class="switch"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><div class="btn">关 闭</div><div class="btn primary">保 存</div></div>
+  </div>
+</section>
+
+</body>
+</html>

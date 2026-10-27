@@ -327,24 +327,20 @@ function lineTitle(line: PlayLine): string {
               />
               <div v-else class="poster poster-empty">无封面</div>
 
-              <ul class="side-info">
-                <li><span>ID</span><b>{{ vodId }}</b></li>
-                <li><span>线路</span><b>{{ lines.length }} 条</b></li>
-                <li><span>剧集</span><b>{{ totalEpisodes }} 集</b></li>
-                <li class="sep"></li>
-                <li>
-                  <span>入库</span>
-                  <el-tooltip :content="form.createdAt || '—'" placement="top">
-                    <el-tag size="small" type="info" effect="light">{{ (form.createdAt || '').slice(0, 10) || '—' }}</el-tag>
-                  </el-tooltip>
-                </li>
-                <li>
-                  <span>采集</span>
-                  <el-tooltip :content="form.collectedAt || '—'" placement="top">
-                    <el-tag size="small" type="success" effect="light">{{ collectedDate }}</el-tag>
-                  </el-tooltip>
-                </li>
-              </ul>
+              <div class="metrics">
+                <div class="metric-row"><span>ID</span><b>{{ vodId }}</b></div>
+                <div class="metric-row"><span>线路</span><b>{{ lines.length }} 条</b></div>
+                <div class="metric-row"><span>剧集</span><b>{{ totalEpisodes }} 集</b></div>
+              </div>
+
+              <div class="side-tags">
+                <el-tooltip :content="form.createdAt || '—'" placement="top">
+                  <el-tag size="small" type="info" effect="light">入库 {{ (form.createdAt || '').slice(0, 10) || '—' }}</el-tag>
+                </el-tooltip>
+                <el-tooltip :content="form.collectedAt || '—'" placement="top">
+                  <el-tag size="small" type="success" effect="light">采集 {{ collectedDate }}</el-tag>
+                </el-tooltip>
+              </div>
             </div>
 
             <div class="base-main">
@@ -360,8 +356,7 @@ function lineTitle(line: PlayLine): string {
                       <el-input v-model="form.sub_name" maxlength="255" />
                     </el-form-item>
                   </el-col>
-
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="分类">
                       <el-tree-select
                         v-model="form.category_id"
@@ -376,38 +371,37 @@ function lineTitle(line: PlayLine): string {
                       />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="年份">
                       <el-input v-model="form.year" maxlength="4" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="地区">
                       <el-input v-model="form.area" maxlength="50" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="语言">
                       <el-input v-model="form.lang" maxlength="50" />
                     </el-form-item>
                   </el-col>
-
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="首字母">
                       <el-input v-model="form.letter" maxlength="1" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="上映日期">
                       <el-input v-model="form.release_date" maxlength="20" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="总集数">
                       <el-input v-model="form.episode_count" maxlength="6" />
                     </el-form-item>
                   </el-col>
-                  <el-col :span="6">
+                  <el-col :span="12">
                     <el-form-item label="备注">
                       <el-input v-model="form.remarks" maxlength="100" />
                     </el-form-item>
@@ -548,8 +542,11 @@ function lineTitle(line: PlayLine): string {
   align-items: flex-start;
 }
 .base-side {
-  width: 132px;
+  width: 150px;
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .poster {
   width: 130px;
@@ -559,33 +556,36 @@ function lineTitle(line: PlayLine): string {
   background: var(--el-fill-color-light);
   cursor: zoom-in;
 }
-.side-info {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
+.metrics {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  overflow: hidden;
   font-size: 12px;
-  line-height: 1.9;
-  color: var(--el-text-color-secondary);
 }
-.side-info li {
+.metric-row {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  padding: 7px 10px;
+  color: var(--el-text-color-secondary);
 }
-.side-info b {
+.metric-row + .metric-row {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.metric-row b {
   font-weight: 400;
   color: var(--el-text-color-primary);
+  font-variant-numeric: tabular-nums;
 }
-.side-info li.stack {
-  display: block;
-  margin-top: 4px;
+.side-tags {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.side-info li.sep {
-  border-top: 1px solid var(--el-border-color-lighter);
-  margin: 8px 0 6px;
-  height: 0;
-}
-.side-info :deep(.el-tag) {
+.side-tags :deep(.el-tag) {
   font-variant-numeric: tabular-nums;
 }
 .poster-empty {
