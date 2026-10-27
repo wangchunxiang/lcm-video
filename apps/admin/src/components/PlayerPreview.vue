@@ -110,9 +110,4 @@ const volume = computed(() => props.options.player_volume || '80');
   color: rgba(255, 255, 255, 0.9);
   background: rgba(0, 0, 0, 0.4);
 }
-.caption {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-}
 </style>
