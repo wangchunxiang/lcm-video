@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { SettingField } from '@lcm/shared';
 import { api } from '../api/client.ts';
@@ -11,9 +11,17 @@ interface ThemeItem {
   active: boolean;
 }
 
+interface LineOption {
+  value: string;
+  label: string;
+  total: number;
+}
+
 const props = defineProps<{ group: 'base' | 'site' }>();
 
 const fields = ref<(SettingField & { value: string })[]>([]);
+const lineOptions = ref<LineOption[]>([]);
+const newLine = reactive<Record<string, string>>({});
 const themes = ref<ThemeItem[]>([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -25,6 +33,55 @@ function optionsOf(field: SettingField) {
     return themes.value.map((theme) => ({ label: theme.title, value: theme.name }));
   }
   return field.options ?? [];
+}
+
+function orderItems(field: SettingField & { value: string }): string[] {
+  return (field.value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
+function setOrder(field: SettingField & { value: string }, items: string[]) {
+  field.value = items.join(',');
+}
+
+function moveOrder(field: SettingField & { value: string }, index: number, delta: number) {
+  const items = orderItems(field);
+  const target = index + delta;
+  if (target < 0 || target >= items.length) return;
+  const [moved] = items.splice(index, 1);
+  items.splice(target, 0, moved!);
+  setOrder(field, items);
+}
+
+function removeOrder(field: SettingField & { value: string }, index: number) {
+  const items = orderItems(field);
+  items.splice(index, 1);
+  setOrder(field, items);
+}
+
+function addOrder(field: SettingField & { value: string }) {
+  const value = (newLine[field.key] ?? '').trim();
+  if (!value) return;
+  const items = orderItems(field);
+  if (items.includes(value)) {
+    ElMessage.warning('该线路已在列表中');
+    return;
+  }
+  items.push(value);
+  setOrder(field, items);
+  newLine[field.key] = '';
+}
+
+function labelOf(sourceFrom: string): string {
+  const hit = lineOptions.value.find((item) => item.value === sourceFrom);
+  return hit ? hit.label : sourceFrom;
+}
+
+function availableLineOptions(field: SettingField & { value: string }): LineOption[] {
+  const used = orderItems(field);
+  return lineOptions.value.filter((item) => !used.includes(item.value));
 }
 
 async function load() {
@@ -56,7 +113,18 @@ async function save() {
   }
 }
 
-onMounted(load);
+async function loadLineOptions() {
+  try {
+    const data = await api.get<{ items: LineOption[] }>('/settings/line-options');
+    lineOptions.value = data.items;
+  } catch {
+    lineOptions.value = [];
+  }
+}
+
+onMounted(async () => {
+  await Promise.all([load(), loadLineOptions()]);
+});
 </script>
 
 <template>
@@ -68,6 +136,39 @@ onMounted(load);
           v-model="field.value"
           :tip="field.hint"
         />
+        <div v-else-if="field.type === 'order'" class="order-field">
+          <div v-if="orderItems(field).length === 0" class="order-empty">
+            还没有配置，播放页按线路入库先后排列
+          </div>
+          <div v-for="(item, index) in orderItems(field)" :key="item" class="order-row">
+            <span class="order-index">{{ index + 1 }}</span>
+            <span class="order-label">{{ labelOf(item) }}</span>
+            <span class="order-code">{{ item }}</span>
+            <span class="order-actions">
+              <el-button link :disabled="index === 0" @click="moveOrder(field, index, -1)">上移</el-button>
+              <el-button link :disabled="index === orderItems(field).length - 1" @click="moveOrder(field, index, 1)">下移</el-button>
+              <el-button link type="danger" @click="removeOrder(field, index)">移除</el-button>
+            </span>
+          </div>
+          <div class="order-add">
+            <el-select
+              v-model="newLine[field.key]"
+              filterable
+              allow-create
+              default-first-option
+              placeholder="选择或输入线路标识"
+              style="width: 320px"
+            >
+              <el-option
+                v-for="option in availableLineOptions(field)"
+                :key="option.value"
+                :label="`${option.label} · ${option.total} 条线路`"
+                :value="option.value"
+              />
+            </el-select>
+            <el-button @click="addOrder(field)">添加</el-button>
+          </div>
+        </div>
         <el-select v-else-if="field.type === 'select'" v-model="field.value" class="field">
           <el-option v-for="option in optionsOf(field)" :key="option.value" :label="option.label" :value="option.value" />
         </el-select>
@@ -104,6 +205,53 @@ onMounted(load);
 }
 .field {
   width: 100%;
+}
+.order-field {
+  width: 100%;
+}
+.order-empty {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  padding: 4px 0 12px;
+}
+.order-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.order-index {
+  width: 18px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.order-label {
+  flex: none;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-code {
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.order-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.order-add {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
 }
 .hint {
   margin-top: 4px;

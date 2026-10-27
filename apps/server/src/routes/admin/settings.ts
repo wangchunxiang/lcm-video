@@ -106,6 +106,25 @@ export const settingRoutes: FastifyPluginAsync<SettingRouteOpts> = async (app, o
     return ok(reply, null);
   });
 
+  app.get('/line-options', async (_req, reply) => {
+    const rows = await db.execute(sql`
+      SELECT p.source_from AS sourceFrom,
+             COUNT(*) AS total,
+             MAX(s.name) AS sourceName
+      FROM lcm_vod_play p
+      LEFT JOIN lcm_collect_source s ON s.id = p.source_id
+      WHERE p.source_from <> ''
+      GROUP BY p.source_from
+      ORDER BY total DESC, p.source_from ASC
+    `);
+    const items = (rows[0] as unknown as { sourceFrom: string; total: number; sourceName: string | null }[]).map((row) => ({
+      value: row.sourceFrom,
+      label: row.sourceName ? `${row.sourceName}（${row.sourceFrom}）` : row.sourceFrom,
+      total: Number(row.total),
+    }));
+    return ok(reply, { items });
+  });
+
   app.get('/themes', async (_req, reply) => {
     const values = await getAllSettings(db);
     const active = values['site_theme'] ?? 'default';

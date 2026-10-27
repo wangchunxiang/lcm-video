@@ -1,4 +1,4 @@
-export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select';
+export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select' | 'order';
 
 export type SettingGroup = 'base' | 'site' | 'account';
 
@@ -123,9 +123,9 @@ export const SETTINGS: SettingField[] = [
     key: 'line_order',
     group: 'site',
     label: '线路优先级',
-    type: 'text',
+    type: 'order',
     default: '',
-    hint: '按源站线路标识排列，逗号分隔，如 lzm3u8,ffm3u8；未列出的排最后。',
+    hint: '播放页按这里的顺序排列线路，未列出的排在最后；顺序也决定默认播放哪条线路。',
   },
   {
     key: 'login_expire_days',
