@@ -296,25 +296,19 @@ onMounted(async () => {
   padding: 4px 20px 0;
 }
 .section-title {
-  padding: 16px 0 6px;
+  padding: 20px 0 4px;
   font-size: 13px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  border-top: 1px solid var(--el-border-color);
 }
 .section-title.is-first {
   padding-top: 12px;
-  border-top: none;
 }
 .row {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.section .row:last-child {
-  border-bottom: none;
+  padding: 10px 0;
 }
 .row-main {
   flex: 0 0 150px;
@@ -417,7 +411,6 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 14px 0 16px;
-  border-top: 1px solid var(--el-border-color);
+  padding: 20px 0 16px;
 }
 </style>
