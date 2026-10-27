@@ -12,12 +12,9 @@ import Logs from '../views/collect/Logs.vue';
 import Mappings from '../views/collect/Mappings.vue';
 import Sources from '../views/collect/Sources.vue';
 import Tasks from '../views/collect/Tasks.vue';
-import BaseSetting from '../views/setting/Base.vue';
-import SiteSetting from '../views/setting/Site.vue';
-import AccountSetting from '../views/setting/Account.vue';
+import Settings from '../views/setting/Settings.vue';
 import DataTools from '../views/tools/Data.vue';
 import PlayLines from '../views/playback/Lines.vue';
-import PlaybackSetting from '../views/playback/Config.vue';
 
 const implemented: Record<string, Component> = {
   '/collect/sources': Sources,
@@ -26,12 +23,9 @@ const implemented: Record<string, Component> = {
   '/collect/logs': Logs,
   '/content/vods': Vods,
   '/content/categories': Categories,
-  '/setting/base': BaseSetting,
-  '/setting/site': SiteSetting,
-  '/setting/account': AccountSetting,
+  '/setting': Settings,
   '/tools/data': DataTools,
   '/playback/lines': PlayLines,
-  '/playback/config': PlaybackSetting,
 };
 
 const implementedRoutes = Object.entries(implemented).map(([path, component]) => ({
@@ -60,6 +54,10 @@ const routes = [
     component: AdminLayout,
     children: [
       { path: '', redirect: '/dashboard' },
+      { path: 'setting/base', redirect: { path: '/setting', query: { tab: 'base' } } },
+      { path: 'setting/site', redirect: { path: '/setting', query: { tab: 'site' } } },
+      { path: 'setting/account', redirect: { path: '/setting', query: { tab: 'account' } } },
+      { path: 'playback/config', redirect: { path: '/setting', query: { tab: 'playback' } } },
       { path: 'dashboard', component: Dashboard, meta: { title: '数据概览' } },
       ...implementedRoutes,
       ...placeholderRoutes,

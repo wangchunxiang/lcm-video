@@ -27,31 +27,14 @@ export const menus: MenuItem[] = [
       { path: '/content/categories', title: '分类管理', icon: 'CollectionTag' },
     ],
   },
-  {
-    path: '/playback',
-    title: '播放管理',
-    icon: 'VideoPlay',
-    children: [
-      { path: '/playback/config', title: '播放设置', icon: 'Setting' },
-      { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
-    ],
-  },
+  { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
   {
     path: '/tools',
     title: '高级工具',
     icon: 'SetUp',
     children: [{ path: '/tools/data', title: '数据处理', icon: 'MagicStick' }],
   },
-  {
-    path: '/setting',
-    title: '系统设置',
-    icon: 'Setting',
-    children: [
-      { path: '/setting/base', title: '基础设置', icon: 'Operation' },
-      { path: '/setting/site', title: '站点设置', icon: 'Monitor' },
-      { path: '/setting/account', title: '账号设置', icon: 'User' },
-    ],
-  },
+  { path: '/setting', title: '系统设置', icon: 'Setting' },
 ];
 
 /** 扁平化菜单，用于生成路由与面包屑 */
