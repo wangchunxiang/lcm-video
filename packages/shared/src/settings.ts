@@ -143,7 +143,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_autonext',
     group: 'playback',
-    label: '自动连播下一集',
+    label: '自动连播',
     type: 'switch',
     default: '1',
     hint: '当前集播放结束后自动跳到下一集；最后一集不跳。',
@@ -151,7 +151,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_resume',
     group: 'playback',
-    label: '记住播放进度',
+    label: '进度记忆',
     type: 'switch',
     default: '1',
     hint: '在浏览器本地记住每部影片看到的位置，下次回到同一集自动续播。',
