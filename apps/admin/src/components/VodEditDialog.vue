@@ -98,6 +98,9 @@ const flatCategories = computed(() => {
   return result;
 });
 
+const activeLineId = ref<number | null>(null);
+const activeLine = computed(() => lines.value.find((line) => line.id === activeLineId.value) ?? null);
+
 const pasteVisible = ref(false);
 const pasteTarget = ref<PlayLine | null>(null);
 const pasteText = ref('');
@@ -140,6 +143,9 @@ async function load() {
 
     const plays = await api.get<{ items: PlayLine[] }>(`/vods/${props.vodId}/plays`);
     lines.value = plays.items.map((line) => ({ ...line, episodes: [...line.episodes] }));
+    if (!lines.value.some((line) => line.id === activeLineId.value)) {
+      activeLineId.value = lines.value[0]?.id ?? null;
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载影片失败');
   } finally {
@@ -457,50 +463,61 @@ function lineTitle(line: PlayLine): string {
 
         <el-tab-pane :label="`线路与剧集（${lines.length}）`" name="lines">
           <div class="line-toolbar">
+            <el-select v-model="activeLineId" placeholder="选择线路" style="width: 320px">
+              <el-option v-for="line in lines" :key="line.id" :label="lineTitle(line)" :value="line.id">
+                <span>{{ lineTitle(line) }}</span>
+                <span class="option-meta">{{ line.episodes.length }} 集</span>
+              </el-option>
+            </el-select>
             <el-button size="small" type="primary" plain @click="addLineVisible = true">新增手工线路</el-button>
           </div>
 
           <el-empty v-if="lines.length === 0" description="这部影片还没有线路" />
 
-          <div v-for="line in lines" :key="line.id" class="line">
+          <template v-else-if="activeLine">
             <div class="line-head">
               <div>
-                <el-tag :type="line.sourceId === 0 ? 'warning' : 'success'" size="small">{{ lineTitle(line) }}</el-tag>
-                <span class="muted">共 {{ line.episodes.length }} 集</span>
-                <span v-if="line.sourceUpdatedAt" class="muted">源站更新：{{ line.sourceUpdatedAt }}</span>
+                <span class="muted first">共 {{ activeLine.episodes.length }} 集</span>
+                <span v-if="activeLine.sourceUpdatedAt" class="muted">源站更新：{{ activeLine.sourceUpdatedAt }}</span>
               </div>
               <div>
-                <el-button size="small" @click="openPaste(line)">整段粘贴</el-button>
-                <el-button size="small" @click="addEpisode(line)">加一集</el-button>
-                <el-button size="small" type="primary" :loading="line.saving" @click="saveLine(line)">保存线路</el-button>
-                <el-button size="small" type="danger" plain @click="removeLine(line)">删除线路</el-button>
+                <el-button size="small" @click="openPaste(activeLine)">整段粘贴</el-button>
+                <el-button size="small" @click="addEpisode(activeLine)">加一集</el-button>
+                <el-button size="small" type="primary" :loading="activeLine.saving" @click="saveLine(activeLine)">保存线路</el-button>
+                <el-button size="small" type="danger" plain @click="removeLine(activeLine)">删除线路</el-button>
               </div>
             </div>
 
-            <el-table :data="line.episodes" border size="small" max-height="300">
+            <el-table :data="activeLine.episodes" border size="small" max-height="320">
               <el-table-column label="#" width="60" align="center">
                 <template #default="{ $index }">{{ $index + 1 }}</template>
               </el-table-column>
               <el-table-column label="名称" width="160">
                 <template #default="{ row, $index }">
-                  <el-input v-model="row.name" size="small" @input="line.dirty = true" :placeholder="`第${$index + 1}集`" />
+                  <el-input
+                    v-model="row.name"
+                    size="small"
+                    @input="activeLine && (activeLine.dirty = true)"
+                    :placeholder="`第${$index + 1}集`"
+                  />
                 </template>
               </el-table-column>
               <el-table-column label="地址">
                 <template #default="{ row }">
-                  <el-input v-model="row.url" size="small" @input="line.dirty = true" />
+                  <el-input v-model="row.url" size="small" @input="activeLine && (activeLine.dirty = true)" />
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="150" align="center">
                 <template #default="{ $index }">
-                  <el-button link size="small" @click="moveEpisode(line, $index, -1)">上移</el-button>
-                  <el-button link size="small" @click="moveEpisode(line, $index, 1)">下移</el-button>
-                  <el-button link size="small" type="danger" @click="removeEpisode(line, $index)">删除</el-button>
+                  <el-button link size="small" @click="moveEpisode(activeLine!, $index, -1)">上移</el-button>
+                  <el-button link size="small" @click="moveEpisode(activeLine!, $index, 1)">下移</el-button>
+                  <el-button link size="small" type="danger" @click="removeEpisode(activeLine!, $index)">删除</el-button>
                 </template>
               </el-table-column>
             </el-table>
-          </div>
+          </template>
         </el-tab-pane>
+
       </el-tabs>
     </div>
 
@@ -602,7 +619,15 @@ function lineTitle(line: PlayLine): string {
   height: 4px;
 }
 .line-toolbar {
+  display: flex;
+  gap: 8px;
   margin-bottom: 12px;
+}
+.option-meta {
+  float: right;
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 .line {
   margin-bottom: 16px;
@@ -617,6 +642,9 @@ function lineTitle(line: PlayLine): string {
   gap: 8px;
   margin-bottom: 8px;
   flex-wrap: wrap;
+}
+.muted.first {
+  margin-left: 0;
 }
 .muted {
   margin-left: 8px;
