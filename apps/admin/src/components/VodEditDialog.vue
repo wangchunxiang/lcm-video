@@ -252,14 +252,6 @@ function removeEpisode(line: PlayLine, index: number) {
   line.dirty = true;
 }
 
-function moveEpisode(line: PlayLine, index: number, delta: number) {
-  const target = index + delta;
-  if (target < 0 || target >= line.episodes.length) return;
-  const [item] = line.episodes.splice(index, 1);
-  if (item) line.episodes.splice(target, 0, item);
-  line.dirty = true;
-}
-
 /* ------------------------------ 整段粘贴导入 ------------------------------ */
 
 function openPaste(line: PlayLine) {
@@ -491,10 +483,8 @@ function lineTitle(line: PlayLine): string {
                   <el-input v-model="row.url" size="small" @input="activeLine && (activeLine.dirty = true)" />
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="150" align="center">
+              <el-table-column label="操作" width="90" align="center">
                 <template #default="{ $index }">
-                  <el-button link size="small" @click="moveEpisode(activeLine!, $index, -1)">上移</el-button>
-                  <el-button link size="small" @click="moveEpisode(activeLine!, $index, 1)">下移</el-button>
                   <el-button link size="small" type="danger" @click="removeEpisode(activeLine!, $index)">删除</el-button>
                 </template>
               </el-table-column>
