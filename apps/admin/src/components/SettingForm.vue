@@ -21,6 +21,8 @@ const props = withDefaults(defineProps<{ group: 'base' | 'site' | 'playback'; la
   labelWidth: '160px',
 });
 
+const emit = defineEmits<{ (e: 'change', key: string, value: string): void }>();
+
 const fields = ref<(SettingField & { value: string })[]>([]);
 const lineOptions = ref<LineOption[]>([]);
 const newLine = reactive<Record<string, string>>({});
@@ -121,6 +123,7 @@ async function load() {
     const data = await api.get<{ items: (SettingField & { value: string })[]; themes: ThemeItem[] }>('/settings');
     fields.value = data.items;
     themes.value = data.themes;
+    for (const field of data.items) emit('change', field.key, field.value);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载配置失败');
   } finally {
@@ -160,6 +163,7 @@ onMounted(async () => {
 
 <template>
   <el-card shadow="never" v-loading="loading">
+    <slot name="top" />
     <el-form :label-width="labelWidth" class="setting-form">
       <template v-for="(section, index) in sections" :key="index">
       <div v-if="section.title" class="section-title">{{ section.title }}</div>
@@ -210,7 +214,12 @@ onMounted(async () => {
             <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
           </div>
         </div>
-        <el-select v-else-if="field.type === 'select'" v-model="field.value" class="field">
+        <el-select
+          v-else-if="field.type === 'select'"
+          v-model="field.value"
+          class="field"
+          @change="emit('change', field.key, field.value)"
+        >
           <el-option v-for="option in optionsOf(field)" :key="option.value" :label="option.label" :value="option.value" />
         </el-select>
         <el-switch

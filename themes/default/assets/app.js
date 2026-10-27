@@ -21,7 +21,66 @@
     video = initNative(box, src, isHls, autoplay);
   }
 
-  if (video) attachBehaviors(video, box);
+  if (video) {
+    applyOptions(video, box);
+    attachBehaviors(video, box);
+  }
+
+  /* 初始音量、静音、键盘快捷键 */
+  function applyOptions(element, container) {
+    var volume = parseInt(container.getAttribute('data-volume') || '80', 10);
+    if (isNaN(volume)) volume = 80;
+    volume = Math.min(100, Math.max(0, volume));
+
+    var muted = container.getAttribute('data-muted') === '1';
+
+    var setVolume = function () {
+      try {
+        element.volume = volume / 100;
+        element.muted = muted;
+      } catch (error) {
+        /* 忽略：部分浏览器在不允许操作时抛错 */
+      }
+      element.removeEventListener('loadedmetadata', setVolume);
+    };
+    setVolume();
+    element.addEventListener('loadedmetadata', setVolume);
+
+    if (container.getAttribute('data-hotkey') === '1') bindHotkeys(element);
+  }
+
+  function bindHotkeys(element) {
+    document.addEventListener('keydown', function (event) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      var tag = (event.target && event.target.tagName ? event.target.tagName : '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      var key = event.key;
+      if (key === ' ' || key === 'Spacebar') {
+        event.preventDefault();
+        if (element.paused) {
+          var played = element.play();
+          if (played && played.catch) played.catch(function () {});
+        } else {
+          element.pause();
+        }
+      } else if (key === 'ArrowLeft') {
+        event.preventDefault();
+        element.currentTime = Math.max(0, element.currentTime - 10);
+      } else if (key === 'ArrowRight') {
+        event.preventDefault();
+        var max = element.duration || element.currentTime + 10;
+        element.currentTime = Math.min(max, element.currentTime + 10);
+      } else if (key === 'ArrowUp') {
+        event.preventDefault();
+        element.muted = false;
+        element.volume = Math.min(1, element.volume + 0.1);
+      } else if (key === 'ArrowDown') {
+        event.preventDefault();
+        element.volume = Math.max(0, element.volume - 0.1);
+      }
+    });
+  }
 
   /* 播放结束后自动跳下一集、本地记录播放进度 */
   function attachBehaviors(element, container) {
@@ -96,6 +155,7 @@
       player = new window.DPlayer({
         container: container,
         autoplay: auto,
+        hotkey: false,
         preload: 'metadata',
         theme: '#ff5c8a',
         video: {
@@ -134,6 +194,7 @@
         url: url,
         type: hls ? 'm3u8' : 'auto',
         autoplay: auto,
+        hotkey: false,
         autoSize: false,
         airplay: true,
         setting: false,

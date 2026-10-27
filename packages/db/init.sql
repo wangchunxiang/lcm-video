@@ -217,6 +217,9 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('player_autoplay', '0'),
   ('player_autonext', '1'),
   ('player_resume', '1'),
+  ('player_volume', '80'),
+  ('player_muted', '0'),
+  ('player_hotkey', '1'),
   ('login_expire_days', '7'),
   ('collect_log_keep_days', '30'),
   ('upload_max_mb', '2');

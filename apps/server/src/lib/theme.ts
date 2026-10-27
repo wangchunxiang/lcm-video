@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import type { FastifyReply } from 'fastify';
 import { Liquid } from 'liquidjs';
 import type { Db } from '@lcm/db';
@@ -23,6 +23,9 @@ export interface SiteConfig {
   autoplay: boolean;
   autonext: boolean;
   resume: boolean;
+  volume: number;
+  muted: boolean;
+  hotkey: boolean;
 }
 
 export interface NavItem {
@@ -34,6 +37,12 @@ export interface NavItem {
 
 /** 站点公共配置，每次请求都读库代价高，内存里缓存 60 秒 */
 let cachedConfig: { at: number; value: SiteConfig } | null = null;
+
+function volumeOf(raw: string | undefined): number {
+  const value = Number(raw ?? '80');
+  if (!Number.isFinite(value)) return 80;
+  return Math.min(100, Math.max(0, Math.trunc(value)));
+}
 
 export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
   if (cachedConfig && Date.now() - cachedConfig.at < 60_000) return cachedConfig.value;
@@ -56,6 +65,9 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     autoplay: settings['player_autoplay'] === '1',
     autonext: settings['player_autonext'] !== '0',
     resume: settings['player_resume'] !== '0',
+    volume: volumeOf(settings['player_volume']),
+    muted: settings['player_muted'] === '1',
+    hotkey: settings['player_hotkey'] !== '0',
   };
 
   cachedConfig = { at: Date.now(), value };
@@ -136,6 +148,22 @@ export function safeThemeName(name: string): string {
   return /^[a-zA-Z0-9_-]+$/.test(name) ? name : 'default';
 }
 
+/** 静态资源版本号：取文件 mtime，文件改动后 URL 自动变化，避免浏览器用旧缓存 */
+const assetVersionCache = new Map<string, string>();
+
+function assetVersion(themeDir: string, rel: string): string {
+  const full = `${themeDir}/assets/${rel}`;
+  try {
+    const mtime = String(Math.trunc(statSync(full).mtimeMs));
+    const cached = assetVersionCache.get(full);
+    if (cached === mtime) return mtime;
+    assetVersionCache.set(full, mtime);
+    return mtime;
+  } catch {
+    return '';
+  }
+}
+
 export function createEngine(theme: string): Liquid {
   const safe = safeThemeName(theme);
   const themeDir = existsSync(`${env.paths.themesDir}/${safe}`)
@@ -149,7 +177,11 @@ export function createEngine(theme: string): Liquid {
     cache: env.nodeEnv === 'production',
   });
 
-  engine.registerFilter('asset', (path: string) => `/assets/${String(path).replace(/^\/+/, '')}`);
+  engine.registerFilter('asset', (path: string) => {
+    const rel = String(path).replace(/^\/+/, '');
+    const version = assetVersion(themeDir, rel);
+    return version ? `/assets/${rel}?v=${version}` : `/assets/${rel}`;
+  });
   engine.registerFilter('qs', (input: Record<string, string | number | undefined>) => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(input ?? {})) {
