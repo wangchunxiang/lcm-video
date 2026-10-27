@@ -59,10 +59,6 @@ function isBlock(field: SettingField): boolean {
   return field.type === 'order';
 }
 
-function imageShape(field: SettingField): 'square' | 'circle' {
-  return field.key === 'site_favicon' ? 'circle' : 'square';
-}
-
 function optionsOf(field: SettingField) {
   if (field.key === 'site_theme') {
     return themes.value.map((theme) => ({ label: theme.title, value: theme.name }));
@@ -202,11 +198,7 @@ onMounted(async () => {
             </div>
           </div>
           <div class="row-ctrl">
-            <ImageUpload
-              v-if="isImage(field)"
-              v-model="field.value"
-              :shape="imageShape(field)"
-            />
+            <ImageUpload v-if="isImage(field)" v-model="field.value" />
             <div v-else-if="field.type === 'order'" class="order-field">
               <div v-if="orderItems(field).length > 0" class="order-list">
                 <div
@@ -332,9 +324,6 @@ onMounted(async () => {
 .row-block .row-main {
   flex: none;
   padding-top: 0;
-}
-.row-ctrl :deep(.image-upload) {
-  max-width: 360px;
 }
 .field {
   width: 100%;
