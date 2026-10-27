@@ -204,13 +204,15 @@ function episodesToUrl(episodes: Episode[]): string {
     .join('#');
 }
 
-async function saveLine(line: PlayLine) {
+async function saveLine(line: PlayLine, message = '线路已保存') {
   line.saving = true;
   try {
     await api.put(`/plays/${line.id}`, { play_url: episodesToUrl(line.episodes) });
-    ElMessage.success('线路已保存');
+    ElMessage.success(message);
     line.dirty = false;
+    const keepId = activeLineId.value;
     await load();
+    activeLineId.value = keepId;
     activeTab.value = 'lines';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存线路失败');
@@ -240,6 +242,7 @@ async function removeLine(line: PlayLine) {
 function removeEpisode(line: PlayLine, index: number) {
   line.episodes.splice(index, 1);
   line.dirty = true;
+  void saveLine(line, `已删除第 ${index + 1} 集`);
 }
 
 function moveEpisode(line: PlayLine, index: number, delta: number) {
@@ -248,6 +251,7 @@ function moveEpisode(line: PlayLine, index: number, delta: number) {
   const [item] = line.episodes.splice(index, 1);
   if (item) line.episodes.splice(target, 0, item);
   line.dirty = true;
+  void saveLine(line, delta < 0 ? '已上移' : '已下移');
 }
 
 /* ------------------------------ 整段粘贴导入 ------------------------------ */
