@@ -21,6 +21,8 @@ export interface SiteConfig {
   listPageSize: number;
   player: string;
   autoplay: boolean;
+  autonext: boolean;
+  resume: boolean;
 }
 
 export interface NavItem {
@@ -52,6 +54,8 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     listPageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.min(100, Math.trunc(pageSize)) : 24,
     player: settings['player_type'] === 'artplayer' ? 'artplayer' : 'dplayer',
     autoplay: settings['player_autoplay'] === '1',
+    autonext: settings['player_autonext'] !== '0',
+    resume: settings['player_resume'] !== '0',
   };
 
   cachedConfig = { at: Date.now(), value };

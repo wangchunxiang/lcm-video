@@ -141,6 +141,22 @@ export const SETTINGS: SettingField[] = [
     hint: '开启后进入播放页自动开始播放，部分浏览器会因静音策略拦截。',
   },
   {
+    key: 'player_autonext',
+    group: 'playback',
+    label: '自动连播下一集',
+    type: 'switch',
+    default: '1',
+    hint: '当前集播放结束后自动跳到下一集；最后一集不跳。',
+  },
+  {
+    key: 'player_resume',
+    group: 'playback',
+    label: '记住播放进度',
+    type: 'switch',
+    default: '1',
+    hint: '在浏览器本地记住每部影片看到的位置，下次回到同一集自动续播。',
+  },
+  {
     key: 'login_expire_days',
     group: 'account',
     label: '登录有效期（天）',
