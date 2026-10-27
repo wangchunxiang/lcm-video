@@ -166,6 +166,14 @@ function close() {
   emit('saved');
 }
 
+function onSave() {
+  if (activeTab.value === 'base') {
+    void saveBase();
+    return;
+  }
+  if (activeLine.value) void saveLine(activeLine.value);
+}
+
 async function saveBase() {
   saving.value = true;
   try {
@@ -242,7 +250,6 @@ async function removeLine(line: PlayLine) {
 function removeEpisode(line: PlayLine, index: number) {
   line.episodes.splice(index, 1);
   line.dirty = true;
-  void saveLine(line, `已删除第 ${index + 1} 集`);
 }
 
 function moveEpisode(line: PlayLine, index: number, delta: number) {
@@ -251,7 +258,6 @@ function moveEpisode(line: PlayLine, index: number, delta: number) {
   const [item] = line.episodes.splice(index, 1);
   if (item) line.episodes.splice(target, 0, item);
   line.dirty = true;
-  void saveLine(line, delta < 0 ? '已上移' : '已下移');
 }
 
 /* ------------------------------ 整段粘贴导入 ------------------------------ */
@@ -500,8 +506,10 @@ function lineTitle(line: PlayLine): string {
     </div>
 
     <template #footer>
+      <el-button type="primary" :loading="saving || Boolean(activeLine && activeLine.saving)" @click="onSave">
+        {{ activeTab === 'base' ? '保存' : '保存线路' }}
+      </el-button>
       <el-button @click="close">关闭</el-button>
-      <el-button v-if="activeTab === 'base'" type="primary" :loading="saving" @click="saveBase">保存</el-button>
     </template>
 
     <el-dialog v-model="pasteVisible" title="编辑剧集" width="620px" append-to-body>
