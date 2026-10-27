@@ -25,7 +25,7 @@ import SettingForm from '../../components/SettingForm.vue';
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 .col-main,
