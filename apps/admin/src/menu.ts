@@ -27,7 +27,15 @@ export const menus: MenuItem[] = [
       { path: '/content/categories', title: '分类管理', icon: 'CollectionTag' },
     ],
   },
-  { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
+  {
+    path: '/playback',
+    title: '播放管理',
+    icon: 'VideoPlay',
+    children: [
+      { path: '/playback/config', title: '播放设置', icon: 'Setting' },
+      { path: '/playback/lines', title: '线路管理', icon: 'Connection' },
+    ],
+  },
   {
     path: '/tools',
     title: '高级工具',

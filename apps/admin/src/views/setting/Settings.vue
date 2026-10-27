@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import SettingForm from '../../components/SettingForm.vue';
 import Account from './Account.vue';
 
-const TAB_NAMES = ['base', 'site', 'playback', 'account'] as const;
+const TAB_NAMES = ['base', 'site', 'account'] as const;
 
 const route = useRoute();
 const router = useRouter();
+
+// 播放设置已移到「播放管理」菜单下，旧链接自动跳过去
+watch(
+  () => route.query.tab,
+  (tab) => {
+    if (tab === 'playback') router.replace('/playback/config');
+  },
+  { immediate: true },
+);
 
 const active = computed({
   get() {
@@ -28,9 +37,6 @@ const active = computed({
       </el-tab-pane>
       <el-tab-pane label="站点设置" name="site" lazy>
         <SettingForm group="site" />
-      </el-tab-pane>
-      <el-tab-pane label="播放设置" name="playback" lazy>
-        <SettingForm group="playback" />
       </el-tab-pane>
       <el-tab-pane label="账号设置" name="account" lazy>
         <Account />
