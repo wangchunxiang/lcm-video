@@ -276,9 +276,8 @@ onBeforeUnmount(() => {
             </template>
           </el-table-column>
           <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
-          <el-table-column label="操作" width="190" align="center" fixed="right">
+          <el-table-column label="操作" width="140" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="row.pid === 0" link type="primary" @click="openCreate(row.id)">加子分类</el-button>
               <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
               <el-button link type="danger" @click="remove(row)">删除</el-button>
             </template>
