@@ -179,100 +179,118 @@ onMounted(async () => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <div
-        v-for="(section, index) in sections"
-        :key="index"
-        class="section"
-        :class="{ 'is-first': index === 0 }"
-      >
-        <template v-for="field in section.fields" :key="field.key">
-          <div v-if="field.type === 'switch' && !isImage(field)" class="sw-cell">
-            <div class="sw-main">
-              <div class="sw-title">{{ field.label }}</div>
-              <div v-if="field.hint" class="sw-desc">{{ field.hint }}</div>
-            </div>
-            <el-switch
-              v-model="field.value"
-              active-value="1"
-              inactive-value="0"
-              @change="emit('change', field.key, field.value)"
-            />
-          </div>
+      <div class="list">
+        <template v-for="(section, sectionIndex) in sections" :key="sectionIndex">
+          <div v-if="sectionIndex > 0" class="section-gap"></div>
 
-          <div v-else class="row" :class="{ 'row-block': isBlock(field) }">
-            <div class="row-main">
-              <div class="row-title">{{ field.label }}</div>
-              <div v-if="field.hint && field.type !== 'order' && !isImage(field)" class="row-desc">
-                {{ field.hint }}
+          <template v-for="field in section.fields" :key="field.key">
+            <!-- 开关：标题 + 提示图标，开关右对齐 -->
+            <div v-if="field.type === 'switch' && !isImage(field)" class="row">
+              <div class="row-main">
+                <span class="row-title">{{ field.label }}</span>
+                <el-tooltip v-if="field.hint" :content="field.hint" placement="top">
+                  <el-icon class="row-tip"><InfoFilled /></el-icon>
+                </el-tooltip>
+              </div>
+              <div class="row-ctrl">
+                <el-switch
+                  v-model="field.value"
+                  active-value="1"
+                  inactive-value="0"
+                  @change="emit('change', field.key, field.value)"
+                />
               </div>
             </div>
-            <div class="row-ctrl">
-              <ImageUpload v-if="isImage(field)" v-model="field.value" />
-              <div v-else-if="field.type === 'order'" class="order-field">
-                <div v-if="orderItems(field).length > 0" class="order-list">
-                  <div
-                    v-for="(item, orderIndex) in orderItems(field)"
-                    :key="item"
-                    class="order-row"
-                    :class="{ 'is-dragging': dragFieldKey === field.key && dragIndex === orderIndex }"
-                    draggable="true"
-                    @dragstart="startDrag(field, orderIndex)"
-                    @dragover.prevent="dragOver(field, orderIndex)"
-                    @dragend="endDrag"
-                  >
-                    <span class="order-index">{{ orderIndex + 1 }}</span>
-                    <span class="order-label">{{ labelOf(item) }}</span>
-                    <span class="order-code">{{ item }}</span>
-                    <el-button class="order-remove" link type="danger" @click="removeOrder(field, orderIndex)">
-                      移除
-                    </el-button>
+
+            <!-- 整块字段：标签在上、控件在下 -->
+            <div v-else-if="isBlock(field)" class="row row-stack">
+              <div class="row-main">
+                <span class="row-title">{{ field.label }}</span>
+              </div>
+              <div class="row-ctrl full">
+                <div v-if="field.type === 'order'" class="order-field">
+                  <div v-if="orderItems(field).length > 0" class="order-list">
+                    <div
+                      v-for="(item, orderIndex) in orderItems(field)"
+                      :key="item"
+                      class="order-row"
+                      :class="{ 'is-dragging': dragFieldKey === field.key && dragIndex === orderIndex }"
+                      draggable="true"
+                      @dragstart="startDrag(field, orderIndex)"
+                      @dragover.prevent="dragOver(field, orderIndex)"
+                      @dragend="endDrag"
+                    >
+                      <span class="order-index">{{ orderIndex + 1 }}</span>
+                      <span class="order-label">{{ labelOf(item) }}</span>
+                      <span class="order-code">{{ item }}</span>
+                      <el-button class="order-remove" link type="danger" @click="removeOrder(field, orderIndex)">
+                        移除
+                      </el-button>
+                    </div>
+                  </div>
+                  <div v-else class="order-empty">还没有配置，播放页按线路入库先后排列</div>
+                  <div class="order-add">
+                    <el-select
+                      v-model="newLine[field.key]"
+                      filterable
+                      allow-create
+                      default-first-option
+                      placeholder="选择或输入线路标识"
+                      style="width: 320px"
+                    >
+                      <el-option
+                        v-for="option in availableLineOptions(field)"
+                        :key="option.value"
+                        :label="option.label"
+                        :value="option.value"
+                      />
+                    </el-select>
+                    <el-button @click="addOrder(field)">添加</el-button>
+                    <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
                   </div>
                 </div>
-                <div v-else class="order-empty">还没有配置，播放页按线路入库先后排列</div>
-                <div class="order-add">
-                  <el-select
-                    v-model="newLine[field.key]"
-                    filterable
-                    allow-create
-                    default-first-option
-                    placeholder="选择或输入线路标识"
-                    style="width: 320px"
-                  >
-                    <el-option
-                      v-for="option in availableLineOptions(field)"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
-                  </el-select>
-                  <el-button @click="addOrder(field)">添加</el-button>
-                  <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
-                </div>
-              </div>
-              <el-select
-                v-else-if="field.type === 'select'"
-                v-model="field.value"
-                class="field"
-                @change="emit('change', field.key, field.value)"
-              >
-                <el-option
-                  v-for="option in optionsOf(field)"
-                  :key="option.value"
-                  :label="option.label"
-                  :value="option.value"
+                <el-input
+                  v-else
+                  v-model="field.value"
+                  type="textarea"
+                  :rows="3"
+                  @input="emit('change', field.key, field.value)"
                 />
-              </el-select>
-              <el-input
-                v-else-if="field.type === 'textarea'"
-                v-model="field.value"
-                type="textarea"
-                :rows="3"
-                class="field"
-                @input="emit('change', field.key, field.value)"
-              />
-              <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
+              </div>
             </div>
-          </div>
+
+            <!-- 普通行：标题 + 提示图标，控件右对齐 -->
+            <div v-else class="row">
+              <div class="row-main">
+                <span class="row-title">{{ field.label }}</span>
+                <el-tooltip v-if="field.hint" :content="field.hint" placement="top">
+                  <el-icon class="row-tip"><InfoFilled /></el-icon>
+                </el-tooltip>
+              </div>
+              <div class="row-ctrl">
+                <ImageUpload v-if="isImage(field)" v-model="field.value" />
+                <el-select
+                  v-else-if="field.type === 'select'"
+                  v-model="field.value"
+                  style="width: 200px"
+                  @change="emit('change', field.key, field.value)"
+                >
+                  <el-option
+                    v-for="option in optionsOf(field)"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                </el-select>
+                <el-input
+                  v-else
+                  v-model="field.value"
+                  style="width: 160px"
+                  @input="emit('change', field.key, field.value)"
+                />
+              </div>
+            </div>
+          </template>
         </template>
       </div>
 
@@ -302,71 +320,53 @@ onMounted(async () => {
   flex-direction: column;
   padding: 4px 20px 0;
 }
-.section {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 2px 32px;
+.list {
+  flex: 1 1 auto;
 }
-.section + .section {
-  margin-top: 14px;
-}
-.sw-cell {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 10px 0;
-}
-.sw-main {
-  flex: 1;
-  min-width: 0;
-}
-.sw-title {
-  line-height: 22px;
-  color: var(--el-text-color-regular);
-}
-.sw-desc {
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-  line-height: 1.5;
+.section-gap {
+  height: 12px;
 }
 .row {
-  grid-column: 1 / -1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-  padding: 10px 0;
+  min-height: 44px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.row:last-child {
+  border-bottom: none;
 }
 .row-main {
-  flex: 0 0 150px;
-  padding-top: 6px;
-  min-width: 0;
-}
-.row-title {
-  line-height: 1.4;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--el-text-color-regular);
 }
-.row-desc {
-  margin-top: 2px;
-  font-size: 12px;
+.row-tip {
+  font-size: 13px;
   color: var(--el-text-color-placeholder);
-  line-height: 1.5;
+  cursor: help;
 }
 .row-ctrl {
-  flex: 1;
-  min-width: 0;
-  max-width: 560px;
-}
-.row-block {
-  flex-direction: column;
-  gap: 8px;
-}
-.row-block .row-main {
+  margin-left: auto;
   flex: none;
-  padding-top: 0;
+  display: flex;
+  align-items: center;
 }
-.field {
-  width: 100%;
-  max-width: 360px;
+.row-ctrl.full {
+  margin-left: 0;
+  flex: 1;
+  max-width: 720px;
+}
+.row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px 0;
+}
+.row-stack .row-main {
+  padding: 0;
 }
 .order-field {
   width: 100%;
@@ -432,7 +432,7 @@ onMounted(async () => {
   justify-content: flex-start;
   gap: 10px;
   margin-top: auto;
-  padding: 14px 0 16px 166px;
+  padding: 14px 0 16px;
   border-top: 1px solid var(--el-border-color);
 }
 </style>
