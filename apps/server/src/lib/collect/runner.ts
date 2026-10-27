@@ -98,6 +98,12 @@ async function executeRun(
   source: typeof collectSource.$inferSelect,
   logId: number,
 ): Promise<void> {
+  const playFromSet = new Set<string>(
+    (source.playFrom ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0),
+  );
   const counters = emptyCounters();
   let pagesDone = 0;
   let pageCount = 0;
@@ -160,6 +166,13 @@ async function executeRun(
       consecutiveFail = 0;
       if (parsed.pageCount > 0) pageCount = parsed.pageCount;
       if (parsed.list.length === 0) break;
+
+      for (const item of parsed.list) {
+        for (const from of item.playFrom ? item.playFrom.split('$$$') : []) {
+          const value = from.trim();
+          if (value) playFromSet.add(value);
+        }
+      }
 
       const result = await processPage(db, {
         sourceId: source.id,
@@ -230,6 +243,7 @@ async function executeRun(
       lastSyncAt: sql`NOW()`,
       lastSyncStatus: status === 1 ? 1 : 2,
       lastSyncMsg: message.slice(0, 255),
+      playFrom: [...playFromSet].sort().join(',').slice(0, 500),
     })
     .where(eq(collectSource.id, source.id));
 }

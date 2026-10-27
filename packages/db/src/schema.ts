@@ -112,6 +112,8 @@ export const collectSource = mysqlTable(
     lastSyncAt: datetime('last_sync_at'),
     lastSyncStatus: tinyint('last_sync_status', { unsigned: true }).notNull().default(0),
     lastSyncMsg: varchar('last_sync_msg', { length: 255 }).notNull().default(''),
+    /** 最近一次采集到的线路标识，逗号分隔，仅用于后台候选提示 */
+    playFrom: varchar('play_from', { length: 500 }).notNull().default(''),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

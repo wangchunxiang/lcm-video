@@ -46,13 +46,31 @@ function setOrder(field: SettingField & { value: string }, items: string[]) {
   field.value = items.join(',');
 }
 
-function moveOrder(field: SettingField & { value: string }, index: number, delta: number) {
+const dragFieldKey = ref('');
+const dragIndex = ref(-1);
+
+function startDrag(field: SettingField & { value: string }, index: number) {
+  dragFieldKey.value = field.key;
+  dragIndex.value = index;
+}
+
+function dragOver(field: SettingField & { value: string }, index: number) {
+  if (dragFieldKey.value !== field.key || dragIndex.value < 0 || dragIndex.value === index) return;
   const items = orderItems(field);
-  const target = index + delta;
-  if (target < 0 || target >= items.length) return;
-  const [moved] = items.splice(index, 1);
-  items.splice(target, 0, moved!);
+  const [moved] = items.splice(dragIndex.value, 1);
+  if (!moved) return;
+  items.splice(index, 0, moved);
   setOrder(field, items);
+  dragIndex.value = index;
+}
+
+function endDrag() {
+  dragFieldKey.value = '';
+  dragIndex.value = -1;
+}
+
+function clearOrder(field: SettingField & { value: string }) {
+  setOrder(field, []);
 }
 
 function removeOrder(field: SettingField & { value: string }, index: number) {
@@ -137,19 +155,26 @@ onMounted(async () => {
           :tip="field.hint"
         />
         <div v-else-if="field.type === 'order'" class="order-field">
-          <div v-if="orderItems(field).length === 0" class="order-empty">
-            还没有配置，播放页按线路入库先后排列
+          <div v-if="orderItems(field).length > 0" class="order-list">
+            <div
+              v-for="(item, index) in orderItems(field)"
+              :key="item"
+              class="order-row"
+              :class="{ 'is-dragging': dragFieldKey === field.key && dragIndex === index }"
+              draggable="true"
+              @dragstart="startDrag(field, index)"
+              @dragover.prevent="dragOver(field, index)"
+              @dragend="endDrag"
+            >
+              <span class="order-index">{{ index + 1 }}</span>
+              <span class="order-label">{{ labelOf(item) }}</span>
+              <span class="order-code">{{ item }}</span>
+              <el-button class="order-remove" link type="danger" @click="removeOrder(field, index)">
+                移除
+              </el-button>
+            </div>
           </div>
-          <div v-for="(item, index) in orderItems(field)" :key="item" class="order-row">
-            <span class="order-index">{{ index + 1 }}</span>
-            <span class="order-label">{{ labelOf(item) }}</span>
-            <span class="order-code">{{ item }}</span>
-            <span class="order-actions">
-              <el-button link :disabled="index === 0" @click="moveOrder(field, index, -1)">上移</el-button>
-              <el-button link :disabled="index === orderItems(field).length - 1" @click="moveOrder(field, index, 1)">下移</el-button>
-              <el-button link type="danger" @click="removeOrder(field, index)">移除</el-button>
-            </span>
-          </div>
+          <div v-else class="order-empty">还没有配置，播放页按线路入库先后排列</div>
           <div class="order-add">
             <el-select
               v-model="newLine[field.key]"
@@ -162,11 +187,12 @@ onMounted(async () => {
               <el-option
                 v-for="option in availableLineOptions(field)"
                 :key="option.value"
-                :label="`${option.label} · ${option.total} 条线路`"
+                :label="option.label"
                 :value="option.value"
               />
             </el-select>
             <el-button @click="addOrder(field)">添加</el-button>
+            <el-button v-if="orderItems(field).length > 0" @click="clearOrder(field)">清空</el-button>
           </div>
         </div>
         <el-select v-else-if="field.type === 'select'" v-model="field.value" class="field">
@@ -214,14 +240,31 @@ onMounted(async () => {
   color: var(--el-text-color-secondary);
   padding: 4px 0 12px;
 }
+.order-list {
+  max-height: 288px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+}
 .order-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 6px 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
-  margin-bottom: 8px;
+  cursor: move;
+  background: var(--el-bg-color);
+}
+.order-row + .order-row {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.order-row:hover {
+  background: var(--el-fill-color-light);
+}
+.order-row.is-dragging {
+  opacity: 0.5;
+}
+.order-remove {
+  margin-left: auto;
 }
 .order-index {
   width: 18px;
@@ -231,7 +274,7 @@ onMounted(async () => {
 }
 .order-label {
   flex: none;
-  max-width: 260px;
+  max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -241,11 +284,6 @@ onMounted(async () => {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-.order-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
 }
 .order-add {
   display: flex;

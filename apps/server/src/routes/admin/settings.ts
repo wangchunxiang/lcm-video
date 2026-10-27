@@ -1,9 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { sql } from 'drizzle-orm';
+import { asc, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
-import { setting } from '@lcm/db';
+import { collectSource, setting } from '@lcm/db';
 import { SETTINGS, type SettingField } from '@lcm/shared';
 import type { Env } from '../../env.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
@@ -107,21 +107,30 @@ export const settingRoutes: FastifyPluginAsync<SettingRouteOpts> = async (app, o
   });
 
   app.get('/line-options', async (_req, reply) => {
-    const rows = await db.execute(sql`
-      SELECT p.source_from AS sourceFrom,
-             COUNT(*) AS total,
-             MAX(s.name) AS sourceName
-      FROM lcm_vod_play p
-      LEFT JOIN lcm_collect_source s ON s.id = p.source_id
-      WHERE p.source_from <> ''
-      GROUP BY p.source_from
-      ORDER BY total DESC, p.source_from ASC
-    `);
-    const items = (rows[0] as unknown as { sourceFrom: string; total: number; sourceName: string | null }[]).map((row) => ({
-      value: row.sourceFrom,
-      label: row.sourceName ? `${row.sourceName}（${row.sourceFrom}）` : row.sourceFrom,
-      total: Number(row.total),
-    }));
+    const rows = await db
+      .select({
+        id: collectSource.id,
+        name: collectSource.name,
+        playFrom: collectSource.playFrom,
+      })
+      .from(collectSource)
+      .orderBy(asc(collectSource.id));
+
+    const items: { value: string; label: string; sourceId: number }[] = [];
+    const seen = new Set<string>();
+
+    for (const row of rows) {
+      const froms = row.playFrom
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      for (const from of froms) {
+        if (seen.has(from)) continue;
+        seen.add(from);
+        items.push({ value: from, label: `${row.name}（${from}）`, sourceId: row.id });
+      }
+    }
+
     return ok(reply, { items });
   });
 
