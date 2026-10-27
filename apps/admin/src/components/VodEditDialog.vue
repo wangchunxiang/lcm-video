@@ -506,10 +506,10 @@ function lineTitle(line: PlayLine): string {
     </div>
 
     <template #footer>
+      <el-button @click="close">关闭</el-button>
       <el-button type="primary" :loading="saving || Boolean(activeLine && activeLine.saving)" @click="onSave">
         {{ activeTab === 'base' ? '保存' : '保存线路' }}
       </el-button>
-      <el-button @click="close">关闭</el-button>
     </template>
 
     <el-dialog v-model="pasteVisible" title="编辑剧集" width="620px" append-to-body>
