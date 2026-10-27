@@ -446,13 +446,7 @@ function lineTitle(line: PlayLine): string {
                   </el-col>
                   <el-col :span="24">
                     <el-form-item label="状态">
-                      <el-switch
-                        v-model="form.status"
-                        :active-value="1"
-                        :inactive-value="0"
-                        active-text="上架"
-                        inactive-text="下架"
-                      />
+                      <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
                     </el-form-item>
                   </el-col>
                 </el-row>
