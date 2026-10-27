@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import SettingForm from '../../components/SettingForm.vue';
+import PlayerPreview from '../../components/PlayerPreview.vue';
+
+const playerType = ref('dplayer');
+
+function onChange(key: string, value: string) {
+  if (key === 'player_type') playerType.value = value || 'dplayer';
+}
 </script>
 
 <template>
   <div class="page">
-    <SettingForm group="playback" label-width="120px" size="large" />
+    <SettingForm group="playback" label-width="120px" @change="onChange">
+      <template #top>
+        <PlayerPreview :player="playerType" />
+      </template>
+    </SettingForm>
   </div>
 </template>
 
