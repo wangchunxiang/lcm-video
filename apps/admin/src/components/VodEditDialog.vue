@@ -331,16 +331,17 @@ function lineTitle(line: PlayLine): string {
                 <li><span>ID</span><b>{{ vodId }}</b></li>
                 <li><span>线路</span><b>{{ lines.length }} 条</b></li>
                 <li><span>剧集</span><b>{{ totalEpisodes }} 集</b></li>
+                <li class="sep"></li>
                 <li>
                   <span>入库</span>
                   <el-tooltip :content="form.createdAt || '—'" placement="top">
-                    <b class="date">{{ (form.createdAt || '').slice(0, 10) || '—' }}</b>
+                    <el-tag size="small" type="info" effect="light">{{ (form.createdAt || '').slice(0, 10) || '—' }}</el-tag>
                   </el-tooltip>
                 </li>
                 <li>
                   <span>最后采集</span>
                   <el-tooltip :content="form.collectedAt || '—'" placement="top">
-                    <b class="date">{{ collectedDate }}</b>
+                    <el-tag size="small" type="success" effect="light">{{ collectedDate }}</el-tag>
                   </el-tooltip>
                 </li>
               </ul>
@@ -579,7 +580,12 @@ function lineTitle(line: PlayLine): string {
   display: block;
   margin-top: 4px;
 }
-.side-info b.date {
+.side-info li.sep {
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin: 8px 0 6px;
+  height: 0;
+}
+.side-info :deep(.el-tag) {
   font-variant-numeric: tabular-nums;
 }
 .poster-empty {
