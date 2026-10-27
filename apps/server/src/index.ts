@@ -10,6 +10,7 @@ import { env } from './env.ts';
 import { createRequireAdmin } from './lib/auth-guard.ts';
 import { renderErrorPage } from './lib/theme.ts';
 import { startScheduler } from './lib/collect/scheduler.ts';
+import { closeInterruptedLogs } from './lib/collect/runner.ts';
 import { adminAuthRoutes } from './routes/admin/auth.ts';
 import { accountRoutes } from './routes/admin/account.ts';
 import { categoryRoutes } from './routes/admin/categories.ts';
@@ -138,6 +139,9 @@ const close = async (signal: string) => {
 };
 process.on('SIGINT', () => void close('SIGINT'));
 process.on('SIGTERM', () => void close('SIGTERM'));
+
+const interrupted = await closeInterruptedLogs(db);
+if (interrupted > 0) app.log.warn(`收尾 ${interrupted} 条中断的采集记录`);
 
 const stopScheduler = startScheduler(db, {
   info: (message) => app.log.info(message),

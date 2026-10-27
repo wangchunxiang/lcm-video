@@ -33,6 +33,18 @@ export function getRunningLogId(taskId: number): number | undefined {
   return runningByTask.get(taskId);
 }
 
+/**
+ * 采集在进程内跑，进程退出后留下的「进行中」记录永远不会结束。
+ * 启动时统一收尾，避免采集记录列表里挂着一条假的进行中记录。
+ */
+export async function closeInterruptedLogs(db: Db): Promise<number> {
+  const result = (await db
+    .update(collectLog)
+    .set({ status: 2, message: '服务重启，采集中断', finishedAt: sql`NOW()` })
+    .where(eq(collectLog.status, 0))) as unknown as [{ affectedRows?: number }];
+  return Number(result?.[0]?.affectedRows ?? 0);
+}
+
 export function cancelRun(taskId: number): number | undefined {
   const logId = runningByTask.get(taskId);
   if (logId === undefined) return undefined;
