@@ -245,8 +245,8 @@ onBeforeUnmount(() => {
 
     <el-card shadow="never" class="table-card">
       <div class="toolbar">
-        <el-button :disabled="selection.length === 0" @click="batch('enable')">批量启用</el-button>
-        <el-button :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
+        <el-button type="success" :disabled="selection.length === 0" @click="batch('enable')">批量启用</el-button>
+        <el-button type="warning" :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
         <el-button @click="openSort">调整排序</el-button>
       </div>
       <div ref="wrapRef" class="table-wrap">
