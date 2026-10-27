@@ -65,16 +65,10 @@ onMounted(load);
   <div v-loading="loading" class="page">
     <div class="left">
       <el-card shadow="never" class="preview-card">
-        <template #header>
-          <span class="card-title">预览</span>
-        </template>
         <PlayerPreview :options="values" />
       </el-card>
 
       <el-card shadow="never" class="ads-card">
-        <template #header>
-          <span class="card-title">去广告设置</span>
-        </template>
 
         <div class="form">
           <div v-for="field in adFields" :key="field.key" class="form-row">
@@ -104,10 +98,6 @@ onMounted(load);
     </div>
 
     <el-card shadow="never" class="right">
-      <template #header>
-        <span class="card-title">播放设置</span>
-      </template>
-
       <el-table :data="playbackFields" border class="setting-table">
         <el-table-column label="设置项" width="180">
           <template #default="{ row }">{{ row.label }}</template>
@@ -183,10 +173,6 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   padding: 0;
-}
-.card-title {
-  font-size: 14px;
-  font-weight: 600;
 }
 .form {
   padding: 4px 20px 16px;
