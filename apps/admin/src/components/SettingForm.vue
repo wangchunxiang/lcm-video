@@ -274,8 +274,8 @@ onMounted(async () => {
       </div>
 
       <div class="card-foot">
-        <el-button @click="load">重置</el-button>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="load">重置</el-button>
       </div>
     </el-card>
   </div>
@@ -390,10 +390,10 @@ onMounted(async () => {
 }
 .card-foot {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
   margin-top: 8px;
-  padding: 14px 0 16px;
+  padding: 14px 0 16px 166px;
   border-top: 1px solid var(--el-border-color);
 }
 </style>
