@@ -335,9 +335,15 @@ function lineTitle(line: PlayLine): string {
               </div>
 
               <ul class="side-times">
-                <li><span>入库</span><b>{{ createdDate }}</b></li>
+                <li>
+                  <el-tag size="small" type="info" effect="light">入库日期</el-tag>
+                  <b>{{ createdDate }}</b>
+                </li>
                 <li class="dim">{{ form.createdAt || '—' }}</li>
-                <li><span>采集</span><b>{{ collectedDate }}</b></li>
+                <li>
+                  <el-tag size="small" type="success" effect="light">最后采集</el-tag>
+                  <b>{{ collectedDate }}</b>
+                </li>
                 <li class="dim">{{ form.collectedAt || '—' }}</li>
               </ul>
             </div>
