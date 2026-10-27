@@ -339,7 +339,7 @@ function lineTitle(line: PlayLine): string {
                   </el-tooltip>
                 </li>
                 <li>
-                  <span>最后采集</span>
+                  <span>采集</span>
                   <el-tooltip :content="form.collectedAt || '—'" placement="top">
                     <el-tag size="small" type="success" effect="light">{{ collectedDate }}</el-tag>
                   </el-tooltip>
