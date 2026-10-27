@@ -240,6 +240,7 @@ onMounted(async () => {
           v-model="field.value"
           active-value="1"
           inactive-value="0"
+          @change="emit('change', field.key, field.value)"
         />
         <el-input
           v-else-if="field.type === 'textarea'"
@@ -247,8 +248,9 @@ onMounted(async () => {
           type="textarea"
           :rows="3"
           class="field"
+          @input="emit('change', field.key, field.value)"
         />
-        <el-input v-else v-model="field.value" class="field" />
+        <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
         <div v-if="field.hint && field.key !== 'site_logo' && field.key !== 'site_favicon'" class="hint">
           {{ field.hint }}
         </div>
