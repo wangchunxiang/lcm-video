@@ -78,6 +78,30 @@ function openEdit(row: CategoryNode) {
   dialogVisible.value = true;
 }
 
+function toBody(row: CategoryNode, patch: Partial<Record<string, unknown>> = {}) {
+  return {
+    pid: row.pid,
+    name: row.name,
+    alias: row.alias,
+    match_names: row.matchNames,
+    sort: row.sort,
+    is_show: row.isShow,
+    ...patch,
+  };
+}
+
+async function toggleShow(row: CategoryNode) {
+  const next = row.isShow === 1 ? 0 : 1;
+  try {
+    await api.put(`/categories/${row.id}`, toBody(row, { is_show: next }));
+    ElMessage.success(next === 1 ? '已设为显示' : '已设为隐藏');
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    await load();
+  }
+}
+
 async function submit() {
   if (!form.name.trim()) {
     ElMessage.warning('请填写分类名称');
@@ -195,13 +219,11 @@ onBeforeUnmount(() => {
       <el-table-column prop="sort" label="排序" width="80" align="center" />
       <el-table-column label="显示" width="80" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.isShow === 1 ? 'success' : 'info'" size="small">
-            {{ row.isShow === 1 ? '显示' : '隐藏' }}
-          </el-tag>
+          <el-switch :model-value="row.isShow === 1" @change="toggleShow(row)" />
         </template>
       </el-table-column>
       <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
-      <el-table-column label="操作" width="240" fixed="right">
+      <el-table-column label="操作" width="190" align="center" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.pid === 0" link type="primary" @click="openCreate(row.id)">加子分类</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
