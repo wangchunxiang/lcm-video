@@ -358,8 +358,9 @@ onMounted(async () => {
 }
 .row-ctrl.full {
   margin-left: 0;
-  flex: 1;
-  max-width: 720px;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
 }
 .row-stack {
   flex-direction: column;
