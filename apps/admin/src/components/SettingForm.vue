@@ -322,6 +322,8 @@ onMounted(async () => {
 }
 .list {
   flex: 1 1 auto;
+  width: 100%;
+  max-width: 760px;
 }
 .section-gap {
   height: 12px;
@@ -430,6 +432,8 @@ onMounted(async () => {
 .card-foot {
   display: flex;
   justify-content: flex-start;
+  width: 100%;
+  max-width: 760px;
   gap: 10px;
   margin-top: auto;
   padding: 14px 0 16px;
