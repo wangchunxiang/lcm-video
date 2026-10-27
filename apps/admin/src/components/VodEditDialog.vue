@@ -463,22 +463,15 @@ function lineTitle(line: PlayLine): string {
                 <span class="option-meta">{{ line.episodes.length }} 集</span>
               </el-option>
             </el-select>
+            <template v-if="activeLine">
+              <el-button @click="openPaste(activeLine)">编辑</el-button>
+              <el-button type="danger" plain @click="removeLine(activeLine)">删除线路</el-button>
+            </template>
           </div>
 
           <el-empty v-if="lines.length === 0" description="这部影片还没有线路" />
 
           <template v-else-if="activeLine">
-            <div class="line-head">
-              <div>
-                <span class="muted first">共 {{ activeLine.episodes.length }} 集</span>
-                <span v-if="activeLine.sourceUpdatedAt" class="muted">源站更新：{{ activeLine.sourceUpdatedAt }}</span>
-              </div>
-              <div>
-                <el-button size="small" @click="openPaste(activeLine)">编辑</el-button>
-                <el-button size="small" type="danger" plain @click="removeLine(activeLine)">删除线路</el-button>
-              </div>
-            </div>
-
             <el-table :data="activeLine.episodes" border size="small" max-height="320">
               <el-table-column label="#" width="60" align="center">
                 <template #default="{ $index }">{{ $index + 1 }}</template>
@@ -628,6 +621,7 @@ function lineTitle(line: PlayLine): string {
 }
 .line-toolbar {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -642,22 +636,6 @@ function lineTitle(line: PlayLine): string {
   padding: 12px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 4px;
-}
-.line-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.muted.first {
-  margin-left: 0;
-}
-.muted {
-  margin-left: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 code {
   padding: 0 3px;
