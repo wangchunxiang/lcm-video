@@ -124,6 +124,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_autoplay',
+    section: '播放行为',
     group: 'playback',
     label: '自动播放',
     type: 'switch',
@@ -132,6 +133,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_autonext',
+    section: '播放行为',
     group: 'playback',
     label: '自动连播',
     type: 'switch',
@@ -140,6 +142,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_resume',
+    section: '播放行为',
     group: 'playback',
     label: '进度记忆',
     type: 'switch',
@@ -148,6 +151,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_volume',
+    section: '画面与声音',
     group: 'playback',
     label: '默认音量',
     type: 'number',
@@ -156,6 +160,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_muted',
+    section: '画面与声音',
     group: 'playback',
     label: '静音起播',
     type: 'switch',
@@ -164,6 +169,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_hotkey',
+    section: '控制栏',
     group: 'playback',
     label: '键盘快捷键',
     type: 'switch',
@@ -172,6 +178,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_screenshot',
+    section: '控制栏',
     group: 'playback',
     label: '截图按钮',
     type: 'switch',
@@ -180,6 +187,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_pip',
+    section: '画面与声音',
     group: 'playback',
     label: '画中画',
     type: 'switch',
@@ -188,6 +196,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_webfullscreen',
+    section: '画面与声音',
     group: 'playback',
     label: '网页全屏',
     type: 'switch',
@@ -196,6 +205,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_setting',
+    section: '控制栏',
     group: 'playback',
     label: '设置面板',
     type: 'switch',
@@ -204,6 +214,7 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'player_loop',
+    section: '控制栏',
     group: 'playback',
     label: '循环播放',
     type: 'switch',

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>播放设置 - 布局方案</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #303133;
+    background: #f5f7fa;
+  }
+  .tabs {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    background: #fff;
+    border-bottom: 1px solid #e4e7ed;
+  }
+  .tab {
+    padding: 7px 16px; border-radius: 6px; cursor: pointer;
+    color: #606266; border: 1px solid #dcdfe6; background: #fff; font-size: 13px;
+  }
+  .tab.active { color: #fff; background: #409eff; border-color: #409eff; }
+  .tab-note { margin-left: auto; color: #909399; font-size: 12px; }
+
+  .stage { padding: 20px 24px 60px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ============ 方案 A：分组卡片 ============ */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 1px solid #ebeef5;
+    background: #fafafa;
+  }
+  .card-body { padding: 4px 16px; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f2f3f5;
+  }
+  .row:last-child { border-bottom: none; }
+  .row-main { flex: 1; min-width: 0; }
+  .row-title { line-height: 1.4; }
+  .row-desc { margin-top: 2px; font-size: 12px; color: #a8abb2; line-height: 1.5; }
+  .row-ctrl { flex: none; display: flex; align-items: center; }
+  .row-ctrl .input {
+    width: 96px; height: 32px; padding: 0 11px;
+    border: 1px solid #dcdfe6; border-radius: 4px;
+    font-size: 14px; color: #606266; outline: none;
+  }
+
+  /* 开关 */
+  .sw {
+    position: relative; width: 40px; height: 20px; border-radius: 10px;
+    background: #dcdfe6; transition: background .2s; flex: none;
+  }
+  .sw::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.15);
+  }
+  .sw.on { background: #409eff; }
+  .sw.on::after { transform: translateX(20px); }
+
+  /* 底部操作条 */
+  .actions {
+    position: sticky; bottom: 0;
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    background: #fff;
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+  }
+  .btn {
+    height: 32px; padding: 0 16px; border-radius: 4px; font-size: 14px;
+    border: 1px solid #dcdfe6; background: #fff; color: #606266; cursor: pointer;
+  }
+  .btn-primary { background: #409eff; border-color: #409eff; color: #fff; }
+
+  /* ============ 方案 B：行式列表 ============ */
+  .list-card {
+    background: #fff; border: 1px solid #e4e7ed; border-radius: 4px; overflow: hidden;
+    max-width: 980px;
+  }
+  .group-title {
+    padding: 14px 20px 8px;
+    font-size: 13px; font-weight: 600; color: #303133;
+  }
+  .list-row {
+    display: flex; align-items: center; gap: 24px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #f2f3f5;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-main { flex: 1; min-width: 0; }
+  .list-title { line-height: 1.4; }
+  .list-desc { margin-top: 3px; font-size: 12px; color: #a8abb2; line-height: 1.5; }
+  .list-ctrl { flex: none; width: 200px; display: flex; justify-content: flex-end; }
+  .list-ctrl .input { width: 120px; }
+
+  .compare {
+    margin-top: 16px; padding: 12px 16px;
+    background: #fff; border: 1px dashed #dcdfe6; border-radius: 4px;
+    color: #909399; font-size: 12px; line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" data-panel="a">方案 A · 分组卡片</div>
+  <div class="tab" data-panel="b">方案 B · 行式列表</div>
+  <span class="tab-note">播放设置 · 11 项真实配置</span>
+</div>
+
+<div class="stage">
+
+  <!-- ==================== 方案 A ==================== -->
+  <div class="panel active" id="panel-a">
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-head">播放行为</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">自动播放</div>
+              <div class="row-desc">进入播放页自动开始，部分浏览器会因静音策略拦截</div>
+            </div>
+            <div class="row-ctrl"><span class="sw"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">自动连播</div>
+              <div class="row-desc">当前集结束后自动跳下一集，最后一集不跳</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">进度记忆</div>
+              <div class="row-desc">记住每部影片看到的位置，下次自动续播</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">画面与声音</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">默认音量</div>
+              <div class="row-desc">0 - 100，进入播放器时的初始音量</div>
+            </div>
+            <div class="row-ctrl"><input class="input" value="80" /></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">静音起播</div>
+              <div class="row-desc">进来先静音，避免自动播放被拦截</div>
+            </div>
+            <div class="row-ctrl"><span class="sw"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">画中画</div>
+              <div class="row-desc">把画面缩成小窗，边看边浏览其它页面</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">网页全屏</div>
+              <div class="row-desc">撑满浏览器窗口，不隐藏标签栏</div>
+            </div>
+            <div class="row-ctrl"><span class="sw"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">控制栏</div>
+        <div class="card-body">
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">键盘快捷键</div>
+              <div class="row-desc">空格播放暂停，方向键快进快退与调节音量</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">截图按钮</div>
+              <div class="row-desc">控制栏显示截图按钮，保存当前画面</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">设置面板</div>
+              <div class="row-desc">控制栏的齿轮按钮，内含倍速等选项</div>
+            </div>
+            <div class="row-ctrl"><span class="sw on"></span></div>
+          </div>
+          <div class="row">
+            <div class="row-main">
+              <div class="row-title">循环播放</div>
+              <div class="row-desc">单集播放结束后从头重播</div>
+            </div>
+            <div class="row-ctrl"><span class="sw"></span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="actions">
+      <button class="btn">重置</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+
+    <div class="compare">
+      A 的特点：按主题分三张卡，自动两列排布（窄屏自动变一列）。<b>优点</b> 层次清楚、扫描快、右侧不留大片空白。<b>缺点</b> 卡片多了会有边框堆叠感，项数不均时卡片高度参差（现在 3/4/4 项已经错落）。
+    </div>
+  </div>
+
+  <!-- ==================== 方案 B ==================== -->
+  <div class="panel" id="panel-b">
+    <div class="list-card">
+
+      <div class="group-title">播放行为</div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">自动播放</div>
+          <div class="list-desc">进入播放页自动开始，部分浏览器会因静音策略拦截</div>
+        </div>
+        <div class="list-ctrl"><span class="sw"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">自动连播</div>
+          <div class="list-desc">当前集结束后自动跳下一集，最后一集不跳</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">进度记忆</div>
+          <div class="list-desc">记住每部影片看到的位置，下次自动续播</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+
+      <div class="group-title">画面与声音</div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">默认音量</div>
+          <div class="list-desc">0 - 100，进入播放器时的初始音量</div>
+        </div>
+        <div class="list-ctrl"><input class="input" value="80" /></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">静音起播</div>
+          <div class="list-desc">进来先静音，避免自动播放被拦截</div>
+        </div>
+        <div class="list-ctrl"><span class="sw"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">画中画</div>
+          <div class="list-desc">把画面缩成小窗，边看边浏览其它页面</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">网页全屏</div>
+          <div class="list-desc">撑满浏览器窗口，不隐藏标签栏</div>
+        </div>
+        <div class="list-ctrl"><span class="sw"></span></div>
+      </div>
+
+      <div class="group-title">控制栏</div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">键盘快捷键</div>
+          <div class="list-desc">空格播放暂停，方向键快进快退与调节音量</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">截图按钮</div>
+          <div class="list-desc">控制栏显示截图按钮，保存当前画面</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">设置面板</div>
+          <div class="list-desc">控制栏的齿轮按钮，内含倍速等选项</div>
+        </div>
+        <div class="list-ctrl"><span class="sw on"></span></div>
+      </div>
+      <div class="list-row">
+        <div class="list-main">
+          <div class="list-title">循环播放</div>
+          <div class="list-desc">单集播放结束后从头重播</div>
+        </div>
+        <div class="list-ctrl"><span class="sw"></span></div>
+      </div>
+
+    </div>
+
+    <div class="actions" style="max-width:980px">
+      <button class="btn">重置</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+
+    <div class="compare">
+      B 的特点：一张卡、分组标题做区隔，每行「标题+说明」在左、控件右对齐成一列。<b>优点</b> 一屏能看完 11 项、节奏整齐、以后加到 30 项也不乱。<b>缺点</b> 只有一列，宽屏右侧（980px 以外）仍是空白，需要靠限宽来收。
+    </div>
+  </div>
+
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+    });
+  });
+  document.querySelectorAll('.sw').forEach(function (sw) {
+    sw.addEventListener('click', function () { sw.classList.toggle('on'); });
+  });
+</script>
+</body>
+</html>
