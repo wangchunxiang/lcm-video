@@ -105,8 +105,6 @@ const pasteVisible = ref(false);
 const pasteTarget = ref<PlayLine | null>(null);
 const pasteText = ref('');
 
-const addLineVisible = ref(false);
-const newLine = reactive({ source_from: '', play_url: '' });
 
 async function load() {
   if (!props.vodId) return;
@@ -239,11 +237,6 @@ async function removeLine(line: PlayLine) {
   }
 }
 
-function addEpisode(line: PlayLine) {
-  line.episodes.push({ name: `第${String(line.episodes.length + 1).padStart(2, '0')}集`, url: '' });
-  line.dirty = true;
-}
-
 function removeEpisode(line: PlayLine, index: number) {
   line.episodes.splice(index, 1);
   line.dirty = true;
@@ -300,25 +293,6 @@ function applyPaste() {
   line.dirty = true;
   pasteVisible.value = false;
   ElMessage.success(`已导入 ${episodes.length} 集，记得点「保存线路」`);
-}
-
-/* ------------------------------ 新增手工线路 ------------------------------ */
-
-async function addLine() {
-  try {
-    await api.post(`/vods/${props.vodId}/plays`, {
-      source_from: newLine.source_from,
-      play_url: newLine.play_url,
-    });
-    ElMessage.success('线路已添加');
-    addLineVisible.value = false;
-    newLine.source_from = '';
-    newLine.play_url = '';
-    await load();
-    activeTab.value = 'lines';
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '添加失败');
-  }
 }
 
 function lineTitle(line: PlayLine): string {
@@ -469,7 +443,6 @@ function lineTitle(line: PlayLine): string {
                 <span class="option-meta">{{ line.episodes.length }} 集</span>
               </el-option>
             </el-select>
-            <el-button size="small" type="primary" plain @click="addLineVisible = true">新增手工线路</el-button>
           </div>
 
           <el-empty v-if="lines.length === 0" description="这部影片还没有线路" />
@@ -481,8 +454,7 @@ function lineTitle(line: PlayLine): string {
                 <span v-if="activeLine.sourceUpdatedAt" class="muted">源站更新：{{ activeLine.sourceUpdatedAt }}</span>
               </div>
               <div>
-                <el-button size="small" @click="openPaste(activeLine)">整段粘贴</el-button>
-                <el-button size="small" @click="addEpisode(activeLine)">加一集</el-button>
+                <el-button size="small" @click="openPaste(activeLine)">编辑</el-button>
                 <el-button size="small" type="primary" :loading="activeLine.saving" @click="saveLine(activeLine)">保存线路</el-button>
                 <el-button size="small" type="danger" plain @click="removeLine(activeLine)">删除线路</el-button>
               </div>
@@ -526,37 +498,18 @@ function lineTitle(line: PlayLine): string {
       <el-button v-if="activeTab === 'base'" type="primary" :loading="saving" @click="saveBase">保存</el-button>
     </template>
 
-    <el-dialog v-model="pasteVisible" title="整段粘贴导入" width="620px" append-to-body>
+    <el-dialog v-model="pasteVisible" title="编辑剧集" width="620px" append-to-body>
       <p class="muted">
         每行一集，支持三种写法：<code>第01集$https://…</code>、<code>第01集 https://…</code>、<code>https://…</code>（只有地址时自动补「第 N 集」）。
-        也可以直接粘贴用 <code>#</code> 分隔的一整串。导入会覆盖当前线路的剧集列表，保存后生效。
+        也可以直接粘贴用 <code>#</code> 分隔的一整串。应用后会覆盖当前线路的剧集列表，需再点「保存线路」。
       </p>
       <el-input v-model="pasteText" type="textarea" :rows="12" placeholder="第01集$https://example.com/1.m3u8" />
       <template #footer>
         <el-button @click="pasteVisible = false">取消</el-button>
-        <el-button type="primary" @click="applyPaste">导入</el-button>
+        <el-button type="primary" @click="applyPaste">应用</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="addLineVisible" title="新增手工线路" width="560px" append-to-body>
-      <el-form label-width="90px">
-        <el-form-item label="线路名称">
-          <el-input v-model="newLine.source_from" maxlength="50" placeholder="如：本站备用" />
-        </el-form-item>
-        <el-form-item label="剧集">
-          <el-input
-            v-model="newLine.play_url"
-            type="textarea"
-            :rows="6"
-            placeholder="第01集$https://example.com/1.m3u8#第02集$https://example.com/2.m3u8"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="addLineVisible = false">取消</el-button>
-        <el-button type="primary" @click="addLine">添加</el-button>
-      </template>
-    </el-dialog>
   </el-dialog>
 </template>
 
