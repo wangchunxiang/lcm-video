@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>播放设置页 - 布局方案 A / C</title>
+<style>
+  :root {
+    --primary: #409eff;
+    --success: #67c23a;
+    --text: #303133;
+    --text-regular: #606266;
+    --text-secondary: #909399;
+    --placeholder: #a8abb2;
+    --border: #dcdfe6;
+    --border-light: #e4e7ed;
+    --border-lighter: #ebeef5;
+    --bg: #ffffff;
+    --bg-page: #f0f2f5;
+    --fill-light: #f5f7fa;
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg-page);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .doc-head { max-width: 1180px; margin: 0 auto 20px; }
+  .doc-head h1 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+  .doc-head p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+  .layout-block { max-width: 1180px; margin: 0 auto 28px; }
+  .layout-title {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 0 0 10px; font-size: 15px; font-weight: 600;
+  }
+  .layout-title span { font-size: 13px; font-weight: 400; color: var(--text-secondary); }
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border-lighter);
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.02);
+  }
+  .card-body { padding: 8px 20px 0; }
+  .card-foot {
+    display: flex; gap: 10px;
+    padding: 14px 20px 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  /* ---------- 方案 A：单列 + 问号提示 ---------- */
+  .row {
+    display: flex; align-items: center; gap: 16px;
+    min-height: 44px;
+    border-bottom: 1px solid var(--border-lighter);
+  }
+  .row:last-child { border-bottom: none; }
+  .row-label {
+    display: flex; align-items: center; gap: 6px;
+    flex: 0 0 132px;
+    color: var(--text-regular);
+  }
+  .row-value { flex: 1; min-width: 0; color: var(--text-secondary); font-size: 13px; }
+  .row-ctrl { flex: 0 0 auto; display: flex; align-items: center; }
+  .group-gap { height: 10px; }
+
+  .info {
+    position: relative;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--placeholder);
+    color: var(--placeholder);
+    font-size: 10px; line-height: 12px;
+    text-align: center;
+    cursor: default;
+    flex: none;
+  }
+  .info::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: 50%; bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    width: max-content; max-width: 220px;
+    background: #303133; color: #fff;
+    font-size: 12px; line-height: 1.5;
+    padding: 6px 10px; border-radius: 4px;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.15s;
+    z-index: 5;
+    white-space: normal;
+  }
+  .info:hover::after { opacity: 1; visibility: visible; }
+
+  /* ---------- 通用控件 ---------- */
+  .switch {
+    position: relative; display: inline-block;
+    width: 40px; height: 20px;
+    border-radius: 10px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none; padding: 0;
+  }
+  .switch::before {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.2s;
+  }
+  .switch[aria-checked="true"] { background: var(--primary); }
+  .switch[aria-checked="true"]::before { left: 22px; }
+
+  .input {
+    height: 32px; padding: 0 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    background: #fff;
+    outline: none;
+  }
+  .input:focus { border-color: var(--primary); }
+  .select {
+    height: 32px; padding: 0 28px 0 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+    color: var(--text);
+    font-size: 14px;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #c0c4cc 50%), linear-gradient(135deg, #c0c4cc 50%, transparent 50%);
+    background-position: calc(100% - 16px) 14px, calc(100% - 11px) 14px;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  .btn {
+    height: 32px; padding: 0 15px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #fff; color: var(--text-regular);
+    font-size: 14px; cursor: pointer;
+  }
+  .btn:hover { color: var(--primary); border-color: #c6e2ff; background: #ecf5ff; }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #66b1ff; border-color: #66b1ff; color: #fff; }
+  .unit { margin-left: 8px; color: var(--text-secondary); font-size: 13px; }
+
+  /* ---------- 方案 C：三张分组卡 ---------- */
+  .group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+  .group-card { background: #fff; border: 1px solid var(--border-lighter); border-radius: var(--radius); }
+  .group-head {
+    padding: 10px 16px;
+    background: var(--fill-light);
+    border-bottom: 1px solid var(--border-lighter);
+    border-radius: var(--radius) var(--radius) 0 0;
+    font-weight: 600; font-size: 13px;
+    color: var(--el-text-color-primary, var(--text));
+  }
+  .group-body { padding: 2px 16px 10px; }
+  .g-row {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 42px;
+    border-bottom: 1px solid var(--border-lighter);
+  }
+  .g-row:last-child { border-bottom: none; }
+  .g-main { flex: 1; min-width: 0; }
+  .g-title { color: var(--text-regular); }
+  .g-desc { font-size: 12px; color: var(--placeholder); line-height: 1.4; }
+  .g-ctrl { flex: none; }
+
+  .foot-actions {
+    display: flex; gap: 10px;
+    margin-top: 12px;
+  }
+  .hint-note {
+    max-width: 1180px; margin: 0 auto 24px;
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .hint-note code {
+    background: var(--fill-light);
+    padding: 1px 5px; border-radius: 3px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="doc-head">
+  <h1>播放设置页 · 布局方案对比</h1>
+  <p>同一份数据（默认播放器 + 11 个开关），两种排布。开关可点，问号可悬停。</p>
+</div>
+
+<!-- ======================= 方案 A ======================= -->
+<div class="layout-block">
+  <h2 class="layout-title">方案 A<span>单列行式 · 说明收进问号图标（紧凑，一屏放得下）</span></h2>
+  <div class="card">
+    <div class="card-body">
+
+      <div class="row">
+        <div class="row-label">默认播放器</div>
+        <div class="row-value"></div>
+        <div class="row-ctrl">
+          <select class="select" style="width: 200px">
+            <option>ArtPlayer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group-gap"></div>
+
+      <div class="row">
+        <div class="row-label">
+          自动播放
+          <i class="info" data-tip="进入播放页自动开始">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          自动连播
+          <i class="info" data-tip="播完自动跳下一集">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          进度记忆
+          <i class="info" data-tip="记住上次看到的位置">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="group-gap"></div>
+
+      <div class="row">
+        <div class="row-label">
+          默认音量
+          <i class="info" data-tip="0 - 100">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl">
+          <input class="input" style="width: 120px" value="80" />
+          <span class="unit">0 - 100</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          静音
+          <i class="info" data-tip="进来先静音">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          快捷键
+          <i class="info" data-tip="空格暂停，方向键快进快退">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          截图
+          <i class="info" data-tip="控制栏显示截图按钮">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          画中画
+          <i class="info" data-tip="缩成小窗边看边逛">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="group-gap"></div>
+
+      <div class="row">
+        <div class="row-label">
+          网页全屏
+          <i class="info" data-tip="撑满窗口，不隐藏标签栏">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          设置按钮
+          <i class="info" data-tip="齿轮按钮，含倍速选项">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+      <div class="row">
+        <div class="row-label">
+          单集循环
+          <i class="info" data-tip="单集循环，连播优先">i</i>
+        </div>
+        <div class="row-value"></div>
+        <div class="row-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+      </div>
+
+    </div>
+    <div class="card-foot">
+      <button class="btn">重置</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= 方案 C ======================= -->
+<div class="layout-block">
+  <h2 class="layout-title">方案 C<span>三张分组卡横排 · 卡内单列，说明常显小字</span></h2>
+  <div class="group-grid">
+
+    <div class="group-card">
+      <div class="group-head">播放行为</div>
+      <div class="group-body">
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">默认播放器</div>
+          </div>
+          <div class="g-ctrl">
+            <select class="select" style="width: 130px"><option>ArtPlayer</option></select>
+          </div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">自动播放</div>
+            <div class="g-desc">进入播放页自动开始</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">自动连播</div>
+            <div class="g-desc">播完自动跳下一集</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">进度记忆</div>
+            <div class="g-desc">记住上次看到的位置</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group-card">
+      <div class="group-head">画面与声音</div>
+      <div class="group-body">
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">默认音量</div>
+            <div class="g-desc">0 - 100</div>
+          </div>
+          <div class="g-ctrl"><input class="input" style="width: 80px" value="80" /></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">静音</div>
+            <div class="g-desc">进来先静音</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">快捷键</div>
+            <div class="g-desc">空格暂停，方向键快进快退</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">截图</div>
+            <div class="g-desc">控制栏显示截图按钮</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">画中画</div>
+            <div class="g-desc">缩成小窗边看边逛</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group-card">
+      <div class="group-head">控制栏</div>
+      <div class="group-body">
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">网页全屏</div>
+            <div class="g-desc">撑满窗口，不隐藏标签栏</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">设置按钮</div>
+            <div class="g-desc">齿轮按钮，含倍速选项</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="true" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+        <div class="g-row">
+          <div class="g-main">
+            <div class="g-title">单集循环</div>
+            <div class="g-desc">单集循环，连播优先</div>
+          </div>
+          <div class="g-ctrl"><button class="switch" aria-checked="false" onclick="this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true')"></button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="foot-actions">
+    <button class="btn">重置</button>
+    <button class="btn btn-primary">保存</button>
+  </div>
+</div>
+
+<div class="hint-note">
+  提示：方案 A 的问号是 <code>i</code> 图标，悬停出现说明；方案 C 三张卡在窄屏（&lt; 920px）会自动堆成一列。
+</div>
+
+</body>
+</html>
