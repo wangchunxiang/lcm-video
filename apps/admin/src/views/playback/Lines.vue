@@ -248,7 +248,6 @@ onBeforeUnmount(() => {
         <el-button :disabled="selection.length === 0" @click="batch('enable')">批量启用</el-button>
         <el-button :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
         <el-button @click="openSort">调整排序</el-button>
-        <span class="hint">显示名留空时用采集源名称；停用的线路不在前台出现</span>
       </div>
       <div ref="wrapRef" class="table-wrap">
         <el-table
@@ -389,11 +388,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-}
-.hint {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  line-height: 1.6;
 }
 .muted {
   color: var(--el-text-color-secondary);
