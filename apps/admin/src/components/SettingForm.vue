@@ -272,7 +272,7 @@ onMounted(async () => {
               v-model="field.value"
               type="textarea"
               :rows="3"
-              class="field"
+              class="field field-wide"
               @input="emit('change', field.key, field.value)"
             />
             <el-input v-else v-model="field.value" class="field" @input="emit('change', field.key, field.value)" />
@@ -334,6 +334,7 @@ onMounted(async () => {
 .row-ctrl {
   flex: 1;
   min-width: 0;
+  max-width: 560px;
 }
 .row-block {
   flex-direction: column;
@@ -343,8 +344,15 @@ onMounted(async () => {
   flex: none;
   padding-top: 0;
 }
+.row-ctrl :deep(.image-upload) {
+  max-width: 360px;
+}
 .field {
   width: 100%;
+  max-width: 360px;
+}
+.field-wide {
+  max-width: 560px;
 }
 .order-field {
   width: 100%;
