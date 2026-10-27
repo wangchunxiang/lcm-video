@@ -257,8 +257,7 @@ function openPaste(line: PlayLine) {
   pasteText.value = line.episodes
     .filter((item) => item.name.trim() !== '' || item.url.trim() !== '')
     .map((item) => `${item.name.trim()}$${item.url.trim()}`)
-    .join('
-');
+    .join('\n');
   pasteVisible.value = true;
 }
 
