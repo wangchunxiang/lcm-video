@@ -42,7 +42,16 @@ export const menus: MenuItem[] = [
     icon: 'SetUp',
     children: [{ path: '/tools/data', title: '数据处理', icon: 'MagicStick' }],
   },
-  { path: '/setting', title: '系统设置', icon: 'Setting' },
+  {
+    path: '/setting',
+    title: '系统管理',
+    icon: 'Setting',
+    children: [
+      { path: '/setting/base', title: '基础设置', icon: 'Operation' },
+      { path: '/setting/site', title: '站点设置', icon: 'Monitor' },
+      { path: '/setting/account', title: '账号设置', icon: 'User' },
+    ],
+  },
 ];
 
 /** 扁平化菜单，用于生成路由与面包屑 */
