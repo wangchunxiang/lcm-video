@@ -508,7 +508,7 @@ function lineTitle(line: PlayLine): string {
     <template #footer>
       <el-button @click="close">关闭</el-button>
       <el-button type="primary" :loading="saving || Boolean(activeLine && activeLine.saving)" @click="onSave">
-        {{ activeTab === 'base' ? '保存' : '保存线路' }}
+        保存
       </el-button>
     </template>
 
