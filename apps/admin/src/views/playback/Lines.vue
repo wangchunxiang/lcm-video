@@ -164,7 +164,7 @@ onBeforeUnmount(() => {
       <div class="toolbar">
         <el-button :disabled="selection.length === 0" @click="batch('enable')">批量启用</el-button>
         <el-button :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
-        <span class="toolbar-tip">显示名留空时用采集源名称；停用的线路不在前台出现</span>
+        <span class="hint">显示名留空时用采集源名称；停用的线路不在前台出现</span>
       </div>
       <div ref="wrapRef" class="table-wrap">
         <el-table
@@ -244,52 +244,48 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
 }
-.search-card,
-.table-card {
-  border-radius: 4px;
+.search-card {
+  flex: none;
 }
 .table-card {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 .table-card :deep(.el-card__body) {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 12px;
-}
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.toolbar-tip {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
 }
 .table-wrap {
   flex: 1;
   min-height: 0;
 }
-.pager {
-  padding-top: 12px;
+.search-bar {
   display: flex;
+  align-items: center;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.muted {
+  color: var(--el-text-color-secondary);
+}
+.pager {
+  margin-top: 12px;
   justify-content: flex-end;
 }
 .code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.muted {
-  color: var(--el-text-color-placeholder);
 }
 .sort-input {
   width: 64px;
