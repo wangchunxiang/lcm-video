@@ -105,18 +105,6 @@ function toBody(row: CategoryNode, patch: Partial<Record<string, unknown>> = {})
   };
 }
 
-async function updateSort(row: CategoryNode, value: number | undefined) {
-  if (value === undefined || value === row.sort) return;
-  try {
-    await api.put(`/categories/${row.id}`, toBody(row, { sort: value }));
-    row.sort = value;
-    ElMessage.success('排序已更新');
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '操作失败');
-    await load();
-  }
-}
-
 async function toggleShow(row: CategoryNode) {
   const next = row.isShow === 1 ? 0 : 1;
   try {
@@ -257,19 +245,7 @@ onBeforeUnmount(() => {
               <span class="match">{{ row.matchNames || '—' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="排序" width="110" align="center">
-            <template #default="{ row }">
-              <el-input-number
-                :model-value="row.sort"
-                :min="0"
-                :max="9999"
-                size="small"
-                controls-position="right"
-                style="width: 88px"
-                @change="(value: number | undefined) => updateSort(row, value)"
-              />
-            </template>
-          </el-table-column>
+          <el-table-column prop="sort" label="排序" width="80" align="center" />
           <el-table-column label="显示" width="80" align="center">
             <template #default="{ row }">
               <el-switch :model-value="row.isShow === 1" @change="toggleShow(row)" />
