@@ -90,6 +90,18 @@ function toBody(row: CategoryNode, patch: Partial<Record<string, unknown>> = {})
   };
 }
 
+async function updateSort(row: CategoryNode, value: number | undefined) {
+  if (value === undefined || value === row.sort) return;
+  try {
+    await api.put(`/categories/${row.id}`, toBody(row, { sort: value }));
+    row.sort = value;
+    ElMessage.success('排序已更新');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    await load();
+  }
+}
+
 async function toggleShow(row: CategoryNode) {
   const next = row.isShow === 1 ? 0 : 1;
   try {
@@ -193,45 +205,59 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page">
-  <el-card shadow="never" class="fill-card">
-    <div class="toolbar">
-      <el-button type="primary" @click="openCreate(0)">新增一级分类</el-button>
-      <span class="tip">分类最多两级；二级分类通过「类型」参数在一级分类页里筛选</span>
-    </div>
+    <el-card shadow="never" class="search-card">
+      <div class="search-bar">
+        <el-button type="primary" @click="openCreate(0)">新增一级分类</el-button>
+      </div>
+    </el-card>
 
-    <div ref="wrapRef" class="table-wrap">
-    <el-table
-      :height="tableHeight"
-      v-loading="loading"
-      :data="items"
-      row-key="id"
-      default-expand-all
-      :tree-props="{ children: 'children' }"
-      border
-    >
-      <el-table-column prop="name" label="分类名称" min-width="180" />
-      <el-table-column prop="alias" label="URL 别名" min-width="140" />
-      <el-table-column label="匹配名" min-width="200">
-        <template #default="{ row }">
-          <span class="match">{{ row.matchNames || '—' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="sort" label="排序" width="80" align="center" />
-      <el-table-column label="显示" width="80" align="center">
-        <template #default="{ row }">
-          <el-switch :model-value="row.isShow === 1" @change="toggleShow(row)" />
-        </template>
-      </el-table-column>
-      <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
-      <el-table-column label="操作" width="190" align="center" fixed="right">
-        <template #default="{ row }">
-          <el-button v-if="row.pid === 0" link type="primary" @click="openCreate(row.id)">加子分类</el-button>
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    </div>
+    <el-card shadow="never" class="table-card">
+      <div ref="wrapRef" class="table-wrap">
+        <el-table
+          :height="tableHeight"
+          v-loading="loading"
+          :data="items"
+          row-key="id"
+          default-expand-all
+          :tree-props="{ children: 'children' }"
+          border
+        >
+          <el-table-column prop="name" label="分类名称" min-width="180" />
+          <el-table-column prop="alias" label="URL 别名" min-width="140" />
+          <el-table-column label="匹配名" min-width="200">
+            <template #default="{ row }">
+              <span class="match">{{ row.matchNames || '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="排序" width="110" align="center">
+            <template #default="{ row }">
+              <el-input-number
+                :model-value="row.sort"
+                :min="0"
+                :max="9999"
+                size="small"
+                controls-position="right"
+                style="width: 88px"
+                @change="(value: number | undefined) => updateSort(row, value)"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column label="显示" width="80" align="center">
+            <template #default="{ row }">
+              <el-switch :model-value="row.isShow === 1" @change="toggleShow(row)" />
+            </template>
+          </el-table-column>
+          <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
+          <el-table-column label="操作" width="190" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button v-if="row.pid === 0" link type="primary" @click="openCreate(row.id)">加子分类</el-button>
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="danger" @click="remove(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
       <el-form label-width="100px">
@@ -260,7 +286,6 @@ onBeforeUnmount(() => {
         <el-button type="primary" :loading="saving" @click="submit">保存</el-button>
       </template>
     </el-dialog>
-  </el-card>
   </div>
 </template>
 
@@ -270,13 +295,17 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
 }
-.fill-card {
+.search-card,
+.table-card :deep(.el-card__body) {
+  flex: none;
+}
+.table-card {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.fill-card :deep(.el-card__body) {
+.table-card :deep(.el-card__body) {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -293,15 +322,11 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
 }
-.toolbar {
+.search-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-.tip {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  gap: 12px;
 }
 .match {
   color: var(--el-text-color-regular);
