@@ -76,7 +76,7 @@ function resetForm() {
 function openCreate(pid: number) {
   resetForm();
   form.pid = pid;
-  dialogTitle.value = pid > 0 ? '新增子分类' : '新增一级分类';
+  dialogTitle.value = '新增分类';
   dialogVisible.value = true;
 }
 
@@ -235,11 +235,14 @@ onBeforeUnmount(() => {
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
-        <el-button type="primary" style="margin-left: auto" @click="openCreate(0)">新增一级分类</el-button>
       </div>
     </el-card>
 
     <el-card shadow="never" class="table-card">
+      <div class="toolbar">
+        <el-button type="primary" @click="openCreate(0)">新增分类</el-button>
+      </div>
+
       <div ref="wrapRef" class="table-wrap">
         <el-table
           :height="tableHeight"
@@ -290,7 +293,10 @@ onBeforeUnmount(() => {
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
       <el-form label-width="100px">
         <el-form-item label="父分类">
-          <span>{{ form.pid === 0 ? '（无，作为一级分类）' : items.find((item) => item.id === form.pid)?.name ?? '—' }}</span>
+          <el-select v-model="form.pid" style="width: 100%">
+            <el-option label="无（作为一级分类）" :value="0" />
+            <el-option v-for="item in items" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="分类名称" required>
           <el-input v-model="form.name" maxlength="50" placeholder="如：动作片" />
@@ -350,6 +356,12 @@ onBeforeUnmount(() => {
 .table-wrap {
   flex: 1;
   min-height: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 .search-bar {
   display: flex;
