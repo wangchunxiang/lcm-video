@@ -549,8 +549,8 @@ function lineTitle(line: PlayLine): string {
   align-items: center;
 }
 .poster {
-  width: 130px;
-  height: 180px;
+  width: 100%;
+  height: 210px;
   border: 1px solid var(--el-border-color-light);
   border-radius: 4px;
   background: var(--el-fill-color-light);
