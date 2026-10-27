@@ -84,11 +84,11 @@ const form = reactive({
   status: 1,
   categoryName: '',
   collectedAt: '',
+  createdAt: '',
 });
 
 const lines = ref<PlayLine[]>([]);
 const collectedDate = computed(() => (form.collectedAt || '').slice(0, 10) || '—')
-const collectedTime = computed(() => (form.collectedAt || '').slice(11, 19))
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 
@@ -131,6 +131,7 @@ async function load() {
       status: row.status,
       categoryName: [row.parentName, row.categoryName].filter(Boolean).join(' / '),
       collectedAt: row.collectedAt,
+      createdAt: row.createdAt ?? '',
     });
 
     const plays = await api.get<{ items: PlayLine[] }>(`/vods/${props.vodId}/plays`);
@@ -330,10 +331,17 @@ function lineTitle(line: PlayLine): string {
                 <li><span>ID</span><b>{{ vodId }}</b></li>
                 <li><span>线路</span><b>{{ lines.length }} 条</b></li>
                 <li><span>剧集</span><b>{{ totalEpisodes }} 集</b></li>
-                <li class="stack">
+                <li>
+                  <span>入库</span>
+                  <el-tooltip :content="form.createdAt || '—'" placement="top">
+                    <b class="date">{{ (form.createdAt || '').slice(0, 10) || '—' }}</b>
+                  </el-tooltip>
+                </li>
+                <li>
                   <span>最后采集</span>
-                  <b>{{ collectedDate }}</b>
-                  <b class="dim">{{ collectedTime }}</b>
+                  <el-tooltip :content="form.collectedAt || '—'" placement="top">
+                    <b class="date">{{ collectedDate }}</b>
+                  </el-tooltip>
                 </li>
               </ul>
             </div>
@@ -574,9 +582,8 @@ function lineTitle(line: PlayLine): string {
   display: block;
   margin-top: 4px;
 }
-.side-info li.stack .dim {
-  display: block;
-  color: var(--el-text-color-secondary);
+.side-info b.date {
+  font-variant-numeric: tabular-nums;
 }
 .poster-empty {
   display: flex;
