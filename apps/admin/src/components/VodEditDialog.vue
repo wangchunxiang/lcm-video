@@ -411,6 +411,22 @@ function lineTitle(line: PlayLine): string {
                   </el-col>
 
                   <el-col :span="24">
+                    <el-form-item label="演员">
+                      <el-input v-model="form.actor" maxlength="500" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="导演">
+                      <el-input v-model="form.director" maxlength="255" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="编剧">
+                      <el-input v-model="form.writer" maxlength="255" />
+                    </el-form-item>
+                  </el-col>
+
+                  <el-col :span="24">
                     <el-form-item label="简介">
                       <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit />
                     </el-form-item>
