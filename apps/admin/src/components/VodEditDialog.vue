@@ -254,7 +254,11 @@ function moveEpisode(line: PlayLine, index: number, delta: number) {
 
 function openPaste(line: PlayLine) {
   pasteTarget.value = line;
-  pasteText.value = '';
+  pasteText.value = line.episodes
+    .filter((item) => item.name.trim() !== '' || item.url.trim() !== '')
+    .map((item) => `${item.name.trim()}$${item.url.trim()}`)
+    .join('
+');
   pasteVisible.value = true;
 }
 
