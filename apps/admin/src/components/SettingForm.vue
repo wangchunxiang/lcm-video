@@ -17,7 +17,9 @@ interface LineOption {
   total: number;
 }
 
-const props = defineProps<{ group: 'base' | 'site' }>();
+const props = withDefaults(defineProps<{ group: 'base' | 'site' | 'playback'; labelWidth?: string }>(), {
+  labelWidth: '160px',
+});
 
 const fields = ref<(SettingField & { value: string })[]>([]);
 const lineOptions = ref<LineOption[]>([]);
@@ -27,6 +29,17 @@ const loading = ref(false);
 const saving = ref(false);
 
 const groupFields = computed(() => fields.value.filter((field) => field.group === props.group));
+
+const sections = computed(() => {
+  const result: { title: string; fields: (SettingField & { value: string })[] }[] = [];
+  for (const field of groupFields.value) {
+    const title = field.section ?? '';
+    const last = result[result.length - 1];
+    if (last && last.title === title) last.fields.push(field);
+    else result.push({ title, fields: [field] });
+  }
+  return result;
+});
 
 function optionsOf(field: SettingField) {
   if (field.key === 'site_theme') {
@@ -147,8 +160,10 @@ onMounted(async () => {
 
 <template>
   <el-card shadow="never" v-loading="loading">
-    <el-form label-width="160px" class="setting-form">
-      <el-form-item v-for="field in groupFields" :key="field.key" :label="field.label">
+    <el-form :label-width="labelWidth" class="setting-form">
+      <template v-for="(section, index) in sections" :key="index">
+      <div v-if="section.title" class="section-title">{{ section.title }}</div>
+      <el-form-item v-for="field in section.fields" :key="field.key" :label="field.label">
         <ImageUpload
           v-if="field.key === 'site_logo' || field.key === 'site_favicon'"
           v-model="field.value"
@@ -216,6 +231,7 @@ onMounted(async () => {
           {{ field.hint }}
         </div>
       </el-form-item>
+      </template>
 
       <el-form-item>
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
@@ -228,6 +244,16 @@ onMounted(async () => {
 <style scoped>
 .setting-form {
   max-width: 720px;
+}
+.section-title {
+  margin: 4px 0 16px;
+  padding-left: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.section-title:not(:first-child) {
+  margin-top: 24px;
 }
 .field {
   width: 100%;

@@ -6,7 +6,7 @@ import SettingForm from '../../components/SettingForm.vue';
   <div class="page">
     <div class="cols">
       <div class="col-main">
-        <SettingForm group="playback" />
+        <SettingForm group="playback" label-width="120px" />
       </div>
       <div class="col-side">
         <el-card shadow="never" />
@@ -34,6 +34,9 @@ import SettingForm from '../../components/SettingForm.vue';
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+.col-main :deep(.setting-form) {
+  max-width: none;
 }
 .col-main :deep(.el-card),
 .col-side :deep(.el-card) {

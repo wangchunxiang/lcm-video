@@ -13,6 +13,8 @@ export interface SettingField {
   hint?: string;
   /** type = select 时的选项 */
   options?: { label: string; value: string }[];
+  /** 小节标题，同一小节内的字段连续展示 */
+  section?: string;
 }
 
 export const SETTING_GROUPS: { key: SettingGroup; label: string }[] = [
@@ -123,6 +125,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_type',
     group: 'playback',
+    section: '播放器',
     label: '播放器',
     type: 'select',
     default: 'dplayer',
@@ -135,6 +138,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_autoplay',
     group: 'playback',
+    section: '观看体验',
     label: '自动播放',
     type: 'switch',
     default: '0',
@@ -143,6 +147,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_autonext',
     group: 'playback',
+    section: '观看体验',
     label: '自动连播',
     type: 'switch',
     default: '1',
@@ -151,6 +156,7 @@ export const SETTINGS: SettingField[] = [
   {
     key: 'player_resume',
     group: 'playback',
+    section: '观看体验',
     label: '进度记忆',
     type: 'switch',
     default: '1',
