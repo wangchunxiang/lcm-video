@@ -43,7 +43,9 @@ function clear() {
     <el-input
       :model-value="modelValue"
       placeholder="图片地址，或直接上传"
+      clearable
       @update:model-value="emit('update:modelValue', $event)"
+      @clear="clear"
     >
       <template #append>
         <label class="picker">
@@ -52,16 +54,13 @@ function clear() {
         </label>
       </template>
     </el-input>
-    <el-button v-if="modelValue" link size="small" @click="clear">清除</el-button>
   </div>
 </template>
 
 <style scoped>
 .image-upload {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   width: 100%;
+  max-width: 360px;
 }
 .image-upload :deep(.el-input) {
   flex: 1;
