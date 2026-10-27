@@ -4,7 +4,7 @@ import SettingForm from '../../components/SettingForm.vue';
 
 <template>
   <div class="page">
-    <SettingForm group="playback" label-width="120px" />
+    <SettingForm group="playback" label-width="120px" size="large" />
   </div>
 </template>
 

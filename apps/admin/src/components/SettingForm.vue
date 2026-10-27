@@ -17,9 +17,17 @@ interface LineOption {
   total: number;
 }
 
-const props = withDefaults(defineProps<{ group: 'base' | 'site' | 'playback'; labelWidth?: string }>(), {
-  labelWidth: '160px',
-});
+const props = withDefaults(
+  defineProps<{
+    group: 'base' | 'site' | 'playback';
+    labelWidth?: string;
+    size?: 'large' | 'default' | 'small';
+  }>(),
+  {
+    labelWidth: '160px',
+    size: 'default',
+  },
+);
 
 const emit = defineEmits<{ (e: 'change', key: string, value: string): void }>();
 
@@ -169,7 +177,7 @@ onMounted(async () => {
       </div>
       <div class="main">
     <slot name="top" />
-    <el-form :label-width="labelWidth" class="setting-form">
+    <el-form :label-width="labelWidth" :size="size" class="setting-form">
       <template v-for="(section, index) in sections" :key="index">
       <div v-if="section.title" class="section-title">{{ section.title }}</div>
       <el-form-item v-for="field in section.fields" :key="field.key" :label="field.label">
