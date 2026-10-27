@@ -14,7 +14,7 @@ type Done = { affected: number; offline?: number; mode?: string };
 const sources = ref<SourceOption[]>([]);
 
 const replaceForm = reactive({ from: '', to: '' });
-const deleteForm = reactive({ source_id: 0 });
+const deleteForm = reactive<{ source_id: number | null }>({ source_id: null });
 const cleanForm = reactive({ mode: 'offline' });
 
 const busy = reactive({ replace: false, removeSource: false, clean: false });
@@ -68,7 +68,7 @@ async function runReplace(): Promise<void> {
 }
 
 async function runDeleteSource(): Promise<void> {
-  if (!deleteForm.source_id) {
+  if (deleteForm.source_id === null) {
     ElMessage.warning('请选择采集源');
     return;
   }
