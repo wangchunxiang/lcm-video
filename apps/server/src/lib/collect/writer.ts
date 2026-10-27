@@ -314,7 +314,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
           fails.push({
             vod_id: item.vodId,
             name,
-            reason: error instanceof Error ? error.message : String(error),
+            reason: describeError(error),
           });
         }
       }
@@ -345,4 +345,13 @@ export function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
   const run: Promise<T> = writeChain.then(fn, fn);
   writeChain = run.catch(() => undefined);
   return run;
+}
+
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const extra = error as Error & { sqlMessage?: string; code?: string };
+  const parts = [error.message];
+  if (extra.sqlMessage && !error.message.includes(extra.sqlMessage)) parts.push(extra.sqlMessage);
+  if (extra.code) parts.push(`(${extra.code})`);
+  return parts.join(' ');
 }

@@ -1,17 +1,5 @@
 import { sql } from 'drizzle-orm';
-import {
-  bigint,
-  char,
-  datetime,
-  index,
-  int,
-  json,
-  mysqlTable,
-  text,
-  tinyint,
-  uniqueIndex,
-  varchar,
-} from 'drizzle-orm/mysql-core';
+import { bigint, char, datetime, index, int, json, mediumtext, mysqlTable, text, tinyint, uniqueIndex, varchar } from 'drizzle-orm/mysql-core';
 
 const pk = () => bigint('id', { mode: 'number', unsigned: true }).autoincrement().primaryKey();
 const fk = (name: string) => bigint(name, { mode: 'number', unsigned: true }).notNull().default(0);
@@ -52,7 +40,7 @@ export const vod = mysqlTable(
     director: varchar('director', { length: 255 }).notNull().default(''),
     writer: varchar('writer', { length: 255 }).notNull().default(''),
     intro: varchar('intro', { length: 500 }).notNull().default(''),
-    content: text('content'),
+    content: mediumtext('content'),
     remarks: varchar('remarks', { length: 100 }).notNull().default(''),
     releaseDate: varchar('release_date', { length: 20 }).notNull().default(''),
     episodeCount: int('episode_count', { unsigned: true }).notNull().default(0),
@@ -84,7 +72,7 @@ export const vodPlay = mysqlTable(
     sourceVodId: varchar('source_vod_id', { length: 50 }).notNull().default(''),
     sourceUpdatedAt: datetime('source_updated_at'),
     collectedAt: datetime('collected_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-    playUrl: text('play_url').notNull(),
+    playUrl: mediumtext('play_url').notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
