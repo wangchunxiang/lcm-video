@@ -139,7 +139,7 @@ export const SETTINGS: SettingField[] = [
     label: '自动播放',
     type: 'switch',
     default: '0',
-    hint: '开启后进入播放页自动开始播放，部分浏览器会因静音策略拦截。',
+    hint: '进入播放页自动开始',
   },
   {
     key: 'player_autonext',
@@ -148,7 +148,7 @@ export const SETTINGS: SettingField[] = [
     label: '自动连播',
     type: 'switch',
     default: '1',
-    hint: '当前集播放结束后自动跳到下一集；最后一集不跳。',
+    hint: '播完自动跳下一集',
   },
   {
     key: 'player_resume',
@@ -157,7 +157,7 @@ export const SETTINGS: SettingField[] = [
     label: '进度记忆',
     type: 'switch',
     default: '1',
-    hint: '在浏览器本地记住每部影片看到的位置，下次回到同一集自动续播。',
+    hint: '记住上次看到的位置',
   },
   {
     key: 'player_volume',
@@ -166,7 +166,7 @@ export const SETTINGS: SettingField[] = [
     label: '默认音量',
     type: 'number',
     default: '80',
-    hint: '0 - 100，进入播放器时的初始音量。',
+    hint: '0 - 100',
   },
   {
     key: 'player_muted',
@@ -175,7 +175,7 @@ export const SETTINGS: SettingField[] = [
     label: '静音起播',
     type: 'switch',
     default: '0',
-    hint: '开启后进来先静音，避免自动播放被浏览器拦截。',
+    hint: '进来先静音',
   },
   {
     key: 'player_hotkey',
@@ -184,7 +184,7 @@ export const SETTINGS: SettingField[] = [
     label: '键盘快捷键',
     type: 'switch',
     default: '1',
-    hint: '空格播放/暂停，左右方向键前后 10 秒，上下方向键调音量。',
+    hint: '空格暂停，方向键快进快退',
   },
   {
     key: 'player_screenshot',
@@ -193,7 +193,7 @@ export const SETTINGS: SettingField[] = [
     label: '截图按钮',
     type: 'switch',
     default: '1',
-    hint: '在控制栏显示截图按钮，点击保存当前画面。',
+    hint: '控制栏显示截图按钮',
   },
   {
     key: 'player_pip',
@@ -202,7 +202,7 @@ export const SETTINGS: SettingField[] = [
     label: '画中画',
     type: 'switch',
     default: '1',
-    hint: '开启后可以把画面缩成小窗，边看边浏览其它页面。',
+    hint: '缩成小窗边看边逛',
   },
   {
     key: 'player_webfullscreen',
@@ -211,7 +211,7 @@ export const SETTINGS: SettingField[] = [
     label: '网页全屏',
     type: 'switch',
     default: '0',
-    hint: '撑满浏览器窗口的全屏按钮，不隐藏标签栏。',
+    hint: '撑满窗口，不隐藏标签栏',
   },
   {
     key: 'player_setting',
@@ -220,7 +220,7 @@ export const SETTINGS: SettingField[] = [
     label: '设置面板',
     type: 'switch',
     default: '1',
-    hint: '控制栏的齿轮按钮，内含倍速等选项。',
+    hint: '齿轮按钮，含倍速选项',
   },
   {
     key: 'player_loop',
@@ -229,7 +229,7 @@ export const SETTINGS: SettingField[] = [
     label: '循环播放',
     type: 'switch',
     default: '0',
-    hint: '单集循环。与「自动连播」同时开启时，连播优先。',
+    hint: '单集循环，连播优先',
   },
   {
     key: 'login_expire_days',
