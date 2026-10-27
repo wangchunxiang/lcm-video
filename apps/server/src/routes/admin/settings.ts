@@ -8,6 +8,7 @@ import { SETTINGS, type SettingField } from '@lcm/shared';
 import type { Env } from '../../env.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { getAllSettings } from '../../lib/settings.ts';
+import { clearSiteConfigCache } from '../../lib/theme.ts';
 
 export interface SettingRouteOpts {
   db: Db;
@@ -103,6 +104,7 @@ export const settingRoutes: FastifyPluginAsync<SettingRouteOpts> = async (app, o
       .values(rows)
       .onDuplicateKeyUpdate({ set: { value: sql`VALUES(value)` } });
 
+    clearSiteConfigCache();
     return ok(reply, null);
   });
 

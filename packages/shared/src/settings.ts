@@ -1,6 +1,6 @@
 export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select' | 'order';
 
-export type SettingGroup = 'base' | 'site' | 'account';
+export type SettingGroup = 'base' | 'site' | 'playback' | 'account';
 
 export interface SettingField {
   /** 存储键，对应 lcm_setting.name */
@@ -18,6 +18,7 @@ export interface SettingField {
 export const SETTING_GROUPS: { key: SettingGroup; label: string }[] = [
   { key: 'base', label: '基础设置' },
   { key: 'site', label: '站点设置' },
+  { key: 'playback', label: '播放设置' },
   { key: 'account', label: '账号设置' },
 ];
 
@@ -118,6 +119,26 @@ export const SETTINGS: SettingField[] = [
     type: 'select',
     default: 'default',
     options: [{ label: '默认模板', value: 'default' }],
+  },
+  {
+    key: 'player_type',
+    group: 'playback',
+    label: '播放器',
+    type: 'select',
+    default: 'dplayer',
+    options: [
+      { label: 'DPlayer', value: 'dplayer' },
+      { label: 'ArtPlayer', value: 'artplayer' },
+    ],
+    hint: '用于直连线路；配置了解析接口的线路仍然用 iframe 播放。',
+  },
+  {
+    key: 'player_autoplay',
+    group: 'playback',
+    label: '自动播放',
+    type: 'switch',
+    default: '0',
+    hint: '开启后进入播放页自动开始播放，部分浏览器会因静音策略拦截。',
   },
   {
     key: 'login_expire_days',

@@ -21,14 +21,14 @@
       scrolling="no"
     ></iframe>
     {% else %}
-    <video
+    <div
       id="player"
-      controls
-      autoplay
-      playsinline
-      preload="metadata"
-      {% if is_hls %}data-hls="{{ play_url }}"{% else %}src="{{ play_url }}"{% endif %}
-    ></video>
+      class="player-box"
+      data-src="{{ play_url }}"
+      data-hls="{% if is_hls %}1{% else %}0{% endif %}"
+      data-player="{{ player }}"
+      data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
+    ></div>
     {% endif %}
   </div>
 
@@ -71,4 +71,4 @@
   {% endif %}
 </section>
 {% endblock %}
-{% block scripts %}{% if is_hls and iframe_url == blank %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}{% endblock %}
+{% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}{% if player == 'artplayer' %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% else %}<script src="{{ 'vendor/DPlayer.min.js' | asset }}"></script>{% endif %}{% endif %}{% endblock %}

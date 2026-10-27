@@ -213,7 +213,8 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('site_theme', 'default'),
   ('site_stats_code', ''),
   ('list_page_size', '24'),
-  ('line_order', ''),
+  ('player_type', 'dplayer'),
+  ('player_autoplay', '0'),
   ('login_expire_days', '7'),
   ('collect_log_keep_days', '30'),
   ('upload_max_mb', '2');

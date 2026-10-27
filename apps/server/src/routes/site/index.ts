@@ -6,7 +6,6 @@ import type { Liquid } from 'liquidjs';
 import { parsePlayUrl } from '@lcm/shared';
 import {
   buildPagination,
-  clearSiteConfigCache,
   createEngine,
   loadNav,
   renderErrorPage,
@@ -441,6 +440,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         current_ep_name: episodeName,
         play_url: current.url,
         is_hls: /\.m3u8(\?|$)/i.test(current.url),
+        player: config.player,
+        autoplay: config.autoplay,
         pagination,
         iframe_url: iframeUrl,
       },
@@ -506,11 +507,5 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       { title: `搜索：${keyword} - ${config.name}`, description: config.description, noindex: true },
       { keyword, vods: rows.map(toCard), pagination, filter: { wd: keyword } },
     );
-  });
-
-  /* ------------------------------- 设置变更后的缓存清理 ------------------------------- */
-
-  app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/admin/settings')) clearSiteConfigCache();
   });
 };

@@ -19,6 +19,8 @@ export interface SiteConfig {
   statsCode: string;
   theme: string;
   listPageSize: number;
+  player: string;
+  autoplay: boolean;
 }
 
 export interface NavItem {
@@ -48,6 +50,8 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     statsCode: settings['site_stats_code'] || '',
     theme: settings['site_theme'] || 'default',
     listPageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.min(100, Math.trunc(pageSize)) : 24,
+    player: settings['player_type'] === 'artplayer' ? 'artplayer' : 'dplayer',
+    autoplay: settings['player_autoplay'] === '1',
   };
 
   cachedConfig = { at: Date.now(), value };
