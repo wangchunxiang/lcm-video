@@ -235,14 +235,11 @@ onBeforeUnmount(() => {
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
+        <el-button type="primary" style="margin-left: auto" @click="openCreate(0)">新增分类</el-button>
       </div>
     </el-card>
 
     <el-card shadow="never" class="table-card">
-      <div class="toolbar">
-        <el-button type="primary" @click="openCreate(0)">新增分类</el-button>
-      </div>
-
       <div ref="wrapRef" class="table-wrap">
         <el-table
           :height="tableHeight"
