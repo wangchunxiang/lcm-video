@@ -50,6 +50,15 @@ function onChange(key: string, value: string) {
 .col-main :deep(.setting-form) {
   max-width: none;
 }
+.col-main :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+.col-main :deep(.section-title) {
+  margin: 2px 0 10px;
+}
+.col-main :deep(.section-title:not(:first-child)) {
+  margin-top: 16px;
+}
 .col-main :deep(.el-card),
 .col-side :deep(.el-card) {
   flex: 1;

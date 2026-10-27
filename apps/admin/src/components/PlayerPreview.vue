@@ -40,7 +40,8 @@ const playerName = computed(() => (props.player === 'artplayer' ? 'ArtPlayer' : 
 
 <style scoped>
 .preview {
-  margin-bottom: 20px;
+  max-width: 420px;
+  margin-bottom: 16px;
 }
 .stage {
   position: relative;
