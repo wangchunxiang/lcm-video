@@ -75,12 +75,56 @@ async function patch(row: LineItem, body: Record<string, unknown>) {
   }
 }
 
-function saveName(row: LineItem) {
-  if (row.name.trim().length > 50) {
+const editVisible = ref(false);
+const editSaving = ref(false);
+const editForm = reactive({ id: 0, sourceFrom: '', name: '', isEnabled: 1 });
+
+function openEdit(row: LineItem) {
+  editForm.id = row.id;
+  editForm.sourceFrom = row.sourceFrom;
+  editForm.name = row.name;
+  editForm.isEnabled = row.isEnabled;
+  editVisible.value = true;
+}
+
+async function saveEdit() {
+  if (editForm.name.trim().length > 50) {
     ElMessage.warning('显示名不能超过 50 个字符');
     return;
   }
-  void patch(row, { name: row.name.trim() });
+  editSaving.value = true;
+  try {
+    await api.put(`/lines/${editForm.id}`, {
+      name: editForm.name.trim(),
+      is_enabled: editForm.isEnabled,
+    });
+    ElMessage.success('已保存');
+    editVisible.value = false;
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '保存失败');
+  } finally {
+    editSaving.value = false;
+  }
+}
+
+async function remove(row: LineItem) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除线路「${row.sourceFrom}」的配置吗？已采集的线路数据不受影响，下次采集会重新登记。`,
+      '删除线路',
+      { type: 'warning' },
+    );
+  } catch {
+    return;
+  }
+  try {
+    await api.del(`/lines/${row.id}`);
+    ElMessage.success('已删除');
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '删除失败');
+  }
 }
 
 function toggleStatus(row: LineItem) {
@@ -225,14 +269,7 @@ onBeforeUnmount(() => {
           </el-table-column>
           <el-table-column label="显示名" min-width="220">
             <template #default="{ row }">
-              <el-input
-                v-model="row.name"
-                size="small"
-                :placeholder="row.sourceName || row.sourceFrom"
-                maxlength="50"
-                @blur="saveName(row)"
-                @keyup.enter="saveName(row)"
-              />
+              <span>{{ row.name || row.sourceName || '—' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="来源" min-width="140">
@@ -243,6 +280,12 @@ onBeforeUnmount(() => {
           </el-table-column>
           <el-table-column prop="vodCount" label="线路数" width="90" align="center" />
           <el-table-column prop="sort" label="排序" width="90" align="center" />
+          <el-table-column label="操作" width="120" align="center" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="danger" @click="remove(row)">删除</el-button>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-switch
@@ -269,6 +312,24 @@ onBeforeUnmount(() => {
         @size-change="changePageSize"
       />
     </el-card>
+
+    <el-dialog v-model="editVisible" title="编辑线路" width="480px">
+      <el-form label-width="80px">
+        <el-form-item label="线路标识">
+          <span class="code">{{ editForm.sourceFrom }}</span>
+        </el-form-item>
+        <el-form-item label="显示名">
+          <el-input v-model="editForm.name" maxlength="50" placeholder="留空则用采集源名称" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-switch v-model="editForm.isEnabled" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="sortVisible" title="调整线路排序" width="520px">
       <div class="sort-tip">拖动调整顺序，越靠前越优先，前台播放页按此顺序排列线路。</div>

@@ -125,6 +125,16 @@ export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) =
     return ok(reply, null);
   });
 
+  app.delete('/:id', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    if (id <= 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '线路不存在');
+
+    const deleted = await db.delete(playLine).where(eq(playLine.id, id));
+    if (deleted[0].affectedRows === 0) return fail(reply, 404, ErrorCode.NOT_FOUND, '线路不存在');
+
+    return ok(reply, null);
+  });
+
   app.post('/sort', async (req, reply) => {
     const body = (req.body ?? {}) as { ids?: unknown };
     const ids = Array.isArray(body.ids) ? body.ids.map((item) => toInt(item)).filter((id) => id > 0) : [];
