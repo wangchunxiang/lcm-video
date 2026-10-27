@@ -31,10 +31,15 @@ const form = reactive({
   is_show: 1,
 });
 
+const filters = reactive({ keyword: '', is_show: '' });
+
 async function load() {
   loading.value = true;
+  const params = new URLSearchParams();
+  if (filters.keyword.trim()) params.set('keyword', filters.keyword.trim());
+  if (filters.is_show) params.set('is_show', filters.is_show);
   try {
-    const data = await api.get<{ items: CategoryNode[] }>('/categories');
+    const data = await api.get<{ items: CategoryNode[] }>(`/categories?${params.toString()}`);
     items.value = data.items.map((node) => ({
       ...node,
       children: node.children?.length
@@ -46,6 +51,16 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+function search() {
+  void load();
+}
+
+function reset() {
+  filters.keyword = '';
+  filters.is_show = '';
+  void load();
 }
 
 function resetForm() {
@@ -207,7 +222,20 @@ onBeforeUnmount(() => {
   <div class="page">
     <el-card shadow="never" class="search-card">
       <div class="search-bar">
-        <el-button type="primary" @click="openCreate(0)">新增一级分类</el-button>
+        <el-input
+          v-model="filters.keyword"
+          placeholder="分类名称 / 别名"
+          clearable
+          style="width: 200px"
+          @keyup.enter="search"
+        />
+        <el-select v-model="filters.is_show" placeholder="全部状态" clearable style="width: 120px">
+          <el-option label="显示" value="1" />
+          <el-option label="隐藏" value="0" />
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" style="margin-left: auto" @click="openCreate(0)">新增一级分类</el-button>
       </div>
     </el-card>
 
@@ -294,6 +322,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 .search-card,
 .table-card :deep(.el-card__body) {

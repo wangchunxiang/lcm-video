@@ -85,7 +85,11 @@ async function validateBody(
 export const categoryRoutes: FastifyPluginAsync<CategoryRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
-  app.get('/', async (_req, reply) => {
+  app.get('/', async (req, reply) => {
+    const query = req.query as { keyword?: string; is_show?: string };
+    const keyword = (query.keyword ?? '').trim();
+    const show = query.is_show === '0' || query.is_show === '1' ? Number(query.is_show) : null;
+
     const rows = await db
       .select()
       .from(category)
@@ -97,18 +101,31 @@ export const categoryRoutes: FastifyPluginAsync<CategoryRouteOpts> = async (app,
       .groupBy(vod.categoryId);
     const countMap = new Map(counts.map((row) => [row.categoryId, Number(row.total)]));
 
+    const hit = (row: (typeof rows)[number]) => {
+      if (show !== null && row.isShow !== show) return false;
+      if (!keyword) return true;
+      return row.name.includes(keyword) || row.alias.includes(keyword);
+    };
+
     const parents = rows
       .filter((row) => row.pid === 0)
-      .map((row) => ({
-        ...row,
-        vodCount: (countMap.get(row.id) ?? 0) +
-          rows
-            .filter((child) => child.pid === row.id)
-            .reduce((sum, child) => sum + (countMap.get(child.id) ?? 0), 0),
-        children: rows
-          .filter((child) => child.pid === row.id)
-          .map((child) => ({ ...child, vodCount: countMap.get(child.id) ?? 0, children: [] as never[] })),
-      }));
+      .map((row) => {
+        const children = rows.filter((child) => child.pid === row.id);
+        const parentHit = hit(row);
+        const visibleChildren = keyword && parentHit ? children : children.filter(hit);
+        return {
+          ...row,
+          vodCount: (countMap.get(row.id) ?? 0) + children.reduce((sum, child) => sum + (countMap.get(child.id) ?? 0), 0),
+          matched: parentHit || visibleChildren.length > 0,
+          children: visibleChildren.map((child) => ({
+            ...child,
+            vodCount: countMap.get(child.id) ?? 0,
+            children: [] as never[],
+          })),
+        };
+      })
+      .filter((row) => row.matched)
+      .map(({ matched: _matched, ...row }) => row);
 
     return ok(reply, { items: parents });
   });
