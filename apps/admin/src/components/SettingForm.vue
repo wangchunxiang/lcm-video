@@ -284,8 +284,18 @@ onMounted(async () => {
 <style scoped>
 .page {
   width: 100%;
+  height: 100%;
+}
+.group-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .group-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 4px 20px 0;
 }
 .section + .section {
