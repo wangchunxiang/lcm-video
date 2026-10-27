@@ -174,27 +174,6 @@ async function batchStatus(status: number) {
   }
 }
 
-async function batchDelete() {
-  const ids = selection.value.map((row) => row.id);
-  if (ids.length === 0) return;
-  try {
-    await ElMessageBox.confirm(
-      `确定下架选中的 ${ids.length} 部影片吗？下架后前台不再显示，影片仍在库里。`,
-      '批量下架',
-      { type: 'warning', confirmButtonText: '下架', cancelButtonText: '取消' },
-    );
-  } catch {
-    return;
-  }
-  try {
-    await api.post('/vods/batch', { ids, action: 'delete' });
-    ElMessage.success(`已下架 ${ids.length} 部影片`);
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '操作失败');
-  }
-}
-
 function openCategoryDialog() {
   if (selection.value.length === 0) return;
   batchCategory.value = null;
@@ -273,7 +252,6 @@ onBeforeUnmount(() => {
       <el-button :disabled="selection.length === 0" @click="openCategoryDialog">批量改分类</el-button>
       <el-button type="success" :disabled="selection.length === 0" @click="batchStatus(1)">批量上架</el-button>
       <el-button type="warning" :disabled="selection.length === 0" @click="batchStatus(0)">批量下架</el-button>
-      <el-button type="danger" :disabled="selection.length === 0" @click="batchDelete">批量删除</el-button>
     </div>
 
     <div ref="wrapRef" class="table-wrap">
@@ -316,7 +294,7 @@ onBeforeUnmount(() => {
         <template #default="{ row }">
           <el-button link type="primary" @click="edit(row)">编辑</el-button>
           <el-button link type="primary" @click="recollect(row)">重采</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
+          <el-button link type="warning" @click="remove(row)">下架</el-button>
         </template>
       </el-table-column>
     </el-table>
