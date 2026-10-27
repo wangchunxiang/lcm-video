@@ -274,8 +274,8 @@ onMounted(async () => {
       </div>
 
       <div class="card-foot">
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
         <el-button @click="load">重置</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </div>
     </el-card>
   </div>
