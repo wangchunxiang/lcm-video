@@ -604,7 +604,7 @@ function lineTitle(line: PlayLine): string {
 }
 .side-times li.dim {
   display: block;
-  color: var(--el-text-color-secondary);
+  color: var(--el-text-color-primary);
   margin-bottom: 4px;
 }
 .poster-empty {
