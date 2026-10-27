@@ -180,6 +180,12 @@ onMounted(async () => {
 <template>
   <div class="page">
     <el-card shadow="never" v-loading="loading" class="list-card">
+      <template #header>
+        <div class="card-head">
+          <el-button :loading="saving" @click="load">重置</el-button>
+          <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        </div>
+      </template>
       <div class="card-body" :class="{ 'has-side': $slots.side }">
         <div v-if="$slots.side" class="side">
           <slot name="side" />
@@ -282,11 +288,6 @@ onMounted(async () => {
         </div>
       </div>
     </el-card>
-
-    <div class="actions">
-      <el-button @click="load">重置</el-button>
-      <el-button type="primary" :loading="saving" @click="save">保存</el-button>
-    </div>
   </div>
 </template>
 
@@ -423,16 +424,9 @@ onMounted(async () => {
   gap: 12px;
   margin-top: 12px;
 }
-.actions {
-  position: sticky;
-  bottom: 0;
+.card-head {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 12px;
-  padding: 12px 20px;
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
 }
 </style>
