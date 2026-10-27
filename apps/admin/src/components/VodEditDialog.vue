@@ -313,7 +313,6 @@ function lineTitle(line: PlayLine): string {
     width="1000px"
     top="5vh"
     class="vod-edit-dialog"
-    :close-on-click-modal="false"
     destroy-on-close
     @closed="emit('saved')"
   >
