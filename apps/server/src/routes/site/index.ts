@@ -440,7 +440,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         current_ep_name: episodeName,
         play_url: current.url,
         is_hls: /\.m3u8(\?|$)/i.test(current.url),
-        player: config.player,
         autoplay: config.autoplay,
         autonext: config.autonext,
         resume: config.resume,

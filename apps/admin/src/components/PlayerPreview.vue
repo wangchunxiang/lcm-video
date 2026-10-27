@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-const props = defineProps<{ player: string; options: Record<string, string> }>();
+const props = defineProps<{ options: Record<string, string> }>();
 
-const accent = computed(() => (props.player === 'artplayer' ? '#409eff' : '#ff5c8a'));
-const playerName = computed(() => (props.player === 'artplayer' ? 'ArtPlayer' : 'DPlayer'));
+const accent = '#409eff';
+const playerName = 'ArtPlayer';
 
 function on(key: string, fallback = true): boolean {
   const value = props.options[key];
@@ -15,7 +15,7 @@ function on(key: string, fallback = true): boolean {
 const showScreenshot = computed(() => on('player_screenshot'));
 const showPip = computed(() => on('player_pip'));
 const showSetting = computed(() => on('player_setting'));
-const showWebFullscreen = computed(() => on('player_webfullscreen', false) && props.player === 'artplayer');
+const showWebFullscreen = computed(() => on('player_webfullscreen', false));
 const muted = computed(() => on('player_muted', false));
 const looping = computed(() => on('player_loop', false) && !on('player_autonext'));
 </script>

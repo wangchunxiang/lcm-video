@@ -123,18 +123,6 @@ export const SETTINGS: SettingField[] = [
     options: [{ label: '默认模板', value: 'default' }],
   },
   {
-    key: 'player_type',
-    group: 'playback',
-    label: '播放器',
-    type: 'select',
-    default: 'dplayer',
-    options: [
-      { label: 'DPlayer', value: 'dplayer' },
-      { label: 'ArtPlayer', value: 'artplayer' },
-    ],
-    hint: '用于直连线路；配置了解析接口的线路仍然用 iframe 播放。',
-  },
-  {
     key: 'player_autoplay',
     group: 'playback',
     label: '自动播放',
@@ -204,7 +192,7 @@ export const SETTINGS: SettingField[] = [
     label: '网页全屏',
     type: 'switch',
     default: '0',
-    hint: '撑满浏览器窗口的全屏按钮，仅 ArtPlayer 支持。',
+    hint: '撑满浏览器窗口的全屏按钮，不隐藏标签栏。',
   },
   {
     key: 'player_setting',

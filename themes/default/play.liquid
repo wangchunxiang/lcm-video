@@ -26,7 +26,6 @@
       class="player-box"
       data-src="{{ play_url }}"
       data-hls="{% if is_hls %}1{% else %}0{% endif %}"
-      data-player="{{ player }}"
       data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
       data-autonext="{% if autonext %}1{% else %}0{% endif %}"
       data-resume="{% if resume %}1{% else %}0{% endif %}"
@@ -84,4 +83,4 @@
   {% endif %}
 </section>
 {% endblock %}
-{% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}{% if player == 'artplayer' %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% else %}<script src="{{ 'vendor/DPlayer.min.js' | asset }}"></script>{% endif %}{% endif %}{% endblock %}
+{% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}

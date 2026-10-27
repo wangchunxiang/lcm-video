@@ -19,7 +19,6 @@ export interface SiteConfig {
   statsCode: string;
   theme: string;
   listPageSize: number;
-  player: string;
   autoplay: boolean;
   autonext: boolean;
   resume: boolean;
@@ -66,7 +65,6 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     statsCode: settings['site_stats_code'] || '',
     theme: settings['site_theme'] || 'default',
     listPageSize: Number.isFinite(pageSize) && pageSize > 0 ? Math.min(100, Math.trunc(pageSize)) : 24,
-    player: settings['player_type'] === 'artplayer' ? 'artplayer' : 'dplayer',
     autoplay: settings['player_autoplay'] === '1',
     autonext: settings['player_autonext'] !== '0',
     resume: settings['player_resume'] !== '0',

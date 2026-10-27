@@ -4,7 +4,6 @@
 
   var src = box.getAttribute('data-src') || '';
   var isHls = box.getAttribute('data-hls') === '1';
-  var kind = box.getAttribute('data-player') || 'dplayer';
   var autoplay = box.getAttribute('data-autoplay') === '1';
 
   if (!src) {
@@ -22,10 +21,8 @@
   };
 
   var video = null;
-  if (kind === 'artplayer' && window.Artplayer) {
+  if (window.Artplayer) {
     video = initArtPlayer(box, src, isHls, autoplay, flags);
-  } else if (kind === 'dplayer' && window.DPlayer) {
-    video = initDPlayer(box, src, isHls, autoplay, flags);
   } else {
     video = initNative(box, src, isHls, autoplay, flags);
   }
@@ -156,49 +153,6 @@
     return { enableWorker: true, lowLatencyMode: false };
   }
 
-  function initDPlayer(container, url, hls, auto, flags) {
-    flags = flags || {};
-    if (hls && !window.Hls) return initNative(container, url, hls, auto, flags);
-
-    var player;
-    try {
-      player = new window.DPlayer({
-        container: container,
-        autoplay: auto,
-        hotkey: false,
-        screenshot: !!flags.screenshot,
-        setting: !!flags.setting,
-        loop: !!flags.loop,
-        preload: 'metadata',
-        theme: '#ff5c8a',
-        video: {
-          url: url,
-          type: hls ? 'customHls' : 'auto',
-        },
-        customType: {
-          customHls: function (element) {
-            var instance = new window.Hls(hlsConfig());
-            instance.loadSource(url);
-            instance.attachMedia(element);
-            instance.on(window.Hls.Events.ERROR, function (_event, data) {
-              if (data && data.fatal) showTip(container, '该线路暂不支持在线播放');
-            });
-          },
-        },
-      });
-    } catch (error) {
-      return initNative(container, url, hls, auto);
-    }
-
-    player.on('error', function () {
-      showTip(container, '该线路暂不支持在线播放');
-    });
-
-    if (flags.pip) addPipButton(container, player.video);
-
-    return player.video || null;
-  }
-
   function initArtPlayer(container, url, hls, auto, flags) {
     flags = flags || {};
     if (hls && !window.Hls) return initNative(container, url, hls, auto, flags);
@@ -271,43 +225,6 @@
     }
 
     return element;
-  }
-
-  /* DPlayer 没有画中画开关，用浏览器原生画中画补一个按钮 */
-  function addPipButton(container, element) {
-    if (!element || !document.pictureInPictureEnabled) return;
-    if (container.querySelector('.lcm-pip')) return;
-
-    var button = document.createElement('button');
-    button.className = 'lcm-pip';
-    button.type = 'button';
-    button.title = '画中画';
-    button.innerHTML =
-      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">' +
-      '<path d="M19 11h-8v6h8v-6zm4 8V5a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2zm-2 .02H3V5h18v14z"/></svg>';
-    button.style.cssText =
-      'position:absolute;top:10px;right:10px;z-index:15;display:flex;align-items:center;justify-content:center;' +
-      'width:32px;height:32px;padding:0;border:none;border-radius:4px;cursor:pointer;' +
-      'color:#fff;background:rgba(0,0,0,.45);opacity:.8';
-    button.addEventListener('mouseenter', function () {
-      button.style.opacity = '1';
-    });
-    button.addEventListener('mouseleave', function () {
-      button.style.opacity = '0.8';
-    });
-    button.addEventListener('click', function (event) {
-      event.stopPropagation();
-      try {
-        if (document.pictureInPictureElement) {
-          document.exitPictureInPicture();
-        } else {
-          element.requestPictureInPicture();
-        }
-      } catch (error) {
-        /* 忽略：浏览器不支持或用户拒绝 */
-      }
-    });
-    container.appendChild(button);
   }
 
   function showTip(container, text) {
