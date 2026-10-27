@@ -83,16 +83,6 @@ function saveName(row: LineItem) {
   void patch(row, { name: row.name.trim() });
 }
 
-function saveSort(row: LineItem) {
-  const sort = Number(row.sort);
-  if (!Number.isFinite(sort) || sort < 0) {
-    ElMessage.warning('排序需要是不小于 0 的整数');
-    void load();
-    return;
-  }
-  void patch(row, { sort: Math.trunc(sort) });
-}
-
 function toggleStatus(row: LineItem) {
   void patch(row, { is_enabled: row.isEnabled });
 }
@@ -116,6 +106,56 @@ async function batch(action: 'enable' | 'disable') {
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : `${label}失败`);
+  }
+}
+
+const sortVisible = ref(false);
+const sortSaving = ref(false);
+const sortList = ref<{ id: number; sourceFrom: string; name: string }[]>([]);
+const dragIndex = ref(-1);
+
+async function openSort() {
+  try {
+    const data = await api.get<{ items: LineItem[] }>('/lines?page=1&page_size=100');
+    sortList.value = data.items.map((row) => ({
+      id: row.id,
+      sourceFrom: row.sourceFrom,
+      name: row.name || row.sourceName || row.sourceFrom,
+    }));
+    sortVisible.value = true;
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '加载线路失败');
+  }
+}
+
+function startDrag(index: number) {
+  dragIndex.value = index;
+}
+
+function dragOver(index: number) {
+  if (dragIndex.value < 0 || dragIndex.value === index) return;
+  const items = sortList.value;
+  const [moved] = items.splice(dragIndex.value, 1);
+  if (!moved) return;
+  items.splice(index, 0, moved);
+  dragIndex.value = index;
+}
+
+function endDrag() {
+  dragIndex.value = -1;
+}
+
+async function saveSortOrder() {
+  sortSaving.value = true;
+  try {
+    await api.post('/lines/sort', { ids: sortList.value.map((row) => row.id) });
+    ElMessage.success('排序已保存');
+    sortVisible.value = false;
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '保存失败');
+  } finally {
+    sortSaving.value = false;
   }
 }
 
@@ -164,6 +204,7 @@ onBeforeUnmount(() => {
       <div class="toolbar">
         <el-button :disabled="selection.length === 0" @click="batch('enable')">批量启用</el-button>
         <el-button :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
+        <el-button @click="openSort">调整排序</el-button>
         <span class="hint">显示名留空时用采集源名称；停用的线路不在前台出现</span>
       </div>
       <div ref="wrapRef" class="table-wrap">
@@ -201,11 +242,7 @@ onBeforeUnmount(() => {
             </template>
           </el-table-column>
           <el-table-column prop="vodCount" label="线路数" width="90" align="center" />
-          <el-table-column label="排序" width="100" align="center">
-            <template #default="{ row }">
-              <el-input v-model="row.sort" size="small" class="sort-input" @change="saveSort(row)" />
-            </template>
-          </el-table-column>
+          <el-table-column prop="sort" label="排序" width="90" align="center" />
           <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-switch
@@ -232,6 +269,30 @@ onBeforeUnmount(() => {
         @size-change="changePageSize"
       />
     </el-card>
+
+    <el-dialog v-model="sortVisible" title="调整线路排序" width="520px">
+      <div class="sort-tip">拖动调整顺序，越靠前越优先，前台播放页按此顺序排列线路。</div>
+      <div class="sort-list">
+        <div
+          v-for="(item, index) in sortList"
+          :key="item.id"
+          class="sort-row"
+          :class="{ 'is-dragging': dragIndex === index }"
+          draggable="true"
+          @dragstart="startDrag(index)"
+          @dragover.prevent="dragOver(index)"
+          @dragend="endDrag"
+        >
+          <span class="sort-index">{{ index + 1 }}</span>
+          <span class="sort-name">{{ item.name }}</span>
+          <span class="sort-code">{{ item.sourceFrom }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="sortVisible = false">取消</el-button>
+        <el-button type="primary" :loading="sortSaving" @click="saveSortOrder">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -285,10 +346,51 @@ onBeforeUnmount(() => {
 .code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-.sort-input {
-  width: 64px;
+.sort-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 12px;
 }
-.sort-input :deep(input) {
+.sort-list {
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 4px;
+}
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  cursor: move;
+  background: var(--el-bg-color);
+}
+.sort-row + .sort-row {
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.sort-row:hover {
+  background: var(--el-fill-color-light);
+}
+.sort-row.is-dragging {
+  opacity: 0.5;
+}
+.sort-index {
+  width: 18px;
   text-align: center;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.sort-name {
+  flex: none;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sort-code {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>
