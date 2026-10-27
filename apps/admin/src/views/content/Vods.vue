@@ -15,6 +15,7 @@ interface VodRow {
   status: number;
   episodeCount: number;
   playCount: number;
+  actualEpisodes: number;
   collectedAt: string;
 }
 
@@ -301,8 +302,8 @@ onBeforeUnmount(() => {
       <el-table-column label="线路" width="80" align="center">
         <template #default="{ row }">{{ row.playCount }}</template>
       </el-table-column>
-      <el-table-column label="集数" width="80" align="center">
-        <template #default="{ row }">{{ row.episodeCount }}</template>
+      <el-table-column label="集数" width="100" align="center">
+        <template #default="{ row }">{{ row.actualEpisodes }} / {{ row.episodeCount || '—' }}</template>
       </el-table-column>
       <el-table-column prop="remarks" label="备注" min-width="120" show-overflow-tooltip />
       <el-table-column label="状态" width="80" align="center">

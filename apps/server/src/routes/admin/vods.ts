@@ -220,14 +220,26 @@ export const vodRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) => 
       ids.length === 0
         ? []
         : await db
-            .select({ vodId: vodPlay.vodId, plays: sql<number>`count(*)` })
+            .select({
+              vodId: vodPlay.vodId,
+              plays: sql<number>`count(*)`,
+              // 线路里实际有多少集：play_url 按 # 分隔，空串算 0 集
+              episodes: sql<number>`MAX(CASE WHEN ${vodPlay.playUrl} = '' THEN 0 ELSE CHAR_LENGTH(${vodPlay.playUrl}) - CHAR_LENGTH(REPLACE(${vodPlay.playUrl}, '#', '')) + 1 END)`,
+            })
             .from(vodPlay)
             .where(inArray(vodPlay.vodId, ids))
             .groupBy(vodPlay.vodId);
-    const playMap = new Map(playCounts.map((row) => [row.vodId, Number(row.plays)]));
+    const playMap = new Map(playCounts.map((row) => [row.vodId, row]));
 
     return ok(reply, {
-      items: rows.map((row) => ({ ...row, playCount: playMap.get(row.id) ?? 0 })),
+      items: rows.map((row) => {
+        const stat = playMap.get(row.id);
+        return {
+          ...row,
+          playCount: stat ? Number(stat.plays) : 0,
+          actualEpisodes: stat ? Number(stat.episodes) : 0,
+        };
+      }),
       total,
       page,
       page_size: pageSize,
