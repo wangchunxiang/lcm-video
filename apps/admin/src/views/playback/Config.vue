@@ -14,8 +14,8 @@ function onChange(key: string, value: string) {
   <div class="page">
     <div class="cols">
       <div class="col-main">
-        <SettingForm group="playback" label-width="96px" @change="onChange">
-          <template #side>
+        <SettingForm group="playback" label-width="120px" @change="onChange">
+          <template #top>
             <PlayerPreview :player="playerType" />
           </template>
         </SettingForm>
@@ -49,11 +49,6 @@ function onChange(key: string, value: string) {
 }
 .col-main :deep(.setting-form) {
   max-width: none;
-}
-.col-main :deep(.side .preview) {
-  width: 300px;
-  max-width: none;
-  margin-bottom: 0;
 }
 .col-main :deep(.el-form-item) {
   margin-bottom: 14px;
