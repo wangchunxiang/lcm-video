@@ -2,34 +2,35 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { SETTINGS } from '@lcm/shared/settings';
+import PlayerPreview from '../../components/PlayerPreview.vue';
 import { api } from '../../api/client';
 
 interface Field {
   key: string;
   label: string;
   type: string;
+  default: string;
   hint?: string;
+  group: string;
 }
 
-const fields = SETTINGS.filter((item) => item.group === 'playback') as Field[];
+const all = SETTINGS as Field[];
+const playbackFields = all.filter((item) => item.group === 'playback');
+const adFields = all.filter((item) => item.group === 'ads');
 
 const values = ref<Record<string, string>>({});
 let snapshot: Record<string, string> = {};
 const loading = ref(false);
 const saving = ref(false);
 
-function defaultValue(field: Field): string {
-  return SETTINGS.find((item) => item.key === field.key)?.default ?? '';
-}
-
 async function load() {
   loading.value = true;
   try {
     const res = await api.get<{ items: { key: string; value: string }[] }>('/settings');
     const next: Record<string, string> = {};
-    for (const field of fields) {
+    for (const field of [...playbackFields, ...adFields]) {
       const hit = res.items.find((item) => item.key === field.key);
-      next[field.key] = hit ? hit.value : defaultValue(field);
+      next[field.key] = hit ? hit.value : field.default;
     }
     values.value = next;
     snapshot = { ...next };
@@ -38,15 +39,19 @@ async function load() {
   }
 }
 
-function reset() {
-  values.value = { ...snapshot };
+function reset(fields: Field[]) {
+  const next = { ...values.value };
+  for (const field of fields) next[field.key] = snapshot[field.key] ?? field.default;
+  values.value = next;
 }
 
-async function save() {
+async function save(fields: Field[]) {
   saving.value = true;
   try {
-    await api.put('/settings', { values: values.value });
-    snapshot = { ...values.value };
+    const payload: Record<string, string> = {};
+    for (const field of fields) payload[field.key] = values.value[field.key] ?? field.default;
+    await api.put('/settings', { values: payload });
+    snapshot = { ...snapshot, ...payload };
     ElMessage.success('已保存');
   } finally {
     saving.value = false;
@@ -57,17 +62,57 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="page">
-    <el-card v-loading="loading" shadow="never" class="main">
+  <div v-loading="loading" class="page">
+    <div class="left">
+      <el-card shadow="never" class="preview-card">
+        <template #header>
+          <span class="card-title">预览</span>
+        </template>
+        <PlayerPreview :options="values" />
+      </el-card>
+
+      <el-card shadow="never" class="ads-card">
+        <template #header>
+          <span class="card-title">去广告设置</span>
+        </template>
+
+        <div class="form">
+          <div v-for="field in adFields" :key="field.key" class="form-row">
+            <span class="label">{{ field.label }}</span>
+            <div class="control">
+              <el-switch
+                v-if="field.type === 'switch'"
+                :model-value="values[field.key] === '1'"
+                @change="(checked: any) => (values[field.key] = checked ? '1' : '0')"
+              />
+              <el-input
+                v-else
+                :model-value="values[field.key]"
+                :class="{ short: field.type === 'number' }"
+                @update:model-value="(value: string) => (values[field.key] = value)"
+              />
+              <div class="hint">{{ field.hint }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <el-button @click="reset(adFields)">重置</el-button>
+          <el-button type="primary" :loading="saving" @click="save(adFields)">保存</el-button>
+        </div>
+      </el-card>
+    </div>
+
+    <el-card shadow="never" class="right">
       <template #header>
         <span class="card-title">播放设置</span>
       </template>
 
-      <el-table :data="fields" border class="setting-table">
-        <el-table-column label="设置项" width="200">
+      <el-table :data="playbackFields" border class="setting-table">
+        <el-table-column label="设置项" width="180">
           <template #default="{ row }">{{ row.label }}</template>
         </el-table-column>
-        <el-table-column label="设置值" width="240">
+        <el-table-column label="设置值" width="200">
           <template #default="{ row }">
             <el-switch
               v-if="row.type === 'switch'"
@@ -89,8 +134,8 @@ onMounted(load);
       </el-table>
 
       <div class="foot">
-        <el-button @click="reset">重置</el-button>
-        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button @click="reset(playbackFields)">重置</el-button>
+        <el-button type="primary" :loading="saving" @click="save(playbackFields)">保存</el-button>
       </div>
     </el-card>
   </div>
@@ -99,16 +144,40 @@ onMounted(load);
 <style scoped>
 .page {
   height: 100%;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+.left {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  min-height: 0;
 }
-.main {
+.preview-card {
+  flex: none;
+}
+.ads-card {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.main :deep(.el-card__body) {
+.ads-card :deep(.el-card__body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-y: auto;
+}
+.right {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.right :deep(.el-card__body) {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -119,17 +188,48 @@ onMounted(load);
   font-size: 14px;
   font-weight: 600;
 }
+.form {
+  padding: 4px 20px 16px;
+}
+.form-row {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.form-row:last-child {
+  border-bottom: none;
+}
+.label {
+  flex: none;
+  width: 96px;
+  color: var(--el-text-color-regular);
+  line-height: 32px;
+}
+.control {
+  flex: 1;
+  min-width: 0;
+}
+.short {
+  width: 120px;
+}
+.hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  line-height: 1.5;
+}
 .setting-table {
   flex: none;
 }
 .setting-table :deep(.el-table__cell) {
   padding: 10px 0;
 }
-.hint {
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
+.setting-table .hint {
+  margin-top: 0;
 }
 .foot {
+  margin-top: auto;
   display: flex;
   justify-content: flex-end;
   gap: 10px;

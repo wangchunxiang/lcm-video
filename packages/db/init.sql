@@ -224,6 +224,9 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('player_webfullscreen', '0'),
   ('player_setting', '1'),
   ('player_loop', '0'),
+  ('ads_enabled', '0'),
+  ('ads_episode_keywords', '广告,推广,永久地址,最新网址'),
+  ('ads_skip_seconds', '0'),
   ('login_expire_days', '7'),
   ('collect_log_keep_days', '30'),
   ('upload_max_mb', '2');

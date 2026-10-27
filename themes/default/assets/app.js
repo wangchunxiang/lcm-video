@@ -104,30 +104,46 @@
       });
     }
 
-    if (!resume || !storageKey || !ep) return;
+    var skip = parseInt(container.getAttribute('data-skip') || '0', 10) || 0;
+    var restored = false;
 
-    var saved = readProgress(storageKey);
-    if (saved && String(saved.ep) === String(ep) && saved.time > 5) {
-      var seek = function () {
-        if (!element.duration || saved.time < element.duration - 5) {
+    if (resume && storageKey && ep) {
+      var saved = readProgress(storageKey);
+      if (saved && String(saved.ep) === String(ep) && saved.time > 5) {
+        restored = true;
+        element.addEventListener('loadedmetadata', function seekSaved() {
+          if (!element.duration || saved.time < element.duration - 5) {
+            try {
+              element.currentTime = saved.time;
+            } catch (error) {
+              /* 忽略：部分流不支持跳转 */
+            }
+          }
+          element.removeEventListener('loadedmetadata', seekSaved);
+        });
+      }
+
+      var last = 0;
+      element.addEventListener('timeupdate', function () {
+        var now = Date.now();
+        if (now - last < 5000) return;
+        last = now;
+        writeProgress(storageKey, ep, Math.floor(element.currentTime));
+      });
+    }
+
+    if (!restored && skip > 0) {
+      element.addEventListener('loadedmetadata', function seekSkip() {
+        if (!element.duration || skip < element.duration - 5) {
           try {
-            element.currentTime = saved.time;
+            element.currentTime = skip;
           } catch (error) {
             /* 忽略：部分流不支持跳转 */
           }
         }
-        element.removeEventListener('loadedmetadata', seek);
-      };
-      element.addEventListener('loadedmetadata', seek);
+        element.removeEventListener('loadedmetadata', seekSkip);
+      });
     }
-
-    var last = 0;
-    element.addEventListener('timeupdate', function () {
-      var now = Date.now();
-      if (now - last < 5000) return;
-      last = now;
-      writeProgress(storageKey, ep, Math.floor(element.currentTime));
-    });
   }
 
   function readProgress(key) {

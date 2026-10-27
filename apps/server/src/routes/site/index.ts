@@ -16,6 +16,12 @@ import {
   type SiteConfig,
 } from '../../lib/theme.ts';
 
+/** 按去广告关键词过滤剧集列表；未启用时原样返回 */
+function applyAdFilter<T extends { name: string }>(list: T[], config: SiteConfig): T[] {
+  if (!config.adsEnabled || config.adKeywords.length === 0) return list;
+  return list.filter((item) => !config.adKeywords.some((keyword) => item.name.includes(keyword)));
+}
+
 export interface SiteRouteOpts {
   db: Db;
 }
@@ -327,7 +333,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
     const lines = await loadLines(id);
     const firstLine = lines[0];
-    const allEpisodes = firstLine ? parsePlayUrl(firstLine.playUrl) : [];
+    const allEpisodes = firstLine ? applyAdFilter(parsePlayUrl(firstLine.playUrl), config) : [];
     const episodes: EpisodeView[] = allEpisodes.slice(0, 50).map((item, index) => ({
       index: index + 1,
       name: item.name,
@@ -406,7 +412,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const line = playId > 0 ? lines.find((item) => item.id === playId) : lines[0];
     if (!line) return notFound(reply);
 
-    const all = parsePlayUrl(line.playUrl);
+    const all = applyAdFilter(parsePlayUrl(line.playUrl), config);
     if (all.length === 0) return notFound(reply);
 
     const currentEp = ep > 0 ? ep : 1;
@@ -440,6 +446,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         current_ep_name: episodeName,
         play_url: current.url,
         is_hls: /\.m3u8(\?|$)/i.test(current.url),
+        skip_seconds: config.adsEnabled ? config.adSkipSeconds : 0,
         autoplay: config.autoplay,
         autonext: config.autonext,
         resume: config.resume,

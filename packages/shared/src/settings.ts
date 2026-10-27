@@ -1,6 +1,6 @@
 export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select' | 'order';
 
-export type SettingGroup = 'base' | 'site' | 'playback' | 'account';
+export type SettingGroup = 'base' | 'site' | 'playback' | 'ads' | 'account';
 
 export interface SettingField {
   /** 存储键，对应 lcm_setting.name */
@@ -209,6 +209,30 @@ export const SETTINGS: SettingField[] = [
     type: 'switch',
     default: '0',
     hint: '单集循环。与「自动连播」同时开启时，连播优先。',
+  },
+  {
+    key: 'ads_enabled',
+    group: 'ads',
+    label: '启用去广告',
+    type: 'switch',
+    default: '0',
+    hint: '隐藏剧集名含广告关键词的条目，并按设定跳过片头。',
+  },
+  {
+    key: 'ads_episode_keywords',
+    group: 'ads',
+    label: '剧集名关键词',
+    type: 'text',
+    default: '广告,推广,永久地址,最新网址',
+    hint: '英文逗号分隔，剧集名包含其中任意一个即隐藏。',
+  },
+  {
+    key: 'ads_skip_seconds',
+    group: 'ads',
+    label: '片头跳过秒数',
+    type: 'number',
+    default: '0',
+    hint: '播放时自动从第 N 秒开始，0 表示不跳过。',
   },
   {
     key: 'login_expire_days',
