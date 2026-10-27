@@ -91,14 +91,6 @@ const collectedDate = computed(() => (form.collectedAt || '').slice(0, 10) || '�
 const collectedTime = computed(() => (form.collectedAt || '').slice(11, 19))
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
-const flatCategories = computed(() => {
-  const result: { id: number; label: string }[] = [];
-  for (const parent of categories.value) {
-    result.push({ id: parent.id, label: parent.name });
-    for (const child of parent.children ?? []) result.push({ id: child.id, label: `${parent.name} / ${child.name}` });
-  }
-  return result;
-});
 
 const activeLineId = ref<number | null>(null);
 const activeLine = computed(() => lines.value.find((line) => line.id === activeLineId.value) ?? null);
@@ -362,9 +354,17 @@ function lineTitle(line: PlayLine): string {
 
                   <el-col :span="6">
                     <el-form-item label="分类">
-                      <el-select v-model="form.category_id" filterable style="width: 100%">
-                        <el-option v-for="item in flatCategories" :key="item.id" :label="item.label" :value="item.id" />
-                      </el-select>
+                      <el-tree-select
+                        v-model="form.category_id"
+                        :data="categories"
+                        :props="{ label: 'name', children: 'children' }"
+                        node-key="id"
+                        check-strictly
+                        :render-after-expand="false"
+                        default-expand-all
+                        filterable
+                        style="width: 100%"
+                      />
                     </el-form-item>
                   </el-col>
                   <el-col :span="6">
