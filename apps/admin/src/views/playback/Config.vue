@@ -214,33 +214,38 @@ onMounted(() => {
   box-sizing: border-box;
 }
 .layout {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 32px;
   height: 100%;
 }
 .stage-col {
-  width: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 2px 32px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 18px;
+  align-content: start;
 }
 .field {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 6px 0;
+  gap: 8px;
+  padding: 4px 0;
 }
 .field.disabled .field-label {
   color: var(--el-text-color-placeholder);
 }
 .field-label {
   flex: none;
-  width: 88px;
+  width: 74px;
   text-align: right;
-  line-height: 32px;
+  line-height: 28px;
+  font-size: 13px;
   color: var(--el-text-color-regular);
 }
 .field-ctrl {
@@ -248,8 +253,9 @@ onMounted(() => {
   min-width: 0;
 }
 .field-hint {
-  margin-top: 2px;
+  margin-top: 1px;
   font-size: 12px;
+  line-height: 16px;
   color: var(--el-text-color-secondary);
 }
 
