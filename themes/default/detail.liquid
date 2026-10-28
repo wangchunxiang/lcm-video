@@ -36,14 +36,11 @@
       <h1>{{ vod.name }}</h1>
       {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
 
-      <div class="meta-line">
-        {% if vod.category_name != blank %}<span class="meta-chip"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
-        <span class="meta-chip"><i>年份</i>{{ vod.year }}</span>
-        {% if vod.area != blank %}<span class="meta-chip"><i>地区</i>{{ vod.area }}</span>{% endif %}
-        {% if vod.lang != blank %}<span class="meta-chip"><i>语言</i>{{ vod.lang }}</span>{% endif %}
-      </div>
-
       <dl class="info-list">
+        {% if vod.category_name != blank %}<div><dt>分类</dt><dd>{{ vod.category_name }}</dd></div>{% endif %}
+        <div><dt>年份</dt><dd>{{ vod.year }}</dd></div>
+        {% if vod.area != blank %}<div><dt>地区</dt><dd>{{ vod.area }}</dd></div>{% endif %}
+        {% if vod.lang != blank %}<div><dt>语言</dt><dd>{{ vod.lang }}</dd></div>{% endif %}
         {% if vod.release_date != blank %}<div><dt>上映</dt><dd>{{ vod.release_date }}</dd></div>{% endif %}
         {% if vod.actor != blank %}<div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>{% endif %}
         {% if vod.director != blank %}<div><dt>导演</dt><dd>{{ vod.director }}</dd></div>{% endif %}
