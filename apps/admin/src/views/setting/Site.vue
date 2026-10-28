@@ -15,67 +15,41 @@ interface ThemeItem {
   active: boolean;
 }
 
-interface SectionRow {
+interface Row {
   key: string;
   label: string;
-  hint?: string;
   kind: 'text' | 'image' | 'select' | 'textarea';
-  /** 同一行右侧再放一个短字段 */
-  secondary?: { key: string; label: string };
-}
-
-interface Section {
-  title: string;
-  rows: SectionRow[];
+  hint?: string;
+  /** 长文本占满两列 */
+  wide?: boolean;
 }
 
 /** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
-const SECTIONS: Section[] = [
-  {
-    title: '站点信息',
-    rows: [
-      { key: 'site_name', label: '站点名称', kind: 'text', secondary: { key: 'site_subtitle', label: '副标题' } },
-      { key: 'site_icp', label: '备案号', kind: 'text' },
-    ],
-  },
-  {
-    title: '品牌与外观',
-    rows: [
-      { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '填写图片地址，或通过上传得到 /uploads/ 开头的路径。' },
-      { key: 'site_favicon', label: '站点图标', kind: 'image' },
-      { key: 'site_theme', label: '当前模板', kind: 'select' },
-    ],
-  },
-  {
-    title: 'SEO 与页脚',
-    rows: [
-      { key: 'site_keywords', label: 'SEO 关键词', kind: 'textarea' },
-      { key: 'site_description', label: 'SEO 描述', kind: 'textarea' },
-      { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚。' },
-      { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部。' },
-    ],
-  },
-  {
-    title: '列表与上传',
-    rows: [
-      { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '前台首页与分类页每页显示的影片数量，建议保持 24（三行八列）。' },
-      { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次超出天数的采集记录。' },
-      { key: 'upload_max_mb', label: '单文件上传上限（MB）', kind: 'text' },
-    ],
-  },
+const FIELDS: Row[] = [
+  { key: 'site_name', label: '站点名称', kind: 'text' },
+  { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
+  { key: 'site_icp', label: '备案号', kind: 'text' },
+  { key: 'site_theme', label: '当前模板', kind: 'select' },
+  { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '填写图片地址，或直接上传' },
+  { key: 'site_favicon', label: '站点图标', kind: 'image', hint: '浏览器标签页上的小图标' },
+  { key: 'site_keywords', label: 'SEO 关键词', kind: 'textarea', wide: true, hint: '多个关键词用英文逗号分隔' },
+  { key: 'site_description', label: 'SEO 描述', kind: 'textarea', wide: true },
+  { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', wide: true, hint: '显示在前台页脚' },
+  { key: 'site_stats_code', label: '统计代码', kind: 'textarea', wide: true, hint: '原样输出到前台页面底部' },
+  { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '首页与分类页每页影片数，建议 24' },
+  { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次' },
+  { key: 'upload_max_mb', label: '单文件上传上限（MB）', kind: 'text' },
 ];
 
-const KEYS = SECTIONS.flatMap((section) =>
-  section.rows.flatMap((row) => (row.secondary ? [row.key, row.secondary.key] : [row.key])),
-);
+const KEYS = FIELDS.map((field) => field.key);
 
 const form = reactive<Record<string, string>>({
   site_name: '',
   site_subtitle: '',
   site_icp: '',
+  site_theme: 'default',
   site_logo: '',
   site_favicon: '',
-  site_theme: 'default',
   site_keywords: '',
   site_description: '',
   site_disclaimer: '',
@@ -128,44 +102,32 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <div class="list">
-        <template v-for="(section, sectionIndex) in SECTIONS" :key="section.title">
-          <div v-if="sectionIndex > 0" class="section-gap"></div>
+      <template #header>
+        <span class="card-title">站点设置</span>
+      </template>
 
-          <div v-for="row in section.rows" :key="row.key" class="row" :class="{ 'row-stack': row.kind === 'textarea' }">
-            <div class="row-main">
-              <span class="row-title">{{ row.label }}</span>
-              <el-tooltip v-if="row.hint" :content="row.hint" placement="top">
-                <el-icon class="row-tip"><InfoFilled /></el-icon>
-              </el-tooltip>
-            </div>
-
-            <div class="row-ctrl" :class="{ full: row.kind === 'textarea', pair: row.secondary }">
-              <template v-if="row.secondary">
-                <el-input v-model="form[row.key]" style="width: 180px" />
-                <span class="pair-label">{{ row.secondary.label }}</span>
-                <el-input v-model="form[row.secondary.key]" style="width: 180px" />
-              </template>
-              <el-input
-                v-else-if="row.kind === 'textarea'"
-                v-model="form[row.key]"
-                type="textarea"
-                :rows="3"
-              />
-              <ImageUpload v-else-if="row.kind === 'image'" v-model="form[row.key]" />
-              <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 200px">
-                <el-option
-                  v-for="theme in themes"
-                  :key="theme.name"
-                  :label="theme.title"
-                  :value="theme.name"
-                />
-              </el-select>
-              <el-input v-else v-model="form[row.key]" style="width: 160px" />
-
-            </div>
+      <div class="grid">
+        <div v-for="row in FIELDS" :key="row.key" class="item" :class="{ wide: row.wide }">
+          <div class="item-label">
+            <span>{{ row.label }}</span>
+            <el-tooltip v-if="row.hint" :content="row.hint" placement="top">
+              <el-icon class="item-tip"><InfoFilled /></el-icon>
+            </el-tooltip>
           </div>
-        </template>
+
+          <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
+          <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]">
+            <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
+          </el-select>
+          <el-input
+            v-else-if="row.kind === 'textarea'"
+            v-model="form[row.key]"
+            type="textarea"
+            :rows="3"
+            resize="vertical"
+          />
+          <el-input v-else v-model="form[row.key]" />
+        </div>
       </div>
 
       <div class="card-foot">
@@ -179,83 +141,44 @@ onMounted(() => {
 <style scoped>
 .page {
   width: 100%;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
 }
-.group-card {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
+.group-card :deep(.el-card__header) {
+  padding: 12px 20px;
+}
+.card-title {
+  font-weight: 600;
 }
 .group-card :deep(.el-card__body) {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  padding: 4px 20px 0;
+  padding: 8px 20px 0;
 }
-.list {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 760px;
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 40px;
+  padding: 8px 0 4px;
 }
-.section-gap {
-  height: 20px;
+.item.wide {
+  grid-column: 1 / -1;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 40px;
-}
-.row-main {
-  flex: none;
+.item-label {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
   color: var(--el-text-color-regular);
 }
-.row-tip {
+.item-tip {
   font-size: 13px;
   color: var(--el-text-color-placeholder);
   cursor: help;
 }
-.row-ctrl {
-  margin-left: auto;
-  flex: none;
-  display: flex;
-  align-items: center;
-}
-.row-ctrl.pair {
-  gap: 8px;
-}
-.pair-label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  white-space: nowrap;
-}
-.row-ctrl.full {
-  margin-left: 0;
-  flex: 1 1 auto;
-  width: 100%;
+.grid :deep(.image-upload) {
   max-width: none;
-}
-.row-stack {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  padding: 12px 0;
-}
-.row-stack .row-main {
-  padding: 0;
 }
 .card-foot {
   display: flex;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 760px;
   gap: 10px;
-  margin-top: auto;
+  margin-top: 16px;
   padding: 14px 0 16px;
   border-top: 1px solid var(--el-border-color);
 }
