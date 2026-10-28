@@ -74,13 +74,19 @@ interface AdFeature {
   sample: Array<{ vod_id: number; vod_name: string; start: number }> | null;
 }
 
+/** 候选只存在内存里，只有人工确认的才落库 */
+interface Candidate extends Omit<AdFeature, 'id' | 'status'> {
+  key: string;
+}
+
 const sampleVods = ref<SampleVod[]>([]);
 const logs = ref<string[]>([]);
-const results = ref<AdFeature[]>([]);
+const confirmed = ref<AdFeature[]>([]);
+const candidates = ref<Candidate[]>([]);
 const analyzing = ref(false);
 const logVisible = ref(false);
-const confirmedFeatures = computed(() => results.value.filter((row) => row.status === 1));
-const candidateFeatures = computed(() => results.value.filter((row) => row.status === 0));
+const confirmedFeatures = computed(() => confirmed.value);
+const candidateFeatures = computed(() => candidates.value);
 const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
@@ -101,8 +107,8 @@ function pushLog(text: string) {
   });
 }
 
-function openFeature(row: AdFeature) {
-  activeResult.value = row;
+function openFeature(row: AdFeature | Candidate) {
+  activeResult.value = row as AdFeature;
   featureVisible.value = true;
 }
 
@@ -114,23 +120,44 @@ function secondsText(ms: number) {
   return `${(ms / 1000).toFixed(1)} 秒`;
 }
 
-async function setStatus(row: AdFeature, status: 0 | 1 | 2) {
+async function confirmAd(row: Candidate) {
   if (!adsSourceId.value) return;
   try {
-    await api.put(`/sources/${adsSourceId.value}/ads/${row.id}`, { status });
-    row.status = status;
-    if (status === 1) ElMessage.success('已确认是广告，播放时将跳过');
-    else if (status === 2) ElMessage.success('已排除，播放时保留');
-    else ElMessage.success('已撤销，放回候选');
+    await api.post(`/sources/${adsSourceId.value}/ads`, {
+      durations: row.durations,
+      kind: row.kind,
+      totalMs: row.totalMs,
+      hitVods: row.hitVods,
+      sample: row.sample,
+    });
+    candidates.value = candidates.value.filter((item) => item.key !== row.key);
+    await loadFeatures();
+    ElMessage.success('已确认是广告，播放时将跳过');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
+  }
+}
+
+function dismissAd(row: Candidate) {
+  candidates.value = candidates.value.filter((item) => item.key !== row.key);
+  ElMessage.success('已排除，播放时保留');
+}
+
+async function removeFeature(row: AdFeature) {
+  if (!adsSourceId.value) return;
+  try {
+    await api.del(`/sources/${adsSourceId.value}/ads/${row.id}`);
+    await loadFeatures();
+    ElMessage.success('已撤销');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '撤销失败');
   }
 }
 
 /** 换源后之前的抽取与分析结果都作废，并拉该源已有特征 */
 watch(adsSourceId, () => {
   sampleVods.value = [];
-  results.value = [];
+  candidates.value = [];
   logs.value = [];
   void loadFeatures();
 });
@@ -139,9 +166,9 @@ async function loadFeatures() {
   if (!adsSourceId.value) return;
   try {
     const data = await api.get<AdFeature[]>(`/sources/${adsSourceId.value}/ads`);
-    results.value = data;
+    confirmed.value = data;
   } catch {
-    results.value = [];
+    confirmed.value = [];
   }
 }
 
@@ -155,7 +182,7 @@ async function pickVods() {
   try {
     const data = await api.post<{ items: SampleVod[] }>(`/sources/${adsSourceId.value}/ads/pick`);
     sampleVods.value = data.items;
-    results.value = [];
+    candidates.value = [];
     logs.value = [];
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '抽取失败');
@@ -174,7 +201,7 @@ async function startAnalyze() {
     return;
   }
   analyzing.value = true;
-  results.value = [];
+  candidates.value = [];
   logs.value = [];
   logVisible.value = true;
   try {
@@ -182,8 +209,11 @@ async function startAnalyze() {
       `/sources/${adsSourceId.value}/ads/analyze`,
     );
     logs.value = data.logs;
-    await loadFeatures();
-    const count = results.value.length;
+    candidates.value = (data.features ?? []).map((item) => ({
+      ...item,
+      key: item.durations,
+    }));
+    const count = candidates.value.length;
     pushLog(count ? `共 ${count} 条特征，请确认哪些是广告` : '未发现候选广告');
     const box = logRef.value;
     if (box) box.scrollTop = box.scrollHeight;
@@ -356,8 +386,8 @@ onMounted(() => {
             <el-table-column label="操作" width="150" align="center">
               <template #default="{ row }">
                 <el-button link type="primary" @click="openFeature(row)">查看</el-button>
-                <el-button link type="success" @click="setStatus(row, 1)">是广告</el-button>
-                <el-button link type="danger" @click="setStatus(row, 2)">否</el-button>
+                <el-button link type="success" @click="confirmAd(row)">是广告</el-button>
+                <el-button link type="danger" @click="dismissAd(row)">否</el-button>
               </template>
             </el-table-column>
             <template #empty>点「开始分析」提取候选广告</template>
@@ -385,7 +415,7 @@ onMounted(() => {
             <el-table-column label="操作" width="104" align="center">
               <template #default="{ row }">
                 <el-button link type="primary" @click="openFeature(row)">查看</el-button>
-                <el-button link type="info" @click="setStatus(row, 0)">撤销</el-button>
+                <el-button link type="info" @click="removeFeature(row)">撤销</el-button>
               </template>
             </el-table-column>
             <template #empty>还没有确认的广告特征</template>

@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
-import { adFeature, vod, vodPlay } from '@lcm/db';
+import { vod, vodPlay } from '@lcm/db';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
@@ -225,28 +225,6 @@ export async function analyzeSource(
   found.sort((a, b) => b.hitVods - a.hitVods || b.totalMs - a.totalMs);
   const top = found.slice(0, 50);
 
-  for (const feature of top) {
-    await db
-      .insert(adFeature)
-      .values({
-        sourceId,
-        kind: feature.kind,
-        durations: feature.durations,
-        totalMs: feature.totalMs,
-        hitVods: feature.hitVods,
-        sample: feature.sample,
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          kind: feature.kind,
-          totalMs: feature.totalMs,
-          hitVods: feature.hitVods,
-          sample: feature.sample,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        },
-      });
-  }
-
-  log(`命中 ${top.length} 条候选，已写入特征表`);
+  log(`命中 ${top.length} 条候选，等待人工确认`);
   return { features: top, sampled: samples.length };
 }

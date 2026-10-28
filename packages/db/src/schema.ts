@@ -250,7 +250,6 @@ export const adFeature = mysqlTable(
     totalMs: int('total_ms', { unsigned: true }).notNull().default(0),
     hitVods: int('hit_vods', { unsigned: true }).notNull().default(0),
     sample: json('sample'),
-    status: tinyint('status', { unsigned: true }).notNull().default(0),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: datetime('updated_at')
       .notNull()
@@ -258,6 +257,6 @@ export const adFeature = mysqlTable(
   },
   (table) => [
     uniqueIndex('uk_source_durations').on(table.sourceId, table.durations),
-    index('idx_source_status').on(table.sourceId, table.status),
+    index('idx_source').on(table.sourceId),
   ],
 );

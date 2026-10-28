@@ -24,7 +24,7 @@ function nowClock(): string {
 export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
-  /** 该源已有的广告特征 */
+  /** 该源已确认的广告特征 */
   app.get('/:id/ads', async (req, reply) => {
     const sourceId = toInt((req.params as { id?: string }).id);
     const rows = await db
@@ -73,19 +73,48 @@ export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => 
     }
   });
 
-  /** 确认 / 排除某条特征 */
-  app.put('/:id/ads/:featureId', async (req, reply) => {
+  /** 人工确认一条候选，落库 */
+  app.post('/:id/ads', async (req, reply) => {
     const sourceId = toInt((req.params as { id?: string }).id);
-    const featureId = toInt((req.params as { featureId?: string }).featureId);
-    const status = toInt((req.body as { status?: unknown }).status);
-    if (!sourceId || !featureId) return fail(reply, 400, ErrorCode.BAD_REQUEST, '参数不完整');
-    if (status !== 0 && status !== 1 && status !== 2)
-      return fail(reply, 400, ErrorCode.BAD_REQUEST, '状态只能是 0、1 或 2');
+    if (!sourceId) return fail(reply, 400, ErrorCode.BAD_REQUEST, '缺少采集源');
+    const body = req.body as {
+      durations?: unknown;
+      kind?: unknown;
+      totalMs?: unknown;
+      hitVods?: unknown;
+      sample?: unknown;
+    };
+    const durations = typeof body.durations === 'string' ? body.durations.trim() : '';
+    if (!durations) return fail(reply, 400, ErrorCode.BAD_REQUEST, '缺少时长序列');
 
     await db
-      .update(adFeature)
-      .set({ status, updatedAt: sql`CURRENT_TIMESTAMP` })
-      .where(and(eq(adFeature.id, featureId), eq(adFeature.sourceId, sourceId)));
+      .insert(adFeature)
+      .values({
+        sourceId,
+        kind: toInt(body.kind) || 2,
+        durations,
+        totalMs: toInt(body.totalMs),
+        hitVods: toInt(body.hitVods),
+        sample: body.sample ?? [],
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          kind: toInt(body.kind) || 2,
+          totalMs: toInt(body.totalMs),
+          hitVods: toInt(body.hitVods),
+          sample: body.sample ?? [],
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
+    return ok(reply, null);
+  });
+
+  /** 撤销：删除已确认的特征 */
+  app.delete('/:id/ads/:featureId', async (req, reply) => {
+    const sourceId = toInt((req.params as { id?: string }).id);
+    const featureId = toInt((req.params as { featureId?: string }).featureId);
+    if (!sourceId || !featureId) return fail(reply, 400, ErrorCode.BAD_REQUEST, '参数不完整');
+    await db.delete(adFeature).where(and(eq(adFeature.id, featureId), eq(adFeature.sourceId, sourceId)));
     return ok(reply, null);
   });
 };

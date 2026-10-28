@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `lcm_collect_source_category` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_source_type` (`source_id`,`source_type_id`),
   KEY `idx_category` (`category_id`),
-  KEY `idx_source_status` (`source_id`,`status`)
+  KEY `idx_source` (`source_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_collect_task` (
@@ -195,12 +195,11 @@ CREATE TABLE IF NOT EXISTS `lcm_ad_feature` (
   `total_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '广告总时长（毫秒）',
   `hit_vods` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '命中的作品数',
   `sample` JSON NULL COMMENT '命中样例',
-  `status` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0待确认 1确认广告 2已排除',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_source_durations` (`source_id`,`durations`),
-  KEY `idx_source_status` (`source_id`,`status`)
+  KEY `idx_source` (`source_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_setting` (
