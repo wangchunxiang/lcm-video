@@ -29,12 +29,10 @@
     {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
 
     <div class="meta-line">
-      {% if vod.category_name != blank %}
-      <span>分类：{{ vod.category_name }}</span>
-      {% endif %}
-      <span>年份：{{ vod.year }}</span>
-      {% if vod.area != blank %}<span>地区：{{ vod.area }}</span>{% endif %}
-      {% if vod.lang != blank %}<span>语言：{{ vod.lang }}</span>{% endif %}
+      {% if vod.category_name != blank %}<span class="meta-chip"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
+      <span class="meta-chip"><i>年份</i>{{ vod.year }}</span>
+      {% if vod.area != blank %}<span class="meta-chip"><i>地区</i>{{ vod.area }}</span>{% endif %}
+      {% if vod.lang != blank %}<span class="meta-chip"><i>语言</i>{{ vod.lang }}</span>{% endif %}
     </div>
 
     <dl class="info-list">

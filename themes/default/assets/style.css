@@ -344,10 +344,26 @@ img { border: 0; vertical-align: middle; }
 .meta-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: 0 0 10px;
+  gap: 8px;
+  margin: 0 0 14px;
   font-size: 13px;
   color: var(--text-2);
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 14px;
+  background: var(--bg);
+  font-size: 13px;
+}
+
+.meta-chip i {
+  font-style: normal;
+  color: var(--text-3);
+  font-size: 12px;
 }
 
 .meta-line a { color: var(--text-2); }
