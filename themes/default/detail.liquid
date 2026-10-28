@@ -45,6 +45,13 @@
       {% if vod.remarks != blank %}<div><dt>状态</dt><dd>{{ vod.remarks }}</dd></div>{% endif %}
     </dl>
 
+    {% if vod.intro != blank %}
+    <div class="detail-text">
+      <h3>剧情简介</h3>
+      <p class="intro">{{ vod.intro | escape }}{% if vod.content != blank %} <a class="more-detail" href="#story">详细</a>{% endif %}</p>
+    </div>
+    {% endif %}
+
     {% if lines.size > 0 %}
     <div class="play-actions">
       <a class="btn-primary" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
@@ -53,21 +60,15 @@
       {% endif %}
     </div>
     {% endif %}
-    {% if vod.intro != blank %}
-    <div class="detail-text">
-      <h3>剧情简介</h3>
-      <p class="intro">{{ vod.intro | escape }}</p>
-    </div>
-    {% endif %}
-
-    {% if vod.content != blank %}
-    <div class="detail-text">
-      <h3>详细剧情</h3>
-      <div class="content-text">{{ vod.content | escape }}</div>
-    </div>
-    {% endif %}
   </div>
 </section>
+
+{% if vod.content != blank %}
+<section class="section" id="story">
+  <h2>详细剧情</h2>
+  <div class="content-text">{{ vod.content | escape }}</div>
+</section>
+{% endif %}
 
 {% if lines.size > 0 %}
 <section class="section">

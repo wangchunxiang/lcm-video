@@ -314,6 +314,7 @@ img { border: 0; vertical-align: middle; }
 
 .detail-cover {
   flex: none;
+  align-self: flex-start;
   width: 220px;
   aspect-ratio: 3 / 4;
   border-radius: 8px;
@@ -404,6 +405,8 @@ img { border: 0; vertical-align: middle; }
 .tip { color: var(--text-3); font-size: 13px; }
 
 .detail-text { margin-top: 18px; }
+
+.more-detail { color: var(--primary); }
 
 .detail-text h3 {
   margin: 0 0 8px;
