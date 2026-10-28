@@ -8,44 +8,63 @@ import { auth, logout } from '../../auth.ts';
 
 const router = useRouter();
 
-const profile = reactive({ nickname: auth.user?.nickname ?? '' });
-const password = reactive({ old_password: '', new_password: '', confirm: '' });
-const expireDays = ref('');
-const savingProfile = ref(false);
+const form = reactive({
+  nickname: auth.user?.nickname ?? '',
+  expire_days: '7',
+  old_password: '',
+  new_password: '',
+  confirm: '',
+});
+
+const loading = ref(false);
+const saving = ref(false);
 const savingPassword = ref(false);
 
-async function loadSettings() {
+async function load() {
+  loading.value = true;
   try {
     const data = await api.get<{ items: (SettingField & { value: string })[] }>('/settings');
-    expireDays.value = data.items.find((item) => item.key === 'login_expire_days')?.value ?? '7';
+    form.expire_days = data.items.find((item) => item.key === 'login_expire_days')?.value ?? '7';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载配置失败');
+  } finally {
+    loading.value = false;
   }
 }
 
-async function saveProfile() {
-  if (!profile.nickname.trim()) {
+function reset() {
+  form.nickname = auth.user?.nickname ?? '';
+  form.old_password = '';
+  form.new_password = '';
+  form.confirm = '';
+  void load();
+}
+
+async function save() {
+  if (!form.nickname.trim()) {
     ElMessage.warning('昵称不能为空');
     return;
   }
-  savingProfile.value = true;
+
+  saving.value = true;
   try {
-    const result = await api.put<{ nickname: string }>('/account/profile', { nickname: profile.nickname.trim() });
-    if (auth.user) auth.user.nickname = result.nickname;
-    ElMessage.success('昵称已更新');
+    const profile = await api.put<{ nickname: string }>('/account/profile', { nickname: form.nickname.trim() });
+    if (auth.user) auth.user.nickname = profile.nickname;
+    await api.put('/settings', { values: { login_expire_days: form.expire_days } });
+    ElMessage.success('保存成功');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
   } finally {
-    savingProfile.value = false;
+    saving.value = false;
   }
 }
 
 async function savePassword() {
-  if (!password.old_password || !password.new_password) {
+  if (!form.old_password || !form.new_password) {
     ElMessage.warning('请填写原密码和新密码');
     return;
   }
-  if (password.new_password !== password.confirm) {
+  if (form.new_password !== form.confirm) {
     ElMessage.warning('两次输入的新密码不一致');
     return;
   }
@@ -53,8 +72,8 @@ async function savePassword() {
   savingPassword.value = true;
   try {
     await api.put('/account/password', {
-      old_password: password.old_password,
-      new_password: password.new_password,
+      old_password: form.old_password,
+      new_password: form.new_password,
     });
     ElMessage.success('密码已修改，请重新登录');
     await logout();
@@ -66,83 +85,126 @@ async function savePassword() {
   }
 }
 
-async function saveExpireDays() {
-  try {
-    await api.put('/settings', { values: { login_expire_days: expireDays.value } });
-    ElMessage.success('已保存');
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '保存失败');
-  }
-}
-
 onMounted(() => {
-  void loadSettings();
+  void load();
 });
 </script>
 
 <template>
-  <div class="account">
-    <el-card shadow="never" header="账号信息">
-      <el-form label-width="120px" class="form">
-        <el-form-item label="登录账号">
-          <el-input :model-value="auth.user?.username ?? ''" disabled />
-        </el-form-item>
-        <el-form-item label="昵称">
-          <el-input v-model="profile.nickname" maxlength="50" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+  <div v-loading="loading" class="page">
+    <el-card shadow="never" class="group-card">
+      <div class="body">
+        <div class="field">
+          <label class="field-label">登录账号</label>
+          <div class="field-ctrl">
+            <el-input :model-value="auth.user?.username ?? ''" disabled style="width: 220px" />
+          </div>
+        </div>
 
-    <el-card shadow="never" header="修改密码">
-      <el-form label-width="120px" class="form">
-        <el-form-item label="原密码">
-          <el-input v-model="password.old_password" type="password" show-password autocomplete="current-password" />
-        </el-form-item>
-        <el-form-item label="新密码">
-          <el-input v-model="password.new_password" type="password" show-password autocomplete="new-password" />
-        </el-form-item>
-        <el-form-item label="确认新密码">
-          <el-input v-model="password.confirm" type="password" show-password autocomplete="new-password" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :loading="savingPassword" @click="savePassword">修改密码</el-button>
-          <span class="hint">修改后需要重新登录</span>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        <div class="field">
+          <label class="field-label">昵称</label>
+          <div class="field-ctrl">
+            <el-input v-model="form.nickname" maxlength="50" style="width: 220px" />
+          </div>
+        </div>
 
-    <el-card shadow="never" header="登录有效期">
-      <el-form label-width="120px" class="form">
-        <el-form-item label="有效期（天）">
-          <el-input v-model="expireDays" class="short" />
-          <span class="hint">登录 cookie 的有效天数，默认 7 天</span>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="saveExpireDays">保存</el-button>
-        </el-form-item>
-      </el-form>
+        <div class="field">
+          <label class="field-label">登录有效期</label>
+          <div class="field-ctrl">
+            <el-input v-model="form.expire_days" style="width: 220px">
+              <template #append>天</template>
+            </el-input>
+            <div class="field-hint">登录状态保持的天数，默认 7 天</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">原密码</label>
+          <div class="field-ctrl">
+            <el-input
+              v-model="form.old_password"
+              type="password"
+              show-password
+              autocomplete="current-password"
+              style="width: 220px"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">新密码</label>
+          <div class="field-ctrl">
+            <el-input
+              v-model="form.new_password"
+              type="password"
+              show-password
+              autocomplete="new-password"
+              style="width: 220px"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">确认新密码</label>
+          <div class="field-ctrl">
+            <el-input
+              v-model="form.confirm"
+              type="password"
+              show-password
+              autocomplete="new-password"
+              style="width: 220px"
+            />
+            <div class="field-hint">修改密码后需要重新登录</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-foot">
+        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        <el-button :loading="savingPassword" @click="savePassword">修改密码</el-button>
+      </div>
     </el-card>
   </div>
 </template>
 
 <style scoped>
-.account {
+.page {
+  width: 100%;
+}
+.group-card :deep(.el-card__body) {
+  padding: 16px 24px 0;
+}
+.body {
+  max-width: 860px;
+}
+.field {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0;
 }
-.form {
-  max-width: 560px;
+.field-label {
+  flex: none;
+  width: 104px;
+  text-align: right;
+  line-height: 32px;
+  color: var(--el-text-color-regular);
 }
-.short {
-  width: 120px;
+.field-ctrl {
+  flex: 1;
+  min-width: 0;
 }
-.hint {
-  margin-left: 12px;
+.field-hint {
+  margin-top: 2px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+.card-foot {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 14px 0 16px 116px;
+  border-top: 1px solid var(--el-border-color);
 }
 </style>
