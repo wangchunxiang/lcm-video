@@ -101,12 +101,6 @@ export class CollectClient {
     return text;
   }
 
-  /** 原样取回响应文本，不做解析，用于判断接口实际返回的是 JSON 还是 XML */
-  async probe(params: Record<string, string | number | undefined>): Promise<string> {
-    const url = this.buildUrl(params);
-    return this.fetchText(url, 'json');
-  }
-
   private async fetchOnce(url: string, format: string): Promise<unknown> {
     const text = await this.fetchText(url, format);
 
