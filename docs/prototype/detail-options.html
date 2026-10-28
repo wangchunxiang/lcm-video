@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>详情页布局方案</title>
+<style>
+  :root {
+    --primary: #2f6fed;
+    --line: #e8ebf0;
+    --text: #1f2329;
+    --text-2: #5b6472;
+    --text-3: #9099a6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.7 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    background: #f4f6f9;
+  }
+  .switcher {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 8px; align-items: center;
+    padding: 12px 32px;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+  }
+  .switcher b { margin-right: 12px; font-size: 15px; }
+  .switcher button {
+    padding: 6px 14px; border: 1px solid var(--line); background: #fff;
+    border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-2);
+  }
+  .switcher button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .wrap { width: 1200px; margin: 24px auto 80px; }
+  h2.opt {
+    margin: 40px 0 12px; font-size: 15px; color: var(--text-3); font-weight: 400;
+  }
+  .card {
+    background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  .poster {
+    background: linear-gradient(160deg, #26303f, #4a5a73);
+    color: #fff; display: flex; align-items: flex-end;
+    padding: 12px; font-size: 13px; border-radius: 8px;
+  }
+  .btn {
+    display: inline-block; padding: 9px 26px; border-radius: 6px;
+    background: var(--primary); color: #fff; text-decoration: none; font-size: 14px;
+  }
+  .btn-ghost {
+    display: inline-block; padding: 8px 20px; border-radius: 6px;
+    border: 1px solid var(--line); color: var(--text-2); text-decoration: none; font-size: 13px;
+  }
+  .label { color: var(--text-3); }
+  .chip {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    background: #f1f4f9; color: var(--text-2); font-size: 12px;
+  }
+
+  /* ---------- 方案 A：现状 ---------- */
+  .a { display: flex; gap: 28px; padding: 24px; }
+  .a .poster { flex: none; width: 280px; height: 373px; }
+  .a .info { flex: 1; min-width: 0; }
+  .a h1 { margin: 0 0 10px; font-size: 26px; }
+  .a .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--text-2); font-size: 13px; margin-bottom: 14px; }
+  .a dl { margin: 0 0 18px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+  .a dl > div { display: flex; gap: 10px; }
+  .a dt { flex: none; width: 42px; color: var(--text-3); }
+  .a dd { margin: 0; color: var(--text-2); }
+  .a .intro { margin: 0 0 20px; color: var(--text-2); }
+  .a h3 { margin: 0 0 6px; font-size: 14px; }
+
+  /* ---------- 方案 B：海报更大 + 信息两栏 ---------- */
+  .b { display: flex; gap: 32px; padding: 24px; }
+  .b .poster { flex: none; width: 330px; height: 440px; }
+  .b .info { flex: 1; min-width: 0; }
+  .b h1 { margin: 0 0 8px; font-size: 28px; }
+  .b .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 18px; }
+  .b .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 36px; margin-bottom: 18px; }
+  .b .cols dl { margin: 0; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+  .b .cols dl > div { display: flex; gap: 10px; }
+  .b dt { flex: none; width: 42px; color: var(--text-3); }
+  .b dd { margin: 0; color: var(--text-2); }
+  .b h3 { margin: 0 0 6px; font-size: 14px; }
+  .b .intro { margin: 0 0 20px; color: var(--text-2); }
+
+  /* ---------- 方案 C：横幅式（背景图 + 海报叠加） ---------- */
+  .c { overflow: hidden; }
+  .c .hero {
+    position: relative; padding: 0; height: 240px;
+    background: linear-gradient(120deg, #2a3444, #5a6d88);
+  }
+  .c .hero::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,.15), rgba(255,255,255,.9));
+  }
+  .c .body { position: relative; margin-top: -170px; padding: 0 28px 24px; display: flex; gap: 28px; }
+  .c .poster { flex: none; width: 240px; height: 320px; box-shadow: 0 6px 20px rgba(15,23,42,.18); }
+  .c .info { flex: 1; min-width: 0; padding-top: 176px; }
+  .c h1 { margin: 0 0 10px; font-size: 24px; }
+  .c .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .c dl { margin: 0 0 18px; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 4px 32px; font-size: 13px; }
+  .c dl > div { display: flex; gap: 10px; }
+  .c dt { flex: none; width: 42px; color: var(--text-3); }
+  .c dd { margin: 0; color: var(--text-2); }
+
+  /* ---------- 方案 D：信息块分组（左海报 + 右分块小卡） ---------- */
+  .d { display: flex; gap: 28px; padding: 24px; }
+  .d .poster { flex: none; width: 280px; height: 373px; }
+  .d .info { flex: 1; min-width: 0; }
+  .d h1 { margin: 0 0 6px; font-size: 26px; }
+  .d .sub { color: var(--text-3); font-size: 13px; margin-bottom: 16px; }
+  .d .blocks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .d .block {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px;
+  }
+  .d .block h4 {
+    margin: 0 0 6px; font-size: 12px; font-weight: 400; color: var(--text-3);
+    letter-spacing: .5px;
+  }
+  .d .block p { margin: 0; color: var(--text-2); }
+  .d .block em { font-style: normal; color: var(--text-3); margin-right: 10px; }
+  .d .row { display: flex; gap: 18px; align-items: center; }
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <b>详情页布局方案</b>
+  <button data-t="all" class="on">全部</button>
+  <button data-t="A">A 现状</button>
+  <button data-t="B">B 大海报 + 两栏</button>
+  <button data-t="C">C 横幅式</button>
+  <button data-t="D">D 信息分块</button>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ A ============ -->
+  <h2 class="opt" data-o="A">方案 A — 当前线上效果（海报 280，字段单列）</h2>
+  <section class="card a" data-o="A">
+    <div class="poster">大哥请赐教</div>
+    <div class="info">
+      <h1>大哥请赐教</h1>
+      <div class="meta">
+        <span>分类：国产剧</span><span>年份：2026</span><span>地区：中国大陆</span><span>语言：汉语普通话</span>
+      </div>
+      <dl>
+        <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+        <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+        <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+        <div><dt>编剧</dt><dd>—</dd></div>
+        <div><dt>状态</dt><dd>更新至第08集</dd></div>
+      </dl>
+      <h3>剧情简介</h3>
+      <p class="intro">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与… <a href="#">详细</a></p>
+      <a class="btn" href="#">立即播放</a>
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <h2 class="opt" data-o="B">方案 B — 海报放大到 330，信息分两栏（基础信息 / 演职员），标签化</h2>
+  <section class="card b" data-o="B">
+    <div class="poster">大哥请赐教</div>
+    <div class="info">
+      <h1>大哥请赐教</h1>
+      <div class="meta">
+        <span class="chip">国产剧</span><span class="chip">2026</span><span class="chip">中国大陆</span><span class="chip">汉语普通话</span><span class="chip">更新至第08集</span>
+      </div>
+      <div class="cols">
+        <dl>
+          <div><dt>上映</dt><dd>2026-10-26</dd></div>
+          <div><dt>分类</dt><dd>国产剧</dd></div>
+          <div><dt>地区</dt><dd>中国大陆</dd></div>
+        </dl>
+        <dl>
+          <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+          <div><dt>编剧</dt><dd>—</dd></div>
+          <div><dt>语言</dt><dd>汉语普通话</dd></div>
+        </dl>
+      </div>
+      <h3>剧情简介</h3>
+      <p class="intro">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与… <a href="#">详细</a></p>
+      <a class="btn" href="#">立即播放</a>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <h2 class="opt" data-o="C">方案 C — 横幅式：顶部剧照背景，海报叠加，信息在下方整宽排开</h2>
+  <section class="card c" data-o="C">
+    <div class="hero"></div>
+    <div class="body">
+      <div class="poster">大哥请赐教</div>
+      <div class="info">
+        <h1>大哥请赐教</h1>
+        <div class="chips">
+          <span class="chip">国产剧</span><span class="chip">2026</span><span class="chip">中国大陆</span><span class="chip">汉语普通话</span><span class="chip">更新至第08集</span>
+        </div>
+        <dl>
+          <div><dt>上映</dt><dd>2026-10-26</dd></div>
+          <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+          <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波</dd></div>
+          <div><dt>编剧</dt><dd>—</dd></div>
+        </dl>
+        <h3>剧情简介</h3>
+        <p class="intro">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与… <a href="#">详细</a></p>
+        <a class="btn" href="#">立即播放</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ D ============ -->
+  <h2 class="opt" data-o="D">方案 D — 信息分块：基本信息 / 演职员各自一个小卡，扫描更快</h2>
+  <section class="card d" data-o="D">
+    <div class="poster">大哥请赐教</div>
+    <div class="info">
+      <h1>大哥请赐教</h1>
+      <div class="sub">国产剧 · 2026 · 中国大陆 · 汉语普通话 · 更新至第08集</div>
+      <div class="blocks">
+        <div class="block">
+          <h4>基本信息</h4>
+          <p><em>上映</em>2026-10-26</p>
+          <p><em>分类</em>国产剧</p>
+          <p><em>地区</em>中国大陆</p>
+        </div>
+        <div class="block">
+          <h4>演职员</h4>
+          <p><em>导演</em>信鹏,李亚泽</p>
+          <p><em>编剧</em>—</p>
+          <p><em>演员</em>纪凌尘,赵小棠,唐振超…</p>
+        </div>
+      </div>
+      <div class="row">
+        <a class="btn" href="#">立即播放</a>
+        <a class="btn-ghost" href="#">查看详情 →</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  const keys = ['A', 'B', 'C', 'D'];
+  document.querySelectorAll('.switcher button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.switcher button').forEach((b) => b.classList.toggle('on', b === btn));
+      const t = btn.dataset.t;
+      keys.forEach((k) => {
+        const show = t === 'all' || t === k;
+        document.querySelectorAll('[data-o="' + k + '"]').forEach((el) => {
+          el.style.display = show ? '' : 'none';
+        });
+      });
+    });
+  });
+</script>
+</body>
+</html>
