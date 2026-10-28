@@ -246,8 +246,8 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     const client = new CollectClient(source);
     const startedAt = Date.now();
     try {
-      const raw = await client.request({ ac: 'list', at: source.apiFormat });
-      const classes = parseClassList(raw, source.apiFormat);
+      const raw = await client.request({ ac: 'list', at: 'json' }, 'json');
+      const classes = parseClassList(raw, 'json');
       return ok(reply, {
         ok: true,
         elapsed_ms: Date.now() - startedAt,
@@ -268,8 +268,8 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     const client = new CollectClient(source);
     let classes;
     try {
-      const raw = await client.request({ ac: 'list', at: source.apiFormat });
-      classes = parseClassList(raw, source.apiFormat);
+      const raw = await client.request({ ac: 'list', at: 'json' }, 'json');
+      classes = parseClassList(raw, 'json');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await db

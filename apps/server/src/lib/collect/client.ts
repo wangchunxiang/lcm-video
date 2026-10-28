@@ -78,13 +78,13 @@ export class CollectClient {
     if (wait > 0) await sleep(wait);
   }
 
-  private async fetchOnce(url: string): Promise<unknown> {
+  private async fetchOnce(url: string, format: string): Promise<unknown> {
     const timeout = Math.max(1, this.source.timeout) * 1000;
     let response: Response;
     try {
       response = await fetch(url, {
         signal: AbortSignal.timeout(timeout),
-        headers: { accept: this.source.apiFormat === 'xml' ? 'application/xml,text/xml' : 'application/json' },
+        headers: { accept: format === 'xml' ? 'application/xml,text/xml' : 'application/json' },
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -98,7 +98,7 @@ export class CollectClient {
     const text = await response.text();
     if (!text.trim()) throw new CollectError('请求失败：响应为空');
 
-    if (this.source.apiFormat === 'xml') {
+    if (format === 'xml') {
       try {
         return xmlParser.parse(text);
       } catch {
@@ -113,16 +113,23 @@ export class CollectClient {
     }
   }
 
-  /** 请求一次接口，失败按 retry_times 重试，每次重试前同样按 interval_sec 等待。 */
-  async request(params: Record<string, string | number | undefined>): Promise<unknown> {
+  /**
+   * 请求一次接口，失败按 retry_times 重试，每次重试前同样按 interval_sec 等待。
+   * format 不传时用采集源配置的格式；获取分类固定传 json，因为 XML 的 class 不带父子级。
+   */
+  async request(
+    params: Record<string, string | number | undefined>,
+    format?: 'json' | 'xml',
+  ): Promise<unknown> {
     const url = this.buildUrl(params);
+    const actualFormat = format ?? this.source.apiFormat;
     const retries = Math.max(0, this.source.retryTimes);
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       await this.throttle();
       try {
-        const data = await this.fetchOnce(url);
+        const data = await this.fetchOnce(url, actualFormat);
         this.lastEndAt = Date.now();
         return data;
       } catch (error) {
