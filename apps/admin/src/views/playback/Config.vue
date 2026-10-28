@@ -297,16 +297,18 @@ onMounted(() => {
               随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
             </div>
 
-            <el-select
-              v-model="adsSourceId"
-              placeholder="选择采集源"
-              class="ads-select"
-              :disabled="analyzing"
-            >
-              <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
-            </el-select>
-
-            <el-button class="ads-pick" :disabled="analyzing" @click="pickVods">随机选片</el-button>
+            <div class="ads-toolbar">
+              <el-select
+                v-model="adsSourceId"
+                placeholder="选择采集源"
+                class="ads-select"
+                :disabled="analyzing"
+              >
+                <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+              <el-button :disabled="analyzing" @click="pickVods">随机选片</el-button>
+              <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
+            </div>
           </div>
 
           <div class="ads-sub">
@@ -320,10 +322,6 @@ onMounted(() => {
               <span class="ads-empty">点击「随机选片」抽取 5 部作品</span>
             </template>
           </el-table>
-
-          <el-button class="ads-analyze" type="primary" :loading="analyzing" @click="startAnalyze">
-            开始分析
-          </el-button>
 
           <div class="ads-sub">分析日志</div>
           <div ref="logRef" class="log-box">
@@ -420,13 +418,16 @@ onMounted(() => {
   line-height: 18px;
   color: var(--el-text-color-secondary);
 }
-.ads-select,
-.ads-pick,
-.ads-analyze {
-  width: 100%;
+.ads-toolbar {
+  display: flex;
+  gap: 8px;
 }
-.ads-analyze {
-  margin: 4px 0 2px;
+.ads-toolbar .el-button + .el-button {
+  margin-left: 0;
+}
+.ads-select {
+  flex: 1;
+  min-width: 0;
 }
 .ads-sub {
   display: flex;
