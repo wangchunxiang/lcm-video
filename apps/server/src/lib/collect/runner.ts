@@ -176,7 +176,10 @@ async function executeRun(
       }
 
       consecutiveFail = 0;
-      if (parsed.pageCount > 0) pageCount = parsed.pageCount;
+      if (parsed.pageCount > 0 && parsed.pageCount !== pageCount) {
+        pageCount = parsed.pageCount;
+        await db.update(collectLog).set({ totalPages: pageCount }).where(eq(collectLog.id, logId));
+      }
       if (parsed.list.length === 0) break;
 
       for (const item of parsed.list) {

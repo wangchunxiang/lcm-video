@@ -172,6 +172,7 @@ export const collectLog = mysqlTable(
     taskId: fk('task_id'),
     sourceId: fk('source_id'),
     status: tinyint('status', { unsigned: true }).notNull().default(0),
+    totalPages: int('total_pages', { unsigned: true }).notNull().default(0),
     total: int('total', { unsigned: true }).notNull().default(0),
     inserted: int('inserted', { unsigned: true }).notNull().default(0),
     updated: int('updated', { unsigned: true }).notNull().default(0),

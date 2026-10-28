@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { api } from '../../api/client.ts';
@@ -11,6 +11,7 @@ interface LogRow {
   sourceId: number;
   sourceName: string | null;
   status: number;
+  totalPages: number;
   total: number;
   inserted: number;
   updated: number;
@@ -74,6 +75,19 @@ function statusOf(row: { status: number }): { text: string; type: TagProps['type
   if (row.status === 1) return { text: '成功', type: 'success' };
   if (row.status === 2) return { text: '失败', type: 'danger' };
   return { text: '已取消', type: 'info' };
+}
+
+const nowTick = ref(Date.now());
+
+function elapsedText(startText: string, endText: string | null): string {
+  const start = new Date(startText.replace(' ', 'T')).getTime();
+  const end = endText ? new Date(endText.replace(' ', 'T')).getTime() : nowTick.value;
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return '—';
+  const seconds = Math.max(0, Math.round((end - start) / 1000));
+  if (seconds < 60) return `${seconds} 秒`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} 分 ${seconds % 60} 秒`;
+  return `${Math.floor(minutes / 60)} 时 ${minutes % 60} 分`;
 }
 
 function durationText(row: LogRow): string {
@@ -145,6 +159,16 @@ function reset() {
   search();
 }
 
+function liveDuration(row: LogRow): string {
+  return row.finishedAt ? durationText(row) : elapsedText(row.startedAt, null);
+}
+
+const progressPercent = computed(() => {
+  const log = currentLog.value;
+  if (!log || log.totalPages <= 0) return 0;
+  return Math.min(100, Math.round((detailTotal.value / log.totalPages) * 100));
+});
+
 function rowIndex(index: number): number {
   return (page.value - 1) * pageSize.value + index + 1;
 }
@@ -171,8 +195,13 @@ function onDetailSizeChange(size: number) {
   if (currentLog.value) void loadDetails(currentLog.value.id, 1);
 }
 
+let tickTimer: ReturnType<typeof setInterval> | undefined;
+
 onMounted(async () => {
   await Promise.all([load(), loadSources()]);
+  tickTimer = setInterval(() => {
+    nowTick.value = Date.now();
+  }, 1000);
   timer = setInterval(() => {
     const running = items.value.some((row) => row.status === 0);
     if (running) void load(true);
@@ -184,6 +213,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (timer) clearInterval(timer);
+  if (tickTimer) clearInterval(tickTimer);
 });
 
 function observeDetail() {
@@ -273,7 +303,7 @@ onBeforeUnmount(() => {
           </el-table-column>
           <el-table-column prop="startedAt" label="开始时间" width="165" align="center" />
           <el-table-column label="耗时" width="100" align="center">
-            <template #default="{ row }">{{ durationText(row) }}</template>
+            <template #default="{ row }">{{ liveDuration(row) }}</template>
           </el-table-column>
           <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
           <el-table-column label="操作" width="90" align="center" fixed="right">
@@ -299,7 +329,18 @@ onBeforeUnmount(() => {
     <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="42%">
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
-        <span>{{ currentLog.startedAt }} 开始，耗时 {{ durationText(currentLog) }}</span>
+        <span>{{ currentLog.startedAt }} 开始，耗时 {{ liveDuration(currentLog) }}</span>
+        <div v-if="currentLog.status === 0" class="progress">
+          <span class="progress-text">
+            进度 {{ detailTotal }}<template v-if="currentLog.totalPages > 0"> / {{ currentLog.totalPages }}</template> 页
+          </span>
+          <el-progress
+            class="progress-bar"
+            :percentage="progressPercent"
+            :indeterminate="currentLog.totalPages === 0"
+            :stroke-width="8"
+          />
+        </div>
       </div>
 
       <el-descriptions v-if="currentLog" :column="3" border class="log-summary">
@@ -437,6 +478,19 @@ onBeforeUnmount(() => {
 }
 .num-failed {
   color: var(--el-color-danger);
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.progress-text {
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+.progress-bar {
+  width: 180px;
 }
 .log-head {
   display: flex;
