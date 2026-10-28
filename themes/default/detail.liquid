@@ -15,77 +15,77 @@
   <span>{{ vod.name }}</span>
 </nav>
 
-<section class="detail">
-  <div class="detail-cover">
-    {% if vod.cover != blank %}
-    <img src="{{ vod.cover }}" alt="{{ vod.name }}">
-    {% else %}
-    <div class="no-cover big">{{ vod.name | truncate_text: 8 }}</div>
-    {% endif %}
-  </div>
-
-  <div class="detail-info">
-    <h1>{{ vod.name }}</h1>
-    {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
-
-    <div class="meta-line">
-      {% if vod.category_name != blank %}<span class="meta-chip"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
-      <span class="meta-chip"><i>年份</i>{{ vod.year }}</span>
-      {% if vod.area != blank %}<span class="meta-chip"><i>地区</i>{{ vod.area }}</span>{% endif %}
-      {% if vod.lang != blank %}<span class="meta-chip"><i>语言</i>{{ vod.lang }}</span>{% endif %}
+<div class="detail-layout">
+  <aside class="detail-side">
+    <div class="detail-cover">
+      {% if vod.cover != blank %}
+      <img src="{{ vod.cover }}" alt="{{ vod.name }}">
+      {% else %}
+      <div class="no-cover big">{{ vod.name | truncate_text: 8 }}</div>
+      {% endif %}
     </div>
 
-    <dl class="info-list">
-      {% if vod.release_date != blank %}<div><dt>上映</dt><dd>{{ vod.release_date }}</dd></div>{% endif %}
-      {% if vod.actor != blank %}<div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>{% endif %}
-      {% if vod.director != blank %}<div><dt>导演</dt><dd>{{ vod.director }}</dd></div>{% endif %}
-      <div><dt>编剧</dt><dd>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
-      {% if vod.remarks != blank %}<div><dt>状态</dt><dd>{{ vod.remarks }}</dd></div>{% endif %}
-    </dl>
+    <div class="side-box">
+      {% if vod.remarks != blank %}<p><span>状态</span><span>{{ vod.remarks }}</span></p>{% endif %}
+      {% if vod.release_date != blank %}<p><span>上映</span><span>{{ vod.release_date }}</span></p>{% endif %}
+      {% if vod.director != blank %}<p><span>导演</span><span>{{ vod.director }}</span></p>{% endif %}
+      <p><span>编剧</span><span>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</span></p>
+      {% if lines.size > 0 %}
+      <a class="btn-primary side-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
+      {% endif %}
+    </div>
+  </aside>
 
-    {% if vod.intro != blank %}
-    <div class="detail-text">
-      <h3>剧情简介</h3>
+  <div class="detail-main">
+    <div class="detail-head">
+      <h1>{{ vod.name }}</h1>
+      {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
+
+      <div class="meta-line">
+        {% if vod.category_name != blank %}<span class="meta-chip"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
+        <span class="meta-chip"><i>年份</i>{{ vod.year }}</span>
+        {% if vod.area != blank %}<span class="meta-chip"><i>地区</i>{{ vod.area }}</span>{% endif %}
+        {% if vod.lang != blank %}<span class="meta-chip"><i>语言</i>{{ vod.lang }}</span>{% endif %}
+      </div>
+
+      {% if vod.actor != blank %}
+      <p class="actor-line">演员：{{ vod.actor }}</p>
+      {% endif %}
+
+      {% if vod.intro != blank %}
       <p class="intro">{{ vod.intro | escape }}{% if vod.content != blank %} <a class="more-detail" href="#story">详细</a>{% endif %}</p>
+      {% endif %}
     </div>
-    {% endif %}
 
     {% if lines.size > 0 %}
-    <div class="play-actions">
-      <a class="btn-primary" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
-    </div>
+    <section class="section">
+      <h2>播放线路</h2>
+      <div class="line-tabs">
+        {% for line in lines %}
+        <a class="line-tab{% if forloop.first %} active{% endif %}"
+           href="/play/{{ vod.id }}/{{ line.id }}/1">{{ line.name }}
+          <span class="count">{{ line.episode_count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+
+      {% if episodes.size > 0 %}
+      <h3 class="episode-title">{{ current_line.name }} 剧集</h3>
+      {% assign play_base = '/play/' | append: vod.id | append: '/' | append: current_line.id %}
+      {% render 'partials/episode-list', episodes: episodes, current_ep: 0, play_base: play_base %}
+      {% if current_line.episode_count > 50 %}
+      <p class="more-link"><a href="{{ play_base }}/1">查看全部 {{ current_line.episode_count }} 集</a></p>
+      {% endif %}
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if vod.content != blank %}
+    <section class="section" id="story">
+      <h2>详细剧情</h2>
+      <div class="content-text">{{ vod.content | escape }}</div>
+    </section>
     {% endif %}
   </div>
-</section>
-
-{% if vod.content != blank %}
-<section class="section" id="story">
-  <h2>详细剧情</h2>
-  <div class="content-text">{{ vod.content | escape }}</div>
-</section>
-{% endif %}
-
-{% if lines.size > 0 %}
-<section class="section">
-  <h2>播放线路</h2>
-  <div class="line-tabs">
-    {% for line in lines %}
-    <a class="line-tab{% if forloop.first %} active{% endif %}"
-       href="/play/{{ vod.id }}/{{ line.id }}/1">{{ line.name }}
-      <span class="count">{{ line.episode_count }}</span>
-    </a>
-    {% endfor %}
-  </div>
-
-  {% if episodes.size > 0 %}
-  <h3 class="episode-title">{{ current_line.name }} 剧集</h3>
-  {% assign play_base = '/play/' | append: vod.id | append: '/' | append: current_line.id %}
-  {% render 'partials/episode-list', episodes: episodes, current_ep: 0, play_base: play_base %}
-  {% if current_line.episode_count > 50 %}
-  <p class="more-link"><a href="{{ play_base }}/1">查看全部 {{ current_line.episode_count }} 集</a></p>
-  {% endif %}
-  {% endif %}
-</section>
-{% endif %}
-
+</div>
 {% endblock %}

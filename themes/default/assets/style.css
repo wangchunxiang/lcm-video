@@ -302,20 +302,67 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- detail ---------- */
 
-.detail {
+.detail-layout {
   display: flex;
-  gap: 28px;
+  gap: 16px;
+  align-items: flex-start;
+  margin: 4px 0 16px;
+}
+
+.detail-side { flex: none; width: 260px; }
+
+.detail-side .detail-cover {
+  width: 100%;
+  height: 347px;
+}
+
+.side-box {
   background: #fff;
   border-radius: var(--radius);
-  padding: 24px;
-  margin: 12px 0 16px;
   box-shadow: var(--shadow);
+  padding: 14px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.side-box p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 7px;
+  color: var(--text-2);
+}
+
+.side-box p span:first-child { color: var(--text-3); flex: none; }
+.side-box p span:last-child { text-align: right; word-break: break-word; }
+
+.side-play {
+  display: block;
+  margin-top: 12px;
+  text-align: center;
+}
+
+.detail-main { flex: 1; min-width: 0; }
+
+.detail-head {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  margin-bottom: 14px;
+}
+
+.detail-head h1 { margin: 0 0 8px; font-size: 24px; }
+
+.actor-line {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-3);
 }
 
 .detail-cover {
   flex: none;
-  align-self: flex-start;
-  width: 280px;
+  width: 260px;
   aspect-ratio: 3 / 4;
   border-radius: 8px;
   overflow: hidden;
