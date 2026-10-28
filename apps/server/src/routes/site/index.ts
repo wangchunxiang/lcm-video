@@ -17,6 +17,9 @@ import {
   type SiteConfig,
 } from '../../lib/theme.ts';
 
+/** 首页最新更新的条数：一行 8 个，正好两行 */
+const HOME_VOD_COUNT = 16;
+
 export interface SiteRouteOpts {
   db: Db;
 }
@@ -141,7 +144,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       .leftJoin(category, eq(category.id, vod.categoryId))
       .where(eq(vod.status, 1))
       .orderBy(desc(vod.collectedAt), desc(vod.id))
-      .limit(config.listPageSize);
+      .limit(HOME_VOD_COUNT);
 
     return render(
       reply,
