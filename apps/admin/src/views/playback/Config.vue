@@ -204,17 +204,28 @@ onMounted(() => {
 <style scoped>
 .page {
   width: 100%;
+  height: 100%;
+}
+.group-card {
+  height: 100%;
+}
+.group-card :deep(.el-card__body) {
+  height: 100%;
+  box-sizing: border-box;
 }
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px 28px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  height: 100%;
+}
+.stage-col {
+  width: 50%;
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2px 32px;
 }
 .field {
   display: flex;
