@@ -32,7 +32,7 @@ const FIELDS: Row[] = [
   { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
   { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
   { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '建议保持 24（三行八列）' },
-  { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次' },
+  { key: 'collect_log_keep_days', label: '日志保留天数', kind: 'text', hint: '超期自动清理' },
   { key: 'upload_max_mb', label: '单文件上传上限', kind: 'text', hint: '单位 MB' },
 ];
 
