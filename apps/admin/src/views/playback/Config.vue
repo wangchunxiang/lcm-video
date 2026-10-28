@@ -120,37 +120,6 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <div class="cols">
-      <el-card shadow="never" class="group-card">
-        <div class="grid">
-          <div
-            v-for="row in ROWS"
-            :key="row.key"
-            class="field"
-            :class="{ disabled: PANEL_KEYS.includes(row.key) && !hasPanel }"
-          >
-            <label class="field-label">{{ row.label }}</label>
-            <div class="field-ctrl">
-              <el-switch
-                v-if="row.kind === 'switch'"
-                v-model="form[row.key]"
-                active-value="1"
-                inactive-value="0"
-                :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
-              />
-              <el-input v-else v-model="form[row.key]" style="width: 120px" />
-              <div class="field-hint">
-                {{ PANEL_KEYS.includes(row.key) && !hasPanel ? '需先开启「设置面板」' : row.hint }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card-foot">
-          <el-button @click="load">重置</el-button>
-          <el-button type="primary" :loading="saving" @click="save">保存</el-button>
-        </div>
-      </el-card>
-
       <el-card shadow="never" class="preview-card">
         <template #header>
           <span>预览</span>
@@ -203,6 +172,37 @@ onMounted(() => {
           </el-tag>
         </div>
       </el-card>
+      <el-card shadow="never" class="group-card">
+        <div class="grid">
+          <div
+            v-for="row in ROWS"
+            :key="row.key"
+            class="field"
+            :class="{ disabled: PANEL_KEYS.includes(row.key) && !hasPanel }"
+          >
+            <label class="field-label">{{ row.label }}</label>
+            <div class="field-ctrl">
+              <el-switch
+                v-if="row.kind === 'switch'"
+                v-model="form[row.key]"
+                active-value="1"
+                inactive-value="0"
+                :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
+              />
+              <el-input v-else v-model="form[row.key]" style="width: 120px" />
+              <div class="field-hint">
+                {{ PANEL_KEYS.includes(row.key) && !hasPanel ? '需先开启「设置面板」' : row.hint }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-foot">
+          <el-button @click="load">重置</el-button>
+          <el-button type="primary" :loading="saving" @click="save">保存</el-button>
+        </div>
+      </el-card>
+
     </div>
   </div>
 </template>
@@ -213,14 +213,14 @@ onMounted(() => {
 }
 .cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: 480px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 40px;
+  gap: 2px 28px;
 }
 .field {
   display: flex;
@@ -288,8 +288,8 @@ onMounted(() => {
   bottom: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   color: #fff;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
 }
@@ -306,7 +306,7 @@ onMounted(() => {
   background: var(--el-color-primary);
 }
 .time {
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.85);
 }
@@ -328,9 +328,9 @@ onMounted(() => {
 }
 .panel {
   position: absolute;
-  right: 8px;
-  bottom: 38px;
-  min-width: 128px;
+  right: 10px;
+  bottom: 42px;
+  min-width: 150px;
   padding: 4px 0;
   border-radius: 4px;
   background: rgba(20, 20, 20, 0.92);
@@ -350,10 +350,10 @@ onMounted(() => {
 }
 .mini-window {
   position: absolute;
-  right: 10px;
-  bottom: 48px;
-  width: 104px;
-  height: 58px;
+  right: 12px;
+  bottom: 52px;
+  width: 128px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
