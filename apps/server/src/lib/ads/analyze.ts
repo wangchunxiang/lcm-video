@@ -37,7 +37,7 @@ export interface FoundFeature {
   totalMs: number;
   kind: 1 | 2 | 3;
   hitVods: number;
-  sample: Array<{ vod_id: number; vod_name: string; start: number }>;
+  sample: Array<{ vod_id: number; vod_name: string; start: number; start_sec: number; url: string }>;
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -179,7 +179,15 @@ export async function analyzeSource(
   log(`随机抽取 ${samples.length} 部作品用于提取特征`);
   if (!samples.length) return { features: [], sampled: 0 };
 
-  const map = new Map<string, { durs: number[]; totalMs: number; kind: 1 | 2 | 3; hits: Map<number, { name: string; start: number }> }>();
+  const map = new Map<
+    string,
+    {
+      durs: number[];
+      totalMs: number;
+      kind: 1 | 2 | 3;
+      hits: Map<number, { name: string; start: number; url: string; startSec: number }>;
+    }
+  >();
 
   for (const sample of samples) {
     try {
@@ -189,15 +197,25 @@ export async function analyzeSource(
       log(`${sample.name}：${segments.length} 段 / ${boundaries.length - 1} 组 / 候选 ${candidates.length}`);
       for (const candidate of candidates) {
         const key = signatureOf(candidate.durs);
+        let startSec = 0;
+        for (let i = 0; i < candidate.startIndex && i < segments.length; i += 1) {
+          const seg = segments[i];
+          if (seg) startSec += seg.dur;
+        }
+        const record = {
+          name: sample.name,
+          start: candidate.startIndex,
+          url: sample.url,
+          startSec: Math.round(startSec * 100) / 100,
+        };
         const hit = map.get(key);
-        if (hit) {
-          hit.hits.set(sample.id, { name: sample.name, start: candidate.startIndex });
-        } else {
+        if (hit) hit.hits.set(sample.id, record);
+        else {
           map.set(key, {
             durs: candidate.durs,
             totalMs: candidate.totalMs,
             kind: candidate.kind,
-            hits: new Map([[sample.id, { name: sample.name, start: candidate.startIndex }]]),
+            hits: new Map([[sample.id, record]]),
           });
         }
       }
@@ -219,6 +237,8 @@ export async function analyzeSource(
         vod_id: vodId,
         vod_name: hit.name,
         start: hit.start,
+        start_sec: hit.startSec,
+        url: hit.url,
       })),
     });
   }

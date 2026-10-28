@@ -71,7 +71,13 @@ interface AdFeature {
   totalMs: number;
   hitVods: number;
   status: number;
-  sample: Array<{ vod_id: number; vod_name: string; start: number }> | null;
+  sample: Array<{
+    vod_id: number;
+    vod_name: string;
+    start: number;
+    start_sec?: number;
+    url?: string;
+  }> | null;
 }
 
 /** 候选只存在内存里，只有人工确认的才落库 */
@@ -121,10 +127,71 @@ function pushLog(text: string) {
   });
 }
 
+const videoRef = ref<HTMLVideoElement | null>(null);
+const sampleIndex = ref(0);
+const playerUrl = ref('');
+let hls: Hls | null = null;
+
+function destroyPlayer() {
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
+  const video = videoRef.value;
+  if (video) {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  }
+  playerUrl.value = '';
+}
+
+async function loadSample(index: number) {
+  const item = activeResult.value?.sample?.[index];
+  if (!item?.url) {
+    ElMessage.warning('这条样例没有播放地址，重新分析一次即可带上');
+    return;
+  }
+  sampleIndex.value = index;
+  destroyPlayer();
+  await nextTick();
+  const video = videoRef.value;
+  if (!video) return;
+  playerUrl.value = item.url;
+  const startAt = Math.max(0, (item.start_sec ?? 0) - 1);
+  if (item.url.includes('.m3u8') && Hls.isSupported()) {
+    const instance = new Hls({ startPosition: startAt });
+    instance.loadSource(item.url);
+    instance.attachMedia(video);
+    hls = instance;
+  } else {
+    video.src = item.url;
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        video.currentTime = startAt;
+      },
+      { once: true },
+    );
+  }
+  video.play().catch(() => undefined);
+}
+
 function openFeature(row: AdFeature | Candidate) {
   activeResult.value = row as AdFeature;
   featureVisible.value = true;
+  sampleIndex.value = 0;
+  destroyPlayer();
+  void nextTick(() => {
+    if (activeResult.value?.sample?.length) void loadSample(0);
+  });
 }
+
+function closeFeature() {
+  destroyPlayer();
+}
+
+onUnmounted(destroyPlayer);
 
 function kindText(kind: number) {
   return kind === 1 ? '片头' : kind === 3 ? '片尾' : '中插';
@@ -489,7 +556,24 @@ onMounted(() => {
       </div>
     </el-dialog>
 
-    <el-dialog v-model="featureVisible" title="广告特征" width="640px">
+    <el-dialog v-model="featureVisible" title="广告特征" width="720px" @closed="closeFeature">
+      <div class="player">
+        <video ref="videoRef" controls playsinline class="player-video" />
+        <div v-if="!playerUrl" class="player-empty">选择作品后加载，自动跳到广告位置</div>
+      </div>
+
+      <div v-if="activeResult && activeResult.sample && activeResult.sample.length" class="sample-bar">
+        <el-select v-model="sampleIndex" class="sample-select" placeholder="选择作品">
+          <el-option
+            v-for="(item, index) in activeResult.sample"
+            :key="index"
+            :label="`${item.vod_name}（${(item.start_sec ?? 0).toFixed(1)} 秒起）`"
+            :value="index"
+          />
+        </el-select>
+        <el-button type="primary" @click="loadSample(sampleIndex)">加载并跳到广告</el-button>
+      </div>
+
       <el-descriptions v-if="activeResult" :column="2" border size="small">
         <el-descriptions-item label="类型">{{ kindText(activeResult.kind) }}</el-descriptions-item>
         <el-descriptions-item label="总长">{{ secondsText(activeResult.totalMs) }}</el-descriptions-item>
@@ -656,6 +740,37 @@ onMounted(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+.player {
+  position: relative;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 16 / 9;
+}
+.player-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #000;
+}
+.player-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+.sample-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sample-select {
+  flex: 1;
 }
 .feature-hint {
   margin-top: 10px;
