@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情页布局 · A 的几种变体</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+    --line: #e8eaed; --primary: #2563eb; --primary-dark: #1d4ed8; --radius: 8px;
+    --shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 0 24px 60px; }
+  .page-title { margin: 28px 0 6px; font-size: 20px; }
+  .page-sub { margin: 0 0 18px; color: var(--text-3); font-size: 13px; }
+  .demo { background: #fff; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 34px; overflow: hidden; }
+  .demo-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .demo-head h2 { margin: 0; font-size: 16px; }
+  .demo-head span { color: var(--text-3); font-size: 12px; }
+  .demo-body { padding: 20px; background: var(--bg); }
+  .card { background: #fff; border-radius: 8px; box-shadow: var(--shadow); }
+  .poster { width: 100%; display: block; border-radius: 6px; background: #dbe3f0; }
+  .btn-play { display: block; width: 100%; margin-top: 12px; padding: 11px 0; border: 0; border-radius: 6px;
+    background: var(--primary); color: #fff; font-size: 15px; cursor: pointer; }
+  .btn-play:hover { background: var(--primary-dark); }
+  .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .title-row h1 { margin: 0; font-size: 24px; }
+  .badge { flex: none; padding: 2px 10px; border-radius: 4px; background: #eaf1fe; color: var(--primary); font-size: 12px; line-height: 20px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+  .meta-row i { font-style: normal; color: var(--text-3); margin-right: 8px; }
+  .info-list { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+  .info-list div { display: flex; gap: 10px; }
+  .info-list dt { flex: none; width: 42px; color: var(--text-3); }
+  .info-list dd { margin: 0; }
+  .intro { margin: 0; color: var(--text-2); line-height: 1.75; }
+  .intro .more { color: var(--primary); cursor: pointer; margin-left: 4px; }
+  .intro .full { display: none; margin-top: 8px; white-space: pre-wrap; }
+  .intro.open .full { display: block; }
+  .intro.open .more::after { content: "收起"; }
+  .ep-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 16px; }
+  .ep-title small { color: var(--text-3); font-weight: 400; font-size: 12px; }
+  .lines { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .line-tab { padding: 5px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .line-tab.on { border-color: var(--primary); color: var(--primary); background: #eef4ff; }
+  .eps { display: grid; gap: 8px; }
+  .ep { padding: 7px 0; text-align: center; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .ep:hover { border-color: var(--primary); color: var(--primary); }
+  .ep.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .more-btn { margin-top: 12px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .more-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .muted { color: var(--text-3); font-size: 12px; }
+  .a-top { display: grid; grid-template-columns: 260px 1fr; gap: 24px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .a-eps { margin-top: 14px; background: #fff; padding: 18px 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .pager { display: flex; gap: 6px; align-items: center; margin-top: 14px; }
+  .pager button { min-width: 32px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .pager button.on { border-color: var(--primary); color: var(--primary); background: #eef4ff; }
+  .pager button:disabled { opacity: .45; cursor: not-allowed; }
+  .hscroll { overflow-x: auto; padding-bottom: 6px; }
+  .hscroll .eps { grid-auto-flow: column; grid-template-rows: repeat(2, 1fr); grid-auto-columns: 88px; }
+  .modal { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; place-items: center; z-index: 50; }
+  .modal.open { display: grid; }
+  .modal-card { width: 860px; max-width: 92vw; max-height: 80vh; overflow: auto; background: #fff; border-radius: 10px; padding: 18px 20px; }
+  .modal-head { display: flex; align-items: center; margin-bottom: 12px; }
+  .modal-head h3 { margin: 0; font-size: 16px; }
+  .modal-close { margin-left: auto; border: 0; background: none; font-size: 20px; line-height: 1; color: var(--text-3); cursor: pointer; }
+  .modal .eps { grid-template-columns: repeat(8, 1fr); }
+  .latest-tip { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--text-3); font-size: 12px; }
+  .latest-tip b { color: var(--primary); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">A 方案的几种变体</h1>
+  <p class="page-sub">同一部剧（3 条线路、60 集）。差别都在「剧集区放在哪、怎么收敛」。点线路、点集数、点「查看全部」都能操作。</p>
+
+  <!-- A2 -->
+  <section class="demo">
+    <div class="demo-head"><h2>A2. 剧集收进右栏</h2><span>不再单独一张剧集卡，线路与剧集直接接在简介下面，整页只有两栏、没有第三块</span></div>
+    <div class="demo-body">
+      <div class="card" style="padding:20px;display:grid;grid-template-columns:240px 1fr;gap:24px">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='320'><rect width='240' height='320' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+          <dl class="info-list" style="margin-top:14px">
+            <div><dt>上映</dt><dd>2026-10-26</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+          </dl>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+          <p class="intro" data-intro style="margin-bottom:14px">诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？</span></p>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div class="ep-title">播放列表 <small>共 60 集</small></div>
+            <div class="lines" data-lines></div>
+            <div class="eps" data-eps style="grid-template-columns:repeat(10,1fr)"></div>
+            <button class="more-btn" data-more>展开全部 60 集</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A3 -->
+  <section class="demo">
+    <div class="demo-head"><h2>A3. 剧集分页</h2><span>剧集固定 5 行高，底部翻页（每页 40 集），页码与总集数都显示，页面高度永远不变</span></div>
+    <div class="demo-body">
+      <div class="a-top">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='347'><rect width='260' height='347' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+          <dl class="info-list">
+            <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          </dl>
+          <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？</span></p>
+        </div>
+      </div>
+      <div class="a-eps">
+        <div class="ep-title">播放列表 <small data-total>共 60 集</small></div>
+        <div class="lines" data-lines></div>
+        <div class="eps" data-eps style="grid-template-columns:repeat(10,1fr)"></div>
+        <div class="pager" data-pager></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A4 -->
+  <section class="demo">
+    <div class="demo-head"><h2>A4. 线路下拉 + 剧集横向滑动</h2><span>线路收进下拉（再多也不挤），剧集两行高、左右滑动看后面的集，适合超长番</span></div>
+    <div class="demo-body">
+      <div class="a-top">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='347'><rect width='260' height='347' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+          <dl class="info-list">
+            <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          </dl>
+          <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。</span></p>
+        </div>
+      </div>
+      <div class="a-eps">
+        <div class="ep-title" style="margin-bottom:10px">播放列表
+          <select data-line-select style="margin-left:8px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px;color:var(--text-2)"></select>
+          <small data-total>共 60 集</small>
+          <span class="latest-tip">← 左右滑动查看全部</span>
+        </div>
+        <div class="hscroll"><div class="eps" data-eps></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- A5 -->
+  <section class="demo">
+    <div class="demo-head"><h2>A5. 只露最新几集 + 弹层选集</h2><span>剧集区只放最近更新的 12 集，右侧一个「查看全部 60 集」按钮，点了弹出选集面板</span></div>
+    <div class="demo-body">
+      <div class="a-top">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='347'><rect width='260' height='347' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+          <dl class="info-list">
+            <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          </dl>
+          <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。</span></p>
+        </div>
+      </div>
+      <div class="a-eps">
+        <div class="ep-title">最新更新 <small>共 60 集</small>
+          <button class="more-btn" data-open-modal style="margin:0 0 0 auto">查看全部 60 集</button>
+        </div>
+        <div class="lines" data-lines></div>
+        <div class="eps" data-eps style="grid-template-columns:repeat(12,1fr)"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="ep-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h3>选集 · 共 60 集</h3><button class="modal-close" data-close-modal>×</button></div>
+    <div class="lines" data-modal-lines></div>
+    <div class="eps" data-modal-eps></div>
+  </div>
+</div>
+
+<script>
+  const LINES = [
+    { name: '西瓜线路', n: 60 },
+    { name: '如意线路', n: 60 },
+    { name: '电影天堂', n: 48 }
+  ];
+  const pad = i => String(i).padStart(2, '0');
+  const epName = i => '第' + pad(i) + '集';
+
+  function fill(box, from, to, active) {
+    box.innerHTML = '';
+    for (let i = from; i <= to; i++) {
+      const a = document.createElement('a');
+      a.className = 'ep' + (i === active ? ' on' : '');
+      a.href = 'javascript:void(0)';
+      a.textContent = epName(i);
+      a.onclick = () => { box.querySelectorAll('.ep').forEach(c => c.classList.remove('on')); a.classList.add('on'); };
+      box.appendChild(a);
+    }
+  }
+
+  function tabs(container, onPick) {
+    LINES.forEach((l, i) => {
+      const b = document.createElement('button');
+      b.className = 'line-tab' + (i === 0 ? ' on' : '');
+      b.textContent = l.name;
+      b.onclick = () => {
+        container.querySelectorAll('.line-tab').forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+        onPick(i);
+      };
+      container.appendChild(b);
+    });
+  }
+
+  // A2
+  (function () {
+    const d = document.querySelectorAll('.demo')[0];
+    const eps = d.querySelector('[data-eps]');
+    const more = d.querySelector('[data-more]');
+    let cur = 0, open = false;
+    const apply = () => {
+      const n = LINES[cur].n;
+      fill(eps, 1, open ? n : Math.min(n, 24), 1);
+      more.style.display = open || n <= 24 ? 'none' : 'inline-block';
+      more.textContent = '展开全部 ' + n + ' 集';
+    };
+    tabs(d.querySelector('[data-lines]'), i => { cur = i; open = false; apply(); });
+    more.onclick = () => { open = true; apply(); };
+    apply();
+  })();
+
+  // A3
+  (function () {
+    const d = document.querySelectorAll('.demo')[1];
+    const eps = d.querySelector('[data-eps]');
+    const pager = d.querySelector('[data-pager]');
+    const total = d.querySelector('[data-total]');
+    const PER = 40;
+    let cur = 0, page = 1;
+    const render = () => {
+      const n = LINES[cur].n;
+      const pages = Math.ceil(n / PER);
+      page = Math.min(page, pages);
+      fill(eps, (page - 1) * PER + 1, Math.min(n, page * PER), 1);
+      total.textContent = '共 ' + n + ' 集 · ' + pages + ' 页';
+      pager.innerHTML = '';
+      const prev = document.createElement('button');
+      prev.textContent = '上一页';
+      prev.disabled = page === 1;
+      prev.onclick = () => { page--; render(); };
+      pager.appendChild(prev);
+      for (let p = 1; p <= pages; p++) {
+        const b = document.createElement('button');
+        b.textContent = p;
+        if (p === page) b.className = 'on';
+        b.onclick = () => { page = p; render(); };
+        pager.appendChild(b);
+      }
+      const next = document.createElement('button');
+      next.textContent = '下一页';
+      next.disabled = page === pages;
+      next.onclick = () => { page++; render(); };
+      pager.appendChild(next);
+    };
+    tabs(d.querySelector('[data-lines]'), i => { cur = i; page = 1; render(); });
+    render();
+  })();
+
+  // A4
+  (function () {
+    const d = document.querySelectorAll('.demo')[2];
+    const eps = d.querySelector('[data-eps]');
+    const sel = d.querySelector('[data-line-select]');
+    const total = d.querySelector('[data-total]');
+    LINES.forEach((l, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = l.name + '（' + l.n + ' 集）';
+      sel.appendChild(o);
+    });
+    const render = i => {
+      fill(eps, 1, LINES[i].n, 1);
+      total.textContent = '共 ' + LINES[i].n + ' 集';
+    };
+    sel.onchange = e => render(Number(e.target.value));
+    render(0);
+  })();
+
+  // A5
+  (function () {
+    const d = document.querySelectorAll('.demo')[3];
+    const eps = d.querySelector('[data-eps]');
+    const modal = document.getElementById('ep-modal');
+    const modalEps = modal.querySelector('[data-modal-eps]');
+    const modalLines = modal.querySelector('[data-modal-lines]');
+    let cur = 0;
+    const renderMain = () => fill(eps, 1, Math.min(LINES[cur].n, 12), 1);
+    tabs(d.querySelector('[data-lines]'), i => { cur = i; renderMain(); });
+    renderMain();
+    d.querySelector('[data-open-modal]').onclick = () => {
+      modal.classList.add('open');
+      fill(modalEps, 1, LINES[cur].n, 1);
+    };
+    modal.querySelector('[data-close-modal]').onclick = () => modal.classList.remove('open');
+    modal.onclick = e => { if (e.target === modal) modal.classList.remove('open'); };
+    tabs(modalLines, i => { cur = i; renderMain(); fill(modalEps, 1, LINES[i].n, 1); });
+  })();
+
+  document.querySelectorAll('[data-intro]').forEach(p => {
+    p.querySelector('.more').onclick = () => p.classList.toggle('open');
+  });
+</script>
+</body>
+</html>
