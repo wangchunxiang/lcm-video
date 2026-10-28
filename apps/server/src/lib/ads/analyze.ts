@@ -6,10 +6,10 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
 /** 一次分析抽多少个作品 */
-export const SAMPLE_SIZE = 10;
-/** 一段候选广告的最短 / 最长时长（秒） */
+export const SAMPLE_SIZE = 5;
+/** 一段候选广告的最短 / 最长时长（秒），超过 30 秒的不当作广告 */
 const MIN_AD_SECONDS = 6;
-const MAX_AD_SECONDS = 120;
+const MAX_AD_SECONDS = 30;
 /** 一个候选最多跨几个 discontinuity 组 */
 const MAX_SPAN_GROUPS = 3;
 
@@ -227,7 +227,7 @@ export async function analyzeSource(
     }
   }
 
-  const minHits = Math.max(2, Math.ceil(parsed * 0.3));
+  const minHits = Math.max(2, Math.ceil(parsed * 0.4));
   const found: FoundFeature[] = [];
   for (const [key, value] of map) {
     if (value.hits.size < minHits) continue;
