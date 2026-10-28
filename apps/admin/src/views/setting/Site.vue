@@ -18,41 +18,73 @@ interface ThemeItem {
 interface Row {
   key: string;
   label: string;
-  section: string;
   kind: 'text' | 'image' | 'select' | 'textarea';
   hint?: string;
 }
 
-/** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
-const FIELDS: Row[] = [
-  { key: 'site_name', label: '站点名称', section: '站点信息', kind: 'text' },
-  { key: 'site_subtitle', label: '站点副标题', section: '站点信息', kind: 'text' },
-  { key: 'site_icp', label: '备案号', section: '站点信息', kind: 'text', hint: '显示在前台页脚' },
-  { key: 'site_logo', label: '站点 LOGO', section: '品牌与外观', kind: 'image', hint: '留空则显示站名文字' },
-  { key: 'site_favicon', label: '站点图标', section: '品牌与外观', kind: 'image', hint: '浏览器标签页上的小图标' },
-  { key: 'site_theme', label: '当前模板', section: '品牌与外观', kind: 'select' },
-  { key: 'site_keywords', label: 'SEO 关键词', section: 'SEO 与页脚', kind: 'textarea', hint: '多个关键词用英文逗号分隔' },
-  { key: 'site_description', label: 'SEO 描述', section: 'SEO 与页脚', kind: 'textarea' },
-  { key: 'site_disclaimer', label: '免责声明', section: 'SEO 与页脚', kind: 'textarea', hint: '显示在前台页脚' },
-  { key: 'site_stats_code', label: '统计代码', section: 'SEO 与页脚', kind: 'textarea', hint: '原样输出到前台页面底部' },
-  { key: 'list_page_size', label: '列表每页条数', section: '列表与上传', kind: 'text', hint: '建议保持 24（三行八列）' },
-  { key: 'collect_log_keep_days', label: '采集记录保留天数', section: '列表与上传', kind: 'text', hint: '调度器每天清理一次' },
-  { key: 'upload_max_mb', label: '单文件上传上限', section: '列表与上传', kind: 'text', hint: '单位 MB' },
-];
-
-const KEYS = FIELDS.map((field) => field.key);
-
-function groupBySection(): { title: string; rows: Row[] }[] {
-  const result: { title: string; rows: Row[] }[] = [];
-  for (const row of FIELDS) {
-    const last = result[result.length - 1];
-    if (last && last.title === row.section) last.rows.push(row);
-    else result.push({ title: row.section, rows: [row] });
-  }
-  return result;
+interface Section {
+  title: string;
+  rows: Row[];
 }
 
-const SECTIONS = groupBySection();
+interface Tab {
+  name: string;
+  label: string;
+  sections: Section[];
+}
+
+/** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
+const TABS: Tab[] = [
+  {
+    name: 'main',
+    label: '站点设置',
+    sections: [
+      {
+        title: '站点信息',
+        rows: [
+          { key: 'site_name', label: '站点名称', kind: 'text' },
+          { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
+          { key: 'site_icp', label: '备案号', kind: 'text', hint: '显示在前台页脚' },
+        ],
+      },
+      {
+        title: '品牌与外观',
+        rows: [
+          { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '留空则显示站名文字' },
+          { key: 'site_favicon', label: '站点图标', kind: 'image', hint: '浏览器标签页上的小图标' },
+          { key: 'site_theme', label: '当前模板', kind: 'select' },
+        ],
+      },
+      {
+        title: 'SEO 与页脚',
+        rows: [
+          { key: 'site_keywords', label: 'SEO 关键词', kind: 'textarea', hint: '多个关键词用英文逗号分隔' },
+          { key: 'site_description', label: 'SEO 描述', kind: 'textarea' },
+          { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
+          { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'misc',
+    label: '列表与上传',
+    sections: [
+      {
+        title: '列表与上传',
+        rows: [
+          { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '建议保持 24（三行八列）' },
+          { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次' },
+          { key: 'upload_max_mb', label: '单文件上传上限', kind: 'text', hint: '单位 MB' },
+        ],
+      },
+    ],
+  },
+];
+
+const KEYS = TABS.flatMap((tab) => tab.sections.flatMap((section) => section.rows.map((row) => row.key)));
+
+const activeTab = ref(TABS[0]?.name ?? 'main');
 
 const form = reactive<Record<string, string>>({
   site_name: '',
@@ -113,32 +145,36 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <div class="body">
-        <template v-for="(section, sectionIndex) in SECTIONS" :key="section.title">
-          <div class="group-title" :class="{ first: sectionIndex === 0 }">{{ section.title }}</div>
+      <el-tabs v-model="activeTab" class="tabs">
+        <el-tab-pane v-for="tab in TABS" :key="tab.name" :label="tab.label" :name="tab.name">
+          <div class="body">
+            <template v-for="(section, sectionIndex) in tab.sections" :key="section.title">
+              <div class="group-title" :class="{ first: sectionIndex === 0 }">{{ section.title }}</div>
 
-          <div v-for="row in section.rows" :key="row.key" class="field">
-            <label class="field-label">{{ row.label }}</label>
-            <div class="field-ctrl">
-              <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
-              <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 220px">
-                <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
-              </el-select>
-              <el-input
-                v-else-if="row.kind === 'textarea'"
-                v-model="form[row.key]"
-                type="textarea"
-                :rows="3"
-                resize="vertical"
-                style="max-width: 560px"
-              />
-              <el-input v-else v-model="form[row.key]" style="width: 220px" />
+              <div v-for="row in section.rows" :key="row.key" class="field">
+                <label class="field-label">{{ row.label }}</label>
+                <div class="field-ctrl">
+                  <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
+                  <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 220px">
+                    <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
+                  </el-select>
+                  <el-input
+                    v-else-if="row.kind === 'textarea'"
+                    v-model="form[row.key]"
+                    type="textarea"
+                    :rows="3"
+                    resize="vertical"
+                    style="max-width: 560px"
+                  />
+                  <el-input v-else v-model="form[row.key]" style="width: 220px" />
 
-              <div v-if="row.hint" class="field-hint">{{ row.hint }}</div>
-            </div>
+                  <div v-if="row.hint" class="field-hint">{{ row.hint }}</div>
+                </div>
+              </div>
+            </template>
           </div>
-        </template>
-      </div>
+        </el-tab-pane>
+      </el-tabs>
 
       <div class="card-foot">
         <el-button @click="load">重置</el-button>
@@ -153,18 +189,21 @@ onMounted(() => {
   width: 100%;
 }
 .group-card :deep(.el-card__body) {
-  padding: 8px 24px 0;
+  padding: 0 24px 0;
+}
+.tabs :deep(.el-tabs__header) {
+  margin-bottom: 4px;
 }
 .body {
   max-width: 860px;
 }
 .group-title {
-  margin: 18px 0 4px;
+  margin: 14px 0 4px;
   font-size: 13px;
   color: var(--el-text-color-secondary);
 }
 .group-title.first {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 .field {
   display: flex;
