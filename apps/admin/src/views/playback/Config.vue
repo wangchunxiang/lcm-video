@@ -495,7 +495,7 @@ onMounted(() => {
             已选影片
             <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
           </div>
-          <el-table :data="sampleVods" border size="small" height="196" class="vod-table">
+          <el-table :data="sampleVods" border size="small" height="188" class="vod-table">
             <el-table-column prop="name" label="作品" min-width="140" show-overflow-tooltip />
             <el-table-column prop="episode" label="集数" width="88" align="center" />
             <template #empty>
@@ -507,7 +507,7 @@ onMounted(() => {
             候选广告特征
             <span v-if="candidateFeatures.length" class="ads-count">{{ candidateFeatures.length }}</span>
           </div>
-          <el-table :data="candidateFeatures" size="small" border height="196">
+          <el-table :data="candidateFeatures" size="small" border height="188">
             <el-table-column label="类型" width="76" align="center">
               <template #default="{ row }">
                 <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
