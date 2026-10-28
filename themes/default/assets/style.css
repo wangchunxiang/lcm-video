@@ -340,11 +340,23 @@ img { border: 0; vertical-align: middle; }
   font-size: 14px;
 }
 
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.meta-line a { color: var(--text-2); }
+.meta-line a:hover { color: var(--primary); }
+
 .info-list {
   margin: 0 0 18px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .info-list > div {
