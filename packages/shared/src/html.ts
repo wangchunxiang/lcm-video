@@ -73,7 +73,6 @@ export function htmlToText(input: string | null | undefined, options: { paragrap
 /**
  * 摘要用：转纯文本并压成一行
  */
-export function htmlToSummary(input: string | null | undefined, maxLength = 500): string {
-  const text = htmlToText(input, { paragraph: false });
-  return text.length > maxLength ? text.slice(0, maxLength) : text;
+export function htmlToSummary(input: string | null | undefined): string {
+  return htmlToText(input, { paragraph: false });
 }

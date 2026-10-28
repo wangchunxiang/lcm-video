@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
-import { clampText, countEpisodes, normalizeReleaseDate, htmlToSummary, htmlToText, nameHash, normalizeName, resolveYear } from '@lcm/shared';
+import { countEpisodes, htmlToSummary, htmlToText, nameHash, normalizeName } from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
 import { splitPlayGroups } from './parser.ts';
 
@@ -116,7 +116,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
       categoryPid: category.pid,
       name,
       hash: nameHash(name),
-      year: resolveYear({ year: item.year, releaseDate: item.releaseDate, name }),
+      year: item.year || 0,
     });
   }
 
@@ -209,21 +209,21 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
         let insertedNow = false;
 
         const content = {
-          name: clampText(name, 255),
+          name,
           nameHash: hash,
-          subName: clampText(item.subName, 255),
+          subName: item.subName,
           letter: /^[A-Z0-9]$/.test(item.letter) ? item.letter : '',
-          cover: clampText(item.cover, 255),
-          actor: clampText(item.actor, 500),
-          director: clampText(item.director, 255),
-          writer: clampText(item.writer, 255),
-          intro: htmlToSummary(item.intro, 500),
+          cover: item.cover,
+          actor: item.actor,
+          director: item.director,
+          writer: item.writer,
+          intro: htmlToSummary(item.intro),
           content: htmlToText(item.content),
-          remarks: clampText(item.remarks, 100),
-          releaseDate: normalizeReleaseDate(item.releaseDate),
+          remarks: item.remarks,
+          releaseDate: item.releaseDate,
           episodeCount: item.episodeCount,
-          area: clampText(item.area, 50),
-          lang: clampText(item.lang, 50),
+          area: item.area,
+          lang: item.lang,
           year,
         };
 
