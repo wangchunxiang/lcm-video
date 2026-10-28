@@ -277,7 +277,7 @@ img { border: 0; vertical-align: middle; }
   padding: 6px 0;
 }
 
-.filter-row:last-of-type { margin-bottom: 6px; }
+.filter-row:last-of-type { margin-bottom: 18px; }
 
 .filter-label {
   color: var(--text-3);
