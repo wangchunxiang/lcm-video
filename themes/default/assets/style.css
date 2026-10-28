@@ -95,27 +95,34 @@ img { border: 0; vertical-align: middle; }
 .sub-nav {
   display: none;
   position: absolute;
-  top: 64px;
-  left: 0;
-  min-width: 220px;
-  padding: 8px 12px;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  min-width: 300px;
+  max-width: 620px;
+  padding: 10px;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 0 0 var(--radius) var(--radius);
-  box-shadow: var(--shadow);
-  flex-wrap: wrap;
-  gap: 6px 16px;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
 }
 
-.nav-item:hover .sub-nav { display: flex; }
+.nav-item:hover .sub-nav { display: grid; }
 
 .sub-nav a {
+  padding: 7px 10px;
+  border-radius: 6px;
   font-size: 13px;
   color: var(--text-2);
   white-space: nowrap;
 }
 
-.sub-nav a:hover { color: var(--primary); }
+.sub-nav a:hover {
+  background: var(--bg);
+  color: var(--primary);
+}
 
 .search-box {
   display: flex;
