@@ -408,6 +408,8 @@ img { border: 0; vertical-align: middle; }
 
 .more-detail { color: var(--primary); }
 
+#story { scroll-margin-top: 76px; }
+
 .detail-text h3 {
   margin: 0 0 8px;
   font-size: 15px;
