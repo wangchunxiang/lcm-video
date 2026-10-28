@@ -19,24 +19,17 @@ const BEHAVIOR: Row[] = [
   { key: 'player_autoplay', label: '自动播放', hint: '进入播放页自动开始' },
   { key: 'player_autonext', label: '自动连播', hint: '播完自动跳下一集' },
   { key: 'player_resume', label: '进度记忆', hint: '记住上次看到的位置' },
-  { key: 'player_loop', label: '循环播放', hint: '单集循环播放' },
 ];
 
 const CONTROLS: Row[] = [
   { key: 'player_screenshot', label: '截图', hint: '控制栏按钮' },
-  { key: 'player_pip', label: '画中画', hint: '控制栏按钮' },
   { key: 'player_fullscreen', label: '全屏', hint: '控制栏按钮' },
   { key: 'player_webfullscreen', label: '网页全屏', hint: '控制栏按钮' },
-  { key: 'player_setting', label: '设置面板', hint: '控制栏齿轮，下面三项在面板里' },
-  { key: 'player_mini_progress', label: '迷你进度条', hint: '滚动后仍显示进度' },
-  { key: 'player_auto_mini', label: '迷你播放', hint: '滚出视野缩成小窗' },
+  { key: 'player_setting', label: '设置面板', hint: '控制栏齿轮按钮' },
 ];
 
-const PANEL: Row[] = [
-  { key: 'player_playback_rate', label: '倍速播放', hint: '面板内，0.5 到 2 倍' },
-  { key: 'player_aspect_ratio', label: '画面比例', hint: '面板内，16:9、4:3 等' },
-  { key: 'player_flip', label: '镜像翻转', hint: '面板内，左右翻转' },
-];
+/** 设置面板内暂时没有可配项，播放器自带「信息 / 版本」 */
+const PANEL: Row[] = [];
 
 const ROWS = [...BEHAVIOR, ...CONTROLS, ...PANEL];
 const KEYS = ROWS.map((row) => row.key);
@@ -46,17 +39,10 @@ const form = reactive<Record<string, string>>({
   player_autoplay: '0',
   player_autonext: '1',
   player_resume: '1',
-  player_loop: '0',
   player_screenshot: '1',
-  player_pip: '1',
   player_fullscreen: '1',
   player_webfullscreen: '0',
   player_setting: '1',
-  player_mini_progress: '1',
-  player_auto_mini: '0',
-  player_playback_rate: '1',
-  player_aspect_ratio: '1',
-  player_flip: '0',
 });
 
 const loading = ref(false);
@@ -64,12 +50,15 @@ const savingKey = ref('');
 
 const on = (key: string) => form[key] === '1';
 const hasPanel = computed(() => on('player_setting'));
-const panelItems = computed(() => PANEL.filter((row) => on(row.key)).map((row) => row.label));
+const panelItems = computed(() => [
+  ...PANEL.filter((row) => on(row.key)).map((row) => row.label),
+  '信息',
+  '版本',
+]);
 const behaviorTags = computed(() => [
   { label: '自动播放', active: on('player_autoplay') },
   { label: '自动连播', active: on('player_autonext') },
   { label: '进度记忆', active: on('player_resume') },
-  { label: '循环', active: on('player_loop') },
 ]);
 
 async function load() {
@@ -115,15 +104,10 @@ onMounted(() => {
             </div>
 
             <div v-if="hasPanel" class="panel">
-              <div v-if="!panelItems.length" class="panel-empty">面板里没有项</div>
               <div v-for="item in panelItems" :key="item" class="panel-item">
                 <span>{{ item }}</span>
                 <el-icon :size="12"><ArrowRight /></el-icon>
               </div>
-            </div>
-
-            <div v-if="on('player_auto_mini')" class="mini-window">
-              <span>滚出视野后缩成小窗</span>
             </div>
 
             <div class="bar">
@@ -132,15 +116,11 @@ onMounted(() => {
               <span class="time">00:12 / 01:30</span>
               <el-icon :size="16"><Mute /></el-icon>
               <el-icon v-if="on('player_screenshot')" :size="16"><Camera /></el-icon>
-              <el-icon v-if="on('player_pip')" :size="16"><CopyDocument /></el-icon>
               <el-icon v-if="on('player_fullscreen')" :size="16"><FullScreen /></el-icon>
               <el-icon v-if="on('player_webfullscreen')" :size="16"><Monitor /></el-icon>
               <el-icon v-if="hasPanel" :size="16" class="gear"><Setting /></el-icon>
             </div>
 
-            <div v-if="on('player_mini_progress')" class="mini-progress">
-              <div class="mini-progress-done" />
-            </div>
           </div>
 
           <div class="behaviors">

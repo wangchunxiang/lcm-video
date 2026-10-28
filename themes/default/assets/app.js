@@ -14,18 +14,11 @@
   /* 界面控件开关，见后台「播放设置」 */
   var flags = {
     screenshot: box.getAttribute('data-screenshot') === '1',
-    pip: box.getAttribute('data-pip') === '1',
     fullscreen: box.getAttribute('data-fullscreen') === '1',
     webfullscreen: box.getAttribute('data-webfullscreen') === '1',
     setting: box.getAttribute('data-setting') === '1',
-    miniProgress: box.getAttribute('data-mini-progress') === '1',
-    autoMini: box.getAttribute('data-auto-mini') === '1',
-    playbackRate: box.getAttribute('data-playback-rate') === '1',
-    aspectRatio: box.getAttribute('data-aspect-ratio') === '1',
-    flip: box.getAttribute('data-flip') === '1',
     lang: box.getAttribute('data-lang') || 'zh-cn',
     poster: box.getAttribute('data-poster') || '',
-    loop: box.getAttribute('data-loop') === '1' && box.getAttribute('data-autonext') !== '1',
   };
 
   var video = null;
@@ -122,16 +115,9 @@
         autoSize: false,
         airplay: true,
         screenshot: !!flags.screenshot,
-        pip: !!flags.pip,
         fullscreen: !flags.fullscreen ? false : true,
         fullscreenWeb: !!flags.webfullscreen,
         setting: !!flags.setting,
-        playbackRate: !!flags.playbackRate,
-        aspectRatio: !!flags.aspectRatio,
-        flip: !!flags.flip,
-        miniProgressBar: !!flags.miniProgress,
-        autoMini: !!flags.autoMini,
-        loop: !!flags.loop,
         customType: {
           m3u8: function (element, target) {
             var instance = new window.Hls(hlsConfig());
@@ -153,7 +139,6 @@
   function initNative(container, url, hls, auto, flags) {
     flags = flags || {};
     var element = document.createElement('video');
-    element.loop = !!flags.loop;
     element.controls = true;
     element.playsInline = true;
     element.preload = 'metadata';

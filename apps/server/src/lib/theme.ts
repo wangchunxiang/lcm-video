@@ -21,16 +21,9 @@ export interface SiteConfig {
   autonext: boolean;
   resume: boolean;
   screenshot: boolean;
-  pip: boolean;
   webfullscreen: boolean;
   fullscreen: boolean;
-  miniProgress: boolean;
-  autoMini: boolean;
-  playbackRate: boolean;
-  aspectRatio: boolean;
-  flip: boolean;
   setting: boolean;
-  loop: boolean;
 }
 
 export interface NavItem {
@@ -62,16 +55,9 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     autonext: settings['player_autonext'] !== '0',
     resume: settings['player_resume'] !== '0',
     screenshot: settings['player_screenshot'] !== '0',
-    pip: settings['player_pip'] !== '0',
     webfullscreen: settings['player_webfullscreen'] === '1',
     fullscreen: settings['player_fullscreen'] !== '0',
     setting: settings['player_setting'] !== '0',
-    miniProgress: settings['player_mini_progress'] !== '0',
-    autoMini: settings['player_auto_mini'] === '1',
-    playbackRate: settings['player_playback_rate'] !== '0',
-    aspectRatio: settings['player_aspect_ratio'] !== '0',
-    flip: settings['player_flip'] === '1',
-    loop: settings['player_loop'] === '1',
   };
 
   cachedConfig = { at: Date.now(), value };
