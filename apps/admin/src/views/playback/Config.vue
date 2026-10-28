@@ -30,16 +30,16 @@ const CONTROLS: Row[] = [
   { key: 'player_screenshot', label: '截图', kind: 'switch', hint: '控制栏按钮' },
   { key: 'player_pip', label: '画中画', kind: 'switch', hint: '控制栏按钮' },
   { key: 'player_fullscreen', label: '全屏', kind: 'switch', hint: '控制栏按钮' },
-  { key: 'player_webfullscreen', label: '网页全屏', kind: 'switch', hint: '控制栏按钮，不隐藏标签栏' },
+  { key: 'player_webfullscreen', label: '网页全屏', kind: 'switch', hint: '控制栏按钮' },
   { key: 'player_setting', label: '设置面板', kind: 'switch', hint: '控制栏齿轮，下面三项在面板里' },
-  { key: 'player_mini_progress', label: '迷你进度条', kind: 'switch', hint: '页面滚动后仍显示进度' },
-  { key: 'player_auto_mini', label: '迷你播放', kind: 'switch', hint: '滚出视野后缩成小窗' },
+  { key: 'player_mini_progress', label: '迷你进度条', kind: 'switch', hint: '滚动后仍显示进度' },
+  { key: 'player_auto_mini', label: '迷你播放', kind: 'switch', hint: '滚出视野缩成小窗' },
 ];
 
 const PANEL: Row[] = [
-  { key: 'player_playback_rate', label: '倍速播放', kind: 'switch', hint: '设置面板内，0.5 到 2 倍' },
-  { key: 'player_aspect_ratio', label: '画面比例', kind: 'switch', hint: '设置面板内，16:9、4:3 等' },
-  { key: 'player_flip', label: '镜像翻转', kind: 'switch', hint: '设置面板内，左右翻转画面' },
+  { key: 'player_playback_rate', label: '倍速播放', kind: 'switch', hint: '面板内，0.5 到 2 倍' },
+  { key: 'player_aspect_ratio', label: '画面比例', kind: 'switch', hint: '面板内，16:9、4:3 等' },
+  { key: 'player_flip', label: '镜像翻转', kind: 'switch', hint: '面板内，左右翻转' },
 ];
 
 const ROWS = [...BEHAVIOR, ...CONTROLS, ...PANEL];
@@ -67,7 +67,7 @@ const form = reactive<Record<string, string>>({
 });
 
 const loading = ref(false);
-const saving = ref(false);
+const savingKey = ref('');
 
 const on = (key: string) => form[key] === '1';
 const hasPanel = computed(() => on('player_setting'));
@@ -96,19 +96,16 @@ async function load() {
   }
 }
 
-async function save() {
-  const values: Record<string, string> = {};
-  for (const key of KEYS) values[key] = String(form[key] ?? '');
-
-  saving.value = true;
+/** 改动即存，不设保存按钮 */
+async function saveKey(key: string) {
+  savingKey.value = key;
   try {
-    await api.put('/settings', { values });
-    ElMessage.success('保存成功');
-    await load();
+    await api.put('/settings', { values: { [key]: String(form[key] ?? '') } });
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
+    await load();
   } finally {
-    saving.value = false;
+    savingKey.value = '';
   }
 }
 
@@ -119,60 +116,56 @@ onMounted(() => {
 
 <template>
   <div v-loading="loading" class="page">
-    <div class="cols">
-      <el-card shadow="never" class="preview-card">
-        <template #header>
-          <span>预览</span>
-          <span class="preview-tip">示意控制栏，效果以播放器为准</span>
-        </template>
+    <el-card shadow="never" class="group-card">
+      <div class="layout">
+        <div class="stage-col">
+          <div class="stage">
+            <div class="poster">
+              <el-icon :size="52"><VideoPlay /></el-icon>
+            </div>
 
-        <div class="stage">
-          <div class="poster">
-            <el-icon :size="44"><VideoPlay /></el-icon>
-          </div>
+            <div v-if="hasPanel" class="panel">
+              <div v-if="!panelItems.length" class="panel-empty">面板里没有项</div>
+              <div v-for="item in panelItems" :key="item" class="panel-item">
+                <span>{{ item }}</span>
+                <el-icon :size="12"><ArrowRight /></el-icon>
+              </div>
+            </div>
 
-          <div v-if="hasPanel" class="panel">
-            <div v-if="!panelItems.length" class="panel-empty">面板里没有项</div>
-            <div v-for="item in panelItems" :key="item" class="panel-item">
-              <span>{{ item }}</span>
-              <el-icon :size="12"><ArrowRight /></el-icon>
+            <div v-if="on('player_auto_mini')" class="mini-window">
+              <span>滚出视野后缩成小窗</span>
+            </div>
+
+            <div class="bar">
+              <el-icon :size="18"><VideoPlay /></el-icon>
+              <div class="progress"><div class="progress-done" /></div>
+              <span class="time">00:12 / 01:30</span>
+              <el-icon :size="16"><Mute /></el-icon>
+              <el-icon v-if="on('player_screenshot')" :size="16"><Camera /></el-icon>
+              <el-icon v-if="on('player_pip')" :size="16"><CopyDocument /></el-icon>
+              <el-icon v-if="on('player_fullscreen')" :size="16"><FullScreen /></el-icon>
+              <el-icon v-if="on('player_webfullscreen')" :size="16"><Monitor /></el-icon>
+              <el-icon v-if="hasPanel" :size="16" class="gear"><Setting /></el-icon>
+            </div>
+
+            <div v-if="on('player_mini_progress')" class="mini-progress">
+              <div class="mini-progress-done" />
             </div>
           </div>
 
-          <div v-if="on('player_auto_mini')" class="mini-window">
-            <span>滚出视野后缩成小窗</span>
-          </div>
-
-          <div class="bar">
-            <el-icon :size="16"><VideoPlay /></el-icon>
-            <div class="progress"><div class="progress-done" /></div>
-            <span class="time">00:12 / 01:30</span>
-            <el-icon :size="15"><Mute /></el-icon>
-            <el-icon v-if="on('player_screenshot')" :size="15"><Camera /></el-icon>
-            <el-icon v-if="on('player_pip')" :size="15"><CopyDocument /></el-icon>
-            <el-icon v-if="on('player_fullscreen')" :size="15"><FullScreen /></el-icon>
-            <el-icon v-if="on('player_webfullscreen')" :size="15"><Monitor /></el-icon>
-            <el-icon v-if="hasPanel" :size="15" class="gear"><Setting /></el-icon>
-          </div>
-
-          <div v-if="on('player_mini_progress')" class="mini-progress">
-            <div class="mini-progress-done" />
+          <div class="behaviors">
+            <el-tag
+              v-for="tag in behaviorTags"
+              :key="tag.label"
+              size="small"
+              :type="tag.active ? 'primary' : 'info'"
+              :effect="tag.active ? 'light' : 'plain'"
+            >
+              {{ tag.label }}
+            </el-tag>
           </div>
         </div>
 
-        <div class="behaviors">
-          <el-tag
-            v-for="tag in behaviorTags"
-            :key="tag.label"
-            size="small"
-            :type="tag.active ? 'primary' : 'info'"
-            :effect="tag.active ? 'light' : 'plain'"
-          >
-            {{ tag.label }}
-          </el-tag>
-        </div>
-      </el-card>
-      <el-card shadow="never" class="group-card">
         <div class="grid">
           <div
             v-for="row in ROWS"
@@ -187,23 +180,24 @@ onMounted(() => {
                 v-model="form[row.key]"
                 active-value="1"
                 inactive-value="0"
+                :loading="savingKey === row.key"
                 :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
+                @change="saveKey(row.key)"
               />
-              <el-input v-else v-model="form[row.key]" style="width: 120px" />
+              <el-input
+                v-else
+                v-model="form[row.key]"
+                style="width: 110px"
+                @change="saveKey(row.key)"
+              />
               <div class="field-hint">
                 {{ PANEL_KEYS.includes(row.key) && !hasPanel ? '需先开启「设置面板」' : row.hint }}
               </div>
             </div>
           </div>
         </div>
-
-        <div class="card-foot">
-          <el-button @click="load">重置</el-button>
-          <el-button type="primary" :loading="saving" @click="save">保存</el-button>
-        </div>
-      </el-card>
-
-    </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -211,16 +205,16 @@ onMounted(() => {
 .page {
   width: 100%;
 }
-.cols {
+.layout {
   display: grid;
-  grid-template-columns: 480px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 460px minmax(0, 1fr);
+  gap: 24px 28px;
   align-items: start;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 28px;
+  gap: 2px 32px;
 }
 .field {
   display: flex;
@@ -247,24 +241,7 @@ onMounted(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
 }
-.card-foot {
-  display: flex;
-  gap: 10px;
-  margin: 16px 0 0;
-  padding: 14px 0 0 108px;
-  border-top: 1px solid var(--el-border-color);
-}
 
-.preview-card {
-  position: sticky;
-  top: 12px;
-}
-.preview-tip {
-  margin-left: 8px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
-}
 .stage {
   position: relative;
   padding-top: 56.25%;
@@ -370,6 +347,6 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 </style>
