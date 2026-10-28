@@ -8,7 +8,7 @@
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --radius: 8px;
-  --container: 1600px;
+  --container: 1320px;
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
@@ -202,6 +202,12 @@ img { border: 0; vertical-align: middle; }
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 22px 16px;
+}
+
+/* 首页内容更窄、一行六个 */
+.home .vod-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 24px 18px;
 }
 
 .vod-card { display: block; }
@@ -702,6 +708,7 @@ img { border: 0; vertical-align: middle; }
 
 @media (max-width: 1400px) {
   .vod-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .home .vod-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 @media (max-width: 1200px) {
