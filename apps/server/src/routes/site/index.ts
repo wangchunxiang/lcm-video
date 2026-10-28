@@ -1,9 +1,10 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
-import { category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
+import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
 import { parsePlayUrl } from '@lcm/shared';
+import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
   createEngine,
@@ -415,6 +416,17 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const current = all[currentEp - 1];
     if (!current) return notFound(reply);
 
+    const isHls = /\.m3u8(\?|$)/i.test(current.url);
+    const adRows =
+      line.source_id > 0 && !line.parse_url && isHls
+        ? await db
+            .select({ id: adFeature.id })
+            .from(adFeature)
+            .where(eq(adFeature.sourceId, line.source_id))
+            .limit(1)
+        : [];
+    const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
+
     const episodes: EpisodeView[] = all.map((item, index) => ({ index: index + 1, name: item.name, url: item.url }));
     const pagination: Pagination = buildPagination(page, 50, episodes.length);
     if (page > pagination.total_pages) return notFound(reply);
@@ -438,8 +450,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         episodes: pageEpisodes,
         current_ep: currentEp,
         current_ep_name: episodeName,
-        play_url: current.url,
-        is_hls: /\.m3u8(\?|$)/i.test(current.url),
+        play_url: proxyPlayUrl || current.url,
+        is_hls: isHls,
         autoplay: config.autoplay,
         autonext: config.autonext,
         resume: config.resume,
@@ -466,6 +478,32 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const vodId = toInt(id);
     if (vodId <= 0) return notFound(reply);
     return renderPlay(reply, vodId, toInt(playId), 0, 1);
+  });
+
+  app.get('/play/ad/:id/:playId/:ep', async (req, reply) => {
+    const { id, playId, ep } = req.params as { id: string; playId: string; ep: string };
+    const vodId = toInt(id);
+    const lineId = toInt(playId);
+    const epIndex = toInt(ep);
+    if (vodId <= 0 || lineId <= 0 || epIndex <= 0) return notFound(reply);
+
+    const lines = await loadLines(vodId);
+    const line = lines.find((item) => item.id === lineId);
+    if (!line) return notFound(reply);
+
+    const current = parsePlayUrl(line.playUrl)[epIndex - 1];
+    if (!current) return notFound(reply);
+
+    try {
+      const cleaned = await cleanPlaylist(db, line.source_id, current.url);
+      if (!cleaned) return reply.redirect(current.url, 302);
+      return reply
+        .header('content-type', 'application/vnd.apple.mpegurl')
+        .header('cache-control', 'no-cache')
+        .send(cleaned.text);
+    } catch {
+      return reply.redirect(current.url, 302);
+    }
   });
 
   app.get('/play/:id/:playId/:ep', async (req, reply) => {
