@@ -102,10 +102,6 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <template #header>
-        <span class="card-title">站点设置</span>
-      </template>
-
       <div class="grid">
         <div v-for="row in FIELDS" :key="row.key" class="item" :class="{ wide: row.wide }">
           <div class="item-label">
@@ -142,14 +138,8 @@ onMounted(() => {
 .page {
   width: 100%;
 }
-.group-card :deep(.el-card__header) {
-  padding: 12px 20px;
-}
-.card-title {
-  font-weight: 600;
-}
 .group-card :deep(.el-card__body) {
-  padding: 8px 20px 0;
+  padding: 16px 20px 0;
 }
 .grid {
   display: grid;
