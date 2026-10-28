@@ -276,9 +276,6 @@ async function startAnalyze() {
     pushLog(`分析失败：${error instanceof Error ? error.message : String(error)}`);
   } finally {
     analyzing.value = false;
-    window.setTimeout(() => {
-      logVisible.value = false;
-    }, 900);
   }
 }
 
