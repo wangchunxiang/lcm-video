@@ -323,7 +323,7 @@ onMounted(() => {
           </div>
 
           <div class="ads-sub">
-            抽取作品
+            已选影片
             <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
           </div>
           <el-table :data="sampleVods" border size="small" height="196" class="vod-table">
@@ -332,34 +332,6 @@ onMounted(() => {
             <template #empty>
               <span class="ads-empty">点击「随机选片」抽取 5 部作品</span>
             </template>
-          </el-table>
-
-          <div class="ads-sub">
-            已设置的广告特征
-            <span v-if="confirmedFeatures.length" class="ads-count">{{ confirmedFeatures.length }}</span>
-          </div>
-          <el-table :data="confirmedFeatures" size="small" border height="140">
-            <el-table-column label="类型" width="76" align="center">
-              <template #default="{ row }">
-                <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="时长序列（秒）" min-width="180" show-overflow-tooltip>
-              <template #default="{ row }">{{ row.durations.split(',').join(' / ') }}</template>
-            </el-table-column>
-            <el-table-column label="总长" width="88" align="center">
-              <template #default="{ row }">{{ secondsText(row.totalMs) }}</template>
-            </el-table-column>
-            <el-table-column label="命中" width="72" align="center">
-              <template #default="{ row }">{{ row.hitVods }} 部</template>
-            </el-table-column>
-            <el-table-column label="操作" width="104" align="center">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="openFeature(row)">查看</el-button>
-                <el-button link type="info" @click="setStatus(row, 0)">撤销</el-button>
-              </template>
-            </el-table-column>
-            <template #empty>还没有确认的广告特征</template>
           </el-table>
 
           <div class="ads-sub">
@@ -389,6 +361,34 @@ onMounted(() => {
               </template>
             </el-table-column>
             <template #empty>点「开始分析」提取候选广告</template>
+          </el-table>
+
+          <div class="ads-sub">
+            已设置的广告特征
+            <span v-if="confirmedFeatures.length" class="ads-count">{{ confirmedFeatures.length }}</span>
+          </div>
+          <el-table :data="confirmedFeatures" size="small" border height="140">
+            <el-table-column label="类型" width="76" align="center">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="时长序列（秒）" min-width="180" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.durations.split(',').join(' / ') }}</template>
+            </el-table-column>
+            <el-table-column label="总长" width="88" align="center">
+              <template #default="{ row }">{{ secondsText(row.totalMs) }}</template>
+            </el-table-column>
+            <el-table-column label="命中" width="72" align="center">
+              <template #default="{ row }">{{ row.hitVods }} 部</template>
+            </el-table-column>
+            <el-table-column label="操作" width="104" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="openFeature(row)">查看</el-button>
+                <el-button link type="info" @click="setStatus(row, 0)">撤销</el-button>
+              </template>
+            </el-table-column>
+            <template #empty>还没有确认的广告特征</template>
           </el-table>
         </aside>
       </div>
