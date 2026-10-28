@@ -13,6 +13,9 @@
   {% endif %}
 </nav>
 
+{% if types.size > 0 or years.size > 0 %}
+<div class="filter-block">
+{% endif %}
 {% if types.size > 0 %}
 <div class="filter-row">
   <span class="filter-label">类型</span>
@@ -43,6 +46,9 @@
   <a class="filter-item{% if filter.sort == 'time' %} active{% endif %}" href="{{ base | page_url: fs_time, 1 }}">最近更新</a>
   <a class="filter-item{% if filter.sort == 'new' %} active{% endif %}" href="{{ base | page_url: fs_new, 1 }}">最新入库</a>
 </div>
+{% if types.size > 0 or years.size > 0 %}
+</div>
+{% endif %}
 
 <div class="vod-grid">
   {% for v in vods %}
