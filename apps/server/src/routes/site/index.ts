@@ -17,10 +17,10 @@ import {
   type SiteConfig,
 } from '../../lib/theme.ts';
 
-/** 首页最新更新的条数：一行 6 个，正好两行 */
-const HOME_VOD_COUNT = 12;
-/** 首页每个一级分类展示的条数：一行 6 个，正好两行 */
-const HOME_CATEGORY_COUNT = 12;
+/** 首页最新更新的条数：一行 8 个，正好两行 */
+const HOME_VOD_COUNT = 16;
+/** 首页每个一级分类展示的条数：一行 8 个 */
+const HOME_CATEGORY_COUNT = 16;
 
 export interface SiteRouteOpts {
   db: Db;
