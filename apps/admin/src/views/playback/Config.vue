@@ -183,7 +183,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .row.disabled .row-name,
@@ -192,7 +192,7 @@ onMounted(() => {
 }
 .row-name {
   flex: none;
-  width: 88px;
+  width: 84px;
   font-size: 13px;
   color: var(--el-text-color-regular);
 }
@@ -200,12 +200,15 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   font-size: 12px;
+  line-height: 18px;
   color: var(--el-text-color-secondary);
 }
 
 .stage {
   position: relative;
-  padding-top: 56.25%;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 40vh;
   border-radius: 6px;
   overflow: hidden;
   background: #111;
