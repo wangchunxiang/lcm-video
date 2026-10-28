@@ -20,9 +20,6 @@ export interface SiteConfig {
   autoplay: boolean;
   autonext: boolean;
   resume: boolean;
-  volume: number;
-  muted: boolean;
-  hotkey: boolean;
   screenshot: boolean;
   pip: boolean;
   webfullscreen: boolean;
@@ -46,12 +43,6 @@ export interface NavItem {
 /** 站点公共配置，每次请求都读库代价高，内存里缓存 60 秒 */
 let cachedConfig: { at: number; value: SiteConfig } | null = null;
 
-function volumeOf(raw: string | undefined): number {
-  const value = Number(raw ?? '80');
-  if (!Number.isFinite(value)) return 80;
-  return Math.min(100, Math.max(0, Math.trunc(value)));
-}
-
 export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
   if (cachedConfig && Date.now() - cachedConfig.at < 60_000) return cachedConfig.value;
 
@@ -70,9 +61,6 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     autoplay: settings['player_autoplay'] === '1',
     autonext: settings['player_autonext'] !== '0',
     resume: settings['player_resume'] !== '0',
-    volume: volumeOf(settings['player_volume']),
-    muted: settings['player_muted'] === '1',
-    hotkey: settings['player_hotkey'] !== '0',
     screenshot: settings['player_screenshot'] !== '0',
     pip: settings['player_pip'] !== '0',
     webfullscreen: settings['player_webfullscreen'] === '1',

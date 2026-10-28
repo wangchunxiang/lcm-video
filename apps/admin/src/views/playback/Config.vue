@@ -11,35 +11,31 @@ interface FieldItem extends SettingField {
 interface Row {
   key: string;
   label: string;
-  kind: 'switch' | 'number';
   hint?: string;
 }
 
 /** 播放设置页自己的字段，改这个页面不会影响其他设置页 */
 const BEHAVIOR: Row[] = [
-  { key: 'player_autoplay', label: '自动播放', kind: 'switch', hint: '进入播放页自动开始' },
-  { key: 'player_autonext', label: '自动连播', kind: 'switch', hint: '播完自动跳下一集' },
-  { key: 'player_resume', label: '进度记忆', kind: 'switch', hint: '记住上次看到的位置' },
-  { key: 'player_loop', label: '循环播放', kind: 'switch', hint: '单集循环播放' },
-  { key: 'player_muted', label: '静音起播', kind: 'switch', hint: '进来先静音' },
-  { key: 'player_volume', label: '默认音量', kind: 'number', hint: '0 到 100' },
+  { key: 'player_autoplay', label: '自动播放', hint: '进入播放页自动开始' },
+  { key: 'player_autonext', label: '自动连播', hint: '播完自动跳下一集' },
+  { key: 'player_resume', label: '进度记忆', hint: '记住上次看到的位置' },
+  { key: 'player_loop', label: '循环播放', hint: '单集循环播放' },
 ];
 
 const CONTROLS: Row[] = [
-  { key: 'player_hotkey', label: '键盘快捷键', kind: 'switch', hint: '空格暂停，方向键快进快退' },
-  { key: 'player_screenshot', label: '截图', kind: 'switch', hint: '控制栏按钮' },
-  { key: 'player_pip', label: '画中画', kind: 'switch', hint: '控制栏按钮' },
-  { key: 'player_fullscreen', label: '全屏', kind: 'switch', hint: '控制栏按钮' },
-  { key: 'player_webfullscreen', label: '网页全屏', kind: 'switch', hint: '控制栏按钮' },
-  { key: 'player_setting', label: '设置面板', kind: 'switch', hint: '控制栏齿轮，下面三项在面板里' },
-  { key: 'player_mini_progress', label: '迷你进度条', kind: 'switch', hint: '滚动后仍显示进度' },
-  { key: 'player_auto_mini', label: '迷你播放', kind: 'switch', hint: '滚出视野缩成小窗' },
+  { key: 'player_screenshot', label: '截图', hint: '控制栏按钮' },
+  { key: 'player_pip', label: '画中画', hint: '控制栏按钮' },
+  { key: 'player_fullscreen', label: '全屏', hint: '控制栏按钮' },
+  { key: 'player_webfullscreen', label: '网页全屏', hint: '控制栏按钮' },
+  { key: 'player_setting', label: '设置面板', hint: '控制栏齿轮，下面三项在面板里' },
+  { key: 'player_mini_progress', label: '迷你进度条', hint: '滚动后仍显示进度' },
+  { key: 'player_auto_mini', label: '迷你播放', hint: '滚出视野缩成小窗' },
 ];
 
 const PANEL: Row[] = [
-  { key: 'player_playback_rate', label: '倍速播放', kind: 'switch', hint: '面板内，0.5 到 2 倍' },
-  { key: 'player_aspect_ratio', label: '画面比例', kind: 'switch', hint: '面板内，16:9、4:3 等' },
-  { key: 'player_flip', label: '镜像翻转', kind: 'switch', hint: '面板内，左右翻转' },
+  { key: 'player_playback_rate', label: '倍速播放', hint: '面板内，0.5 到 2 倍' },
+  { key: 'player_aspect_ratio', label: '画面比例', hint: '面板内，16:9、4:3 等' },
+  { key: 'player_flip', label: '镜像翻转', hint: '面板内，左右翻转' },
 ];
 
 const ROWS = [...BEHAVIOR, ...CONTROLS, ...PANEL];
@@ -51,9 +47,6 @@ const form = reactive<Record<string, string>>({
   player_autonext: '1',
   player_resume: '1',
   player_loop: '0',
-  player_muted: '0',
-  player_volume: '80',
-  player_hotkey: '1',
   player_screenshot: '1',
   player_pip: '1',
   player_fullscreen: '1',
@@ -77,9 +70,6 @@ const behaviorTags = computed(() => [
   { label: '自动连播', active: on('player_autonext') },
   { label: '进度记忆', active: on('player_resume') },
   { label: '循环', active: on('player_loop') },
-  { label: '静音起播', active: on('player_muted') },
-  { label: '快捷键', active: on('player_hotkey') },
-  { label: `音量 ${form.player_volume || 0}`, active: true },
 ]);
 
 async function load() {
@@ -176,18 +166,11 @@ onMounted(() => {
             <label class="field-label">{{ row.label }}</label>
             <div class="field-ctrl">
               <el-switch
-                v-if="row.kind === 'switch'"
                 v-model="form[row.key]"
                 active-value="1"
                 inactive-value="0"
                 :loading="savingKey === row.key"
                 :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
-                @change="saveKey(row.key)"
-              />
-              <el-input
-                v-else
-                v-model="form[row.key]"
-                style="width: 110px"
                 @change="saveKey(row.key)"
               />
               <div class="field-hint">
