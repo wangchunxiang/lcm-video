@@ -30,7 +30,7 @@
 
     <div class="meta-line">
       {% if vod.category_name != blank %}
-      <span>分类：{% if vod.parent_alias != blank %}<a href="/list/{{ vod.parent_alias }}">{{ vod.parent_name }}</a> / {% endif %}{{ vod.category_name }}</span>
+      <span>分类：{% if vod.parent_alias and vod.category_alias %}<a href="/list/{{ vod.parent_alias }}?type={{ vod.category_alias }}">{{ vod.category_name }}</a>{% else %}{{ vod.category_name }}{% endif %}</span>
       {% endif %}
       <span>年份：{{ vod.year }}</span>
       {% if vod.area != blank %}<span>地区：{{ vod.area }}</span>{% endif %}
