@@ -10,16 +10,7 @@
     <nav class="main-nav">
       <a href="/" class="{% if current == '' %}active{% endif %}">首页</a>
       {% for item in nav %}
-      <div class="nav-item">
-        <a href="/list/{{ item.alias }}" class="{% if current == item.alias %}active{% endif %}">{{ item.name }}</a>
-        {% if item.children.size > 0 %}
-        <div class="sub-nav">
-          {% for child in item.children %}
-          <a href="/list/{{ item.alias }}?type={{ child.alias }}">{{ child.name }}</a>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
+      <a href="/list/{{ item.alias }}" class="{% if current == item.alias %}active{% endif %}">{{ item.name }}</a>
       {% endfor %}
     </nav>
     <form class="search-box" action="/search" method="get">
