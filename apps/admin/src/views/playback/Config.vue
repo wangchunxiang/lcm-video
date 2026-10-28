@@ -160,7 +160,7 @@ async function loadSample(index: number) {
   const video = videoRef.value;
   if (!video) return;
   playerUrl.value = item.url;
-  const startAt = Math.max(0, (item.start_sec ?? 0) - 1);
+  const startAt = Math.max(0, item.start_sec ?? 0);
   if (item.url.includes('.m3u8') && Hls.isSupported()) {
     const instance = new Hls({ startPosition: startAt });
     instance.loadSource(item.url);
