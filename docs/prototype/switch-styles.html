@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>播放设置开关区 · 表现形式对比</title>
+<style>
+  :root {
+    --primary: #409eff;
+    --primary-light: #ecf5ff;
+    --success: #67c23a;
+    --border: #dcdfe6;
+    --border-light: #e4e7ed;
+    --text: #303133;
+    --text-regular: #606266;
+    --text-secondary: #909399;
+    --text-placeholder: #a8abb2;
+    --fill: #f5f7fa;
+    --bg: #ffffff;
+    --page: #f2f3f5;
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--page);
+    color: var(--text);
+    font: 14px/1.5 "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+  .card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--fill);
+  }
+  .card-head b { font-size: 14px; }
+  .card-head span { font-size: 12px; color: var(--text-secondary); }
+  .card-body { padding: 18px 20px; }
+
+  /* 通用开关 */
+  .sw {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    flex: none;
+    border-radius: 10px;
+    background: var(--border);
+    transition: background .2s;
+    cursor: pointer;
+  }
+  .sw::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .sw.on { background: var(--primary); }
+  .sw.on::after { transform: translateX(20px); }
+
+  /* A 现状：标签 + 开关，三列 */
+  .a-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 18px;
+  }
+  .a-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+  .a-label { flex: none; width: 74px; text-align: right; line-height: 28px; font-size: 13px; color: var(--text-regular); }
+  .a-hint { margin-top: 1px; font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+
+  /* B 复选按钮组 */
+  .b-group { display: flex; flex-wrap: wrap; gap: 10px; }
+  .b-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #fff;
+    color: var(--text-regular);
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s;
+  }
+  .b-tag::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-placeholder);
+  }
+  .b-tag.on {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+  .b-tag.on::before { background: var(--primary); }
+  .b-tip { margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+
+  /* C 卡片式 */
+  .c-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .c-item {
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .c-item.on { border-color: var(--primary); background: var(--primary-light); }
+  .c-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .c-title { font-size: 13px; font-weight: 500; }
+  .c-hint { margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+
+  /* D 分组 + 复选按钮，说明折叠进 tooltip 图标 */
+  .d-section + .d-section { margin-top: 14px; }
+  .d-title { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+  .d-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .d-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: #fff;
+    font-size: 13px;
+    color: var(--text-regular);
+    cursor: pointer;
+    user-select: none;
+  }
+  .d-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .d-pill.on .sw { background: rgba(255,255,255,.45); }
+  .d-pill.on .sw::after { transform: translateX(20px); }
+  .d-pill .sw { width: 30px; height: 16px; }
+  .d-pill .sw::after { width: 12px; height: 12px; }
+  .d-pill.on .sw::after { transform: translateX(14px); background: #fff; }
+  .d-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 10px;
+    opacity: .7;
+  }
+
+  /* E 行式紧凑，说明右对齐小字 */
+  .e-list { border-top: 1px solid var(--border-light); }
+  .e-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .e-name { flex: none; width: 96px; font-size: 13px; color: var(--text-regular); }
+  .e-hint { flex: 1; font-size: 12px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+  <h1>播放设置 · 开关区的几种表现形式</h1>
+  <div class="sub">同样的 7 项配置，点击可以试拨。看中哪一种告诉我编号。</div>
+
+  <div class="card">
+    <div class="card-head"><b>A · 现状：标签 + 开关</b><span>三列网格，说明在控件下方</span></div>
+    <div class="card-body">
+      <div class="a-grid">
+        <div class="a-item"><div class="a-label">自动播放</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">进入播放页自动开始</div></div></div>
+        <div class="a-item"><div class="a-label">自动连播</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">播完自动跳下一集</div></div></div>
+        <div class="a-item"><div class="a-label">进度记忆</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">记住上次看到的位置</div></div></div>
+        <div class="a-item"><div class="a-label">截图</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">控制栏按钮</div></div></div>
+        <div class="a-item"><div class="a-label">全屏</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">控制栏按钮</div></div></div>
+        <div class="a-item"><div class="a-label">网页全屏</div><div><div class="sw" onclick="this.classList.toggle('on')"></div><div class="a-hint">控制栏按钮</div></div></div>
+        <div class="a-item"><div class="a-label">设置面板</div><div><div class="sw on" onclick="this.classList.toggle('on')"></div><div class="a-hint">控制栏齿轮按钮</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><b>B · 复选按钮</b><span>点一下切换，选中变蓝；说明收到悬停提示里</span></div>
+    <div class="card-body">
+      <div class="b-group">
+        <span class="b-tag on" onclick="this.classList.toggle('on')">自动播放</span>
+        <span class="b-tag on" onclick="this.classList.toggle('on')">自动连播</span>
+        <span class="b-tag on" onclick="this.classList.toggle('on')">进度记忆</span>
+        <span class="b-tag on" onclick="this.classList.toggle('on')">截图</span>
+        <span class="b-tag on" onclick="this.classList.toggle('on')">全屏</span>
+        <span class="b-tag" onclick="this.classList.toggle('on')">网页全屏</span>
+        <span class="b-tag on" onclick="this.classList.toggle('on')">设置面板</span>
+      </div>
+      <div class="b-tip">只有 7 项时一行排得下，最省纵向空间。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><b>C · 卡片式</b><span>每项一张小卡，说明常驻，点击整卡切换</span></div>
+    <div class="card-body">
+      <div class="c-grid">
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">自动播放</span><div class="sw on"></div></div><div class="c-hint">进入播放页自动开始</div></div>
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">自动连播</span><div class="sw on"></div></div><div class="c-hint">播完自动跳下一集</div></div>
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">进度记忆</span><div class="sw on"></div></div><div class="c-hint">记住上次看到的位置</div></div>
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">截图</span><div class="sw on"></div></div><div class="c-hint">控制栏按钮</div></div>
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">全屏</span><div class="sw on"></div></div><div class="c-hint">控制栏按钮</div></div>
+        <div class="c-item" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">网页全屏</span><div class="sw"></div></div><div class="c-hint">控制栏按钮</div></div>
+        <div class="c-item on" onclick="this.classList.toggle('on')"><div class="c-top"><span class="c-title">设置面板</span><div class="sw on"></div></div><div class="c-hint">控制栏齿轮按钮</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><b>D · 分组胶囊</b><span>按「播放行为 / 控制栏」分组，说明用 ⓘ 悬停查看</span></div>
+    <div class="card-body">
+      <div class="d-section">
+        <div class="d-title">播放行为</div>
+        <div class="d-row">
+          <span class="d-pill on" onclick="this.classList.toggle('on')">自动播放<span class="sw on"></span></span>
+          <span class="d-pill on" onclick="this.classList.toggle('on')">自动连播<span class="sw on"></span></span>
+          <span class="d-pill on" onclick="this.classList.toggle('on')">进度记忆<span class="sw on"></span></span>
+        </div>
+      </div>
+      <div class="d-section">
+        <div class="d-title">控制栏</div>
+        <div class="d-row">
+          <span class="d-pill on" onclick="this.classList.toggle('on')">截图<span class="sw on"></span></span>
+          <span class="d-pill on" onclick="this.classList.toggle('on')">全屏<span class="sw on"></span></span>
+          <span class="d-pill" onclick="this.classList.toggle('on')">网页全屏<span class="sw"></span></span>
+          <span class="d-pill on" onclick="this.classList.toggle('on')">设置面板<span class="sw on"></span></span>
+        </div>
+      </div>
+      <div class="b-tip">每个分组单独一行，比 A 窄、比 B 有层次。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><b>E · 行式紧凑</b><span>一行一项，说明用淡色小字排在右侧</span></div>
+    <div class="card-body">
+      <div class="e-list">
+        <div class="e-row"><div class="e-name">自动播放</div><div class="e-hint">进入播放页自动开始</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">自动连播</div><div class="e-hint">播完自动跳下一集</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">进度记忆</div><div class="e-hint">记住上次看到的位置</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">截图</div><div class="e-hint">控制栏显示截图按钮</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">全屏</div><div class="e-hint">控制栏显示全屏按钮</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">网页全屏</div><div class="e-hint">控制栏显示网页全屏按钮</div><div class="sw" onclick="this.classList.toggle('on')"></div></div>
+        <div class="e-row"><div class="e-name">设置面板</div><div class="e-hint">控制栏显示齿轮按钮</div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
