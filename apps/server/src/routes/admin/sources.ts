@@ -40,6 +40,25 @@ function isHttpUrl(value: string): boolean {
   return /^https?:\/\/\S+$/i.test(value);
 }
 
+/** 地址里的 /at/json/、/at/xml/ 片段与接口格式必须一致，否则服务端返回的格式与解析方式不符 */
+function formatMismatch(apiUrl: string, apiFormat: string): string | null {
+  if (/\/at\/json\/?/i.test(apiUrl) && apiFormat !== 'json') {
+    return '接口地址里是 /at/json/，接口格式要选 json';
+  }
+  if (/\/at\/xml\/?/i.test(apiUrl) && apiFormat !== 'xml') {
+    return '接口地址里是 /at/xml/，接口格式要选 xml';
+  }
+  return null;
+}
+
+/** 按响应文本判断格式：{ 开头是 JSON，< 开头是 XML */
+function sniffFormat(text: string): 'json' | 'xml' | null {
+  const head = text.trimStart().slice(0, 1);
+  if (head === '{') return 'json';
+  if (head === '<') return 'xml';
+  return null;
+}
+
 function validateBody(body: SourceBody): { data: typeof collectSource.$inferInsert } | { error: string } {
   const name = toText(body.name);
   if (!name) return { error: '源站名称不能为空' };
@@ -79,6 +98,9 @@ function validateBody(body: SourceBody): { data: typeof collectSource.$inferInse
 
   const retryTimes = toInt(body.retry_times, 2);
   if (retryTimes < 0 || retryTimes > 10) return { error: '重试次数必须在 0 到 10 之间' };
+
+  const mismatch = formatMismatch(apiUrl, apiFormat);
+  if (mismatch) return { error: mismatch };
 
   return {
     data: {
@@ -236,6 +258,36 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     });
 
     return ok(reply, { affected: ids.length, plays });
+  });
+
+  app.post('/detect-format', async (req, reply) => {
+    const body = (req.body ?? {}) as { api_url?: unknown; api_params?: unknown };
+    const apiUrl = toText(body.api_url);
+    if (!isHttpUrl(apiUrl)) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请先填写合法的接口地址');
+
+    const client = new CollectClient({
+      id: 0,
+      name: 'detect',
+      apiUrl,
+      apiFormat: 'json',
+      apiParams: toText(body.api_params),
+      intervalSec: 0,
+      timeout: 15,
+      retryTimes: 0,
+    });
+
+    const startedAt = Date.now();
+    try {
+      const text = await client.probe({ ac: 'list', at: 'json' });
+      const format = sniffFormat(text);
+      if (!format) {
+        return ok(reply, { ok: false, elapsed_ms: Date.now() - startedAt, message: '无法识别返回内容' });
+      }
+      return ok(reply, { ok: true, format, elapsed_ms: Date.now() - startedAt });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return ok(reply, { ok: false, elapsed_ms: Date.now() - startedAt, message });
+    }
   });
 
   app.post('/:id/test', async (req, reply) => {

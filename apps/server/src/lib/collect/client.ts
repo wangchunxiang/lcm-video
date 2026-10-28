@@ -79,7 +79,7 @@ export class CollectClient {
     if (wait > 0) await sleep(wait);
   }
 
-  private async fetchOnce(url: string, format: string): Promise<unknown> {
+  private async fetchText(url: string, format: string): Promise<string> {
     const timeout = Math.max(1, this.source.timeout) * 1000;
     let response: Response;
     try {
@@ -98,6 +98,17 @@ export class CollectClient {
 
     const text = await response.text();
     if (!text.trim()) throw new CollectError('请求失败：响应为空');
+    return text;
+  }
+
+  /** 原样取回响应文本，不做解析，用于判断接口实际返回的是 JSON 还是 XML */
+  async probe(params: Record<string, string | number | undefined>): Promise<string> {
+    const url = this.buildUrl(params);
+    return this.fetchText(url, 'json');
+  }
+
+  private async fetchOnce(url: string, format: string): Promise<unknown> {
+    const text = await this.fetchText(url, format);
 
     if (format === 'xml') {
       try {

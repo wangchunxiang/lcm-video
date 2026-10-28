@@ -53,6 +53,16 @@ const form = reactive({
 
 const FORBIDDEN_PARAMS = ['ac', 'pg', 'pagesize', 'at', 'h'];
 
+const detecting = ref(false);
+const detectHint = ref('');
+
+const formatError = computed(() => {
+  const url = form.api_url.trim();
+  if (/\/at\/json\/?/i.test(url) && form.api_format !== 'json') return '接口地址里是 /at/json/，接口格式要选 json';
+  if (/\/at\/xml\/?/i.test(url) && form.api_format !== 'xml') return '接口地址里是 /at/xml/，接口格式要选 xml';
+  return '';
+});
+
 const paramsError = computed(() => {
   const raw = form.api_params.trim().replace(/^\?/, '');
   if (!raw) return '';
@@ -142,9 +152,33 @@ function readNumber(value: unknown, fallback: number, min: number, max: number, 
   return n;
 }
 
+async function detectFormat() {
+  const url = form.api_url.trim();
+  if (!/^https?:\/\//i.test(url) || detecting.value) return;
+  detecting.value = true;
+  detectHint.value = '';
+  try {
+    const res = await api.post<{ ok: boolean; format?: string; message?: string }>('/sources/detect-format', {
+      api_url: url,
+      api_params: form.api_params,
+    });
+    if (!res || !res.ok || !res.format) {
+      detectHint.value = res?.message ? `自动判断失败：${res.message}` : '自动判断失败，请手动选择';
+      return;
+    }
+    form.api_format = res.format;
+    detectHint.value = `接口返回 ${res.format.toUpperCase()}，已自动选择`;
+  } catch (error) {
+    detectHint.value = error instanceof Error ? `自动判断失败：${error.message}` : '自动判断失败';
+  } finally {
+    detecting.value = false;
+  }
+}
+
 async function submit() {
   if (!form.name.trim()) return ElMessage.warning('请填写名称');
   if (!/^https?:\/\//i.test(form.api_url.trim())) return ElMessage.warning('接口地址必须以 http:// 或 https:// 开头');
+  if (formatError.value) return ElMessage.warning(formatError.value);
   if (paramsError.value) return ElMessage.warning(paramsError.value);
 
   const pagesize = readNumber(form.pagesize, 100, 1, 100, '每页条数');
@@ -451,13 +485,23 @@ onBeforeUnmount(() => {
           <el-input v-model="form.name" maxlength="50" placeholder="如：西瓜资源" />
         </el-form-item>
         <el-form-item label="接口地址" required>
-          <el-input v-model="form.api_url" placeholder="https://example.com/api.php/provide/vod/" />
+          <el-input
+            v-model="form.api_url"
+            placeholder="https://example.com/api.php/provide/vod/"
+            @blur="detectFormat"
+          />
         </el-form-item>
         <el-form-item label="返回格式">
-          <el-radio-group v-model="form.api_format">
-            <el-radio value="json">JSON</el-radio>
-            <el-radio value="xml">XML</el-radio>
-          </el-radio-group>
+          <div class="format-row">
+            <el-radio-group v-model="form.api_format">
+              <el-radio value="json">JSON</el-radio>
+              <el-radio value="xml">XML</el-radio>
+            </el-radio-group>
+            <el-button link type="primary" :loading="detecting" @click="detectFormat">自动判断</el-button>
+          </div>
+          <div class="hint" :class="{ danger: Boolean(formatError) }">
+            {{ formatError || detectHint || '填写接口地址后会自动判断，也可以手动选择' }}
+          </div>
         </el-form-item>
         <el-form-item label="额外参数">
           <el-input v-model="form.api_params" placeholder="如 t=1&amp;year=2024，可留空" />
@@ -550,6 +594,12 @@ onBeforeUnmount(() => {
   align-items: center;
   margin-bottom: 12px;
 }
+.format-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .hint {
   color: var(--el-text-color-secondary);
   font-size: 12px;
