@@ -183,3 +183,16 @@
     container.appendChild(tip);
   }
 })();
+
+  // 详情页：展开 / 收起详细剧情
+  document.querySelectorAll('[data-toggle-story]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      const box = link.closest('.detail-info')?.querySelector('.story-full');
+      if (!box) return;
+      const hidden = box.hasAttribute('hidden');
+      if (hidden) box.removeAttribute('hidden');
+      else box.setAttribute('hidden', '');
+      link.textContent = hidden ? '收起' : '详细剧情';
+    });
+  });

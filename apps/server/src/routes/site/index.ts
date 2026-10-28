@@ -52,6 +52,26 @@ interface EpisodeView {
   url: string;
 }
 
+/** 分页页码列表：页数多时用省略号收敛，形如 [1,'gap',8,9,10,'gap',62] */
+function buildPageList(page: number, totalPages: number): Array<number | 'gap'> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  const picked = new Set<number>([1, totalPages]);
+  for (let i = page - 2; i <= page + 2; i++) {
+    if (i >= 1 && i <= totalPages) picked.add(i);
+  }
+  const sorted = [...picked].sort((a, b) => a - b);
+  const result: Array<number | 'gap'> = [];
+  let prev = 0;
+  for (const value of sorted) {
+    if (prev && value - prev > 1) result.push('gap');
+    result.push(value);
+    prev = value;
+  }
+  return result;
+}
+
 const toInt = (value: unknown): number => {
   const n = Number(value);
   return Number.isFinite(n) ? Math.trunc(n) : 0;
@@ -358,13 +378,19 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const parent = parentRows[0];
 
     const lines = await loadLines(id);
-    const firstLine = lines[0];
-    const allEpisodes = firstLine ? parsePlayUrl(firstLine.playUrl) : [];
-    const episodes: EpisodeView[] = allEpisodes.slice(0, 50).map((item, index) => ({
-      index: index + 1,
-      name: item.name,
-      url: item.url,
-    }));
+    const query = req.query as { line?: string; ep?: string };
+    const wantedLineId = toInt(query.line);
+    const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
+    const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
+
+    const epSize = 50;
+    const totalPages = Math.max(1, Math.ceil(allEpisodes.length / epSize));
+    let epPage = Math.max(1, toInt(query.ep) || 1);
+    if (epPage > totalPages) epPage = totalPages;
+    const startIndex = (epPage - 1) * epSize;
+    const episodes: EpisodeView[] = allEpisodes
+      .slice(startIndex, startIndex + epSize)
+      .map((item, index) => ({ index: startIndex + index + 1, name: item.name, url: item.url }));
 
     return render(
       reply,
@@ -406,8 +432,10 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           episode_count: item.episode_count,
         })),
         episodes,
-        current_line: firstLine
-          ? { id: firstLine.id, name: firstLine.source_name, episode_count: allEpisodes.length }
+        pagination: buildPagination(epPage, epSize, allEpisodes.length),
+        page_numbers: buildPageList(epPage, Math.max(1, Math.ceil(allEpisodes.length / epSize))),
+        current_line: currentLine
+          ? { id: currentLine.id, name: currentLine.source_name, episode_count: allEpisodes.length }
           : null,
         nav_path: parent?.alias ?? '',
       },
