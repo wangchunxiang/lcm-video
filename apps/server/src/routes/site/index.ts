@@ -19,6 +19,8 @@ import {
 
 /** 首页最新更新的条数：一行 8 个，正好两行 */
 const HOME_VOD_COUNT = 16;
+/** 首页每个一级分类展示的条数：一行 8 个 */
+const HOME_CATEGORY_COUNT = 8;
 
 export interface SiteRouteOpts {
   db: Db;
@@ -146,6 +148,25 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       .orderBy(desc(vod.collectedAt), desc(vod.id))
       .limit(HOME_VOD_COUNT);
 
+    const nav = await loadNav(db);
+    const homeCategories: Array<{ name: string; alias: string; vods: VodCard[] }> = [];
+    for (const item of nav) {
+      const list = await db
+        .select(vodColumns())
+        .from(vod)
+        .leftJoin(category, eq(category.id, vod.categoryId))
+        .where(
+          and(
+            eq(vod.status, 1),
+            or(eq(vod.categoryPid, item.id), eq(vod.categoryId, item.id)),
+          ),
+        )
+        .orderBy(desc(vod.collectedAt), desc(vod.id))
+        .limit(HOME_CATEGORY_COUNT);
+      if (list.length === 0) continue;
+      homeCategories.push({ name: item.name, alias: item.alias, vods: list.map(toCard) });
+    }
+
     return render(
       reply,
       'index',
@@ -153,7 +174,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         title: config.subtitle ? `${config.name} - ${config.subtitle}` : config.name,
         description: config.description,
       },
-      { vods: rows.map(toCard) },
+      { vods: rows.map(toCard), home_categories: homeCategories },
     );
   });
 

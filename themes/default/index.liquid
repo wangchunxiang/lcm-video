@@ -13,21 +13,17 @@
   </div>
 </section>
 
+{% for block in home_categories %}
 <section class="section">
   <div class="section-head">
-    <h2>分类导航</h2>
+    <h2>{{ block.name }}</h2>
+    <a class="more" href="/list/{{ block.alias }}">更多 &gt;</a>
   </div>
-  <div class="category-nav">
-    {% for item in nav %}
-    <div class="category-nav-row">
-      <a class="category-nav-title" href="/list/{{ item.alias }}">{{ item.name }}</a>
-      <div class="category-nav-links">
-        {% for child in item.children %}
-        <a href="/list/{{ item.alias }}?type={{ child.alias }}">{{ child.name }}</a>
-        {% endfor %}
-      </div>
-    </div>
+  <div class="vod-grid">
+    {% for v in block.vods %}
+    {% render 'partials/vod-card', card: v %}
     {% endfor %}
   </div>
 </section>
+{% endfor %}
 {% endblock %}
