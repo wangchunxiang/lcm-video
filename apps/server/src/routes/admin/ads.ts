@@ -54,21 +54,33 @@ export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => 
     return ok(reply, { items });
   });
 
-  /** 执行分析，同步返回日志与结果 */
-  app.post('/:id/ads/analyze', async (req, reply) => {
+  /** 执行分析，边跑边以 NDJSON 流式推送日志 */
+  app.post('/:id/ads/analyze-stream', async (req, reply) => {
     const sourceId = toInt((req.params as { id?: string }).id);
     if (!sourceId) return fail(reply, 400, ErrorCode.BAD_REQUEST, '缺少采集源');
 
-    const logs: string[] = [];
-    const log = (line: string) => logs.push(`[${nowClock()}] ${line}`);
+    reply.hijack();
+    const res = reply.raw;
+    res.writeHead(200, {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+      Connection: 'keep-alive',
+    });
+
+    const send = (payload: unknown) => res.write(`${JSON.stringify(payload)}
+`);
 
     try {
-      const { features, sampled } = await analyzeSource(db, sourceId, log);
-      return ok(reply, { logs, features, sampled });
+      const { features, sampled } = await analyzeSource(db, sourceId, (text) => {
+        send({ type: 'log', text });
+      });
+      send({ type: 'result', features, sampled });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log(`分析失败：${msg}`);
-      return fail(reply, 500, ErrorCode.SERVER_ERROR, msg);
+      send({ type: 'error', message: msg });
+    } finally {
+      res.end();
     }
   });
 

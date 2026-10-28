@@ -205,6 +205,36 @@ async function pickVods() {
   }
 }
 
+interface StreamMessage {
+  type: 'log' | 'result' | 'error';
+  text?: string;
+  message?: string;
+  features?: Array<Omit<AdFeature, 'id' | 'status'>>;
+  sampled?: number;
+}
+
+function handleStreamMessage(raw: string) {
+  let msg: StreamMessage;
+  try {
+    msg = JSON.parse(raw) as StreamMessage;
+  } catch {
+    return;
+  }
+  if (msg.type === 'log' && msg.text) {
+    pushLog(msg.text);
+    return;
+  }
+  if (msg.type === 'error') {
+    pushLog(`分析失败：${msg.message ?? '未知错误'}`);
+    return;
+  }
+  if (msg.type === 'result') {
+    candidates.value = (msg.features ?? []).map((item) => ({ ...item, key: item.durations }));
+    const count = candidates.value.length;
+    pushLog(count ? `共 ${count} 条候选，请确认哪些是广告` : '未发现候选广告');
+  }
+}
+
 async function startAnalyze() {
   if (!adsSourceId.value) {
     ElMessage.warning('请先选择采集源');
@@ -219,22 +249,36 @@ async function startAnalyze() {
   logs.value = [];
   logVisible.value = true;
   try {
-    const data = await api.post<{ logs: string[]; features: AdFeature[]; sampled: number }>(
-      `/sources/${adsSourceId.value}/ads/analyze`,
-    );
-    logs.value = data.logs;
-    candidates.value = (data.features ?? []).map((item) => ({
-      ...item,
-      key: item.durations,
-    }));
-    const count = candidates.value.length;
-    pushLog(count ? `共 ${count} 条特征，请确认哪些是广告` : '未发现候选广告');
-    const box = logRef.value;
-    if (box) box.scrollTop = box.scrollHeight;
+    const res = await fetch(`/api/admin/sources/${adsSourceId.value}/ads/analyze-stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: '{}',
+    });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let index = buffer.indexOf('\n');
+      while (index >= 0) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        if (line) handleStreamMessage(line);
+        index = buffer.indexOf('\n');
+      }
+    }
+    if (buffer.trim()) handleStreamMessage(buffer.trim());
   } catch (error) {
     pushLog(`分析失败：${error instanceof Error ? error.message : String(error)}`);
   } finally {
     analyzing.value = false;
+    window.setTimeout(() => {
+      logVisible.value = false;
+    }, 900);
   }
 }
 
@@ -441,16 +485,11 @@ onMounted(() => {
       </div>
     </el-card>
 
-    <el-dialog v-model="logVisible" title="分析日志" width="680px" :close-on-click-modal="false">
+    <el-dialog v-model="logVisible" title="分析日志" width="680px">
       <div ref="logRef" class="log-box dialog-log">
         <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
         <div v-if="!logs.length" class="ads-empty">准备中…</div>
       </div>
-      <template #footer>
-        <el-button :disabled="analyzing" @click="logVisible = false">
-          {{ analyzing ? '分析中…' : '关闭' }}
-        </el-button>
-      </template>
     </el-dialog>
 
     <el-dialog v-model="featureVisible" title="广告特征" width="640px">
