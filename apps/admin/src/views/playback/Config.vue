@@ -122,6 +122,9 @@ onMounted(() => {
   padding: 16px 24px 0;
 }
 .body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 40px;
   max-width: 860px;
 }
 .field {
