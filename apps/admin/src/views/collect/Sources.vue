@@ -598,9 +598,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
 }
 
 .hint {
+  width: 100%;
+  margin-top: 2px;
   color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1.6;
