@@ -357,6 +357,6 @@ function describeError(error: unknown): string {
     current = extra.cause;
   }
   const message = error instanceof Error ? error.message : String(error);
-  return message.split('
-')[0].slice(0, 300);
+  const firstLine = message.split('\n')[0] ?? message;
+  return firstLine.slice(0, 300);
 }
