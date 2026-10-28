@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, like, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
@@ -243,6 +243,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       .where(
         and(
           eq(vod.status, 1),
+          lte(vod.year, sql`YEAR(NOW())`),
           activeType
             ? eq(vod.categoryId, activeType.id)
             : or(eq(vod.categoryPid, parent.id), eq(vod.categoryId, parent.id)),
