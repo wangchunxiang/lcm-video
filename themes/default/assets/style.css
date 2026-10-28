@@ -869,7 +869,9 @@ img { border: 0; vertical-align: middle; }
   .vod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .episode-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .detail { flex-direction: column; }
-  .detail-cover { width: 160px; }
+  .detail-card { flex-direction: column; }
+  .detail-cover-wrap { width: 140px; }
+  .detail-cover-wrap .detail-cover { height: 187px; }
   .info-list { grid-template-columns: 1fr; }
   .main-nav { display: none; }
   .search-box input { width: 120px; }
