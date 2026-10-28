@@ -1,0 +1,24 @@
+<aside class="sidebar">
+  <a class="side-logo" href="/">
+    {% if site.logo != blank %}
+    <img src="{{ site.logo }}" alt="{{ site.name }}">
+    {% else %}
+    <span>{{ site.name }}</span>
+    {% endif %}
+  </a>
+  <nav class="side-menu">
+    <a href="/" class="side-link {% if current == '' %}active{% endif %}">首页</a>
+    {% for item in nav %}
+    <div class="side-group">
+      <a href="/list/{{ item.alias }}" class="side-link {% if current == item.alias %}active{% endif %}">{{ item.name }}</a>
+      {% if item.children.size > 0 %}
+      <div class="side-sub">
+        {% for child in item.children %}
+        <a href="/list/{{ item.alias }}?type={{ child.alias }}">{{ child.name }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </nav>
+</aside>
