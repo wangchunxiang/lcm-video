@@ -8,42 +8,30 @@ interface FieldItem extends SettingField {
   value: string;
 }
 
-interface Section {
-  title: string;
-  rows: { key: string; label: string; hint?: string; kind: 'switch' | 'text' }[];
+interface Row {
+  key: string;
+  label: string;
+  kind: 'switch' | 'number';
+  hint?: string;
+  suffix?: string;
 }
 
 /** 播放设置页自己的字段，改这个页面不会影响其他设置页 */
-const SECTIONS: Section[] = [
-  {
-    title: '播放行为',
-    rows: [
-      { key: 'player_autoplay', label: '自动播放', hint: '进入播放页自动开始', kind: 'switch' },
-      { key: 'player_autonext', label: '自动连播', hint: '播完自动跳下一集', kind: 'switch' },
-      { key: 'player_resume', label: '进度记忆', hint: '记住上次看到的位置', kind: 'switch' },
-    ],
-  },
-  {
-    title: '画面与声音',
-    rows: [
-      { key: 'player_volume', label: '默认音量', hint: '0 - 100', kind: 'text' },
-      { key: 'player_muted', label: '静音起播', hint: '进来先静音', kind: 'switch' },
-      { key: 'player_pip', label: '画中画', hint: '缩成小窗边看边逛', kind: 'switch' },
-      { key: 'player_webfullscreen', label: '网页全屏', hint: '撑满窗口，不隐藏标签栏', kind: 'switch' },
-    ],
-  },
-  {
-    title: '控制栏',
-    rows: [
-      { key: 'player_hotkey', label: '键盘快捷键', hint: '空格暂停，方向键快进快退', kind: 'switch' },
-      { key: 'player_screenshot', label: '截图按钮', hint: '控制栏显示截图按钮', kind: 'switch' },
-      { key: 'player_setting', label: '设置面板', hint: '齿轮按钮，含倍速选项', kind: 'switch' },
-      { key: 'player_loop', label: '循环播放', hint: '单集循环，连播优先', kind: 'switch' },
-    ],
-  },
+const FIELDS: Row[] = [
+  { key: 'player_autoplay', label: '自动播放', kind: 'switch', hint: '进入播放页自动开始' },
+  { key: 'player_autonext', label: '自动连播', kind: 'switch', hint: '播完自动跳下一集' },
+  { key: 'player_resume', label: '进度记忆', kind: 'switch', hint: '记住上次看到的位置' },
+  { key: 'player_volume', label: '默认音量', kind: 'number', hint: '0 到 100', suffix: '' },
+  { key: 'player_muted', label: '静音起播', kind: 'switch', hint: '进入播放页时静音' },
+  { key: 'player_hotkey', label: '键盘快捷键', kind: 'switch', hint: '空格暂停、方向键快进' },
+  { key: 'player_screenshot', label: '截图按钮', kind: 'switch', hint: '控制栏显示截图按钮' },
+  { key: 'player_pip', label: '画中画', kind: 'switch', hint: '控制栏显示画中画按钮' },
+  { key: 'player_webfullscreen', label: '网页全屏', kind: 'switch', hint: '控制栏显示网页全屏按钮' },
+  { key: 'player_setting', label: '设置面板', kind: 'switch', hint: '控制栏显示设置面板' },
+  { key: 'player_loop', label: '循环播放', kind: 'switch', hint: '播完自动重播' },
 ];
 
-const KEYS = SECTIONS.flatMap((section) => section.rows.map((row) => row.key));
+const KEYS = FIELDS.map((field) => field.key);
 
 const form = reactive<Record<string, string>>({
   player_autoplay: '0',
@@ -51,10 +39,10 @@ const form = reactive<Record<string, string>>({
   player_resume: '1',
   player_volume: '80',
   player_muted: '0',
-  player_pip: '1',
-  player_webfullscreen: '0',
   player_hotkey: '1',
   player_screenshot: '1',
+  player_pip: '1',
+  player_webfullscreen: '0',
   player_setting: '1',
   player_loop: '0',
 });
@@ -100,23 +88,22 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <div class="list">
-        <template v-for="(section, sectionIndex) in SECTIONS" :key="section.title">
-          <div v-if="sectionIndex > 0" class="section-gap"></div>
-
-          <div v-for="row in section.rows" :key="row.key" class="row">
-            <div class="row-main">
-              <span class="row-title">{{ row.label }}</span>
-              <el-tooltip v-if="row.hint" :content="row.hint" placement="top">
-                <el-icon class="row-tip"><InfoFilled /></el-icon>
-              </el-tooltip>
-            </div>
-            <div class="row-ctrl">
-              <el-switch v-if="row.kind === 'switch'" v-model="form[row.key]" active-value="1" inactive-value="0" />
-              <el-input v-else v-model="form[row.key]" style="width: 160px" />
-            </div>
+      <div class="body">
+        <div v-for="row in FIELDS" :key="row.key" class="field">
+          <label class="field-label">{{ row.label }}</label>
+          <div class="field-ctrl">
+            <el-switch
+              v-if="row.kind === 'switch'"
+              v-model="form[row.key]"
+              active-value="1"
+              inactive-value="0"
+            />
+            <el-input v-else v-model="form[row.key]" style="width: 220px">
+              <template v-if="row.suffix" #append>{{ row.suffix }}</template>
+            </el-input>
+            <div v-if="row.hint" class="field-hint">{{ row.hint }}</div>
           </div>
-        </template>
+        </div>
       </div>
 
       <div class="card-foot">
@@ -130,65 +117,40 @@ onMounted(() => {
 <style scoped>
 .page {
   width: 100%;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-.group-card {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
 }
 .group-card :deep(.el-card__body) {
-  flex: 1 1 auto;
+  padding: 16px 24px 0;
+}
+.body {
+  max-width: 860px;
+}
+.field {
   display: flex;
-  flex-direction: column;
-  padding: 4px 20px 0;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0;
 }
-.list {
-  flex: 1 1 auto;
-  width: 100%;
-  max-width: 760px;
-}
-.section-gap {
-  height: 12px;
-}
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.row:last-child {
-  border-bottom: none;
-}
-.row-main {
+.field-label {
   flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  width: 104px;
+  text-align: right;
+  line-height: 32px;
   color: var(--el-text-color-regular);
 }
-.row-tip {
-  font-size: 13px;
-  color: var(--el-text-color-placeholder);
-  cursor: help;
+.field-ctrl {
+  flex: 1;
+  min-width: 0;
 }
-.row-ctrl {
-  margin-left: auto;
-  flex: none;
-  display: flex;
-  align-items: center;
+.field-hint {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 .card-foot {
   display: flex;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 760px;
   gap: 10px;
-  margin-top: auto;
-  padding: 14px 0 16px;
+  margin: 16px 0 0;
+  padding: 14px 0 16px 116px;
   border-top: 1px solid var(--el-border-color);
 }
 </style>
