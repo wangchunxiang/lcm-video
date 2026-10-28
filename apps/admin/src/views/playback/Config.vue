@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import Hls from 'hls.js';
 import { ElMessage } from 'element-plus';
 import type { SettingField } from '@lcm/shared';
 import { api } from '../../api/client.ts';
