@@ -108,30 +108,48 @@ function confirmAd(row: AdResult, isAd: boolean) {
   ElMessage.success(isAd ? '已标记为广告，播放时将跳过' : '已排除，播放时保留');
 }
 
+const VOD_POOL: SampleVod[] = [
+  { id: 653, name: '大哥请赐教', episode: '第02集' },
+  { id: 502, name: '流浪地球3', episode: '第01集' },
+  { id: 61792, name: '凡人修仙传', episode: '第148集' },
+  { id: 62233, name: '遮天', episode: '第96集' },
+  { id: 494, name: '狂飙', episode: '第01集' },
+  { id: 621, name: '长相思 第二季', episode: '第12集' },
+  { id: 61803, name: '斗破苍穹年番', episode: '第102集' },
+  { id: 62231, name: '庆余年 第二季', episode: '第30集' },
+];
+
+/** 从该源随机挑 5 部作品（后端接口未接入前先用固定池） */
+function pickVods() {
+  const pool = [...VOD_POOL];
+  const picked: SampleVod[] = [];
+  while (picked.length < 5 && pool.length) {
+    picked.push(...pool.splice(Math.floor(Math.random() * pool.length), 1));
+  }
+  sampleVods.value = picked;
+  results.value = [];
+  logs.value = [];
+}
+
 async function startAnalyze() {
   if (!adsSourceId.value) {
     ElMessage.warning('请先选择采集源');
     return;
   }
+  if (!sampleVods.value.length) {
+    ElMessage.warning('请先随机选片');
+    return;
+  }
   analyzing.value = true;
-  sampleVods.value = [];
   results.value = [];
   logs.value = [];
 
   pushLog(`选择采集源：${adsSourceName.value}`);
   await sleep(250);
-  pushLog('随机抽取 5 部作品用于提取特征');
+  pushLog(`随机抽取 ${sampleVods.value.length} 部作品用于提取特征`);
   await sleep(300);
 
-  const picked: SampleVod[] = [
-    { id: 653, name: '大哥请赐教', episode: '第02集' },
-    { id: 502, name: '流浪地球3', episode: '第01集' },
-    { id: 61792, name: '凡人修仙传', episode: '第148集' },
-    { id: 62233, name: '遮天', episode: '第96集' },
-    { id: 494, name: '狂飙', episode: '第01集' },
-  ];
-  for (const vod of picked) {
-    sampleVods.value.push(vod);
+  for (const vod of sampleVods.value) {
     await sleep(160);
     pushLog(`${vod.name} ${vod.episode}：292 段 / 59 组`);
   }
@@ -274,51 +292,50 @@ onMounted(() => {
 
         <aside class="right">
           <div class="ads-head">
-            <div class="ads-title">去广告</div>
-            <div class="ads-toolbar">
-              <el-select
-                v-model="adsSourceId"
-                placeholder="选择采集源"
-                size="default"
-                class="ads-select"
-                :disabled="analyzing"
-              >
-                <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
-              </el-select>
-              <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
-            </div>
+            <div class="ads-title">去广告设置</div>
             <div class="ads-desc">
               随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
             </div>
+
+            <el-select
+              v-model="adsSourceId"
+              placeholder="选择采集源"
+              class="ads-select"
+              :disabled="analyzing"
+            >
+              <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+
+            <el-button class="ads-pick" :disabled="analyzing" @click="pickVods">随机选片</el-button>
           </div>
 
-          <div class="ads-block">
-            <div class="ads-sub">
-              抽取作品
-              <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
-            </div>
-            <div v-if="sampleVods.length" class="vod-list">
-              <div v-for="vod in sampleVods" :key="vod.id" class="vod-row">
-                <span class="vod-name">{{ vod.name }}</span>
-                <span class="vod-ep">{{ vod.episode }}</span>
-              </div>
-            </div>
-            <div v-else class="ads-empty">分析后显示抽取的作品</div>
+          <div class="ads-sub">
+            抽取作品
+            <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
+          </div>
+          <el-table :data="sampleVods" border size="small" height="196" class="vod-table">
+            <el-table-column prop="name" label="作品" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="episode" label="集数" width="88" align="center" />
+            <template #empty>
+              <span class="ads-empty">点击「随机选片」抽取 5 部作品</span>
+            </template>
+          </el-table>
+
+          <el-button class="ads-analyze" type="primary" :loading="analyzing" @click="startAnalyze">
+            开始分析
+          </el-button>
+
+          <div class="ads-sub">分析日志</div>
+          <div ref="logRef" class="log-box">
+            <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
+            <div v-if="!logs.length" class="ads-empty">暂无日志</div>
           </div>
 
-          <div class="ads-block grow">
-            <div class="ads-sub">分析日志</div>
-            <div ref="logRef" class="log-box">
-              <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
-              <div v-if="!logs.length" class="ads-empty">暂无日志</div>
-            </div>
+          <div class="ads-sub">
+            候选广告
+            <span v-if="results.length" class="ads-count">{{ results.length }}</span>
           </div>
-
-          <div class="ads-block">
-            <div class="ads-sub">
-              候选广告
-              <span v-if="results.length" class="ads-count">{{ results.length }}</span>
-            </div>
+          <div class="result-box">
             <div v-for="row in results" :key="row.key" class="result-row">
               <div class="result-top">
                 <el-tag size="small" :type="row.kind === '片尾' ? 'warning' : 'primary'">{{ row.kind }}</el-tag>
@@ -380,13 +397,17 @@ onMounted(() => {
 .right {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding-left: 24px;
   border-left: 1px solid var(--el-border-color-lighter);
 }
 .ads-head {
-  padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .ads-title {
@@ -394,38 +415,24 @@ onMounted(() => {
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
-.ads-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.ads-select {
-  flex: 1;
-}
 .ads-desc {
-  margin-top: 6px;
   font-size: 12px;
   line-height: 18px;
   color: var(--el-text-color-secondary);
 }
-.ads-block {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+.ads-select,
+.ads-pick,
+.ads-analyze {
+  width: 100%;
 }
-.ads-block.grow {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.ads-block:last-child {
-  border-bottom: none;
+.ads-analyze {
+  margin: 4px 0 2px;
 }
 .ads-sub {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin: 10px 0 6px;
   font-size: 12px;
   font-weight: 600;
   color: var(--el-text-color-regular);
@@ -435,39 +442,17 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 .ads-empty {
-  padding: 6px 0;
   font-size: 12px;
   color: var(--el-text-color-placeholder);
 }
-.vod-list {
-  max-height: 96px;
-  overflow-y: auto;
-}
-.vod-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 12px;
-}
-.vod-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--el-text-color-regular);
-}
-.vod-ep {
-  flex: none;
-  color: var(--el-text-color-secondary);
-  font-variant-numeric: tabular-nums;
+.vod-table {
+  width: 100%;
 }
 .log-box {
-  flex: 1;
-  min-height: 72px;
-  max-height: 160px;
+  flex: none;
+  height: 132px;
   overflow-y: auto;
+  box-sizing: border-box;
   padding: 6px 8px;
   border-radius: 4px;
   background: var(--el-fill-color-light);
@@ -479,6 +464,12 @@ onMounted(() => {
 .log-line {
   white-space: pre-wrap;
   word-break: break-all;
+}
+.result-box {
+  flex: 1;
+  min-height: 72px;
+  overflow-y: auto;
+  padding-bottom: 4px;
 }
 .result-row {
   display: flex;
