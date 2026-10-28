@@ -6,7 +6,7 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
 /** 一次分析抽多少个作品 */
-export const SAMPLE_SIZE = 5;
+export const SAMPLE_SIZE = 10;
 /** 一段候选广告的最短 / 最长时长（秒） */
 const MIN_AD_SECONDS = 6;
 const MAX_AD_SECONDS = 120;
@@ -189,10 +189,12 @@ export async function analyzeSource(
     }
   >();
 
+  let parsed = 0;
   for (const sample of samples) {
     try {
       const text = await fetchPlaylist(sample.url);
       const { segments, boundaries } = parsePlaylist(text);
+      parsed += 1;
       const candidates = listCandidates(segments, boundaries);
       log(`${sample.name}：${segments.length} 段 / ${boundaries.length - 1} 组 / 候选 ${candidates.length}`);
       for (const candidate of candidates) {
@@ -225,9 +227,10 @@ export async function analyzeSource(
     }
   }
 
+  const minHits = Math.max(2, Math.ceil(parsed * 0.3));
   const found: FoundFeature[] = [];
   for (const [key, value] of map) {
-    if (value.hits.size < 2) continue;
+    if (value.hits.size < minHits) continue;
     found.push({
       durations: key,
       totalMs: value.totalMs,
@@ -245,6 +248,6 @@ export async function analyzeSource(
   found.sort((a, b) => b.hitVods - a.hitVods || b.totalMs - a.totalMs);
   const top = found.slice(0, 50);
 
-  log(`命中 ${top.length} 条候选，等待人工确认`);
+  log(`命中 ${top.length} 条候选（至少出现在 ${minHits}/${parsed} 部作品中），等待人工确认`);
   return { features: top, sampled: samples.length };
 }
