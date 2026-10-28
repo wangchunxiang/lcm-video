@@ -25,14 +25,15 @@
       {% endif %}
     </div>
 
+    {% if lines.size > 0 %}
+    <a class="btn-primary side-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
+    {% endif %}
+
     <div class="side-box">
       {% if vod.remarks != blank %}<p><span>状态</span><span>{{ vod.remarks }}</span></p>{% endif %}
       {% if vod.release_date != blank %}<p><span>上映</span><span>{{ vod.release_date }}</span></p>{% endif %}
       {% if vod.director != blank %}<p><span>导演</span><span>{{ vod.director }}</span></p>{% endif %}
       <p><span>编剧</span><span>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</span></p>
-      {% if lines.size > 0 %}
-      <a class="btn-primary side-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
-      {% endif %}
     </div>
   </aside>
 
