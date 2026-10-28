@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
-import { countEpisodes, htmlToSummary, htmlToText, nameHash, normalizeName } from '@lcm/shared';
+import { clampText, countEpisodes, normalizeReleaseDate, htmlToSummary, htmlToText, nameHash, normalizeName, resolveYear } from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
 import { splitPlayGroups } from './parser.ts';
 
@@ -110,19 +110,13 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
       fails.push({ vod_id: item.vodId, name: item.name, reason: '缺少影片名称' });
       continue;
     }
-    if (!item.year) {
-      counters.failed += 1;
-      fails.push({ vod_id: item.vodId, name, reason: '缺少年份' });
-      continue;
-    }
-
     candidates.push({
       item,
       categoryId: category.id,
       categoryPid: category.pid,
       name,
       hash: nameHash(name),
-      year: item.year,
+      year: resolveYear({ year: item.year, releaseDate: item.releaseDate, name }),
     });
   }
 
@@ -215,21 +209,21 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
         let insertedNow = false;
 
         const content = {
-          name,
+          name: clampText(name, 255),
           nameHash: hash,
-          subName: item.subName,
+          subName: clampText(item.subName, 255),
           letter: /^[A-Z0-9]$/.test(item.letter) ? item.letter : '',
-          cover: item.cover,
-          actor: item.actor,
-          director: item.director,
-          writer: item.writer,
+          cover: clampText(item.cover, 255),
+          actor: clampText(item.actor, 500),
+          director: clampText(item.director, 255),
+          writer: clampText(item.writer, 255),
           intro: htmlToSummary(item.intro, 500),
           content: htmlToText(item.content),
-          remarks: item.remarks,
-          releaseDate: item.releaseDate,
+          remarks: clampText(item.remarks, 100),
+          releaseDate: normalizeReleaseDate(item.releaseDate),
           episodeCount: item.episodeCount,
-          area: item.area,
-          lang: item.lang,
+          area: clampText(item.area, 50),
+          lang: clampText(item.lang, 50),
           year,
         };
 
