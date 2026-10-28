@@ -189,34 +189,27 @@ export async function analyzeSource(
     }
   >();
 
+  log(`并发拉取 ${samples.length} 部作品的播放列表…`);
   const jobs = samples.map(async (sample) => {
     try {
       const text = await fetchPlaylist(sample.url);
       const { segments, boundaries } = parsePlaylist(text);
       const candidates = listCandidates(segments, boundaries);
+      log(`${sample.name}：${segments.length} 段 / ${candidates.length} 个候选`);
       return { sample, segments, candidates, error: '' };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
+      log(`${sample.name}：解析失败 (${msg})`);
       return { sample, segments: [], candidates: [], error: msg };
     }
   });
-
-  const CONCURRENCY = 5;
-  const results: Array<(typeof jobs)[number] extends Promise<infer R> ? R : never> = [];
-  for (let i = 0; i < jobs.length; i += CONCURRENCY) {
-    const batch = jobs.slice(i, i + CONCURRENCY);
-    results.push(...(await Promise.all(batch)));
-  }
+  const results = await Promise.all(jobs);
 
   let parsed = 0;
   for (const result of results) {
     const { sample } = result;
-    if (result.error) {
-      log(`${sample.name}：解析失败 (${result.error})`);
-      continue;
-    }
+    if (result.error) continue;
     parsed += 1;
-    log(`${sample.name}：${result.segments.length} 段 / ${result.candidates.length} 个候选`);
     for (const candidate of result.candidates) {
       const key = signatureOf(candidate.durs);
       let startSec = 0;
