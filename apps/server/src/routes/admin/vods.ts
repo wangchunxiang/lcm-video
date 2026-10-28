@@ -424,8 +424,8 @@ export const vodRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) => 
 
     let item;
     try {
-      const raw = await client.request({ ac: 'detail', ids: target.sourceVodId, at: source.apiFormat });
-      const parsed = parseVodPage(raw, source.apiFormat);
+      const raw = await client.request({ ac: 'detail', ids: target.sourceVodId, at: 'json' }, 'json');
+      const parsed = parseVodPage(raw, 'json');
       item = parsed.list.find((row) => row.vodId === target.sourceVodId) ?? parsed.list[0];
     } catch (error) {
       return fail(reply, 400, ErrorCode.BAD_REQUEST, error instanceof Error ? error.message : '采集失败');

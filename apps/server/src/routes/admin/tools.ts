@@ -103,7 +103,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       .select({ total: sql<number>`count(*)` })
       .from(vod)
       .leftJoin(vodPlay, eq(vodPlay.vodId, vod.id))
-      .where(and(eq(vod.status, 1), sql`${vodPlay.id} is null`));
+      .where(sql`${vodPlay.id} is null`);
     return ok(reply, { total: Number(row?.total ?? 0) });
   });
 
@@ -116,7 +116,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       .select({ id: vod.id })
       .from(vod)
       .leftJoin(vodPlay, eq(vodPlay.vodId, vod.id))
-      .where(and(eq(vod.status, 1), sql`${vodPlay.id} is null`));
+      .where(sql`${vodPlay.id} is null`);
     const ids = rows.map((item) => item.id);
 
     if (!body.confirm) return ok(reply, { needConfirm: true, total: ids.length, mode });

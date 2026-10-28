@@ -106,7 +106,7 @@ async function runClean(): Promise<void> {
     const preview = await api.post<NeedConfirm | Done>('/tools/clean-vods', { mode: cleanForm.mode });
     if ('needConfirm' in preview) {
       if (preview.total === 0) {
-        ElMessage.info('没有无线路的在架影片');
+        ElMessage.info('没有无线路的影片');
         return;
       }
       const action = cleanForm.mode === 'delete' ? '删除' : '下架';
