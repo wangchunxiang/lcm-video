@@ -29,12 +29,6 @@
     <a class="btn-primary side-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
     {% endif %}
 
-    <div class="side-box">
-      {% if vod.remarks != blank %}<p><span>状态</span><span>{{ vod.remarks }}</span></p>{% endif %}
-      {% if vod.release_date != blank %}<p><span>上映</span><span>{{ vod.release_date }}</span></p>{% endif %}
-      {% if vod.director != blank %}<p><span>导演</span><span>{{ vod.director }}</span></p>{% endif %}
-      <p><span>编剧</span><span>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</span></p>
-    </div>
   </aside>
 
   <div class="detail-main">
@@ -48,6 +42,13 @@
         {% if vod.area != blank %}<span class="meta-chip"><i>地区</i>{{ vod.area }}</span>{% endif %}
         {% if vod.lang != blank %}<span class="meta-chip"><i>语言</i>{{ vod.lang }}</span>{% endif %}
       </div>
+
+      <p class="extra-line">
+        {% if vod.remarks != blank %}<span>状态：{{ vod.remarks }}</span>{% endif %}
+        {% if vod.release_date != blank %}<span>上映：{{ vod.release_date }}</span>{% endif %}
+        {% if vod.director != blank %}<span>导演：{{ vod.director }}</span>{% endif %}
+        <span>编剧：{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</span>
+      </p>
 
       {% if vod.actor != blank %}
       <p class="actor-line">演员：{{ vod.actor }}</p>

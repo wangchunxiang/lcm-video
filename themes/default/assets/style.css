@@ -356,6 +356,15 @@ img { border: 0; vertical-align: middle; }
 
 .detail-head h1 { margin: 0 0 8px; font-size: 24px; }
 
+.extra-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-3);
+}
+
 .actor-line {
   margin: 0 0 12px;
   font-size: 13px;
