@@ -41,7 +41,6 @@ export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => 
         totalMs: row.totalMs,
         hitVods: row.hitVods,
         sample: row.sample,
-        status: row.status,
         updatedAt: row.updatedAt,
       })),
     );

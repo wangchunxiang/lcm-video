@@ -90,6 +90,20 @@ const candidateFeatures = computed(() => candidates.value);
 const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
+const confirmedWrapRef = ref<HTMLElement | null>(null);
+const confirmedHeight = ref(196);
+let confirmedObserver: ResizeObserver | null = null;
+
+function observeConfirmed() {
+  const el = confirmedWrapRef.value;
+  if (!el) return;
+  confirmedObserver?.disconnect();
+  confirmedObserver = new ResizeObserver(() => {
+    confirmedHeight.value = Math.max(132, el.clientHeight);
+  });
+  confirmedObserver.observe(el);
+  confirmedHeight.value = Math.max(132, el.clientHeight);
+}
 const activeResult = ref<AdFeature | null>(null);
 
 const adsSourceName = computed(
@@ -272,6 +286,7 @@ async function saveKey(key: string) {
 onMounted(() => {
   void load();
   void loadSources();
+  void nextTick(observeConfirmed);
 });
 </script>
 
@@ -397,7 +412,8 @@ onMounted(() => {
             已设置的广告特征
             <span v-if="confirmedFeatures.length" class="ads-count">{{ confirmedFeatures.length }}</span>
           </div>
-          <el-table :data="confirmedFeatures" size="small" border height="140">
+          <div ref="confirmedWrapRef" class="confirmed-wrap">
+          <el-table :data="confirmedFeatures" size="small" border :height="confirmedHeight">
             <el-table-column label="类型" width="76" align="center">
               <template #default="{ row }">
                 <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
@@ -420,6 +436,7 @@ onMounted(() => {
             </el-table-column>
             <template #empty>还没有确认的广告特征</template>
           </el-table>
+          </div>
         </aside>
       </div>
     </el-card>
@@ -515,6 +532,10 @@ onMounted(() => {
 .ads-select {
   flex: 1;
   min-width: 0;
+}
+.confirmed-wrap {
+  flex: 1;
+  min-height: 132px;
 }
 .ads-sub {
   display: flex;
