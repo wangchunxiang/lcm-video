@@ -474,7 +474,7 @@ onMounted(() => {
           <div class="ads-head">
             <div class="ads-title">去广告设置</div>
             <div class="ads-desc">
-              随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
+              随机抽取该源 10 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
             </div>
 
             <div class="ads-toolbar">
@@ -499,7 +499,7 @@ onMounted(() => {
             <el-table-column prop="name" label="作品" min-width="140" show-overflow-tooltip />
             <el-table-column prop="episode" label="集数" width="88" align="center" />
             <template #empty>
-              <span class="ads-empty">点击「随机选片」抽取 5 部作品</span>
+              <span class="ads-empty">点击「随机选片」抽取 10 部作品</span>
             </template>
           </el-table>
 

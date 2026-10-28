@@ -6,7 +6,7 @@ const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
 
 /** 一次分析抽多少个作品 */
-export const SAMPLE_SIZE = 5;
+export const SAMPLE_SIZE = 10;
 /** 一段候选广告的最短 / 最长时长（秒），超过 30 秒的不当作广告 */
 const MIN_AD_SECONDS = 6;
 const MAX_AD_SECONDS = 30;
@@ -167,7 +167,7 @@ export async function pickSampleVods(db: Db, sourceId: number, size = SAMPLE_SIZ
 }
 
 /**
- * 分析一个采集源的广告特征：抽 5 部作品 → 组对齐滑窗 → 跨作品匹配 → 落库。
+ * 分析一个采集源的广告特征：抽 10 部作品 → 组对齐滑窗 → 跨作品匹配 → 落库。
  * 只返回结论，日志由调用方拼接。
  */
 export async function analyzeSource(
@@ -189,45 +189,61 @@ export async function analyzeSource(
     }
   >();
 
-  let parsed = 0;
-  for (const sample of samples) {
+  const jobs = samples.map(async (sample) => {
     try {
       const text = await fetchPlaylist(sample.url);
       const { segments, boundaries } = parsePlaylist(text);
-      parsed += 1;
       const candidates = listCandidates(segments, boundaries);
-      log(`${sample.name}：${segments.length} 段 / ${boundaries.length - 1} 组 / 候选 ${candidates.length}`);
-      for (const candidate of candidates) {
-        const key = signatureOf(candidate.durs);
-        let startSec = 0;
-        for (let i = 0; i < candidate.startIndex && i < segments.length; i += 1) {
-          const seg = segments[i];
-          if (seg) startSec += seg.dur;
-        }
-        const record = {
-          name: sample.name,
-          start: candidate.startIndex,
-          url: sample.url,
-          startSec: Math.round(startSec * 100) / 100,
-        };
-        const hit = map.get(key);
-        if (hit) hit.hits.set(sample.id, record);
-        else {
-          map.set(key, {
-            durs: candidate.durs,
-            totalMs: candidate.totalMs,
-            kind: candidate.kind,
-            hits: new Map([[sample.id, record]]),
-          });
-        }
-      }
+      return { sample, segments, candidates, error: '' };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log(`${sample.name}：解析失败 (${msg})`);
+      return { sample, segments: [], candidates: [], error: msg };
+    }
+  });
+
+  const CONCURRENCY = 5;
+  const results: Array<(typeof jobs)[number] extends Promise<infer R> ? R : never> = [];
+  for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+    const batch = jobs.slice(i, i + CONCURRENCY);
+    results.push(...(await Promise.all(batch)));
+  }
+
+  let parsed = 0;
+  for (const result of results) {
+    const { sample } = result;
+    if (result.error) {
+      log(`${sample.name}：解析失败 (${result.error})`);
+      continue;
+    }
+    parsed += 1;
+    log(`${sample.name}：${result.segments.length} 段 / ${result.candidates.length} 个候选`);
+    for (const candidate of result.candidates) {
+      const key = signatureOf(candidate.durs);
+      let startSec = 0;
+      for (let i = 0; i < candidate.startIndex && i < result.segments.length; i += 1) {
+        const seg = result.segments[i];
+        if (seg) startSec += seg.dur;
+      }
+      const record = {
+        name: sample.name,
+        start: candidate.startIndex,
+        url: sample.url,
+        startSec: Math.round(startSec * 100) / 100,
+      };
+      const hit = map.get(key);
+      if (hit) hit.hits.set(sample.id, record);
+      else {
+        map.set(key, {
+          durs: candidate.durs,
+          totalMs: candidate.totalMs,
+          kind: candidate.kind,
+          hits: new Map([[sample.id, record]]),
+        });
+      }
     }
   }
 
-  const minHits = Math.max(2, Math.ceil(parsed * 0.4));
+  const minHits = 4;
   const found: FoundFeature[] = [];
   for (const [key, value] of map) {
     if (value.hits.size < minHits) continue;
