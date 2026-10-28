@@ -604,6 +604,8 @@ img { border: 0; vertical-align: middle; }
 
 .section-count { font-size: 13px; font-weight: 400; color: var(--text-3); }
 
+.detail-eps { margin-top: 0; }
+
 .story-full {
   margin: 10px 0 0;
   color: var(--text-2);

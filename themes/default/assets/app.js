@@ -188,7 +188,7 @@
   document.querySelectorAll('[data-toggle-story]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
-      const box = link.closest('.detail-info')?.querySelector('.story-full');
+      const box = link.closest('.detail-head')?.querySelector('.story-full');
       if (!box) return;
       const hidden = box.hasAttribute('hidden');
       if (hidden) box.removeAttribute('hidden');
