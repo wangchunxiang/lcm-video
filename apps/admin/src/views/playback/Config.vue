@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { SettingField } from '@lcm/shared';
 import { api } from '../../api/client.ts';
@@ -119,8 +119,19 @@ const VOD_POOL: SampleVod[] = [
   { id: 62231, name: '庆余年 第二季', episode: '第30集' },
 ];
 
+/** 换源后之前的抽取与分析结果都作废 */
+watch(adsSourceId, () => {
+  sampleVods.value = [];
+  results.value = [];
+  logs.value = [];
+});
+
 /** 从该源随机挑 5 部作品（后端接口未接入前先用固定池） */
 function pickVods() {
+  if (!adsSourceId.value) {
+    ElMessage.warning('请先选择采集源');
+    return;
+  }
   const pool = [...VOD_POOL];
   const picked: SampleVod[] = [];
   while (picked.length < 5 && pool.length) {
@@ -306,7 +317,7 @@ onMounted(() => {
               >
                 <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
               </el-select>
-              <el-button :disabled="analyzing" @click="pickVods">随机选片</el-button>
+              <el-button :disabled="analyzing || !adsSourceId" @click="pickVods">随机选片</el-button>
               <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
             </div>
           </div>
