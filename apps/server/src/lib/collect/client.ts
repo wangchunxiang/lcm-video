@@ -49,12 +49,13 @@ export class CollectClient {
     return this.source.apiFormat;
   }
 
-  private buildUrl(params: Record<string, string | number | undefined>): string {
+  private buildUrl(params: Record<string, string | number | undefined>, base?: string): string {
+    const target = base ?? this.source.apiUrl;
     let url: URL;
     try {
-      url = new URL(this.source.apiUrl);
+      url = new URL(target);
     } catch {
-      throw new CollectError(`采集接口地址不合法：${this.source.apiUrl}`);
+      throw new CollectError(`采集接口地址不合法：${target}`);
     }
 
     const preset = this.source.apiParams.replace(/^\?/, '').trim();
@@ -120,8 +121,9 @@ export class CollectClient {
   async request(
     params: Record<string, string | number | undefined>,
     format?: 'json' | 'xml',
+    options: { url?: string } = {},
   ): Promise<unknown> {
-    const url = this.buildUrl(params);
+    const url = this.buildUrl(params, options.url);
     const actualFormat = format ?? this.source.apiFormat;
     const retries = Math.max(0, this.source.retryTimes);
     let lastError: unknown = null;

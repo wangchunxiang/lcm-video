@@ -149,17 +149,14 @@ async function executeRun(
 
       let parsed;
       try {
-        const raw = await client.request(
-          {
-            ac: 'videolist',
-            pg: page,
-            pagesize: source.pagesize,
-            at: 'json',
-            h: hours,
-          },
-          'json',
-        );
-        parsed = parseVodPage(raw, 'json');
+        const raw = await client.request({
+          ac: 'videolist',
+          pg: page,
+          pagesize: source.pagesize,
+          at: source.apiFormat,
+          h: hours,
+        });
+        parsed = parseVodPage(raw, source.apiFormat);
       } catch (error) {
         consecutiveFail += 1;
         const message = error instanceof Error ? error.message : String(error);

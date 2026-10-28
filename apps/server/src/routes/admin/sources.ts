@@ -4,7 +4,7 @@ import type { Db } from '@lcm/db';
 import { collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
 import { CollectClient } from '../../lib/collect/client.ts';
 import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
-import { parseClassList } from '../../lib/collect/parser.ts';
+import { fetchClassList } from '../../lib/collect/classes.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
 export interface SourceRouteOpts {
@@ -246,12 +246,12 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     const client = new CollectClient(source);
     const startedAt = Date.now();
     try {
-      const raw = await client.request({ ac: 'list', at: 'json' }, 'json');
-      const classes = parseClassList(raw, 'json');
+      const { classes, via } = await fetchClassList(client, source);
       return ok(reply, {
         ok: true,
         elapsed_ms: Date.now() - startedAt,
         categories: classes.length,
+        via,
         sample: classes.slice(0, 5).map((item) => item.typeName),
       });
     } catch (error) {
@@ -268,8 +268,7 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     const client = new CollectClient(source);
     let classes;
     try {
-      const raw = await client.request({ ac: 'list', at: 'json' }, 'json');
-      classes = parseClassList(raw, 'json');
+      classes = (await fetchClassList(client, source)).classes;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await db
