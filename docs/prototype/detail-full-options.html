@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>详情页整体布局方案</title>
+<style>
+  :root {
+    --primary: #2f6fed;
+    --line: #e8ebf0;
+    --bg: #f4f6f9;
+    --text: #1f2329;
+    --text-2: #5b6472;
+    --text-3: #9099a6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.75 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  .switcher {
+    position: sticky; top: 0; z-index: 20; display: flex; gap: 8px; align-items: center;
+    padding: 10px 28px; background: #fff; border-bottom: 1px solid var(--line);
+  }
+  .switcher b { margin-right: 10px; font-size: 14px; }
+  .switcher button {
+    padding: 5px 13px; border: 1px solid var(--line); background: #fff; border-radius: 6px;
+    cursor: pointer; font-size: 13px; color: var(--text-2);
+  }
+  .switcher button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .demo { padding: 18px 0 60px; border-bottom: 8px solid #e2e6ee; }
+  .demo-title { width: 1200px; margin: 0 auto 10px; font-size: 13px; color: var(--text-3); }
+  .page { width: 1200px; margin: 0 auto; }
+
+  .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+  .poster { border-radius: 8px; background: linear-gradient(160deg, #26303f, #4a5a73); color: #fff; display: flex; align-items: flex-end; padding: 10px; }
+
+  .crumb { font-size: 13px; color: var(--text-3); padding: 4px 0 12px; }
+  .crumb span { margin: 0 6px; color: #c3c9d4; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 14px; background: var(--bg); font-size: 13px; color: var(--text-2); }
+  .chip i { font-style: normal; color: var(--text-3); font-size: 12px; }
+
+  .btn { display: inline-block; padding: 9px 28px; border-radius: 6px; background: var(--primary); color: #fff; font-size: 14px; }
+  .btn-ghost { display: inline-block; padding: 8px 18px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; color: var(--text-2); }
+
+  dl.info { margin: 0 0 16px; display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+  dl.info > div { display: flex; gap: 10px; }
+  dl.info dt { flex: none; width: 42px; color: var(--text-3); }
+  dl.info dd { margin: 0; color: var(--text-2); }
+
+  h3.sec { margin: 0 0 8px; font-size: 14px; }
+  .intro { margin: 0 0 18px; color: var(--text-2); }
+  .more-link { color: var(--primary); }
+
+  .lines { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .line-tab { padding: 5px 14px; border: 1px solid var(--line); border-radius: 16px; font-size: 13px; color: var(--text-2); }
+  .line-tab.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .line-tab b { font-weight: 400; opacity: .75; margin-left: 4px; }
+
+  .eps { display: grid; gap: 8px; }
+  .ep { padding: 6px 4px; text-align: center; border-radius: 6px; background: var(--bg); font-size: 13px; color: var(--text-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .ep.on { background: var(--primary); color: #fff; }
+
+  .sec-card { background: #fff; border-radius: 8px; padding: 18px 22px; margin-top: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+  .sec-card h2 { margin: 0 0 14px; font-size: 17px; }
+
+  .footer { text-align: center; color: var(--text-3); font-size: 12px; padding: 26px 0; }
+
+  /* ---------- A 现状：单栏堆叠 ---------- */
+  .a-detail { display: flex; gap: 28px; padding: 24px; }
+  .a-detail .poster { flex: none; width: 280px; height: 373px; }
+  .a-detail h1 { margin: 0 0 12px; font-size: 26px; }
+  .a-detail .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .a-eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+
+  /* ---------- B 两栏：主内容 + 侧栏 ---------- */
+  .b-layout { display: flex; gap: 16px; align-items: flex-start; }
+  .b-main { flex: 1; min-width: 0; }
+  .b-side { flex: none; width: 280px; }
+  .b-detail { display: flex; gap: 22px; padding: 20px; }
+  .b-detail .poster { flex: none; width: 200px; height: 267px; }
+  .b-detail h1 { margin: 0 0 10px; font-size: 22px; }
+  .b-detail .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .b-eps { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .side-card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(15,23,42,.06); margin-bottom: 14px; }
+  .side-card h4 { margin: 0 0 10px; font-size: 14px; }
+  .side-item { display: flex; gap: 10px; padding: 6px 0; }
+  .side-item .thumb { flex: none; width: 60px; height: 80px; border-radius: 4px; background: linear-gradient(160deg, #26303f, #4a5a73); }
+  .side-item p { margin: 0; font-size: 13px; color: var(--text-2); }
+  .side-item small { color: var(--text-3); }
+
+  /* ---------- C 折叠式：tab 切换剧集/剧情 ---------- */
+  .c-detail { display: flex; gap: 28px; padding: 24px; }
+  .c-detail .poster { flex: none; width: 240px; height: 320px; }
+  .c-detail h1 { margin: 0 0 12px; font-size: 26px; }
+  .c-detail .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+  .tabs a { padding: 8px 0; font-size: 15px; color: var(--text-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs a.on { color: var(--primary); border-bottom-color: var(--primary); }
+  .c-eps { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .c-story { color: var(--text-2); }
+
+  /* ---------- D 沉浸式：通栏背景 + 窄内容 ---------- */
+  .d-hero { background: linear-gradient(120deg, #24303f, #58697f); padding: 28px 0 0; }
+  .d-hero .page { display: flex; gap: 26px; align-items: flex-end; width: 1080px; }
+  .d-hero .poster { flex: none; width: 220px; height: 293px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+  .d-hero .info { flex: 1; color: #fff; padding-bottom: 22px; }
+  .d-hero h1 { margin: 0 0 10px; font-size: 26px; }
+  .d-hero .chips .chip { background: rgba(255,255,255,.16); color: #fff; }
+  .d-hero .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .d-body { width: 1080px; margin: 0 auto; }
+  .d-eps { grid-template-columns: repeat(10, minmax(0, 1fr)); margin-top: 4px; }
+
+  .note { width: 1200px; margin: 10px auto 0; font-size: 12px; color: var(--text-3); }
+</style>
+</head>
+<body>
+
+<div class="switcher">
+  <b>详情页整体方案</b>
+  <button data-t="all" class="on">全部</button>
+  <button data-t="A">A 单栏堆叠</button>
+  <button data-t="B">B 主内容+侧栏</button>
+  <button data-t="C">C 剧集/剧情分页签</button>
+  <button data-t="D">D 沉浸式通栏</button>
+</div>
+
+<!-- ==================== A ==================== -->
+<div class="demo" data-o="A">
+  <div class="demo-title">方案 A — 单栏堆叠（当前线上结构：详情卡 → 详细剧情 → 播放线路）</div>
+  <div class="page">
+    <div class="crumb"><a href="#">首页</a><span>/</span><a href="#">剧集</a><span>/</span>大哥请赐教</div>
+
+    <section class="card a-detail">
+      <div class="poster">大哥请赐教</div>
+      <div>
+        <h1>大哥请赐教</h1>
+        <div class="chips">
+          <span class="chip"><i>分类</i>国产剧</span><span class="chip"><i>年份</i>2026</span>
+          <span class="chip"><i>地区</i>中国大陆</span><span class="chip"><i>语言</i>汉语普通话</span>
+        </div>
+        <dl class="info">
+          <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+          <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+          <div><dt>编剧</dt><dd>—</dd></div>
+          <div><dt>状态</dt><dd>更新至第08集</dd></div>
+        </dl>
+        <h3 class="sec">剧情简介</h3>
+        <p class="intro">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与… <a class="more-link" href="#">详细</a></p>
+        <a class="btn" href="#">立即播放</a>
+      </div>
+    </section>
+
+    <section class="sec-card">
+      <h2>详细剧情</h2>
+      <p class="c-story">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与爱情。<br>剧中以“重生”为引子，把江湖恩怨与踏实创业两条线交织，兄弟情是贯穿始终的底色。</p>
+    </section>
+
+    <section class="sec-card">
+      <h2>播放线路</h2>
+      <div class="lines">
+        <a class="line-tab on" href="#">西瓜线路<b>8</b></a>
+        <a class="line-tab" href="#">如意线路<b>8</b></a>
+        <a class="line-tab" href="#">电影天堂<b>8</b></a>
+      </div>
+      <div class="eps a-eps">
+        <a class="ep on" href="#">第01集</a><a class="ep" href="#">第02集</a><a class="ep" href="#">第03集</a><a class="ep" href="#">第04集</a>
+        <a class="ep" href="#">第05集</a><a class="ep" href="#">第06集</a><a class="ep" href="#">第07集</a><a class="ep" href="#">第08集</a>
+      </div>
+    </section>
+
+    <div class="footer">本站所有资源均来自互联网采集，仅供学习交流，请于 24 小时内删除 · 蓝草莓影视</div>
+  </div>
+</div>
+
+<!-- ==================== B ==================== -->
+<div class="demo" data-o="B">
+  <div class="demo-title">方案 B — 主内容 + 右侧栏（右侧放同类推荐、热门，纵向空间更省）</div>
+  <div class="page">
+    <div class="crumb"><a href="#">首页</a><span>/</span><a href="#">剧集</a><span>/</span>大哥请赐教</div>
+    <div class="b-layout">
+      <div class="b-main">
+        <section class="card b-detail">
+          <div class="poster">大哥请赐教</div>
+          <div>
+            <h1>大哥请赐教</h1>
+            <div class="chips">
+              <span class="chip"><i>分类</i>国产剧</span><span class="chip"><i>年份</i>2026</span>
+              <span class="chip"><i>地区</i>中国大陆</span><span class="chip"><i>语言</i>汉语普通话</span>
+            </div>
+            <dl class="info">
+              <div><dt>上映</dt><dd>2026-10-26</dd></div>
+              <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+              <div><dt>编剧</dt><dd>—</dd></div>
+              <div><dt>状态</dt><dd>更新至第08集</dd></div>
+            </dl>
+            <p class="intro">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业… <a class="more-link" href="#">详细</a></p>
+            <a class="btn" href="#">立即播放</a>
+          </div>
+        </section>
+
+        <section class="sec-card">
+          <h2>播放线路</h2>
+          <div class="lines">
+            <a class="line-tab on" href="#">西瓜线路<b>8</b></a>
+            <a class="line-tab" href="#">如意线路<b>8</b></a>
+            <a class="line-tab" href="#">电影天堂<b>8</b></a>
+          </div>
+          <div class="eps b-eps">
+            <a class="ep on" href="#">第01集</a><a class="ep" href="#">第02集</a><a class="ep" href="#">第03集</a><a class="ep" href="#">第04集</a>
+            <a class="ep" href="#">第05集</a><a class="ep" href="#">第06集</a><a class="ep" href="#">第07集</a><a class="ep" href="#">第08集</a>
+          </div>
+        </section>
+
+        <section class="sec-card">
+          <h2>详细剧情</h2>
+          <p class="c-story">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。</p>
+        </section>
+      </div>
+
+      <aside class="b-side">
+        <div class="side-card">
+          <h4>同类推荐</h4>
+          <div class="side-item"><div class="thumb"></div><div><p>重生之商海纵横</p><small>国产剧 · 2026</small></div></div>
+          <div class="side-item"><div class="thumb"></div><div><p>逆袭人生</p><small>国产剧 · 2025</small></div></div>
+          <div class="side-item"><div class="thumb"></div><div><p>江湖再起</p><small>国产剧 · 2025</small></div></div>
+          <div class="side-item"><div class="thumb"></div><div><p>兄弟盟约</p><small>国产剧 · 2024</small></div></div>
+        </div>
+        <div class="side-card">
+          <h4>本类热播</h4>
+          <div class="side-item"><div class="thumb"></div><div><p>长安十二时辰</p><small>国产剧 · 2024</small></div></div>
+          <div class="side-item"><div class="thumb"></div><div><p>风起洛阳</p><small>国产剧 · 2023</small></div></div>
+        </div>
+      </aside>
+    </div>
+    <div class="footer">本站所有资源均来自互联网采集，仅供学习交流 · 蓝草莓影视</div>
+  </div>
+</div>
+
+<!-- ==================== C ==================== -->
+<div class="demo" data-o="C">
+  <div class="demo-title">方案 C — 剧集 / 剧情用页签切换（详情卡更矮，剧集一屏内排完）</div>
+  <div class="page">
+    <div class="crumb"><a href="#">首页</a><span>/</span><a href="#">剧集</a><span>/</span>大哥请赐教</div>
+
+    <section class="card c-detail">
+      <div class="poster">大哥请赐教</div>
+      <div style="flex:1;min-width:0">
+        <h1>大哥请赐教</h1>
+        <div class="chips">
+          <span class="chip"><i>分类</i>国产剧</span><span class="chip"><i>年份</i>2026</span>
+          <span class="chip"><i>地区</i>中国大陆</span><span class="chip"><i>语言</i>汉语普通话</span>
+        </div>
+        <dl class="info">
+          <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+          <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+          <div><dt>编剧</dt><dd>—</dd></div>
+          <div><dt>状态</dt><dd>更新至第08集</dd></div>
+        </dl>
+        <a class="btn" href="#">立即播放</a>
+      </div>
+    </section>
+
+    <section class="sec-card">
+      <div class="tabs"><a class="on" href="#">剧集（8）</a><a href="#">剧情简介</a><a href="#">详细剧情</a></div>
+      <div class="lines">
+        <a class="line-tab on" href="#">西瓜线路<b>8</b></a>
+        <a class="line-tab" href="#">如意线路<b>8</b></a>
+        <a class="line-tab" href="#">电影天堂<b>8</b></a>
+      </div>
+      <div class="eps c-eps">
+        <a class="ep on" href="#">第01集</a><a class="ep" href="#">第02集</a><a class="ep" href="#">第03集</a><a class="ep" href="#">第04集</a>
+        <a class="ep" href="#">第05集</a><a class="ep" href="#">第06集</a><a class="ep" href="#">第07集</a><a class="ep" href="#">第08集</a>
+      </div>
+    </section>
+
+    <div class="footer">本站所有资源均来自互联网采集，仅供学习交流 · 蓝草莓影视</div>
+  </div>
+</div>
+
+<!-- ==================== D ==================== -->
+<div class="demo" data-o="D">
+  <div class="demo-title">方案 D — 沉浸式：顶部通栏深色大背景，内容收窄到 1080</div>
+  <div class="d-hero">
+    <div class="page">
+      <div class="poster">大哥请赐教</div>
+      <div class="info">
+        <h1>大哥请赐教</h1>
+        <div class="chips">
+          <span class="chip"><i>分类</i>国产剧</span><span class="chip"><i>年份</i>2026</span>
+          <span class="chip"><i>地区</i>中国大陆</span><span class="chip"><i>语言</i>汉语普通话</span>
+          <span class="chip">更新至第08集</span>
+        </div>
+        <p style="margin:0 0 12px;color:rgba(255,255,255,.8);font-size:13px">导演：信鹏,李亚泽 ｜ 编剧：— ｜ 上映：2026-10-26</p>
+        <a class="btn" href="#">立即播放</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-body">
+    <section class="sec-card">
+      <h2>播放线路</h2>
+      <div class="lines">
+        <a class="line-tab on" href="#">西瓜线路<b>8</b></a>
+        <a class="line-tab" href="#">如意线路<b>8</b></a>
+        <a class="line-tab" href="#">电影天堂<b>8</b></a>
+      </div>
+      <div class="eps d-eps">
+        <a class="ep on" href="#">第01集</a><a class="ep" href="#">第02集</a><a class="ep" href="#">第03集</a><a class="ep" href="#">第04集</a>
+        <a class="ep" href="#">第05集</a><a class="ep" href="#">第06集</a><a class="ep" href="#">第07集</a><a class="ep" href="#">第08集</a>
+      </div>
+    </section>
+
+    <section class="sec-card">
+      <h2>剧情简介</h2>
+      <p class="c-story">刑满释放的陈浩深陷失去兄弟的悔恨，梦回过去带领兄弟们走正途踏实创业。兄弟团们一路扶持化解危机。陈浩成功避开前世悲剧，收获事业与爱情。</p>
+    </section>
+
+    <div class="footer">本站所有资源均来自互联网采集，仅供学习交流 · 蓝草莓影视</div>
+  </div>
+</div>
+
+<div class="note">说明：以上均为静态示意，海报位用渐变色块代替。数据取自库里《大哥请赐教》（vod_id 653）。</div>
+
+<script>
+  const keys = ['A', 'B', 'C', 'D'];
+  document.querySelectorAll('.switcher button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.switcher button').forEach((b) => b.classList.toggle('on', b === btn));
+      const t = btn.dataset.t;
+      keys.forEach((k) => {
+        document.querySelectorAll('[data-o="' + k + '"]').forEach((el) => {
+          el.style.display = (t === 'all' || t === k) ? '' : 'none';
+        });
+      });
+    });
+  });
+</script>
+</body>
+</html>
