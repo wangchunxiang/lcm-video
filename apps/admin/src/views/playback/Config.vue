@@ -183,7 +183,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 5px 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .row.disabled .row-name,
@@ -206,9 +206,7 @@ onMounted(() => {
 
 .stage {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 40vh;
+  padding-top: 56.25%;
   border-radius: 6px;
   overflow: hidden;
   background: #111;
