@@ -207,8 +207,6 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('site_logo', ''),
   ('site_favicon', ''),
   ('site_icp', ''),
-  ('site_keywords', ''),
-  ('site_description', '蓝草莓影视，提供最新电影、电视剧、综艺、动漫在线观看'),
   ('site_disclaimer', '本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。'),
   ('site_theme', 'default'),
   ('site_stats_code', ''),

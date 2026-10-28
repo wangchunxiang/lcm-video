@@ -56,10 +56,8 @@ const TABS: Tab[] = [
         ],
       },
       {
-        title: 'SEO 与页脚',
+        title: '页脚',
         rows: [
-          { key: 'site_keywords', label: 'SEO 关键词', kind: 'textarea', hint: '多个关键词用英文逗号分隔' },
-          { key: 'site_description', label: 'SEO 描述', kind: 'textarea' },
           { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
           { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
         ],
@@ -93,8 +91,6 @@ const form = reactive<Record<string, string>>({
   site_theme: 'default',
   site_logo: '',
   site_favicon: '',
-  site_keywords: '',
-  site_description: '',
   site_disclaimer: '',
   site_stats_code: '',
   list_page_size: '24',
