@@ -78,6 +78,9 @@ const sampleVods = ref<SampleVod[]>([]);
 const logs = ref<string[]>([]);
 const results = ref<AdFeature[]>([]);
 const analyzing = ref(false);
+const logVisible = ref(false);
+const confirmedFeatures = computed(() => results.value.filter((row) => row.status === 1));
+const candidateFeatures = computed(() => results.value.filter((row) => row.status === 0));
 const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
@@ -111,12 +114,14 @@ function secondsText(ms: number) {
   return `${(ms / 1000).toFixed(1)} 秒`;
 }
 
-async function confirmAd(row: AdFeature, isAd: boolean) {
+async function setStatus(row: AdFeature, status: 0 | 1 | 2) {
   if (!adsSourceId.value) return;
   try {
-    await api.put(`/sources/${adsSourceId.value}/ads/${row.id}`, { status: isAd ? 1 : 2 });
-    row.status = isAd ? 1 : 2;
-    ElMessage.success(isAd ? '已确认是广告，播放时将跳过' : '已排除，播放时保留');
+    await api.put(`/sources/${adsSourceId.value}/ads/${row.id}`, { status });
+    row.status = status;
+    if (status === 1) ElMessage.success('已确认是广告，播放时将跳过');
+    else if (status === 2) ElMessage.success('已排除，播放时保留');
+    else ElMessage.success('已撤销，放回候选');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
   }
@@ -171,6 +176,7 @@ async function startAnalyze() {
   analyzing.value = true;
   results.value = [];
   logs.value = [];
+  logVisible.value = true;
   try {
     const data = await api.post<{ logs: string[]; features: AdFeature[]; sampled: number }>(
       `/sources/${adsSourceId.value}/ads/analyze`,
@@ -328,44 +334,61 @@ onMounted(() => {
             </template>
           </el-table>
 
-          <div class="ads-sub">分析日志</div>
-          <div ref="logRef" class="log-box">
-            <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
-            <div v-if="!logs.length" class="ads-empty">暂无日志</div>
-          </div>
-
           <div class="ads-sub">
-            候选广告
-            <span v-if="results.length" class="ads-count">{{ results.length }}</span>
+            已设置的广告特征
+            <span v-if="confirmedFeatures.length" class="ads-count">{{ confirmedFeatures.length }}</span>
           </div>
-          <div class="result-box">
-            <div v-for="row in results" :key="row.id" class="result-row">
+          <div class="result-box shrink">
+            <div v-for="row in confirmedFeatures" :key="row.id" class="result-row">
               <div class="result-top">
                 <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
                 <span class="result-total">{{ secondsText(row.totalMs) }}</span>
                 <span class="result-vods">命中 {{ row.hitVods }} 部</span>
                 <el-link type="primary" :underline="false" @click="openFeature(row)">查看</el-link>
                 <span class="result-actions">
-                  <el-tag v-if="row.status === 1" size="small" type="success">已确认</el-tag>
-                  <el-tag v-else-if="row.status === 2" size="small" type="info">已排除</el-tag>
-                  <el-button
-                    v-else
-                    link
-                    type="success"
-                    @click="confirmAd(row, true)"
-                  >
-                    是广告
-                  </el-button>
-                  <el-button v-if="row.status !== 2" link type="danger" @click="confirmAd(row, false)">否</el-button>
+                  <el-button link type="info" @click="setStatus(row, 0)">撤销</el-button>
                 </span>
               </div>
               <div class="result-pattern">{{ row.durations.split(',').join(' / ') }}</div>
             </div>
-            <div v-if="!results.length" class="ads-empty">分析后显示候选广告</div>
+            <div v-if="!confirmedFeatures.length" class="ads-empty">还没有确认的广告特征</div>
+          </div>
+
+          <div class="ads-sub">
+            候选广告特征
+            <span v-if="candidateFeatures.length" class="ads-count">{{ candidateFeatures.length }}</span>
+          </div>
+          <div class="result-box">
+            <div v-for="row in candidateFeatures" :key="row.id" class="result-row">
+              <div class="result-top">
+                <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
+                <span class="result-total">{{ secondsText(row.totalMs) }}</span>
+                <span class="result-vods">命中 {{ row.hitVods }} 部</span>
+                <el-link type="primary" :underline="false" @click="openFeature(row)">查看</el-link>
+                <span class="result-actions">
+                  <el-button link type="success" @click="setStatus(row, 1)">是广告</el-button>
+                  <el-button link type="danger" @click="setStatus(row, 2)">否</el-button>
+                </span>
+              </div>
+              <div class="result-pattern">{{ row.durations.split(',').join(' / ') }}</div>
+            </div>
+            <div v-if="!candidateFeatures.length" class="ads-empty">点「开始分析」提取候选广告</div>
           </div>
         </aside>
       </div>
     </el-card>
+
+    <el-dialog v-model="logVisible" title="分析日志" width="680px" :close-on-click-modal="false">
+      <div ref="logRef" class="log-box dialog-log">
+        <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
+        <div v-if="!logs.length" class="ads-empty">准备中…</div>
+      </div>
+      <template #footer>
+        <el-button :disabled="analyzing" @click="logVisible = false">
+          {{ analyzing ? '分析中…' : '关闭' }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="featureVisible" title="广告特征" width="640px">
       <el-descriptions v-if="activeResult" :column="2" border size="small">
@@ -480,7 +503,6 @@ onMounted(() => {
 }
 .log-box {
   flex: none;
-  height: 132px;
   overflow-y: auto;
   box-sizing: border-box;
   padding: 6px 8px;
@@ -497,9 +519,16 @@ onMounted(() => {
 }
 .result-box {
   flex: 1;
-  min-height: 72px;
+  min-height: 64px;
   overflow-y: auto;
   padding-bottom: 4px;
+}
+.result-box.shrink {
+  flex: 0 1 auto;
+  max-height: 140px;
+}
+.dialog-log {
+  height: 260px;
 }
 .result-row {
   display: flex;

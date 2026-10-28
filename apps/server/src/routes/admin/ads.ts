@@ -79,7 +79,8 @@ export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => 
     const featureId = toInt((req.params as { featureId?: string }).featureId);
     const status = toInt((req.body as { status?: unknown }).status);
     if (!sourceId || !featureId) return fail(reply, 400, ErrorCode.BAD_REQUEST, '参数不完整');
-    if (status !== 1 && status !== 2) return fail(reply, 400, ErrorCode.BAD_REQUEST, '状态只能是 1 或 2');
+    if (status !== 0 && status !== 1 && status !== 2)
+      return fail(reply, 400, ErrorCode.BAD_REQUEST, '状态只能是 0、1 或 2');
 
     await db
       .update(adFeature)
