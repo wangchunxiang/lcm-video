@@ -22,66 +22,21 @@ interface Row {
   hint?: string;
 }
 
-interface Section {
-  title: string;
-  rows: Row[];
-}
-
-interface Tab {
-  name: string;
-  label: string;
-  sections: Section[];
-}
-
 /** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
-const TABS: Tab[] = [
-  {
-    name: 'main',
-    label: '站点设置',
-    sections: [
-      {
-        title: '站点信息',
-        rows: [
-          { key: 'site_name', label: '站点名称', kind: 'text' },
-          { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
-        ],
-      },
-      {
-        title: '品牌与外观',
-        rows: [
-          { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '留空则显示站名文字' },
-          { key: 'site_favicon', label: '站点图标', kind: 'image', hint: '浏览器标签页上的小图标' },
-          { key: 'site_theme', label: '当前模板', kind: 'select' },
-        ],
-      },
-      {
-        title: '页脚',
-        rows: [
-          { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
-          { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'misc',
-    label: '列表与上传',
-    sections: [
-      {
-        title: '列表与上传',
-        rows: [
-          { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '建议保持 24（三行八列）' },
-          { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次' },
-          { key: 'upload_max_mb', label: '单文件上传上限', kind: 'text', hint: '单位 MB' },
-        ],
-      },
-    ],
-  },
+const FIELDS: Row[] = [
+  { key: 'site_name', label: '站点名称', kind: 'text' },
+  { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
+  { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '留空则显示站名文字' },
+  { key: 'site_favicon', label: '站点图标', kind: 'image', hint: '浏览器标签页上的小图标' },
+  { key: 'site_theme', label: '当前模板', kind: 'select' },
+  { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
+  { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
+  { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '建议保持 24（三行八列）' },
+  { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次' },
+  { key: 'upload_max_mb', label: '单文件上传上限', kind: 'text', hint: '单位 MB' },
 ];
 
-const KEYS = TABS.flatMap((tab) => tab.sections.flatMap((section) => section.rows.map((row) => row.key)));
-
-const activeTab = ref(TABS[0]?.name ?? 'main');
+const KEYS = FIELDS.map((field) => field.key);
 
 const form = reactive<Record<string, string>>({
   site_name: '',
@@ -139,36 +94,28 @@ onMounted(() => {
 <template>
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
-      <el-tabs v-model="activeTab" class="tabs">
-        <el-tab-pane v-for="tab in TABS" :key="tab.name" :label="tab.label" :name="tab.name">
-          <div class="body">
-            <template v-for="(section, sectionIndex) in tab.sections" :key="section.title">
-              <div class="group-title" :class="{ first: sectionIndex === 0 }">{{ section.title }}</div>
+      <div class="body">
+        <div v-for="row in FIELDS" :key="row.key" class="field">
+          <label class="field-label">{{ row.label }}</label>
+          <div class="field-ctrl">
+            <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
+            <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 220px">
+              <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
+            </el-select>
+            <el-input
+              v-else-if="row.kind === 'textarea'"
+              v-model="form[row.key]"
+              type="textarea"
+              :rows="3"
+              resize="vertical"
+              style="max-width: 560px"
+            />
+            <el-input v-else v-model="form[row.key]" style="width: 220px" />
 
-              <div v-for="row in section.rows" :key="row.key" class="field">
-                <label class="field-label">{{ row.label }}</label>
-                <div class="field-ctrl">
-                  <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
-                  <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 220px">
-                    <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
-                  </el-select>
-                  <el-input
-                    v-else-if="row.kind === 'textarea'"
-                    v-model="form[row.key]"
-                    type="textarea"
-                    :rows="3"
-                    resize="vertical"
-                    style="max-width: 560px"
-                  />
-                  <el-input v-else v-model="form[row.key]" style="width: 220px" />
-
-                  <div v-if="row.hint" class="field-hint">{{ row.hint }}</div>
-                </div>
-              </div>
-            </template>
+            <div v-if="row.hint" class="field-hint">{{ row.hint }}</div>
           </div>
-        </el-tab-pane>
-      </el-tabs>
+        </div>
+      </div>
 
       <div class="card-foot">
         <el-button @click="load">重置</el-button>
@@ -183,27 +130,16 @@ onMounted(() => {
   width: 100%;
 }
 .group-card :deep(.el-card__body) {
-  padding: 0 24px 0;
-}
-.tabs :deep(.el-tabs__header) {
-  margin-bottom: 4px;
+  padding: 16px 24px 0;
 }
 .body {
   max-width: 860px;
-}
-.group-title {
-  margin: 14px 0 4px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-.group-title.first {
-  margin-top: 6px;
 }
 .field {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 4px 0;
+  padding: 6px 0;
 }
 .field-label {
   flex: none;
@@ -227,7 +163,7 @@ onMounted(() => {
 .card-foot {
   display: flex;
   gap: 10px;
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   padding: 14px 0 16px 116px;
   border-top: 1px solid var(--el-border-color);
 }
