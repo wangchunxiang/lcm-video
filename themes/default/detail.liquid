@@ -53,15 +53,21 @@
       {% endif %}
     </div>
     {% endif %}
+    {% if vod.intro != blank %}
+    <div class="detail-text">
+      <h3>剧情简介</h3>
+      <p class="intro">{{ vod.intro | escape }}</p>
+    </div>
+    {% endif %}
+
+    {% if vod.content != blank %}
+    <div class="detail-text">
+      <h3>详细剧情</h3>
+      <div class="content-text">{{ vod.content | escape }}</div>
+    </div>
+    {% endif %}
   </div>
 </section>
-
-{% if vod.intro != blank %}
-<section class="section">
-  <h2>剧情简介</h2>
-  <p class="intro">{{ vod.intro | escape }}</p>
-</section>
-{% endif %}
 
 {% if lines.size > 0 %}
 <section class="section">
@@ -86,10 +92,4 @@
 </section>
 {% endif %}
 
-{% if vod.content != blank %}
-<section class="section">
-  <h2>详细剧情</h2>
-  <div class="content-text">{{ vod.content | escape }}</div>
-</section>
-{% endif %}
 {% endblock %}

@@ -403,6 +403,14 @@ img { border: 0; vertical-align: middle; }
 
 .tip { color: var(--text-3); font-size: 13px; }
 
+.detail-text { margin-top: 18px; }
+
+.detail-text h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: var(--text);
+}
+
 .intro {
   margin: 0;
   color: var(--text-2);
