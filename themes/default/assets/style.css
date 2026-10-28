@@ -347,6 +347,9 @@ img { border: 0; vertical-align: middle; }
 .detail-main { flex: 1; min-width: 0; }
 
 .detail-head {
+  display: flex;
+  flex-direction: column;
+  min-height: 347px;
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
