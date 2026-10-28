@@ -315,7 +315,7 @@ img { border: 0; vertical-align: middle; }
 .detail-cover {
   flex: none;
   align-self: flex-start;
-  width: 220px;
+  width: 280px;
   aspect-ratio: 3 / 4;
   border-radius: 8px;
   overflow: hidden;
