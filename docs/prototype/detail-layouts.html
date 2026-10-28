@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情页布局方案</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+    --line: #e8eaed; --primary: #2563eb; --primary-dark: #1d4ed8; --radius: 8px;
+    --shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 0 24px 60px; }
+  .page-title { margin: 28px 0 6px; font-size: 20px; }
+  .page-sub { margin: 0 0 18px; color: var(--text-3); font-size: 13px; }
+  .demo { background: #fff; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 34px; overflow: hidden; }
+  .demo-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .demo-head h2 { margin: 0; font-size: 16px; }
+  .demo-head span { color: var(--text-3); font-size: 12px; }
+  .demo-body { padding: 20px; }
+  .card { background: var(--card); border-radius: var(--radius); }
+  .poster { width: 100%; display: block; border-radius: 6px; background: #dbe3f0; }
+  .btn-play { display: block; width: 100%; margin-top: 12px; padding: 11px 0; border: 0; border-radius: 6px;
+    background: var(--primary); color: #fff; font-size: 15px; cursor: pointer; }
+  .btn-play:hover { background: var(--primary-dark); }
+  .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .title-row h1 { margin: 0; font-size: 24px; }
+  .badge { flex: none; padding: 2px 10px; border-radius: 4px; background: #eaf1fe; color: var(--primary); font-size: 12px; line-height: 20px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+  .meta-row i { font-style: normal; color: var(--text-3); margin-right: 8px; }
+  .info-list { margin: 0 0 12px; display: flex; flex-direction: column; gap: 6px; }
+  .info-list div { display: flex; gap: 10px; }
+  .info-list dt { flex: none; width: 42px; color: var(--text-3); }
+  .info-list dd { margin: 0; color: var(--text); }
+  .intro { margin: 0; color: var(--text-2); line-height: 1.75; }
+  .intro .more { color: var(--primary); cursor: pointer; margin-left: 4px; }
+  .intro .full { display: none; margin-top: 8px; white-space: pre-wrap; }
+  .intro.open .full { display: block; }
+  .intro.open .more::after { content: "收起"; }
+  .ep-title { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 16px; }
+  .ep-title small { color: var(--text-3); font-weight: 400; font-size: 12px; }
+  .lines { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .line-tab { padding: 5px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .line-tab.on { border-color: var(--primary); color: var(--primary); background: #eef4ff; }
+  .eps { display: grid; gap: 8px; }
+  .ep { padding: 7px 0; text-align: center; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .ep:hover { border-color: var(--primary); color: var(--primary); }
+  .ep.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .more-btn { margin-top: 12px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .more-btn:hover { border-color: var(--primary); color: var(--primary); }
+  .muted { color: var(--text-3); font-size: 12px; }
+
+  /* ---------- A ---------- */
+  .a-top { display: grid; grid-template-columns: 260px 1fr; gap: 24px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .a-eps { margin-top: 14px; background: #fff; padding: 18px 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .a-eps .eps { grid-template-columns: repeat(8, 1fr); max-height: 132px; overflow: hidden; }
+  .a-eps .eps.open { max-height: none; }
+
+  /* ---------- B ---------- */
+  .b-top { display: grid; grid-template-columns: 200px 1fr; gap: 22px; }
+  .b-head { background: #fff; padding: 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .b-eps { margin-top: 14px; background: #fff; padding: 18px 20px; border-radius: 8px; box-shadow: var(--shadow); }
+  .b-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .b-bar select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; color: var(--text-2); background: #fff; }
+  .b-eps .eps { grid-template-columns: repeat(10, 1fr); max-height: 160px; overflow-y: auto; padding-right: 4px; }
+
+  /* ---------- C ---------- */
+  .c-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+  .c-player { position: relative; padding-top: 56.25%; background: #0f1115; border-radius: 8px; overflow: hidden; }
+  .c-player .cover { position: absolute; inset: 0; background: linear-gradient(135deg, #24303f, #10151c); }
+  .c-player .center { position: absolute; inset: 0; display: grid; place-items: center; }
+  .c-player .circle { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.16); display: grid; place-items: center; }
+  .c-player .tri { width: 0; height: 0; border-left: 18px solid #fff; border-top: 11px solid transparent; border-bottom: 11px solid transparent; margin-left: 4px; }
+  .c-player .bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; color: #cfd6e4; font-size: 12px; background: linear-gradient(transparent, rgba(0,0,0,.6)); display: flex; gap: 12px; align-items: center; }
+  .c-player .progress { flex: 1; height: 3px; background: rgba(255,255,255,.25); border-radius: 2px; }
+  .c-player .progress i { display: block; width: 32%; height: 100%; background: var(--primary); border-radius: 2px; }
+  .c-side { background: #fff; border-radius: 8px; box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; max-height: 470px; }
+  .c-side .eps { grid-template-columns: repeat(4, 1fr); overflow-y: auto; padding-right: 4px; }
+  .c-info { margin-top: 14px; background: #fff; padding: 18px 20px; border-radius: 8px; box-shadow: var(--shadow); }
+
+  /* ---------- D ---------- */
+  .d-head { background: #fff; padding: 20px; border-radius: 8px; box-shadow: var(--shadow); display: grid; grid-template-columns: 200px 1fr; gap: 22px; }
+  .d-acc { margin-top: 14px; background: #fff; border-radius: 8px; box-shadow: var(--shadow); overflow: hidden; }
+  .d-item + .d-item { border-top: 1px solid var(--line); }
+  .d-item-head { display: flex; align-items: center; gap: 10px; padding: 13px 18px; cursor: pointer; }
+  .d-item-head .name { font-size: 14px; }
+  .d-item-head .count { color: var(--text-3); font-size: 12px; }
+  .d-item-head .arrow { margin-left: auto; color: var(--text-3); transition: transform .15s; }
+  .d-item.open .d-item-head .arrow { transform: rotate(90deg); }
+  .d-item-body { display: none; padding: 0 18px 16px; }
+  .d-item.open .d-item-body { display: block; }
+  .d-item-body .eps { grid-template-columns: repeat(10, 1fr); max-height: 168px; overflow-y: auto; padding-right: 4px; }
+  .tag-note { display: inline-block; margin-left: 8px; padding: 0 6px; border-radius: 3px; background: #f0f2f5; color: var(--text-3); font-size: 11px; line-height: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">影片详情页 · 四种布局</h1>
+  <p class="page-sub">同一部剧（3 条线路、60 集）在四种方案下的样子。点击线路切换、点击「详情」展开长简介、点击剧集选中。</p>
+
+  <!-- ============ A ============ -->
+  <section class="demo">
+    <div class="demo-head"><h2>A. 信息在上、剧集独立成卡</h2><span>海报 + 信息两栏，简介就地展开；剧集区按线路横向标签切换，网格先露 3 行、点「展开全部」</span></div>
+    <div class="demo-body">
+      <div class="a-top">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='347'><rect width='260' height='347' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='15' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row">
+            <span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span>
+          </div>
+          <dl class="info-list">
+            <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          </dl>
+          <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？陈木（嘴角微微翘起）：包的！</span></p>
+        </div>
+      </div>
+      <div class="a-eps">
+        <h3 class="ep-title">播放列表 <small>共 60 集</small></h3>
+        <div class="lines" data-lines></div>
+        <div class="eps" data-eps></div>
+        <button class="more-btn" data-more>展开全部 60 集</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B ============ -->
+  <section class="demo">
+    <div class="demo-head"><h2>B. 紧凑版（小海报，剧集高度固定滚动）</h2><span>海报缩到 200px，无独立信息卡；剧集用下拉选线路，网格固定 5 行高、超出内部滚动</span></div>
+    <div class="demo-body">
+      <div class="b-head">
+        <div class="b-top">
+          <div>
+            <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='267'><rect width='200' height='267' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+            <button class="btn-play">立即播放</button>
+          </div>
+          <div>
+            <div class="title-row"><h1 style="font-size:22px">大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+            <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+            <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？陈木（嘴角微微翘起）：包的！</span></p>
+            <dl class="info-list" style="margin-top:10px">
+              <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+              <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+              <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="b-eps">
+        <div class="b-bar">
+          <strong style="font-size:15px">播放列表</strong>
+          <select data-line-select></select>
+          <span class="muted" data-line-count>共 60 集</span>
+        </div>
+        <div class="eps" data-eps></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ C ============ -->
+  <section class="demo">
+    <div class="demo-head"><h2>C. 播放优先（左播放器，右侧剧集竖列）</h2><span>适合“进来就看”，剧集在右侧固定高度滚动，线路用下拉；信息与简介在播放器下方</span></div>
+    <div class="demo-body">
+      <div class="c-layout">
+        <div>
+          <div class="c-player">
+            <div class="cover"></div>
+            <div class="center"><div class="circle"><div class="tri"></div></div></div>
+            <div class="bar"><span>▶</span><div class="progress"><i></i></div><span>第 1 集</span><span>全屏</span></div>
+          </div>
+          <div class="c-info">
+            <div class="title-row"><h1 style="font-size:22px">大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+            <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+            <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？陈木（嘴角微微翘起）：包的！</span></p>
+          </div>
+        </div>
+        <div class="c-side">
+          <div class="b-bar" style="margin-bottom:10px">
+            <strong style="font-size:15px">选集</strong>
+            <select data-line-select style="margin-left:auto"></select>
+          </div>
+          <div class="eps" data-eps></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ D ============ -->
+  <section class="demo">
+    <div class="demo-head"><h2>D. 线路折叠（每条线路一个折叠块）</h2><span>不切换线路，所有线路纵向排列、各自展开自己的剧集；线路多时一目了然，剧集多时内部滚动</span></div>
+    <div class="demo-body">
+      <div class="d-head">
+        <div>
+          <img class="poster" style="aspect-ratio:3/4" alt="" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='267'><rect width='200' height='267' fill='%23dbe3f0'/><text x='50%25' y='50%25' font-size='14' fill='%238f959e' text-anchor='middle'>海报 3:4</text></svg>" />
+          <button class="btn-play">立即播放</button>
+        </div>
+        <div>
+          <div class="title-row"><h1>大哥请赐教</h1><span class="badge">更新至第08集</span></div>
+          <div class="meta-row"><span><i>分类</i>国产剧</span><span><i>年份</i>2026</span><span><i>地区</i>中国大陆</span><span><i>语言</i>汉语普通话</span></div>
+          <dl class="info-list">
+            <div><dt>上映</dt><dd>2026-10-26(中国大陆)</dd></div>
+            <div><dt>导演</dt><dd>信鹏,李亚泽</dd></div>
+            <div><dt>演员</dt><dd>纪凌尘,赵小棠,唐振超,田倚凡,刘闯,刘波,陈俐君,肖凯文,郝明奇,赵毅</dd></div>
+          </dl>
+          <p class="intro" data-intro>诡异末世降临，男主角陈木携万亿诡币重生，开局化身“天使投资人”<span class="more"></span><span class="full">当其他人为了几块冥币大打出手时，陈木早已买下各种诡异场景；别人还在规则中探索生路，陈木却倒反天罡化身规则制定者。末世还能这么玩？陈木（嘴角微微翘起）：包的！</span></p>
+        </div>
+      </div>
+      <div class="d-acc" data-acc></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const LINES = [
+    { name: '西瓜线路', from: 'xiguam3u8', n: 60 },
+    { name: '如意线路', from: 'rym3u8', n: 60 },
+    { name: '电影天堂', from: 'dyttm3u8', n: 48 }
+  ];
+  const FRESH_SHOW = 24;
+
+  function epName(i) { return '第' + String(i).padStart(2, '0') + '集'; }
+
+  function buildEps(box, count, shown, current) {
+    box.innerHTML = '';
+    for (let i = 1; i <= Math.min(count, shown); i++) {
+      const a = document.createElement('a');
+      a.className = 'ep' + (i === current ? ' on' : '');
+      a.href = 'javascript:void(0)';
+      a.textContent = epName(i);
+      a.onclick = () => { [...box.children].forEach(c => c.classList.remove('on')); a.classList.add('on'); };
+      box.appendChild(a);
+    }
+  }
+
+  // A
+  (function () {
+    const demo = document.querySelectorAll('.demo')[0];
+    const lines = demo.querySelector('[data-lines]');
+    const eps = demo.querySelector('[data-eps]');
+    const more = demo.querySelector('[data-more]');
+    let cur = 0, open = false;
+    LINES.forEach((l, i) => {
+      const b = document.createElement('button');
+      b.className = 'line-tab' + (i === 0 ? ' on' : '');
+      b.textContent = l.name;
+      b.onclick = () => {
+        cur = i;
+        [...lines.children].forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+        open = false;
+        apply();
+      };
+      lines.appendChild(b);
+    });
+    function apply() {
+      const l = LINES[cur];
+      buildEps(eps, l.n, open ? l.n : FRESH_SHOW, 1);
+      eps.classList.toggle('open', open);
+      more.style.display = open || l.n <= FRESH_SHOW ? 'none' : 'inline-block';
+      more.textContent = '展开全部 ' + l.n + ' 集';
+    }
+    more.onclick = () => { open = true; apply(); };
+    apply();
+  })();
+
+  // B & C 共用下拉式
+  document.querySelectorAll('[data-line-select]').forEach(sel => {
+    LINES.forEach((l, i) => {
+      const o = document.createElement('option');
+      o.value = i;
+      o.textContent = l.name + '（' + l.n + ' 集）';
+      sel.appendChild(o);
+    });
+  });
+  document.querySelectorAll('.demo')[1].querySelector('[data-line-select]').onchange = e => {
+    const d = document.querySelectorAll('.demo')[1];
+    const l = LINES[e.target.value];
+    buildEps(d.querySelector('[data-eps]'), l.n, l.n, 1);
+    d.querySelector('[data-line-count]').textContent = '共 ' + l.n + ' 集';
+  };
+  document.querySelectorAll('.demo')[2].querySelector('[data-line-select]').onchange = e => {
+    const d = document.querySelectorAll('.demo')[2];
+    const l = LINES[e.target.value];
+    buildEps(d.querySelector('[data-eps]'), l.n, l.n, 1);
+  };
+  buildEps(document.querySelectorAll('.demo')[1].querySelector('[data-eps]'), 60, 60, 1);
+  buildEps(document.querySelectorAll('.demo')[2].querySelector('[data-eps]'), 60, 60, 1);
+
+  // D
+  (function () {
+    const acc = document.querySelector('[data-acc]');
+    LINES.forEach((l, i) => {
+      const item = document.createElement('div');
+      item.className = 'd-item' + (i === 0 ? ' open' : '');
+      item.innerHTML =
+        '<div class="d-item-head"><span class="name">' + l.name + '</span>' +
+        '<span class="count">共 ' + l.n + ' 集</span>' +
+        (i === 0 ? '<span class="tag-note">推荐</span>' : '') +
+        '<span class="arrow">›</span></div>' +
+        '<div class="d-item-body"><div class="eps"></div></div>';
+      item.querySelector('.d-item-head').onclick = () => item.classList.toggle('open');
+      acc.appendChild(item);
+      buildEps(item.querySelector('.eps'), l.n, l.n, 1);
+    });
+  })();
+
+  // 简介展开
+  document.querySelectorAll('[data-intro]').forEach(p => {
+    p.querySelector('.more').onclick = () => p.classList.toggle('open');
+  });
+</script>
+</body>
+</html>
