@@ -84,14 +84,6 @@ export const SETTINGS: SettingField[] = [
     default: '',
   },
   {
-    key: 'site_icp',
-    section: '站点信息',
-    group: 'site',
-    label: '备案号',
-    type: 'text',
-    default: '',
-  },
-  {
     key: 'site_disclaimer',
     section: '页脚',
     group: 'site',

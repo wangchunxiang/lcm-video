@@ -44,7 +44,6 @@ const TABS: Tab[] = [
         rows: [
           { key: 'site_name', label: '站点名称', kind: 'text' },
           { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
-          { key: 'site_icp', label: '备案号', kind: 'text', hint: '显示在前台页脚' },
         ],
       },
       {
@@ -87,7 +86,6 @@ const activeTab = ref(TABS[0]?.name ?? 'main');
 const form = reactive<Record<string, string>>({
   site_name: '',
   site_subtitle: '',
-  site_icp: '',
   site_theme: 'default',
   site_logo: '',
   site_favicon: '',

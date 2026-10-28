@@ -206,7 +206,6 @@ INSERT IGNORE INTO `lcm_setting` (`name`,`value`) VALUES
   ('site_subtitle', '高清影视在线观看'),
   ('site_logo', ''),
   ('site_favicon', ''),
-  ('site_icp', ''),
   ('site_disclaimer', '本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。'),
   ('site_theme', 'default'),
   ('site_stats_code', ''),

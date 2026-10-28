@@ -12,8 +12,6 @@ export interface SiteConfig {
   subtitle: string;
   logo: string;
   favicon: string;
-  icp: string;
-  keywords: string;
   description: string;
   disclaimer: string;
   statsCode: string;
@@ -58,8 +56,6 @@ export async function loadSiteConfig(db: Db): Promise<SiteConfig> {
     subtitle: settings['site_subtitle'] || '',
     logo: settings['site_logo'] || '',
     favicon: settings['site_favicon'] || '',
-    icp: settings['site_icp'] || '',
-    keywords: '',
     description: settings['site_subtitle'] || '',
     disclaimer: settings['site_disclaimer'] || '',
     statsCode: settings['site_stats_code'] || '',
