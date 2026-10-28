@@ -79,27 +79,19 @@ function statusOf(row: { status: number }): { text: string; type: TagProps['type
 
 const nowTick = ref(Date.now());
 
+/** 固定「X 时 X 分 X 秒」格式，避免执行中文字宽度变化导致页面抖动 */
 function elapsedText(startText: string, endText: string | null): string {
   const start = new Date(startText.replace(' ', 'T')).getTime();
   const end = endText ? new Date(endText.replace(' ', 'T')).getTime() : nowTick.value;
   if (!Number.isFinite(start) || !Number.isFinite(end)) return '—';
   const seconds = Math.max(0, Math.round((end - start) / 1000));
-  if (seconds < 60) return `${seconds} 秒`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} 分 ${seconds % 60} 秒`;
-  return `${Math.floor(minutes / 60)} 时 ${minutes % 60} 分`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${hours} 时 ${minutes} 分 ${seconds % 60} 秒`;
 }
 
 function durationText(row: LogRow): string {
-  if (!row.finishedAt) return '—';
-  const start = new Date(row.startedAt.replace(' ', 'T')).getTime();
-  const end = new Date(row.finishedAt.replace(' ', 'T')).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return '—';
-  const seconds = Math.max(0, Math.round((end - start) / 1000));
-  if (seconds < 60) return `${seconds} 秒`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} 分 ${seconds % 60} 秒`;
-  return `${Math.floor(minutes / 60)} 时 ${minutes % 60} 分`;
+  return elapsedText(row.startedAt, row.finishedAt);
 }
 
 async function load(silent = false) {
@@ -160,13 +152,20 @@ function reset() {
 }
 
 function liveDuration(row: LogRow): string {
-  return row.finishedAt ? durationText(row) : elapsedText(row.startedAt, null);
+  return elapsedText(row.startedAt, row.finishedAt);
 }
 
 const progressPercent = computed(() => {
   const log = currentLog.value;
-  if (!log || log.totalPages <= 0) return 0;
+  if (!log) return 0;
+  if (log.totalPages <= 0) return log.status === 0 ? 0 : 100;
   return Math.min(100, Math.round((detailTotal.value / log.totalPages) * 100));
+});
+
+/** 只有执行中且总页数未知时才走不确定态，已结束的一律显示实际百分比 */
+const progressIndeterminate = computed(() => {
+  const log = currentLog.value;
+  return Boolean(log && log.status === 0 && log.totalPages <= 0);
 });
 
 function rowIndex(index: number): number {
@@ -302,7 +301,7 @@ onBeforeUnmount(() => {
             <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
           </el-table-column>
           <el-table-column prop="startedAt" label="开始时间" width="165" align="center" />
-          <el-table-column label="耗时" width="100" align="center">
+          <el-table-column label="耗时" width="130" align="center">
             <template #default="{ row }">{{ liveDuration(row) }}</template>
           </el-table-column>
           <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
@@ -330,14 +329,14 @@ onBeforeUnmount(() => {
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
         <span>{{ currentLog.startedAt }} 开始，耗时 {{ liveDuration(currentLog) }}</span>
-        <div v-if="currentLog.status === 0" class="progress">
+        <div class="progress">
           <span class="progress-text">
             进度 {{ detailTotal }}<template v-if="currentLog.totalPages > 0"> / {{ currentLog.totalPages }}</template> 页
           </span>
           <el-progress
             class="progress-bar"
             :percentage="progressPercent"
-            :indeterminate="currentLog.totalPages === 0"
+            :indeterminate="progressIndeterminate"
             :stroke-width="8"
           />
         </div>
