@@ -200,17 +200,13 @@ onMounted(() => {
   max-width: 760px;
 }
 .section-gap {
-  height: 12px;
+  height: 20px;
 }
 .row {
   display: flex;
   align-items: center;
   gap: 16px;
-  min-height: 44px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-.row:last-child {
-  border-bottom: none;
+  min-height: 40px;
 }
 .row-main {
   flex: none;
