@@ -55,11 +55,6 @@ const panelItems = computed(() => [
   '信息',
   '版本',
 ]);
-const behaviorTags = computed(() => [
-  { label: '自动播放', active: on('player_autoplay') },
-  { label: '自动连播', active: on('player_autonext') },
-  { label: '进度记忆', active: on('player_resume') },
-]);
 
 async function load() {
   loading.value = true;
@@ -124,17 +119,6 @@ onMounted(() => {
 
           </div>
 
-          <div class="behaviors">
-            <el-tag
-              v-for="tag in behaviorTags"
-              :key="tag.label"
-              size="small"
-              :type="tag.active ? 'primary' : 'info'"
-              :effect="tag.active ? 'light' : 'plain'"
-            >
-              {{ tag.label }}
-            </el-tag>
-          </div>
         </div>
 
         <div class="grid">
@@ -328,11 +312,5 @@ onMounted(() => {
   font-size: 10px;
   line-height: 1.3;
   text-align: center;
-}
-.behaviors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
 }
 </style>
