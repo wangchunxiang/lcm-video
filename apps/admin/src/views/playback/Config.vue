@@ -97,7 +97,8 @@ onMounted(() => {
   <div v-loading="loading" class="page">
     <el-card shadow="never" class="group-card">
       <div class="layout">
-        <div class="stage-col">
+        <div class="left">
+          <div class="stage-col">
           <div class="stage">
             <div class="poster">
               <el-icon :size="52"><VideoPlay /></el-icon>
@@ -159,6 +160,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
+        </div>
       </div>
     </el-card>
   </div>
@@ -177,9 +179,13 @@ onMounted(() => {
   box-sizing: border-box;
 }
 .layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 32px;
+  height: 100%;
+  width: 50%;
+}
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   height: 100%;
 }
 .stage-col {
