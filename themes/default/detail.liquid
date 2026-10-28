@@ -55,9 +55,6 @@
     {% if lines.size > 0 %}
     <div class="play-actions">
       <a class="btn-primary" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
-      {% if episodes.size > 0 %}
-      <span class="tip">{{ current_line.name }} · 共 {{ current_line.episode_count }} 集</span>
-      {% endif %}
     </div>
     {% endif %}
   </div>
