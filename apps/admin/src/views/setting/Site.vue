@@ -15,9 +15,18 @@ interface ThemeItem {
   active: boolean;
 }
 
+interface SectionRow {
+  key: string;
+  label: string;
+  hint?: string;
+  kind: 'text' | 'image' | 'select' | 'textarea';
+  /** 同一行右侧再放一个短字段 */
+  secondary?: { key: string; label: string };
+}
+
 interface Section {
   title: string;
-  rows: { key: string; label: string; hint?: string; kind: 'text' | 'image' | 'select' | 'textarea' }[];
+  rows: SectionRow[];
 }
 
 /** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
@@ -25,8 +34,7 @@ const SECTIONS: Section[] = [
   {
     title: '站点信息',
     rows: [
-      { key: 'site_name', label: '站点名称', kind: 'text' },
-      { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
+      { key: 'site_name', label: '站点名称', kind: 'text', secondary: { key: 'site_subtitle', label: '副标题' } },
       { key: 'site_icp', label: '备案号', kind: 'text' },
     ],
   },
@@ -57,7 +65,9 @@ const SECTIONS: Section[] = [
   },
 ];
 
-const KEYS = SECTIONS.flatMap((section) => section.rows.map((row) => row.key));
+const KEYS = SECTIONS.flatMap((section) =>
+  section.rows.flatMap((row) => (row.secondary ? [row.key, row.secondary.key] : [row.key])),
+);
 
 const form = reactive<Record<string, string>>({
   site_name: '',
@@ -130,9 +140,14 @@ onMounted(() => {
               </el-tooltip>
             </div>
 
-            <div class="row-ctrl" :class="{ full: row.kind === 'textarea' }">
+            <div class="row-ctrl" :class="{ full: row.kind === 'textarea', pair: row.secondary }">
+              <template v-if="row.secondary">
+                <el-input v-model="form[row.key]" style="width: 180px" />
+                <span class="pair-label">{{ row.secondary.label }}</span>
+                <el-input v-model="form[row.secondary.key]" style="width: 180px" />
+              </template>
               <el-input
-                v-if="row.kind === 'textarea'"
+                v-else-if="row.kind === 'textarea'"
                 v-model="form[row.key]"
                 type="textarea"
                 :rows="3"
@@ -147,6 +162,7 @@ onMounted(() => {
                 />
               </el-select>
               <el-input v-else v-model="form[row.key]" style="width: 160px" />
+
             </div>
           </div>
         </template>
@@ -213,6 +229,14 @@ onMounted(() => {
   flex: none;
   display: flex;
   align-items: center;
+}
+.row-ctrl.pair {
+  gap: 8px;
+}
+.pair-label {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  white-space: nowrap;
 }
 .row-ctrl.full {
   margin-left: 0;
