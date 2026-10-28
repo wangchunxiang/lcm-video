@@ -121,27 +121,25 @@ onMounted(() => {
 
         </div>
 
-        <div class="grid">
+        <div class="list">
           <div
             v-for="row in ROWS"
             :key="row.key"
-            class="field"
+            class="row"
             :class="{ disabled: PANEL_KEYS.includes(row.key) && !hasPanel }"
           >
-            <label class="field-label">{{ row.label }}</label>
-            <div class="field-ctrl">
-              <el-switch
-                v-model="form[row.key]"
-                active-value="1"
-                inactive-value="0"
-                :loading="savingKey === row.key"
-                :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
-                @change="saveKey(row.key)"
-              />
-              <div class="field-hint">
-                {{ PANEL_KEYS.includes(row.key) && !hasPanel ? '需先开启「设置面板」' : row.hint }}
-              </div>
+            <div class="row-name">{{ row.label }}</div>
+            <div class="row-hint">
+              {{ PANEL_KEYS.includes(row.key) && !hasPanel ? '需先开启「设置面板」' : row.hint }}
             </div>
+            <el-switch
+              v-model="form[row.key]"
+              active-value="1"
+              inactive-value="0"
+              :loading="savingKey === row.key"
+              :disabled="PANEL_KEYS.includes(row.key) && !hasPanel"
+              @change="saveKey(row.key)"
+            />
           </div>
         </div>
         </div>
@@ -178,37 +176,30 @@ onMounted(() => {
   gap: 10px;
   min-width: 0;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 18px;
-  align-content: start;
+.list {
+  border-top: 1px solid var(--el-border-color-lighter);
 }
-.field {
+.row {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 4px 0;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
-.field.disabled .field-label {
+.row.disabled .row-name,
+.row.disabled .row-hint {
   color: var(--el-text-color-placeholder);
 }
-.field-label {
+.row-name {
   flex: none;
-  width: 74px;
-  text-align: right;
-  line-height: 28px;
+  width: 88px;
   font-size: 13px;
   color: var(--el-text-color-regular);
 }
-.field-ctrl {
+.row-hint {
   flex: 1;
   min-width: 0;
-}
-.field-hint {
-  margin-top: 1px;
   font-size: 12px;
-  line-height: 16px;
   color: var(--el-text-color-secondary);
 }
 
