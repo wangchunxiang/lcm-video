@@ -341,11 +341,22 @@ export function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/**
+ * 取出可读的错误说明。
+ * drizzle 抛的 DrizzleQueryError 外层 message 是「Failed query: <SQL> params: ...」，
+ * 真实原因在 cause 链上的 mysql2 错误里（sqlMessage / code），优先取它，
+ * 取不到才退回外层 message 的第一行，并限制长度避免明细被超长 SQL 撑爆。
+ */
 function describeError(error: unknown): string {
-  if (!(error instanceof Error)) return String(error);
-  const extra = error as Error & { sqlMessage?: string; code?: string };
-  const parts = [error.message];
-  if (extra.sqlMessage && !error.message.includes(extra.sqlMessage)) parts.push(extra.sqlMessage);
-  if (extra.code) parts.push(`(${extra.code})`);
-  return parts.join(' ');
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current instanceof Error; depth += 1) {
+    const extra = current as Error & { sqlMessage?: string; code?: string; cause?: unknown };
+    if (extra.sqlMessage) {
+      return extra.code ? `${extra.sqlMessage} (${extra.code})` : extra.sqlMessage;
+    }
+    current = extra.cause;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return message.split('
+')[0].slice(0, 300);
 }

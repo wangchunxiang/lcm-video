@@ -42,7 +42,7 @@ export const vod = mysqlTable(
     intro: varchar('intro', { length: 1000 }).notNull().default(''),
     content: text('content'),
     remarks: varchar('remarks', { length: 255 }).notNull().default(''),
-    releaseDate: varchar('release_date', { length: 50 }).notNull().default(''),
+    releaseDate: varchar('release_date', { length: 255 }).notNull().default(''),
     episodeCount: int('episode_count', { unsigned: true }).notNull().default(0),
     area: varchar('area', { length: 100 }).notNull().default(''),
     lang: varchar('lang', { length: 100 }).notNull().default(''),

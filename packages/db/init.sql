@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   `intro`         VARCHAR(1000)   NOT NULL DEFAULT ''       COMMENT '简介，列表用',
   `content`       TEXT                                    COMMENT '详细介绍',
   `remarks`       VARCHAR(255)   NOT NULL DEFAULT ''       COMMENT '备注，如 更新至20集',
-  `release_date`  VARCHAR(50)    NOT NULL DEFAULT ''       COMMENT '上映日期，仅展示',
+  `release_date`  VARCHAR(255)   NOT NULL DEFAULT ''       COMMENT '上映日期，仅展示',
   `episode_count` INT UNSIGNED   NOT NULL DEFAULT 0        COMMENT '总集数，源站声明',
   `area`          VARCHAR(100)    NOT NULL DEFAULT ''       COMMENT '地区',
   `lang`          VARCHAR(100)    NOT NULL DEFAULT ''       COMMENT '语言',
