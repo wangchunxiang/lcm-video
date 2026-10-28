@@ -8,7 +8,7 @@
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
   --radius: 8px;
-  --container: 1280px;
+  --container: 1480px;
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
@@ -33,7 +33,7 @@ img { border: 0; vertical-align: middle; }
   width: 100%;
   max-width: var(--container);
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
 /* ---------- header ---------- */
