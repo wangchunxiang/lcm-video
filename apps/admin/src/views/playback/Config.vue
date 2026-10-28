@@ -112,6 +112,7 @@ function observeConfirmed() {
   confirmedHeight.value = Math.max(132, el.clientHeight);
 }
 const activeResult = ref<AdFeature | null>(null);
+const activeCandidate = ref<Candidate | null>(null);
 
 const adsSourceName = computed(
   () => sources.value.find((item) => item.id === adsSourceId.value)?.name ?? '',
@@ -180,6 +181,7 @@ async function loadSample(index: number) {
 
 function openFeature(row: AdFeature | Candidate) {
   activeResult.value = row as AdFeature;
+  activeCandidate.value = 'key' in row ? (row as Candidate) : null;
   featureVisible.value = true;
   sampleIndex.value = 0;
   destroyPlayer();
@@ -190,6 +192,19 @@ function openFeature(row: AdFeature | Candidate) {
 
 function closeFeature() {
   destroyPlayer();
+  activeCandidate.value = null;
+}
+
+/** 查看弹窗里直接判定：确认后落库，否则只从候选里移除 */
+async function judge(isAd: boolean) {
+  const candidate = activeCandidate.value;
+  featureVisible.value = false;
+  if (isAd) {
+    if (candidate) await confirmAd(candidate);
+    return;
+  }
+  if (candidate) dismissAd(candidate);
+  else if (activeResult.value) await removeFeature(activeResult.value);
 }
 
 onUnmounted(destroyPlayer);
@@ -563,16 +578,29 @@ onMounted(() => {
         <div v-if="!playerUrl" class="player-empty">选择作品后加载，自动跳到广告位置</div>
       </div>
 
-      <div v-if="activeResult && activeResult.sample && activeResult.sample.length" class="sample-bar">
-        <el-select v-model="sampleIndex" class="sample-select" placeholder="选择作品">
+      <div v-if="activeResult" class="sample-bar">
+        <el-select
+          v-model="sampleIndex"
+          class="sample-select"
+          placeholder="选择作品"
+          :disabled="!activeResult.sample || !activeResult.sample.length"
+        >
           <el-option
-            v-for="(item, index) in activeResult.sample"
+            v-for="(item, index) in activeResult.sample ?? []"
             :key="index"
             :label="`${item.vod_name}（${(item.start_sec ?? 0).toFixed(1)} 秒起）`"
             :value="index"
           />
         </el-select>
-        <el-button type="primary" @click="loadSample(sampleIndex)">加载并跳到广告</el-button>
+        <el-button
+          type="primary"
+          :disabled="!activeResult.sample || !activeResult.sample.length"
+          @click="loadSample(sampleIndex)"
+        >
+          加载并跳到广告
+        </el-button>
+        <el-button type="success" :disabled="!activeCandidate" @click="judge(true)">是广告</el-button>
+        <el-button type="danger" @click="judge(false)">不是广告</el-button>
       </div>
 
       <el-descriptions v-if="activeResult" :column="2" border size="small">
