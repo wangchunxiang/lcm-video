@@ -377,6 +377,21 @@ img { border: 0; vertical-align: middle; }
   line-height: 20px;
 }
 
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.meta-row i {
+  font-style: normal;
+  color: var(--text-3);
+  margin-right: 8px;
+}
+
 .extra-line {
   display: flex;
   flex-wrap: wrap;
