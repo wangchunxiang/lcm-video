@@ -90,6 +90,10 @@ function reset() {
   search();
 }
 
+function rowIndex(index: number): number {
+  return (page.value - 1) * pageSize.value + index + 1;
+}
+
 function onPageChange(next: number) {
   page.value = next;
   void load();
@@ -266,7 +270,7 @@ onBeforeUnmount(() => {
       @selection-change="onSelectionChange"
     >
       <el-table-column type="selection" width="44" fixed="left" />
-      <el-table-column prop="id" label="#" width="80" align="center" />
+      <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
       <el-table-column prop="name" label="影片" min-width="220" show-overflow-tooltip />
       <el-table-column label="分类" width="150" show-overflow-tooltip>
         <template #default="{ row }">
