@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { SettingField } from '@lcm/shared';
 import { api } from '../../api/client.ts';
@@ -54,31 +54,115 @@ interface SourceItem {
 const loading = ref(false);
 const savingKey = ref('');
 
-/** 去广告：按采集源维护，这里只放界面状态，特征提取接口待接入 */
+/** 去广告：选源 → 抽片 → 分析 → 人工确认，后端接口待接入，这里先跑演示流程 */
 const sources = ref<SourceItem[]>([]);
-const adsState = reactive<Record<number, { status: 'idle' | 'done'; count: number }>>({});
+const adsSourceId = ref<number | null>(null);
+
+interface SampleVod {
+  id: number;
+  name: string;
+  episode: string;
+}
+
+interface AdResult {
+  key: string;
+  kind: '中插' | '片尾' | '片头';
+  total: string;
+  pattern: string;
+  vods: number;
+  confirmed: boolean | null;
+}
+
+const sampleVods = ref<SampleVod[]>([]);
+const logs = ref<string[]>([]);
+const results = ref<AdResult[]>([]);
+const analyzing = ref(false);
+const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
+const activeResult = ref<AdResult | null>(null);
 
-const featureRows = [
-  { pattern: '4.0 / 5.0 / 4.0 / 4.24 / 2.76', total: '20.0 秒', kind: '中插', vods: 3 },
-  { pattern: '4.0 / 5.48 / 2.68', total: '12.2 秒', kind: '片尾', vods: 5 },
-];
-
-const analyzedCount = computed(
-  () => sources.value.filter((item) => adsState[item.id]?.status === 'done').length,
+const adsSourceName = computed(
+  () => sources.value.find((item) => item.id === adsSourceId.value)?.name ?? '',
 );
 
-function adsOf(id: number) {
-  return adsState[id] ?? { status: 'idle' as const, count: 0 };
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function pushLog(text: string) {
+  const now = new Date();
+  const clock = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':');
+  logs.value.push(`[${clock}] ${text}`);
+  void nextTick(() => {
+    if (logRef.value) logRef.value.scrollTop = logRef.value.scrollHeight;
+  });
 }
 
-function adsTagType(id: number) {
-  return adsOf(id).status === 'done' ? 'success' : 'info';
+function openFeature(row: AdResult) {
+  activeResult.value = row;
+  featureVisible.value = true;
 }
 
-function adsText(id: number) {
-  const state = adsOf(id);
-  return state.status === 'done' ? `${state.count} 条特征` : '未分析';
+function confirmAd(row: AdResult, isAd: boolean) {
+  row.confirmed = isAd;
+  ElMessage.success(isAd ? '已标记为广告，播放时将跳过' : '已排除，播放时保留');
+}
+
+async function startAnalyze() {
+  if (!adsSourceId.value) {
+    ElMessage.warning('请先选择采集源');
+    return;
+  }
+  analyzing.value = true;
+  sampleVods.value = [];
+  results.value = [];
+  logs.value = [];
+
+  pushLog(`选择采集源：${adsSourceName.value}`);
+  await sleep(250);
+  pushLog('随机抽取 5 部作品用于提取特征');
+  await sleep(300);
+
+  const picked: SampleVod[] = [
+    { id: 653, name: '大哥请赐教', episode: '第02集' },
+    { id: 502, name: '流浪地球3', episode: '第01集' },
+    { id: 61792, name: '凡人修仙传', episode: '第148集' },
+    { id: 62233, name: '遮天', episode: '第96集' },
+    { id: 494, name: '狂飙', episode: '第01集' },
+  ];
+  for (const vod of picked) {
+    sampleVods.value.push(vod);
+    await sleep(160);
+    pushLog(`${vod.name} ${vod.episode}：292 段 / 59 组`);
+  }
+
+  pushLog('组对齐滑窗：单集候选 486 个');
+  await sleep(300);
+  pushLog('跨作品匹配：同一时长序列在 ≥2 部作品出现');
+  await sleep(300);
+  pushLog('命中 2 条候选，写入特征表');
+  await sleep(200);
+
+  results.value = [
+    {
+      key: 'mid',
+      kind: '中插',
+      total: '20.0 秒',
+      pattern: '4.0 / 5.0 / 4.0 / 4.24 / 2.76',
+      vods: 3,
+      confirmed: null,
+    },
+    {
+      key: 'tail',
+      kind: '片尾',
+      total: '12.2 秒',
+      pattern: '4.0 / 5.48 / 2.68',
+      vods: 5,
+      confirmed: null,
+    },
+  ];
+  pushLog('分析完成，请确认哪些是广告');
+  analyzing.value = false;
 }
 
 async function loadSources() {
@@ -90,14 +174,6 @@ async function loadSources() {
   }
 }
 
-function analyze(source: SourceItem) {
-  adsState[source.id] = { status: 'done', count: source.id % 3 === 0 ? 0 : 2 };
-  ElMessage.warning('特征提取接口尚未接入，这里先展示界面');
-}
-
-function openFeatures() {
-  featureVisible.value = true;
-}
 
 const on = (key: string) => form[key] === '1';
 const hasPanel = computed(() => on('player_setting'));
@@ -199,35 +275,83 @@ onMounted(() => {
         <aside class="right">
           <div class="ads-head">
             <div class="ads-title">去广告</div>
+            <div class="ads-toolbar">
+              <el-select
+                v-model="adsSourceId"
+                placeholder="选择采集源"
+                size="default"
+                class="ads-select"
+                :disabled="analyzing"
+              >
+                <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+              <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
+            </div>
             <div class="ads-desc">
-              随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判定为广告；播放时从播放列表里跳过。
+              随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
             </div>
           </div>
 
-          <div class="ads-list">
-            <div v-for="source in sources" :key="source.id" class="ads-row">
-              <div class="ads-name">{{ source.name }}</div>
-              <el-tag size="small" :type="adsTagType(source.id)">{{ adsText(source.id) }}</el-tag>
-              <el-button link type="primary" size="small" @click="analyze(source)">分析</el-button>
+          <div class="ads-block">
+            <div class="ads-sub">
+              抽取作品
+              <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
             </div>
-            <el-empty v-if="!sources.length" description="还没有采集源" :image-size="56" />
+            <div v-if="sampleVods.length" class="vod-list">
+              <div v-for="vod in sampleVods" :key="vod.id" class="vod-row">
+                <span class="vod-name">{{ vod.name }}</span>
+                <span class="vod-ep">{{ vod.episode }}</span>
+              </div>
+            </div>
+            <div v-else class="ads-empty">分析后显示抽取的作品</div>
           </div>
 
-          <div class="ads-foot">
-            <span>已分析 {{ analyzedCount }} / {{ sources.length }} 个源</span>
-            <el-button link type="primary" size="small" @click="openFeatures">查看特征</el-button>
+          <div class="ads-block grow">
+            <div class="ads-sub">分析日志</div>
+            <div ref="logRef" class="log-box">
+              <div v-for="(line, i) in logs" :key="i" class="log-line">{{ line }}</div>
+              <div v-if="!logs.length" class="ads-empty">暂无日志</div>
+            </div>
+          </div>
+
+          <div class="ads-block">
+            <div class="ads-sub">
+              候选广告
+              <span v-if="results.length" class="ads-count">{{ results.length }}</span>
+            </div>
+            <div v-for="row in results" :key="row.key" class="result-row">
+              <div class="result-top">
+                <el-tag size="small" :type="row.kind === '片尾' ? 'warning' : 'primary'">{{ row.kind }}</el-tag>
+                <span class="result-total">{{ row.total }}</span>
+                <span class="result-vods">命中 {{ row.vods }} 部</span>
+                <el-link type="primary" :underline="false" @click="openFeature(row)">查看</el-link>
+                <span class="result-actions">
+                  <el-button
+                    link
+                    :type="row.confirmed === true ? 'success' : 'info'"
+                    @click="confirmAd(row, true)"
+                  >
+                    是广告
+                  </el-button>
+                  <el-button link type="danger" @click="confirmAd(row, false)">否</el-button>
+                </span>
+              </div>
+              <div class="result-pattern">{{ row.pattern }}</div>
+            </div>
+            <div v-if="!results.length" class="ads-empty">分析后显示候选广告</div>
           </div>
         </aside>
       </div>
     </el-card>
 
-    <el-dialog v-model="featureVisible" title="广告特征" width="720px">
-      <el-table :data="featureRows" border size="small">
-        <el-table-column prop="pattern" label="时长序列（秒）" min-width="220" />
-        <el-table-column prop="total" label="总长" width="100" align="center" />
-        <el-table-column prop="kind" label="类型" width="90" align="center" />
-        <el-table-column prop="vods" label="命中作品" width="100" align="center" />
-      </el-table>
+    <el-dialog v-model="featureVisible" title="广告特征" width="640px">
+      <el-descriptions v-if="activeResult" :column="2" border size="small">
+        <el-descriptions-item label="类型">{{ activeResult.kind }}</el-descriptions-item>
+        <el-descriptions-item label="总长">{{ activeResult.total }}</el-descriptions-item>
+        <el-descriptions-item label="命中作品">{{ activeResult.vods }} 部</el-descriptions-item>
+        <el-descriptions-item label="判定">{{ activeResult.confirmed === null ? '待确认' : activeResult.confirmed ? '已确认是广告' : '已排除' }}</el-descriptions-item>
+        <el-descriptions-item label="时长序列" :span="2">{{ activeResult.pattern }}</el-descriptions-item>
+      </el-descriptions>
       <div class="feature-hint">
         特征按采集源分别保存；同一片段在 ≥2 部不同作品出现才会被采纳。
       </div>
@@ -270,42 +394,125 @@ onMounted(() => {
   font-weight: 600;
   color: var(--el-text-color-primary);
 }
+.ads-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ads-select {
+  flex: 1;
+}
 .ads-desc {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 12px;
   line-height: 18px;
   color: var(--el-text-color-secondary);
 }
-.ads-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 4px 0;
-}
-.ads-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.ads-block {
   padding: 8px 0;
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
-.ads-name {
+.ads-block.grow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ads-block:last-child {
+  border-bottom: none;
+}
+.ads-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+}
+.ads-count {
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+}
+.ads-empty {
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+}
+.vod-list {
+  max-height: 96px;
+  overflow-y: auto;
+}
+.vod-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+}
+.vod-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
   color: var(--el-text-color-regular);
 }
-.ads-foot {
+.vod-ep {
+  flex: none;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.log-box {
+  flex: 1;
+  min-height: 72px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  font-family: var(--el-font-family-mono, monospace);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--el-text-color-regular);
+}
+.log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.result-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--el-border-color-lighter);
+}
+.result-row:last-child {
+  border-bottom: none;
+}
+.result-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-top: 10px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  gap: 8px;
+  font-size: 12px;
+}
+.result-total {
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
+}
+.result-vods {
+  flex: 1;
+  color: var(--el-text-color-secondary);
+}
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.result-pattern {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .feature-hint {
   margin-top: 10px;
