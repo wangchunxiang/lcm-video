@@ -12,7 +12,6 @@ import Logs from '../views/collect/Logs.vue';
 import Mappings from '../views/collect/Mappings.vue';
 import Sources from '../views/collect/Sources.vue';
 import Tasks from '../views/collect/Tasks.vue';
-import BaseSetting from '../views/setting/Base.vue';
 import SiteSetting from '../views/setting/Site.vue';
 import AccountSetting from '../views/setting/Account.vue';
 import DataTools from '../views/tools/Data.vue';
@@ -26,7 +25,6 @@ const implemented: Record<string, Component> = {
   '/collect/logs': Logs,
   '/content/vods': Vods,
   '/content/categories': Categories,
-  '/setting/base': BaseSetting,
   '/setting/site': SiteSetting,
   '/setting/account': AccountSetting,
   '/tools/data': DataTools,
@@ -60,7 +58,7 @@ const routes = [
     component: AdminLayout,
     children: [
       { path: '', redirect: '/dashboard' },
-      { path: 'setting', redirect: '/setting/base' },
+      { path: 'setting', redirect: '/setting/site' },
       { path: 'dashboard', component: Dashboard, meta: { title: '数据概览' } },
       ...implementedRoutes,
       ...placeholderRoutes,

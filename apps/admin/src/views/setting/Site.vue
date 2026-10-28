@@ -47,6 +47,14 @@ const SECTIONS: Section[] = [
       { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部。' },
     ],
   },
+  {
+    title: '列表与上传',
+    rows: [
+      { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '前台首页与分类页每页显示的影片数量，建议保持 24（三行八列）。' },
+      { key: 'collect_log_keep_days', label: '采集记录保留天数', kind: 'text', hint: '调度器每天清理一次超出天数的采集记录。' },
+      { key: 'upload_max_mb', label: '单文件上传上限（MB）', kind: 'text' },
+    ],
+  },
 ];
 
 const KEYS = SECTIONS.flatMap((section) => section.rows.map((row) => row.key));
@@ -62,6 +70,9 @@ const form = reactive<Record<string, string>>({
   site_description: '',
   site_disclaimer: '',
   site_stats_code: '',
+  list_page_size: '24',
+  collect_log_keep_days: '30',
+  upload_max_mb: '2',
 });
 
 const themes = ref<ThemeItem[]>([]);

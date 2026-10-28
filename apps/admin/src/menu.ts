@@ -47,7 +47,6 @@ export const menus: MenuItem[] = [
     title: '系统管理',
     icon: 'Setting',
     children: [
-      { path: '/setting/base', title: '基础设置', icon: 'Operation' },
       { path: '/setting/site', title: '站点设置', icon: 'Monitor' },
       { path: '/setting/account', title: '账号设置', icon: 'User' },
     ],

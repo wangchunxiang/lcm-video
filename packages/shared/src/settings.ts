@@ -1,6 +1,6 @@
 export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select' | 'order';
 
-export type SettingGroup = 'base' | 'site' | 'playback' | 'ads' | 'account';
+export type SettingGroup = 'site' | 'playback' | 'ads' | 'account';
 
 export interface SettingField {
   /** 存储键，对应 lcm_setting.name */
@@ -18,7 +18,6 @@ export interface SettingField {
 }
 
 export const SETTING_GROUPS: { key: SettingGroup; label: string }[] = [
-  { key: 'base', label: '基础设置' },
   { key: 'site', label: '站点设置' },
   { key: 'playback', label: '播放设置' },
   { key: 'account', label: '账号设置' },
@@ -27,7 +26,8 @@ export const SETTING_GROUPS: { key: SettingGroup; label: string }[] = [
 export const SETTINGS: SettingField[] = [
   {
     key: 'list_page_size',
-    group: 'base',
+    section: '列表与上传',
+    group: 'site',
     label: '列表每页条数',
     type: 'number',
     default: '24',
@@ -35,7 +35,8 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'collect_log_keep_days',
-    group: 'base',
+    section: '列表与上传',
+    group: 'site',
     label: '采集记录保留天数',
     type: 'number',
     default: '30',
@@ -43,7 +44,8 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'upload_max_mb',
-    group: 'base',
+    section: '列表与上传',
+    group: 'site',
     label: '单文件上传上限（MB）',
     type: 'number',
     default: '2',
