@@ -81,6 +81,18 @@ const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
 const activeResult = ref<AdResult | null>(null);
 
+/** 表格高度按实测行高算，保证正好五行 */
+const vodTableRef = ref<{ $el?: HTMLElement } | null>(null);
+const vodTableHeight = ref(200);
+
+function sizeVodTable() {
+  const el = vodTableRef.value?.$el;
+  if (!el) return;
+  const head = el.querySelector<HTMLElement>('.el-table__header-wrapper')?.offsetHeight ?? 40;
+  const row = el.querySelector<HTMLElement>('.el-table__body tr')?.offsetHeight ?? 32;
+  vodTableHeight.value = head + row * 5;
+}
+
 const adsSourceName = computed(
   () => sources.value.find((item) => item.id === adsSourceId.value)?.name ?? '',
 );
@@ -129,6 +141,7 @@ function pickVods() {
   sampleVods.value = picked;
   results.value = [];
   logs.value = [];
+  void nextTick(sizeVodTable);
 }
 
 async function startAnalyze() {
@@ -231,6 +244,7 @@ async function saveKey(key: string) {
 onMounted(() => {
   void load();
   void loadSources();
+  void nextTick(sizeVodTable);
 });
 </script>
 
@@ -315,7 +329,14 @@ onMounted(() => {
             抽取作品
             <span v-if="sampleVods.length" class="ads-count">{{ sampleVods.length }}</span>
           </div>
-          <el-table :data="sampleVods" border size="small" height="196" class="vod-table">
+          <el-table
+            ref="vodTableRef"
+            :data="sampleVods"
+            border
+            size="small"
+            :height="vodTableHeight"
+            class="vod-table"
+          >
             <el-table-column prop="name" label="作品" min-width="140" show-overflow-tooltip />
             <el-table-column prop="episode" label="集数" width="88" align="center" />
             <template #empty>
