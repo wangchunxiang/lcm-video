@@ -93,6 +93,10 @@ const candidates = ref<Candidate[]>([]);
 const analyzing = ref(false);
 const logVisible = ref(false);
 const confirmedFeatures = computed(() => confirmed.value);
+const confirmedKeys = computed(() => new Set(confirmed.value.map((item) => item.durations)));
+function isSaved(row: Candidate): boolean {
+  return confirmedKeys.value.has(row.durations);
+}
 const candidateFeatures = computed(() => candidates.value);
 const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
@@ -522,10 +526,16 @@ onMounted(() => {
             <el-table-column label="命中" width="72" align="center">
               <template #default="{ row }">{{ row.hitVods }} 部</template>
             </el-table-column>
+            <el-table-column label="状态" width="88" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="isSaved(row)" size="small" type="success" effect="plain">已设置</el-tag>
+                <span v-else class="ads-none">—</span>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="150" align="center">
               <template #default="{ row }">
                 <el-button link type="primary" @click="openFeature(row)">查看</el-button>
-                <el-button link type="success" @click="confirmAd(row)">是广告</el-button>
+                <el-button link type="success" :disabled="isSaved(row)" @click="confirmAd(row)">是广告</el-button>
                 <el-button link type="danger" @click="dismissAd(row)">否</el-button>
               </template>
             </el-table-column>
@@ -699,6 +709,10 @@ onMounted(() => {
   font-weight: 400;
   color: var(--el-text-color-secondary);
 }
+.ads-none {
+  color: var(--el-text-color-placeholder);
+}
+
 .ads-empty {
   font-size: 12px;
   color: var(--el-text-color-placeholder);
