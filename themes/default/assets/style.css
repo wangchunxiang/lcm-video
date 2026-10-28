@@ -192,6 +192,8 @@ img { border: 0; vertical-align: middle; }
 .sub-links a { color: var(--text-2); font-size: 13px; }
 .sub-links a:hover { color: var(--primary); }
 .more { color: var(--text-3); font-size: 13px; }
+
+.today-count { margin-left: auto; color: var(--text-3); font-size: 13px; }
 .more:hover { color: var(--primary); }
 
 /* ---------- vod grid ---------- */

@@ -20,7 +20,7 @@ import {
 /** 首页最新更新的条数：一行 8 个，正好两行 */
 const HOME_VOD_COUNT = 16;
 /** 首页每个一级分类展示的条数：一行 8 个 */
-const HOME_CATEGORY_COUNT = 8;
+const HOME_CATEGORY_COUNT = 16;
 
 export interface SiteRouteOpts {
   db: Db;
@@ -148,6 +148,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       .orderBy(desc(vod.collectedAt), desc(vod.id))
       .limit(HOME_VOD_COUNT);
 
+    const todayRows = await db
+      .select({ total: sql<number>`count(*)` })
+      .from(vod)
+      .where(and(eq(vod.status, 1), sql`${vod.collectedAt} >= CURDATE()`));
+    const todayCount = Number(todayRows[0]?.total ?? 0);
+
     const nav = await loadNav(db);
     const homeCategories: Array<{ name: string; alias: string; vods: VodCard[] }> = [];
     for (const item of nav) {
@@ -174,7 +180,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         title: config.subtitle ? `${config.name} - ${config.subtitle}` : config.name,
         description: config.description,
       },
-      { vods: rows.map(toCard), home_categories: homeCategories },
+      { vods: rows.map(toCard), home_categories: homeCategories, today_count: todayCount },
     );
   });
 
