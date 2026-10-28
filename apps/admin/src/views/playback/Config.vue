@@ -45,8 +45,59 @@ const form = reactive<Record<string, string>>({
   player_setting: '1',
 });
 
+interface SourceItem {
+  id: number;
+  name: string;
+  isEnabled: number;
+}
+
 const loading = ref(false);
 const savingKey = ref('');
+
+/** 去广告：按采集源维护，这里只放界面状态，特征提取接口待接入 */
+const sources = ref<SourceItem[]>([]);
+const adsState = reactive<Record<number, { status: 'idle' | 'done'; count: number }>>({});
+const featureVisible = ref(false);
+
+const featureRows = [
+  { pattern: '4.0 / 5.0 / 4.0 / 4.24 / 2.76', total: '20.0 秒', kind: '中插', vods: 3 },
+  { pattern: '4.0 / 5.48 / 2.68', total: '12.2 秒', kind: '片尾', vods: 5 },
+];
+
+const analyzedCount = computed(
+  () => sources.value.filter((item) => adsState[item.id]?.status === 'done').length,
+);
+
+function adsOf(id: number) {
+  return adsState[id] ?? { status: 'idle' as const, count: 0 };
+}
+
+function adsTagType(id: number) {
+  return adsOf(id).status === 'done' ? 'success' : 'info';
+}
+
+function adsText(id: number) {
+  const state = adsOf(id);
+  return state.status === 'done' ? `${state.count} 条特征` : '未分析';
+}
+
+async function loadSources() {
+  try {
+    const data = await api.get<{ items: SourceItem[] }>('/sources', { page_size: 100 });
+    sources.value = data.items;
+  } catch {
+    sources.value = [];
+  }
+}
+
+function analyze(source: SourceItem) {
+  adsState[source.id] = { status: 'done', count: source.id % 3 === 0 ? 0 : 2 };
+  ElMessage.warning('特征提取接口尚未接入，这里先展示界面');
+}
+
+function openFeatures() {
+  featureVisible.value = true;
+}
 
 const on = (key: string) => form[key] === '1';
 const hasPanel = computed(() => on('player_setting'));
@@ -85,6 +136,7 @@ async function saveKey(key: string) {
 
 onMounted(() => {
   void load();
+  void loadSources();
 });
 </script>
 
@@ -143,8 +195,43 @@ onMounted(() => {
           </div>
         </div>
         </div>
+
+        <aside class="right">
+          <div class="ads-head">
+            <div class="ads-title">去广告</div>
+            <div class="ads-desc">
+              随机抽取该源 5 部作品解析播放列表，把跨作品重复的片段判定为广告；播放时从播放列表里跳过。
+            </div>
+          </div>
+
+          <div class="ads-list">
+            <div v-for="source in sources" :key="source.id" class="ads-row">
+              <div class="ads-name">{{ source.name }}</div>
+              <el-tag size="small" :type="adsTagType(source.id)">{{ adsText(source.id) }}</el-tag>
+              <el-button link type="primary" size="small" @click="analyze(source)">分析</el-button>
+            </div>
+            <el-empty v-if="!sources.length" description="还没有采集源" :image-size="56" />
+          </div>
+
+          <div class="ads-foot">
+            <span>已分析 {{ analyzedCount }} / {{ sources.length }} 个源</span>
+            <el-button link type="primary" size="small" @click="openFeatures">查看特征</el-button>
+          </div>
+        </aside>
       </div>
     </el-card>
+
+    <el-dialog v-model="featureVisible" title="广告特征" width="720px">
+      <el-table :data="featureRows" border size="small">
+        <el-table-column prop="pattern" label="时长序列（秒）" min-width="220" />
+        <el-table-column prop="total" label="总长" width="100" align="center" />
+        <el-table-column prop="kind" label="类型" width="90" align="center" />
+        <el-table-column prop="vods" label="命中作品" width="100" align="center" />
+      </el-table>
+      <div class="feature-hint">
+        特征按采集源分别保存；同一片段在 ≥2 部不同作品出现才会被采纳。
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -162,9 +249,71 @@ onMounted(() => {
 }
 .layout {
   height: 100%;
-  width: 50%;
+  width: 100%;
+  display: flex;
+  gap: 24px;
+}
+.right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: 24px;
+  border-left: 1px solid var(--el-border-color-lighter);
+}
+.ads-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.ads-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.ads-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--el-text-color-secondary);
+}
+.ads-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.ads-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.ads-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+.ads-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.feature-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 .left {
+  flex: 0 0 calc(50% - 12px);
   display: flex;
   flex-direction: column;
   gap: 16px;
