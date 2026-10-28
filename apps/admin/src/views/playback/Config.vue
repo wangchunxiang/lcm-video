@@ -207,14 +207,14 @@ onMounted(() => {
 }
 .layout {
   display: grid;
-  grid-template-columns: 460px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px 28px;
   align-items: start;
 }
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 32px;
+  gap: 2px 24px;
 }
 .field {
   display: flex;
@@ -227,7 +227,7 @@ onMounted(() => {
 }
 .field-label {
   flex: none;
-  width: 96px;
+  width: 88px;
   text-align: right;
   line-height: 32px;
   color: var(--el-text-color-regular);
