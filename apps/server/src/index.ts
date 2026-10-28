@@ -24,6 +24,7 @@ import { dashboardRoutes } from './routes/admin/dashboard.ts';
 import { toolRoutes } from './routes/admin/tools.ts';
 import { uploadRoutes } from './routes/admin/upload.ts';
 import { playRoutes, vodRoutes } from './routes/admin/vods.ts';
+import { adsRoutes } from './routes/admin/ads.ts';
 import { serializeDates } from './lib/serialize-dates.ts';
 import { themeAssetRoutes } from './routes/site/assets.ts';
 import { siteRoutes } from './routes/site/index.ts';
@@ -88,6 +89,7 @@ await app.register(
     await admin.register(uploadRoutes, { prefix: '/upload', db, env });
     await admin.register(sourceRoutes, { prefix: '/sources', db });
     await admin.register(sourceCategoryRoutes, { prefix: '/sources', db });
+    await admin.register(adsRoutes, { prefix: '/sources', db });
     await admin.register(taskRoutes, { prefix: '/tasks', db });
     await admin.register(logRoutes, { prefix: '/logs', db });
     await admin.register(lineRoutes, { prefix: '/lines', db });

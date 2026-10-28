@@ -1,0 +1,252 @@
+import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
+import type { Db } from '@lcm/db';
+import { adFeature, vod, vodPlay } from '@lcm/db';
+
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+
+/** 一次分析抽多少个作品 */
+export const SAMPLE_SIZE = 5;
+/** 一段候选广告的最短 / 最长时长（秒） */
+const MIN_AD_SECONDS = 6;
+const MAX_AD_SECONDS = 120;
+/** 一个候选最多跨几个 discontinuity 组 */
+const MAX_SPAN_GROUPS = 3;
+
+export interface SampleVod {
+  id: number;
+  name: string;
+  episode: string;
+  url: string;
+}
+
+export interface Segment {
+  dur: number;
+  uri: string;
+}
+
+export interface Candidate {
+  durs: number[];
+  totalMs: number;
+  kind: 1 | 2 | 3;
+  startIndex: number;
+}
+
+export interface FoundFeature {
+  durations: string;
+  totalMs: number;
+  kind: 1 | 2 | 3;
+  hitVods: number;
+  sample: Array<{ vod_id: number; vod_name: string; start: number }>;
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { 'user-agent': UA, accept: '*/*' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+function resolveUrl(base: string, ref: string): string {
+  if (/^https?:\/\//i.test(ref)) return ref;
+  if (ref.startsWith('/')) {
+    const u = new URL(base);
+    return `${u.origin}${ref}`;
+  }
+  return new URL(ref, base).toString();
+}
+
+/** 拉播放列表，遇到 master playlist 就取第一个清晰度 */
+export async function fetchPlaylist(url: string): Promise<string> {
+  let text = await fetchText(url);
+  if (!text.includes('#EXT-X-STREAM-INF')) return text;
+  const sub = text
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.length > 0 && !line.startsWith('#'));
+  if (!sub) return text;
+  text = await fetchText(resolveUrl(url, sub));
+  return text;
+}
+
+/** 解析分片时长与 discontinuity 组边界 */
+export function parsePlaylist(text: string): { segments: Segment[]; boundaries: number[] } {
+  const segments: Segment[] = [];
+  const boundaries = new Set<number>([0]);
+  let pending = 0;
+  let pendingBreak = false;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+      pendingBreak = true;
+      continue;
+    }
+    if (line.startsWith('#EXTINF:')) {
+      const value = Number.parseFloat(line.slice(8).split(',')[0] ?? '');
+      pending = Number.isFinite(value) ? value : 0;
+      continue;
+    }
+    if (line.startsWith('#')) continue;
+    if (pendingBreak) boundaries.add(segments.length);
+    pendingBreak = false;
+    segments.push({ dur: pending, uri: line });
+  }
+  const sorted = [...boundaries].filter((n) => n >= 0 && n <= segments.length).sort((a, b) => a - b);
+  if ((sorted[sorted.length - 1] ?? -1) !== segments.length) sorted.push(segments.length);
+  return { segments, boundaries: sorted };
+}
+
+/** 以组边界为格点，枚举 1–3 组的候选窗口 */
+export function listCandidates(segments: Segment[], boundaries: number[]): Candidate[] {
+  const out: Candidate[] = [];
+  const groups: Array<[number, number]> = [];
+  for (let i = 0; i < boundaries.length - 1; i += 1) {
+    const start = boundaries[i] ?? 0;
+    const end = boundaries[i + 1] ?? start;
+    if (end > start) groups.push([start, end]);
+  }
+  for (let i = 0; i < groups.length; i += 1) {
+    for (let span = 1; span <= MAX_SPAN_GROUPS && i + span <= groups.length; span += 1) {
+      const start = groups[i]?.[0] ?? 0;
+      const end = groups[i + span - 1]?.[1] ?? start;
+      if (span === groups.length) continue;
+      const durs = segments.slice(start, end).map((s) => s.dur);
+      if (!durs.length) continue;
+      const total = durs.reduce((sum, n) => sum + n, 0);
+      if (total < MIN_AD_SECONDS || total > MAX_AD_SECONDS) continue;
+      const kind: 1 | 2 | 3 = start === 0 ? 1 : end === segments.length ? 3 : 2;
+      out.push({ durs, totalMs: Math.round(total * 1000), kind, startIndex: start });
+    }
+  }
+  return out;
+}
+
+export function signatureOf(durs: number[]): string {
+  return durs.map((n) => n.toFixed(2)).join(',');
+}
+
+/** 从该源随机抽 N 个有播放地址的作品 */
+export async function pickSampleVods(db: Db, sourceId: number, size = SAMPLE_SIZE): Promise<SampleVod[]> {
+  const rows = await db
+    .select({
+      id: vod.id,
+      name: vod.name,
+      sourceVodId: vodPlay.sourceVodId,
+      playUrl: vodPlay.playUrl,
+    })
+    .from(vodPlay)
+    .innerJoin(vod, eq(vod.id, vodPlay.vodId))
+    .where(
+      and(
+        eq(vodPlay.sourceId, sourceId),
+        isNotNull(vodPlay.playUrl),
+        ne(vodPlay.playUrl, ''),
+        eq(vod.status, 1),
+      ),
+    )
+    .orderBy(sql`RAND()`)
+    .limit(size);
+
+  const out: SampleVod[] = [];
+  for (const row of rows) {
+    const playUrl = row.playUrl ?? '';
+    const first = playUrl.split('#')[0] ?? '';
+    const url = first.split('$').pop() ?? '';
+    if (!/^https?:\/\//i.test(url)) continue;
+    out.push({
+      id: row.id,
+      name: row.name,
+      episode: `第 1 集`,
+      url,
+    });
+  }
+  return out;
+}
+
+/**
+ * 分析一个采集源的广告特征：抽 5 部作品 → 组对齐滑窗 → 跨作品匹配 → 落库。
+ * 只返回结论，日志由调用方拼接。
+ */
+export async function analyzeSource(
+  db: Db,
+  sourceId: number,
+  log: (line: string) => void,
+): Promise<{ features: FoundFeature[]; sampled: number }> {
+  const samples = await pickSampleVods(db, sourceId);
+  log(`随机抽取 ${samples.length} 部作品用于提取特征`);
+  if (!samples.length) return { features: [], sampled: 0 };
+
+  const map = new Map<string, { durs: number[]; totalMs: number; kind: 1 | 2 | 3; hits: Map<number, { name: string; start: number }> }>();
+
+  for (const sample of samples) {
+    try {
+      const text = await fetchPlaylist(sample.url);
+      const { segments, boundaries } = parsePlaylist(text);
+      const candidates = listCandidates(segments, boundaries);
+      log(`${sample.name}：${segments.length} 段 / ${boundaries.length - 1} 组 / 候选 ${candidates.length}`);
+      for (const candidate of candidates) {
+        const key = signatureOf(candidate.durs);
+        const hit = map.get(key);
+        if (hit) {
+          hit.hits.set(sample.id, { name: sample.name, start: candidate.startIndex });
+        } else {
+          map.set(key, {
+            durs: candidate.durs,
+            totalMs: candidate.totalMs,
+            kind: candidate.kind,
+            hits: new Map([[sample.id, { name: sample.name, start: candidate.startIndex }]]),
+          });
+        }
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log(`${sample.name}：解析失败 (${msg})`);
+    }
+  }
+
+  const found: FoundFeature[] = [];
+  for (const [key, value] of map) {
+    if (value.hits.size < 2) continue;
+    found.push({
+      durations: key,
+      totalMs: value.totalMs,
+      kind: value.kind,
+      hitVods: value.hits.size,
+      sample: [...value.hits.entries()].slice(0, 3).map(([vodId, hit]) => ({
+        vod_id: vodId,
+        vod_name: hit.name,
+        start: hit.start,
+      })),
+    });
+  }
+  found.sort((a, b) => b.hitVods - a.hitVods || b.totalMs - a.totalMs);
+  const top = found.slice(0, 50);
+
+  for (const feature of top) {
+    await db
+      .insert(adFeature)
+      .values({
+        sourceId,
+        kind: feature.kind,
+        durations: feature.durations,
+        totalMs: feature.totalMs,
+        hitVods: feature.hitVods,
+        sample: feature.sample,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          kind: feature.kind,
+          totalMs: feature.totalMs,
+          hitVods: feature.hitVods,
+          sample: feature.sample,
+          updatedAt: sql`CURRENT_TIMESTAMP`,
+        },
+      });
+  }
+
+  log(`命中 ${top.length} 条候选，已写入特征表`);
+  return { features: top, sampled: samples.length };
+}

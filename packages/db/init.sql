@@ -187,6 +187,22 @@ CREATE TABLE IF NOT EXISTS `lcm_admin_user` (
   UNIQUE KEY `uk_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `lcm_ad_feature` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `source_id` BIGINT UNSIGNED NOT NULL,
+  `kind` TINYINT UNSIGNED NOT NULL DEFAULT 2 COMMENT '1片头 2中插 3片尾',
+  `durations` VARCHAR(255) NOT NULL COMMENT '分片时长序列，逗号分隔，单位秒',
+  `total_ms` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '广告总时长（毫秒）',
+  `hit_vods` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '命中的作品数',
+  `sample` JSON NULL COMMENT '命中样例',
+  `status` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0待确认 1确认广告 2已排除',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_source_durations` (`source_id`,`durations`),
+  KEY `idx_source_status` (`source_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `lcm_setting` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(50)    NOT NULL DEFAULT ''       COMMENT '配置键',

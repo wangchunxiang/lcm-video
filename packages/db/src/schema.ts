@@ -239,3 +239,25 @@ export const setting = mysqlTable(
   },
   (t) => [uniqueIndex('uk_name').on(t.name)],
 );
+
+export const adFeature = mysqlTable(
+  'lcm_ad_feature',
+  {
+    id: bigint('id', { mode: 'number', unsigned: true }).autoincrement().primaryKey(),
+    sourceId: bigint('source_id', { mode: 'number', unsigned: true }).notNull(),
+    kind: tinyint('kind', { unsigned: true }).notNull().default(2),
+    durations: varchar('durations', { length: 255 }).notNull(),
+    totalMs: int('total_ms', { unsigned: true }).notNull().default(0),
+    hitVods: int('hit_vods', { unsigned: true }).notNull().default(0),
+    sample: json('sample'),
+    status: tinyint('status', { unsigned: true }).notNull().default(0),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: datetime('updated_at')
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex('uk_source_durations').on(table.sourceId, table.durations),
+    index('idx_source_status').on(table.sourceId, table.status),
+  ],
+);

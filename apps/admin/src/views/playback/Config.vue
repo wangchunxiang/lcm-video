@@ -64,28 +64,28 @@ interface SampleVod {
   episode: string;
 }
 
-interface AdResult {
-  key: string;
-  kind: '中插' | '片尾' | '片头';
-  total: string;
-  pattern: string;
-  vods: number;
-  confirmed: boolean | null;
+interface AdFeature {
+  id: number;
+  kind: number;
+  durations: string;
+  totalMs: number;
+  hitVods: number;
+  status: number;
+  sample: Array<{ vod_id: number; vod_name: string; start: number }> | null;
 }
 
 const sampleVods = ref<SampleVod[]>([]);
 const logs = ref<string[]>([]);
-const results = ref<AdResult[]>([]);
+const results = ref<AdFeature[]>([]);
 const analyzing = ref(false);
+const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
-const activeResult = ref<AdResult | null>(null);
+const activeResult = ref<AdFeature | null>(null);
 
 const adsSourceName = computed(
   () => sources.value.find((item) => item.id === adsSourceId.value)?.name ?? '',
 );
-
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function pushLog(text: string) {
   const now = new Date();
@@ -98,48 +98,65 @@ function pushLog(text: string) {
   });
 }
 
-function openFeature(row: AdResult) {
+function openFeature(row: AdFeature) {
   activeResult.value = row;
   featureVisible.value = true;
 }
 
-function confirmAd(row: AdResult, isAd: boolean) {
-  row.confirmed = isAd;
-  ElMessage.success(isAd ? '已标记为广告，播放时将跳过' : '已排除，播放时保留');
+function kindText(kind: number) {
+  return kind === 1 ? '片头' : kind === 3 ? '片尾' : '中插';
 }
 
-const VOD_POOL: SampleVod[] = [
-  { id: 653, name: '大哥请赐教', episode: '第02集' },
-  { id: 502, name: '流浪地球3', episode: '第01集' },
-  { id: 61792, name: '凡人修仙传', episode: '第148集' },
-  { id: 62233, name: '遮天', episode: '第96集' },
-  { id: 494, name: '狂飙', episode: '第01集' },
-  { id: 621, name: '长相思 第二季', episode: '第12集' },
-  { id: 61803, name: '斗破苍穹年番', episode: '第102集' },
-  { id: 62231, name: '庆余年 第二季', episode: '第30集' },
-];
+function secondsText(ms: number) {
+  return `${(ms / 1000).toFixed(1)} 秒`;
+}
 
-/** 换源后之前的抽取与分析结果都作废 */
+async function confirmAd(row: AdFeature, isAd: boolean) {
+  if (!adsSourceId.value) return;
+  try {
+    await api.put(`/sources/${adsSourceId.value}/ads/${row.id}`, { status: isAd ? 1 : 2 });
+    row.status = isAd ? 1 : 2;
+    ElMessage.success(isAd ? '已确认是广告，播放时将跳过' : '已排除，播放时保留');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '保存失败');
+  }
+}
+
+/** 换源后之前的抽取与分析结果都作废，并拉该源已有特征 */
 watch(adsSourceId, () => {
   sampleVods.value = [];
   results.value = [];
   logs.value = [];
+  void loadFeatures();
 });
 
-/** 从该源随机挑 5 部作品（后端接口未接入前先用固定池） */
-function pickVods() {
+async function loadFeatures() {
+  if (!adsSourceId.value) return;
+  try {
+    const data = await api.get<AdFeature[]>(`/sources/${adsSourceId.value}/ads`);
+    results.value = data;
+  } catch {
+    results.value = [];
+  }
+}
+
+/** 从该源随机抽 5 部作品 */
+async function pickVods() {
   if (!adsSourceId.value) {
     ElMessage.warning('请先选择采集源');
     return;
   }
-  const pool = [...VOD_POOL];
-  const picked: SampleVod[] = [];
-  while (picked.length < 5 && pool.length) {
-    picked.push(...pool.splice(Math.floor(Math.random() * pool.length), 1));
+  picking.value = true;
+  try {
+    const data = await api.post<{ items: SampleVod[] }>(`/sources/${adsSourceId.value}/ads/pick`);
+    sampleVods.value = data.items;
+    results.value = [];
+    logs.value = [];
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '抽取失败');
+  } finally {
+    picking.value = false;
   }
-  sampleVods.value = picked;
-  results.value = [];
-  logs.value = [];
 }
 
 async function startAnalyze() {
@@ -154,44 +171,21 @@ async function startAnalyze() {
   analyzing.value = true;
   results.value = [];
   logs.value = [];
-
-  pushLog(`选择采集源：${adsSourceName.value}`);
-  await sleep(250);
-  pushLog(`随机抽取 ${sampleVods.value.length} 部作品用于提取特征`);
-  await sleep(300);
-
-  for (const vod of sampleVods.value) {
-    await sleep(160);
-    pushLog(`${vod.name} ${vod.episode}：292 段 / 59 组`);
+  try {
+    const data = await api.post<{ logs: string[]; features: AdFeature[]; sampled: number }>(
+      `/sources/${adsSourceId.value}/ads/analyze`,
+    );
+    logs.value = data.logs;
+    await loadFeatures();
+    const count = results.value.length;
+    pushLog(count ? `共 ${count} 条特征，请确认哪些是广告` : '未发现候选广告');
+    const box = logRef.value;
+    if (box) box.scrollTop = box.scrollHeight;
+  } catch (error) {
+    pushLog(`分析失败：${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    analyzing.value = false;
   }
-
-  pushLog('组对齐滑窗：单集候选 486 个');
-  await sleep(300);
-  pushLog('跨作品匹配：同一时长序列在 ≥2 部作品出现');
-  await sleep(300);
-  pushLog('命中 2 条候选，写入特征表');
-  await sleep(200);
-
-  results.value = [
-    {
-      key: 'mid',
-      kind: '中插',
-      total: '20.0 秒',
-      pattern: '4.0 / 5.0 / 4.0 / 4.24 / 2.76',
-      vods: 3,
-      confirmed: null,
-    },
-    {
-      key: 'tail',
-      kind: '片尾',
-      total: '12.2 秒',
-      pattern: '4.0 / 5.48 / 2.68',
-      vods: 5,
-      confirmed: null,
-    },
-  ];
-  pushLog('分析完成，请确认哪些是广告');
-  analyzing.value = false;
 }
 
 async function loadSources() {
@@ -317,7 +311,7 @@ onMounted(() => {
               >
                 <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
               </el-select>
-              <el-button :disabled="analyzing || !adsSourceId" @click="pickVods">随机选片</el-button>
+              <el-button :disabled="analyzing || !adsSourceId" :loading="picking" @click="pickVods">随机选片</el-button>
               <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
             </div>
           </div>
@@ -345,24 +339,27 @@ onMounted(() => {
             <span v-if="results.length" class="ads-count">{{ results.length }}</span>
           </div>
           <div class="result-box">
-            <div v-for="row in results" :key="row.key" class="result-row">
+            <div v-for="row in results" :key="row.id" class="result-row">
               <div class="result-top">
-                <el-tag size="small" :type="row.kind === '片尾' ? 'warning' : 'primary'">{{ row.kind }}</el-tag>
-                <span class="result-total">{{ row.total }}</span>
-                <span class="result-vods">命中 {{ row.vods }} 部</span>
+                <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
+                <span class="result-total">{{ secondsText(row.totalMs) }}</span>
+                <span class="result-vods">命中 {{ row.hitVods }} 部</span>
                 <el-link type="primary" :underline="false" @click="openFeature(row)">查看</el-link>
                 <span class="result-actions">
+                  <el-tag v-if="row.status === 1" size="small" type="success">已确认</el-tag>
+                  <el-tag v-else-if="row.status === 2" size="small" type="info">已排除</el-tag>
                   <el-button
+                    v-else
                     link
-                    :type="row.confirmed === true ? 'success' : 'info'"
+                    type="success"
                     @click="confirmAd(row, true)"
                   >
                     是广告
                   </el-button>
-                  <el-button link type="danger" @click="confirmAd(row, false)">否</el-button>
+                  <el-button v-if="row.status !== 2" link type="danger" @click="confirmAd(row, false)">否</el-button>
                 </span>
               </div>
-              <div class="result-pattern">{{ row.pattern }}</div>
+              <div class="result-pattern">{{ row.durations.split(',').join(' / ') }}</div>
             </div>
             <div v-if="!results.length" class="ads-empty">分析后显示候选广告</div>
           </div>
@@ -372,11 +369,21 @@ onMounted(() => {
 
     <el-dialog v-model="featureVisible" title="广告特征" width="640px">
       <el-descriptions v-if="activeResult" :column="2" border size="small">
-        <el-descriptions-item label="类型">{{ activeResult.kind }}</el-descriptions-item>
-        <el-descriptions-item label="总长">{{ activeResult.total }}</el-descriptions-item>
-        <el-descriptions-item label="命中作品">{{ activeResult.vods }} 部</el-descriptions-item>
-        <el-descriptions-item label="判定">{{ activeResult.confirmed === null ? '待确认' : activeResult.confirmed ? '已确认是广告' : '已排除' }}</el-descriptions-item>
-        <el-descriptions-item label="时长序列" :span="2">{{ activeResult.pattern }}</el-descriptions-item>
+        <el-descriptions-item label="类型">{{ kindText(activeResult.kind) }}</el-descriptions-item>
+        <el-descriptions-item label="总长">{{ secondsText(activeResult.totalMs) }}</el-descriptions-item>
+        <el-descriptions-item label="命中作品">{{ activeResult.hitVods }} 部</el-descriptions-item>
+        <el-descriptions-item label="判定">
+          {{ activeResult.status === 1 ? '已确认是广告' : activeResult.status === 2 ? '已排除' : '待确认' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="时长序列" :span="2">
+          {{ activeResult.durations.split(',').join(' / ') }}
+        </el-descriptions-item>
+        <el-descriptions-item label="命中样例" :span="2">
+          <span v-if="activeResult.sample && activeResult.sample.length">
+            {{ activeResult.sample.map((s) => s.vod_name).join('、') }}
+          </span>
+          <span v-else>—</span>
+        </el-descriptions-item>
       </el-descriptions>
       <div class="feature-hint">
         特征按采集源分别保存；同一片段在 ≥2 部不同作品出现才会被采纳。
