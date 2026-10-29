@@ -511,9 +511,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
 
     const episodes: EpisodeView[] = all.map((item, index) => ({ index: index + 1, name: item.name, url: item.url }));
-    const pagination: Pagination = buildPagination(page, 50, episodes.length);
-    if (page > pagination.total_pages) return notFound(reply);
-    const pageEpisodes = episodes.slice((page - 1) * 50, page * 50);
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
@@ -541,7 +538,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         },
         line: { id: line.id, name: line.source_name, parse_url: line.parse_url, episode_count: all.length },
         lines: lines.map((item) => ({ id: item.id, name: item.source_name, episode_count: item.episode_count })),
-        episodes: pageEpisodes,
+        episodes,
         current_ep: currentEp,
         current_ep_name: episodeName,
         play_url: proxyPlayUrl || current.url,
@@ -555,7 +552,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         setting: config.setting,
         next_url: currentEp < all.length ? `/play/${row.id}/${line.id}/${currentEp + 1}` : '',
         prev_url: currentEp > 1 ? `/play/${row.id}/${line.id}/${currentEp - 1}` : '',
-        pagination,
         iframe_url: iframeUrl,
       },
     );

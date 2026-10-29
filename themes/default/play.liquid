@@ -61,17 +61,6 @@
            href="{{ play_base }}/{{ item.index }}">{{ item.name }}</a>
         {% endfor %}
       </div>
-      {% if pagination.total_pages > 1 %}
-      <div class="episode-pager">
-        {% if pagination.page > 1 %}
-        <a class="page-btn" href="{{ play_base }}/{{ current_ep }}?page={{ pagination.page | minus: 1 }}">上一页</a>
-        {% endif %}
-        <span class="page-info">{{ pagination.page }} / {{ pagination.total_pages }}</span>
-        {% if pagination.page < pagination.total_pages %}
-        <a class="page-btn" href="{{ play_base }}/{{ current_ep }}?page={{ pagination.page | plus: 1 }}">下一页</a>
-        {% endif %}
-      </div>
-      {% endif %}
     </div>
   </aside>
 </div>
