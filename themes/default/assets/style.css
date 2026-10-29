@@ -85,7 +85,7 @@ html { scrollbar-gutter: stable; }
   background: #fff;
 }
 
-.site-header::after { border-bottom: 1px solid var(--line); }
+.site-header::after { bottom: -1px; border-bottom: 1px solid var(--line); }
 
 .header-inner {
   display: flex;
@@ -868,7 +868,7 @@ html { scrollbar-gutter: stable; }
   background: #fff;
 }
 .site-footer { position: relative; }
-.site-footer::after { border-top: 1px solid var(--line); }
+.site-footer::after { top: -1px; border-top: 1px solid var(--line); }
 
 .disclaimer {
   margin: 0 0 4px;
