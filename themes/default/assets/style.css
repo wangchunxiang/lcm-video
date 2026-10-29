@@ -23,7 +23,7 @@
   /* 页面级间距 */
   --gap-block: var(--space-4);   /* 页面主块之间 */
   --gap-grid-x: var(--space-4);  /* 卡片横向间距 */
-  --gap-grid-y: var(--space-6);  /* 卡片纵向间距 */
+  --gap-grid-y: var(--space-4);  /* 卡片纵向间距 */
   --pad-card: var(--space-5);    /* 卡片内边距 */
 }
 
