@@ -47,6 +47,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
+        startPage: collectLog.startPage,
         // 老记录没有 last_page（功能上线前产生），用明细里的最大页码兜底
         lastPage: sql<number>`GREATEST(
           ${collectLog.lastPage},
@@ -74,7 +75,11 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
 
     // GREATEST 走 DECIMAL，driver 会把它当字符串返回，这里统一成数字，
     // 否则前端 lastPage + 1 会变成字符串拼接（198 → "1981"）。
-    const items = rows.map((row) => ({ ...row, lastPage: Number(row.lastPage ?? 0) }));
+    const items = rows.map((row) => ({
+      ...row,
+      startPage: Number(row.startPage ?? 1),
+      lastPage: Number(row.lastPage ?? 0),
+    }));
 
     return ok(reply, {
       items,
@@ -98,6 +103,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
+        startPage: collectLog.startPage,
         // 老记录没有 last_page（功能上线前产生），用明细里的最大页码兜底
         lastPage: sql<number>`GREATEST(
           ${collectLog.lastPage},

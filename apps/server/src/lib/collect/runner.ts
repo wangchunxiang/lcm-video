@@ -285,7 +285,7 @@ export async function startTask(
 
   const inserted = await db
     .insert(collectLog)
-    .values({ taskId: task.id, sourceId: source.id, status: 0 })
+    .values({ taskId: task.id, sourceId: source.id, status: 0, startPage: 1 })
     .$returningId();
   const logId = inserted[0]?.id;
   if (!logId) return { started: false, message: '创建采集记录失败' };
@@ -354,7 +354,14 @@ export async function startResume(
 
   const inserted = await db
     .insert(collectLog)
-    .values({ taskId: task.id, sourceId: source.id, status: 0, totalPages: log.totalPages, lastPage })
+    .values({
+      taskId: task.id,
+      sourceId: source.id,
+      status: 0,
+      totalPages: log.totalPages,
+      startPage,
+      lastPage,
+    })
     .$returningId();
   const newLogId = inserted[0]?.id;
   if (!newLogId) return { started: false, message: '创建采集记录失败' };

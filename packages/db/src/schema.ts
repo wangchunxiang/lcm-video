@@ -176,6 +176,8 @@ export const collectLog = mysqlTable(
     sourceId: fk('source_id'),
     status: tinyint('status', { unsigned: true }).notNull().default(0),
     totalPages: int('total_pages', { unsigned: true }).notNull().default(0),
+    /** 本次从第几页开始（续采时为断点的下一页，普通执行为 1） */
+    startPage: int('start_page', { unsigned: true }).notNull().default(1),
     /** 已完成到第几页，断点续采用 */
     lastPage: int('last_page', { unsigned: true }).notNull().default(0),
     total: int('total', { unsigned: true }).notNull().default(0),
