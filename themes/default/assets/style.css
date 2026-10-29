@@ -655,6 +655,8 @@ img { border: 0; vertical-align: middle; }
 /* 剧集标签按名称长度占格：长名多占几列，避免被省略号截断 */
 .ep-w2 { grid-column: span 2; }
 .ep-w3 { grid-column: span 3; }
+/* 详情页是 10 列，长名占 2 列就够放下；播放页侧栏只有 4 列，长名占满一行 */
+.detail-eps .ep-w3 { grid-column: span 2; }
 .play-side .ep-w3 { grid-column: 1 / -1; }
 
 .episode-btn {
