@@ -1,4 +1,24 @@
 (function () {
+  var btn = document.querySelector('[data-ep-sort]');
+  if (!btn) return;
+
+  var desc = false;
+
+  btn.addEventListener('click', function () {
+    desc = !desc;
+    btn.textContent = desc ? '倒序' : '正序';
+
+    Array.prototype.forEach.call(document.querySelectorAll('.ep-panel .episode-grid'), function (grid) {
+      var nodes = Array.prototype.slice.call(grid.children);
+      nodes.reverse();
+      Array.prototype.forEach.call(nodes, function (node) {
+        grid.appendChild(node);
+      });
+    });
+  });
+})();
+
+(function () {
   var triggers = document.querySelectorAll('[data-intro-float]');
   if (!triggers.length) return;
 

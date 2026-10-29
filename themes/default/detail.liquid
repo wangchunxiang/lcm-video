@@ -67,6 +67,7 @@
     {% for line in line_tabs %}
     <button type="button" class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" data-ep-tab="{{ line.id }}">{{ line.name }} <span class="count">{{ line.total }}</span></button>
     {% endfor %}
+    <button type="button" class="ep-sort" data-ep-sort>正序</button>
   </div>
   {% for line in line_tabs %}
   <div class="ep-panel{% if line.id == current_line_id %} is-active{% endif %}" data-ep-panel="{{ line.id }}">
@@ -74,7 +75,7 @@
     <div class="ep-scroll">
       <div class="episode-grid">
         {% for ep in line.episodes %}
-        <a class="ep" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}">{{ ep.name }}</a>
+        <a class="episode-btn" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
         {% endfor %}
       </div>
     </div>
