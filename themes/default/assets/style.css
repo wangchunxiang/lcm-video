@@ -753,7 +753,67 @@ img { border: 0; vertical-align: middle; }
   flex: none;
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
   min-height: 0;
+}
+
+.play-nav-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 10px 14px 12px;
+}
+
+.play-nav-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.play-nav-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.play-nav-actions .btn {
+  flex: 1;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 13px;
+}
+
+.play-nav-actions .btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.play-nav-actions .btn.primary:hover { color: #fff; }
+
+.play-nav-actions .btn.is-disabled {
+  color: var(--text-3);
+  background: #f7f8fa;
+  cursor: not-allowed;
+}
+
+.play-nav-line {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--primary);
+  background: #eff4ff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-panel-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -813,33 +873,7 @@ img { border: 0; vertical-align: middle; }
 
 .play-side .episode-pager { margin-top: var(--space-3); }
 
-.play-nav {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 10px var(--space-4);
-  border-bottom: 1px solid var(--line);
-}
 
-.play-nav-title { font-size: 14px; color: var(--text); }
-
-.play-nav-line {
-  flex: 1;
-  min-width: 0;
-  font-size: 12px;
-  color: var(--primary);
-  background: #eff4ff;
-  border-radius: 4px;
-  padding: 1px 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.play-nav .btn { padding: 4px 12px; font-size: 13px; }
-.play-nav .btn:hover { border-color: var(--primary); color: var(--primary); }
-.play-nav .btn.is-disabled { color: var(--text-3); cursor: not-allowed; }
 
 .side-lines { display: flex; flex-direction: column; gap: var(--space-2); }
 
