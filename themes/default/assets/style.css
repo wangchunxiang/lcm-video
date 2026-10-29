@@ -304,8 +304,9 @@ img { border: 0; vertical-align: middle; }
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  padding: 6px 0;
 }
+
+.filter-row + .filter-row { margin-top: 6px; }
 
 .filter-block { margin: 0 0 var(--gap-block); }
 
