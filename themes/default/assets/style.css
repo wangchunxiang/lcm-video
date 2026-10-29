@@ -736,17 +736,17 @@ img { border: 0; vertical-align: middle; }
 /* ---------- footer ---------- */
 
 .site-footer {
-  margin-top: 32px;
-  padding: 24px 0 32px;
+  margin-top: 24px;
+  padding: 14px 0 16px;
   border-top: 1px solid var(--line);
   background: #fff;
 }
 
 .disclaimer {
-  margin: 0 0 8px;
+  margin: 0 0 4px;
   color: var(--text-3);
   font-size: 12px;
-  line-height: 1.8;
+  line-height: 1.6;
 }
 
 .copyright {
