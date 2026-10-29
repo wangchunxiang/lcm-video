@@ -390,9 +390,6 @@ onBeforeUnmount(() => {
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
         <span>{{ currentLog.startedAt }} 开始，耗时 {{ actualDuration }}</span>
-        <el-tag v-if="currentLog.resumeCount > 0" type="info" size="small">
-          续采 {{ currentLog.resumeCount }} 次，中断 {{ msText(currentLog.interruptedMs) }}
-        </el-tag>
         <div class="progress">
           <span class="progress-text">
             进度 {{ detailTotal }}<template v-if="currentLog.totalPages > 0"> / {{ currentLog.totalPages }}</template> 页
