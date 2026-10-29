@@ -276,6 +276,8 @@ img { border: 0; vertical-align: middle; }
 
 .breadcrumb a:hover { color: var(--primary); }
 
+.breadcrumb .bc-extra { margin-left: 6px; }
+
 /* ---------- filter ---------- */
 
 .filter-row {
