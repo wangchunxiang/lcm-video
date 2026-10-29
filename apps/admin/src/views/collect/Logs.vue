@@ -178,6 +178,40 @@ function onPageChange(value: number) {
   void load();
 }
 
+/** 失败或取消的记录还有剩下的页，就可以从断点继续 */
+function canResume(row: LogRow): boolean {
+  if (row.status !== 2 && row.status !== 3) return false;
+  if (row.totalPages > 0 && row.lastPage >= row.totalPages) return false;
+  return true;
+}
+
+const resuming = ref(0);
+
+async function resume(row: LogRow): Promise<void> {
+  const startPage = row.lastPage + 1;
+  const rest = row.totalPages > 0 ? `，剩余 ${row.totalPages - row.lastPage} 页` : '';
+  try {
+    await ElMessageBox.confirm(
+      `将从第 ${startPage} 页继续采集${rest}。续采用任务当前的配置，重新生成一条采集记录；` +
+        '源站列表在这期间可能有新增，边界上的少量影片会留给下一轮采集。',
+      '断点续采',
+      { type: 'warning', confirmButtonText: '开始续采', cancelButtonText: '取消' },
+    );
+  } catch {
+    return;
+  }
+  resuming.value = row.id;
+  try {
+    const result = await api.post<{ logId: number; message: string }>(`/logs/${row.id}/resume`);
+    ElMessage.success(result.message);
+    await load(true);
+  } catch (error) {
+    ElMessage.error((error as Error).message);
+  } finally {
+    resuming.value = 0;
+  }
+}
+
 async function openDetail(row: LogRow) {
   drawerVisible.value = true;
   currentLog.value = row;
