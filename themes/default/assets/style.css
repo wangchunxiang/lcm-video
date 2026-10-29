@@ -802,8 +802,6 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- search ---------- */
 
-.search-summary { color: var(--text-3); font-size: 13px; margin: 0 0 12px; }
-
 /* ---------- error ---------- */
 
 .error-page {
