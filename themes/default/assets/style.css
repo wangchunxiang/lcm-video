@@ -369,7 +369,7 @@ img { border: 0; vertical-align: middle; }
 .d-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 14px;
   font-size: 13px;
   color: var(--text-2);
 }
