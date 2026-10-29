@@ -2,16 +2,15 @@
 {% block content %}
 {% assign base = '/search' %}
 
-<div class="bc-row">
-  <nav class="breadcrumb">
-    <a href="/">首页</a>
-    <span>/</span>
-    <span>搜索</span>
-  </nav>
+<nav class="breadcrumb">
+  <a href="/">首页</a>
+  <span>/</span>
+  <span>搜索</span>
   {% if keyword != '' %}
-  <p class="search-summary">「{{ keyword }}」共找到 {{ pagination.total }} 部影片</p>
+  <span>/</span>
+  <span>「{{ keyword }}」共找到 {{ pagination.total }} 部影片</span>
   {% endif %}
-</div>
+</nav>
 
 {% if keyword == '' %}
 <p class="empty-tip">请在顶部搜索框输入片名。</p>
