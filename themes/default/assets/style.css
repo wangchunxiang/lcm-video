@@ -739,6 +739,14 @@ img { border: 0; vertical-align: middle; }
   align-items: stretch;
 }
 
+/* 让整行高度受视口高度约束：播放器按 16:9 反推最大宽度，右侧面板保持 380 */
+@media (min-width: 1101px) {
+  .play-row {
+    max-width: max(760px, calc(380px + var(--space-4) + (100vh - 300px) * 16 / 9));
+    margin-inline: auto;
+  }
+}
+
 .play-left {
   flex: 1;
   min-width: 0;
