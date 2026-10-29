@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import {
   collectLog,
@@ -323,7 +323,21 @@ export async function startResume(
   if (!log) return { started: false, message: '采集记录不存在' };
   if (log.status === 0) return { started: false, message: '这条记录还在执行中' };
 
-  const startPage = log.lastPage + 1;
+  // 功能上线前的记录没有 last_page，用明细里的最大页码兜底
+  const detailRows = await db
+    .select({ page: collectLogDetail.page, total: collectLogDetail.total, message: collectLogDetail.message })
+    .from(collectLogDetail)
+    .where(eq(collectLogDetail.logId, logId))
+    .orderBy(desc(collectLogDetail.page))
+    .limit(1);
+  const lastDetail = detailRows[0];
+  let lastPage = Math.max(log.lastPage, lastDetail?.page ?? 0);
+  // 最后一页是请求失败（没有计数、只有错误信息），从这一页重来
+  if (lastDetail && lastDetail.page > log.lastPage && lastDetail.total === 0 && lastDetail.message) {
+    lastPage = lastDetail.page - 1;
+  }
+
+  const startPage = lastPage + 1;
   if (log.totalPages > 0 && startPage > log.totalPages) {
     return { started: false, message: '这条记录已跑完全部页面，无需续采' };
   }
@@ -340,7 +354,7 @@ export async function startResume(
 
   const inserted = await db
     .insert(collectLog)
-    .values({ taskId: task.id, sourceId: source.id, status: 0, totalPages: log.totalPages, lastPage: log.lastPage })
+    .values({ taskId: task.id, sourceId: source.id, status: 0, totalPages: log.totalPages, lastPage })
     .$returningId();
   const newLogId = inserted[0]?.id;
   if (!newLogId) return { started: false, message: '创建采集记录失败' };

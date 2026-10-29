@@ -47,7 +47,11 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
-        lastPage: collectLog.lastPage,
+        // 老记录没有 last_page（功能上线前产生），用明细里的最大页码兜底
+        lastPage: sql<number>`GREATEST(
+          ${collectLog.lastPage},
+          COALESCE((SELECT MAX(d.page) FROM lcm_collect_log_detail d WHERE d.log_id = ${collectLog.id}), 0)
+        )`,
         total: collectLog.total,
         inserted: collectLog.inserted,
         updated: collectLog.updated,
@@ -90,7 +94,11 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
-        lastPage: collectLog.lastPage,
+        // 老记录没有 last_page（功能上线前产生），用明细里的最大页码兜底
+        lastPage: sql<number>`GREATEST(
+          ${collectLog.lastPage},
+          COALESCE((SELECT MAX(d.page) FROM lcm_collect_log_detail d WHERE d.log_id = ${collectLog.id}), 0)
+        )`,
         total: collectLog.total,
         inserted: collectLog.inserted,
         updated: collectLog.updated,
