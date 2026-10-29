@@ -30,36 +30,27 @@
   </div>
 
   <div class="detail-info">
-    <div class="title-row">
-      <h1>{{ vod.name }}</h1>
-      {% if vod.remarks != blank %}<span class="title-badge">{{ vod.remarks }}</span>{% endif %}
+    <div class="d-title">
+      <div class="title-row">
+        <h1>{{ vod.name }}</h1>
+        {% if vod.remarks != blank %}<span class="title-badge">{{ vod.remarks }}</span>{% endif %}
+      </div>
+      {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
     </div>
-    {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
 
-    <div class="meta-row">
+    <div class="d-tags">
       {% if vod.category_name != blank %}<span class="cat"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
       <span class="year"><i>年份</i>{{ vod.year }}</span>
       {% if vod.area != blank %}<span class="area"><i>地区</i>{{ vod.area }}</span>{% endif %}
       {% if vod.lang != blank %}<span class="lang"><i>语言</i>{{ vod.lang }}</span>{% endif %}
     </div>
 
-    <dl class="info-list">
+    <dl class="d-fields">
       {% if vod.actor != blank %}<div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>{% endif %}
       {% if vod.director != blank %}<div><dt>导演</dt><dd>{{ vod.director }}</dd></div>{% endif %}
       <div><dt>编剧</dt><dd>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
+      {% if vod.intro != blank %}<div class="wide"><dt>简介</dt><dd>{{ vod.intro | escape }}</dd></div>{% endif %}
     </dl>
-
-    {% if vod.intro != blank %}
-    <div class="intro-row">
-      <span class="intro-label">简介</span>
-      <p class="intro">{{ vod.intro | escape }}</p>
-    </div>
-    {% endif %}
-
-    {% if vod.content != blank %}
-    <div class="story-full" hidden>{{ vod.content | escape }}</div>
-    <p class="story-toggle"><a href="javascript:;" data-toggle-story>详细剧情</a></p>
-    {% endif %}
   </div>
 </div>
 
