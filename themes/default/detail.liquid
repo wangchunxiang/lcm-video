@@ -38,9 +38,9 @@
 
     <div class="meta-row">
       {% if vod.category_name != blank %}<span class="cat"><i>分类</i>{{ vod.category_name }}</span>{% endif %}
-      <span><i>年份</i>{{ vod.year }}</span>
-      {% if vod.area != blank %}<span><i>地区</i>{{ vod.area }}</span>{% endif %}
-      {% if vod.lang != blank %}<span><i>语言</i>{{ vod.lang }}</span>{% endif %}
+      <span class="year"><i>年份</i>{{ vod.year }}</span>
+      {% if vod.area != blank %}<span class="area"><i>地区</i>{{ vod.area }}</span>{% endif %}
+      {% if vod.lang != blank %}<span class="lang"><i>语言</i>{{ vod.lang }}</span>{% endif %}
     </div>
 
     <dl class="info-list">
