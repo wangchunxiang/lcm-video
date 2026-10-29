@@ -43,22 +43,6 @@
       {% endif %}
     </div>
 
-    <div class="card play-bar">
-      <div class="play-title">
-        <h1>{{ vod.name }}</h1>
-        <span class="play-ep">{{ current_ep_name }}</span>
-        <span class="play-badge">{{ line.name }}</span>
-      </div>
-      <div class="play-actions">
-        {% if prev_url != blank %}
-        <a class="btn" href="{{ prev_url }}">上一集</a>
-        {% endif %}
-        {% if next_url != blank %}
-        <a class="btn primary" href="{{ next_url }}">下一集</a>
-        {% endif %}
-        <a class="btn" href="/detail/{{ vod.id }}">返回详情</a>
-      </div>
-    </div>
   </div>
 
   <aside class="card play-side">
@@ -70,6 +54,21 @@
         线路<em>{{ lines.size }}</em>
       </button>
       <button type="button" class="play-tab" data-play-tab="info">影片信息</button>
+    </div>
+
+    <div class="play-nav">
+      <span class="play-nav-title">{{ current_ep_name }}</span>
+      <span class="play-nav-line">{{ line.name }}</span>
+      {% if prev_url != blank %}
+      <a class="btn" href="{{ prev_url }}">上一集</a>
+      {% else %}
+      <span class="btn is-disabled">上一集</span>
+      {% endif %}
+      {% if next_url != blank %}
+      <a class="btn primary" href="{{ next_url }}">下一集</a>
+      {% else %}
+      <span class="btn is-disabled">下一集</span>
+      {% endif %}
     </div>
 
     <div class="play-panel is-active" data-play-panel="episodes">

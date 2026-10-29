@@ -741,21 +741,11 @@ img { border: 0; vertical-align: middle; }
 
 /* 播放页：按视口高度反推容器宽度，让播放器与右侧面板都落在一屏内，
    同时容器整体收窄，面包屑、播放器、右侧面板三者左右边缘对齐 */
-/* 只有屏幕高度不够（<950px）时才收窄，够高的屏幕保持与其他页面同宽 */
-@media (min-width: 1101px) and (max-height: 949px) {
-  .container:has(> .play-row) {
-    --play-container: max(808px, calc(380px + var(--space-4) + (100vh - 300px) * 16 / 9 + 48px));
-    max-width: var(--play-container);
-    margin-left: max(24px, calc((100vw - var(--play-container)) / 2));
-  }
-}
+
 
 .play-left {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
 }
 
 .play-side {
@@ -823,54 +813,33 @@ img { border: 0; vertical-align: middle; }
 
 .play-side .episode-pager { margin-top: var(--space-3); }
 
-.play-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 10px var(--space-4);
-  flex-wrap: wrap;
-}
-
-.play-title {
+.play-nav {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  flex: 1;
-  min-width: 0;
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
-.play-title h1 {
-  font-size: 16px;
-  margin: 0;
+.play-nav-title { font-size: 14px; color: var(--text); }
+
+.play-nav-line {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--primary);
+  background: #eff4ff;
+  border-radius: 4px;
+  padding: 1px 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.play-ep {
-  flex: none;
-  color: var(--text-3);
-  font-size: 13px;
-}
-
-.play-badge {
-  flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: #eff4ff;
-  color: var(--primary);
-  font-size: 12px;
-}
-
-.play-actions {
-  flex: none;
-  display: flex;
-  gap: var(--space-2);
-}
-
-.play-bar .btn { padding: 5px 14px; border-radius: 4px; font-size: 13px; }
-
-.play-bar .btn:hover { border-color: var(--primary); color: var(--primary); }
+.play-nav .btn { padding: 4px 12px; font-size: 13px; }
+.play-nav .btn:hover { border-color: var(--primary); color: var(--primary); }
+.play-nav .btn.is-disabled { color: var(--text-3); cursor: not-allowed; }
 
 .side-lines { display: flex; flex-direction: column; gap: var(--space-2); }
 
