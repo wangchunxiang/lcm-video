@@ -3,6 +3,7 @@
 {% assign base = '/list/' | append: category.alias %}
 {% assign clear = filter | with_type: '' | with_year: '' %}
 
+<div class="list-page">
 <nav class="breadcrumb">
   <a href="/">首页</a>
   <span>/</span>
@@ -59,4 +60,5 @@
 </div>
 
 {% render 'partials/pagination', pagination: pagination, base: base, filter: filter %}
+</div>
 {% endblock %}

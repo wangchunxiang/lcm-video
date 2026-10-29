@@ -299,6 +299,9 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- filter ---------- */
 
+/* 分类页：面包屑与筛选区同属一个整体，间距与筛选行之间一致 */
+.list-page .breadcrumb { margin-bottom: var(--space-2); }
+
 .filter-row {
   display: flex;
   align-items: center;
