@@ -257,11 +257,13 @@ img { border: 0; vertical-align: middle; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
 }
 
 .vod-card .title {
   margin-top: 8px;
   font-size: 14px;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
