@@ -79,7 +79,7 @@
     <div class="ep-scroll">
       <div class="episode-grid">
         {% for ep in line.episodes %}
-        <a class="episode-btn" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
+        <a class="episode-btn ep-w{{ ep.width }}" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
         {% endfor %}
       </div>
     </div>

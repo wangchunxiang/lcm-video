@@ -44,6 +44,14 @@ export function parsePlayUrl(playUrl: string): Episode[] {
   });
 }
 
+/** 剧集标签宽度：1=一格、2=两格、3=整行。按展示名长度决定，避免长名被截断。 */
+export function episodeSpan(label: string): 1 | 2 | 3 {
+  const length = [...label.trim()].length;
+  if (length <= 6) return 1;
+  if (length <= 12) return 2;
+  return 3;
+}
+
 /** 剧集展示名：源站名称为空时用「第 N 集」兜底。 */
 export function episodeLabel(episode: Episode, index: number): string {
   return episode.name || `第 ${index + 1} 集`;

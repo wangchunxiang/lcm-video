@@ -3,7 +3,7 @@ import { and, desc, eq, like, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
-import { parsePlayUrl } from '@lcm/shared';
+import { episodeLabel, episodeSpan, parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
@@ -50,6 +50,8 @@ interface EpisodeView {
   index: number;
   name: string;
   url: string;
+  /** 标签占格：1 一格、2 两格、3 整行 */
+  width: 1 | 2 | 3;
 }
 
 /** 分页页码列表：页数多时用省略号收敛，形如 [1,'gap',8,9,10,'gap',62] */
@@ -388,7 +390,10 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         id: item.id,
         name: item.source_name,
         total: eps.length,
-        episodes: eps.map((ep, index) => ({ index: index + 1, name: ep.name, url: ep.url })),
+        episodes: eps.map((ep, index) => {
+          const label = episodeLabel(ep, index);
+          return { index: index + 1, name: ep.name, url: ep.url, width: episodeSpan(label) };
+        }),
       };
     });
     const currentLineId = currentLine?.id ?? 0;
@@ -400,7 +405,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const startIndex = (epPage - 1) * epSize;
     const episodes: EpisodeView[] = allEpisodes
       .slice(startIndex, startIndex + epSize)
-      .map((item, index) => ({ index: startIndex + index + 1, name: item.name, url: item.url }));
+      .map((item, index) => ({
+        index: startIndex + index + 1,
+        name: item.name,
+        url: item.url,
+        width: episodeSpan(item.name || `第 ${startIndex + index + 1} 集`),
+      }));
 
     return render(
       reply,
@@ -510,7 +520,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         : [];
     const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
 
-    const episodes: EpisodeView[] = all.map((item, index) => ({ index: index + 1, name: item.name, url: item.url }));
+    const episodes: EpisodeView[] = all.map((item, index) => ({
+      index: index + 1,
+      name: item.name,
+      url: item.url,
+      width: episodeSpan(item.name || `第 ${index + 1} 集`),
+    }));
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;

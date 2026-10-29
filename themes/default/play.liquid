@@ -57,8 +57,8 @@
     <div class="line-panel">
       <div class="episode-grid">
         {% for item in episodes %}
-        <a class="episode-btn{% if item.index == current_ep %} current{% endif %}"
-           href="{{ play_base }}/{{ item.index }}">{{ item.name }}</a>
+        <a class="episode-btn ep-w{{ item.width }}{% if item.index == current_ep %} current{% endif %}"
+           href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
         {% endfor %}
       </div>
     </div>
