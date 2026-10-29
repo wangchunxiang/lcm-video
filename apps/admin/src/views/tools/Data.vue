@@ -18,8 +18,7 @@ const replaceForm = reactive<{ source_id: number; from: string; to: string }>({
   from: '',
   to: '',
 });
-const coverForm = reactive<{ source_id: number; from: string; to: string }>({
-  source_id: 0,
+const coverForm = reactive<{ from: string; to: string }>({
   from: '',
   to: '',
 });
@@ -48,7 +47,7 @@ function sourceLabel(id: number): string {
  */
 async function runReplace(
   kind: 'replace' | 'cover',
-  form: { source_id: number; from: string; to: string },
+  form: { source_id?: number; from: string; to: string },
   path: string,
   unit: string,
 ): Promise<void> {
@@ -62,11 +61,12 @@ async function runReplace(
   }
   busy[kind] = true;
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       from: form.from.trim(),
       to: form.to.trim(),
-      source_id: form.source_id,
     };
+    // 播放地址挂在「源 + 线路」上，可以按源限定；封面在影片上，没有源的概念
+    if (kind === 'replace') payload.source_id = form.source_id ?? 0;
     const preview = await api.post<NeedConfirm | Done>(path, payload);
     if (!('needConfirm' in preview)) return;
     if (preview.total === 0) {
@@ -74,7 +74,9 @@ async function runReplace(
       return;
     }
     await ElMessageBox.confirm(
-      `「${sourceLabel(form.source_id)}」将影响 ${preview.total} 个${unit}，替换后无法自动还原，确认执行？`,
+      kind === 'replace'
+        ? `「${sourceLabel(form.source_id ?? 0)}」将影响 ${preview.total} 个${unit}，替换后无法自动还原，确认执行？`
+        : `将影响 ${preview.total} 个${unit}，替换后无法自动还原，确认执行？`,
       '确认替换',
       { type: 'warning', confirmButtonText: '确认替换', cancelButtonText: '取消' },
     );
@@ -183,15 +185,9 @@ onMounted(loadSources);
     <el-card shadow="never">
       <template #header><span>批量替换图片地址</span></template>
       <p class="tip">
-        把影片封面地址中出现的旧前缀替换为新前缀，例如图床换了域名。可限定只处理某个采集源的影片（按该源提供的线路圈定）。
+        把影片封面地址中出现的旧前缀替换为新前缀，例如图床换了域名。封面存在影片上，同一部影片可能由多个源提供，因此不按采集源筛选，全站一起替换。
       </p>
       <el-form inline>
-        <el-form-item label="采集源">
-          <el-select v-model="coverForm.source_id" style="width: 200px">
-            <el-option label="全部采集源" :value="0" />
-            <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="查找">
           <el-input v-model="coverForm.from" placeholder="http://old.img.com" style="width: 260px" />
         </el-form-item>

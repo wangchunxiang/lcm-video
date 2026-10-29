@@ -17,15 +17,6 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       ? and(like(vodPlay.playUrl, `%${from}%`), eq(vodPlay.sourceId, sourceId))
       : like(vodPlay.playUrl, `%${from}%`);
 
-  /** 图片地址替换的范围条件：封面在影片上，按「该源provides的影片」圈定 */
-  const coverScope = (from: string, sourceId: number) => {
-    const hit = like(vod.cover, `%${from}%`);
-    if (sourceId <= 0) return hit;
-    return and(
-      hit,
-      sql`${vod.id} in (select vod_id from lcm_vod_play where source_id = ${sourceId})`,
-    );
-  };
 
   const toSourceId = (value: unknown): number | null => {
     const id = Number(value ?? 0);
@@ -85,16 +76,14 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
   /** 预览：批量替换封面地址会命中多少部影片 */
   app.post('/replace-cover-url/preview', async (req, reply) => {
-    const body = (req.body ?? {}) as { from?: string; source_id?: number };
+    const body = (req.body ?? {}) as { from?: string };
     const from = (body.from ?? '').trim();
-    const sourceId = toSourceId(body.source_id);
     if (!from) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请填写要查找的图片地址前缀');
-    if (sourceId === null) return fail(reply, 400, ErrorCode.BAD_REQUEST, '采集源不正确');
 
     const [row] = await db
       .select({ total: sql<number>`count(*)` })
       .from(vod)
-      .where(coverScope(from, sourceId));
+      .where(like(vod.cover, `%${from}%`));
 
     return ok(reply, { total: Number(row?.total ?? 0) });
   });
@@ -104,28 +93,25 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     const body = (req.body ?? {}) as {
       from?: string;
       to?: string;
-      source_id?: number;
       confirm?: boolean;
     };
     const from = (body.from ?? '').trim();
     const to = (body.to ?? '').trim();
-    const sourceId = toSourceId(body.source_id);
     if (!from) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请填写要查找的图片地址前缀');
-    if (sourceId === null) return fail(reply, 400, ErrorCode.BAD_REQUEST, '采集源不正确');
     if (from === to) return fail(reply, 400, ErrorCode.BAD_REQUEST, '替换前后的内容不能相同');
 
     if (!body.confirm) {
       const [row] = await db
         .select({ total: sql<number>`count(*)` })
         .from(vod)
-        .where(coverScope(from, sourceId));
+        .where(like(vod.cover, `%${from}%`));
       return ok(reply, { needConfirm: true, total: Number(row?.total ?? 0) });
     }
 
     const result = await db
       .update(vod)
       .set({ cover: sql`replace(${vod.cover}, ${from}, ${to})` })
-      .where(coverScope(from, sourceId));
+      .where(like(vod.cover, `%${from}%`));
 
     const affected = Number(
       (result as unknown as Array<{ affectedRows?: number }>)[0]?.affectedRows ?? 0,
