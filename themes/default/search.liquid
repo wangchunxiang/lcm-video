@@ -8,11 +8,6 @@
   <span>搜索</span>
 </nav>
 
-<form class="search-page-form" action="/search" method="get">
-  <input type="text" name="wd" value="{{ keyword }}" placeholder="搜索影片名称" maxlength="50" autocomplete="off">
-  <button type="submit">搜索</button>
-</form>
-
 {% if keyword == '' %}
 <p class="empty-tip">输入片名开始搜索。</p>
 {% else %}
