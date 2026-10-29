@@ -455,8 +455,12 @@ img { border: 0; vertical-align: middle; }
   right: 20px;
   bottom: 20px;
   max-height: 70%;
-  display: none;
+  display: flex;
   flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px) scale(0.99);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -465,7 +469,11 @@ img { border: 0; vertical-align: middle; }
   z-index: 5;
 }
 
-.intro-float.is-open { display: flex; }
+.intro-float.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
 
 .intro-float-hd {
   display: flex;
