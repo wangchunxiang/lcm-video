@@ -12,7 +12,8 @@ interface LogRow {
   sourceName: string | null;
   status: number;
   totalPages: number;
-  startPage: number;
+  resumeCount: number;
+  interruptedMs: number;
   lastPage: number;
   total: number;
   inserted: number;
@@ -157,19 +158,26 @@ function liveDuration(row: LogRow): string {
   return elapsedText(row.startedAt, row.finishedAt);
 }
 
-/** 本次执行要跑的页数：续采时只算断点之后的部分 */
-const pendingPages = computed(() => {
-  const log = currentLog.value;
-  if (!log || log.totalPages <= 0) return 0;
-  return Math.max(0, log.totalPages - (log.startPage || 1) + 1);
-});
-
 const progressPercent = computed(() => {
   const log = currentLog.value;
   if (!log) return 0;
   if (log.totalPages <= 0) return log.status === 0 ? 0 : 100;
-  const pending = pendingPages.value || 1;
-  return Math.min(100, Math.round((detailTotal.value / pending) * 100));
+  return Math.min(100, Math.round((detailTotal.value / log.totalPages) * 100));
+});
+
+/** 把毫秒格式化成「X 时 Y 分 Z 秒」，与耗时列同款 */
+function msText(ms: number): string {
+  const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
+  return `${Math.floor(totalSec / 3600)} 时 ${Math.floor((totalSec % 3600) / 60)} 分 ${totalSec % 60} 秒`;
+}
+
+/** 扣掉中断时长的实际采集耗时 */
+const actualDuration = computed(() => {
+  const log = currentLog.value;
+  if (!log) return '';
+  if (log.status === 0 || !log.finishedAt) return liveDuration(log);
+  const wall = new Date(log.finishedAt).getTime() - new Date(log.startedAt).getTime();
+  return msText(wall - (log.interruptedMs || 0));
 });
 
 /** 只有执行中且总页数未知时才走不确定态，已结束的一律显示实际百分比 */
@@ -381,11 +389,13 @@ onBeforeUnmount(() => {
     <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="42%">
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
-        <span>{{ currentLog.startedAt }} 开始，耗时 {{ liveDuration(currentLog) }}</span>
+        <span>{{ currentLog.startedAt }} 开始，耗时 {{ actualDuration }}</span>
+        <el-tag v-if="currentLog.resumeCount > 0" type="info" size="small">
+          续采 {{ currentLog.resumeCount }} 次，中断 {{ msText(currentLog.interruptedMs) }}
+        </el-tag>
         <div class="progress">
           <span class="progress-text">
-            进度 {{ detailTotal }}<template v-if="pendingPages > 0"> / {{ pendingPages }}</template> 页
-            <span v-if="currentLog.startPage > 1" class="progress-note">（本次从第 {{ currentLog.startPage }} 页开始，共 {{ currentLog.totalPages }} 页）</span>
+            进度 {{ detailTotal }}<template v-if="currentLog.totalPages > 0"> / {{ currentLog.totalPages }}</template> 页
           </span>
           <el-progress
             class="progress-bar"

@@ -176,10 +176,12 @@ export const collectLog = mysqlTable(
     sourceId: fk('source_id'),
     status: tinyint('status', { unsigned: true }).notNull().default(0),
     totalPages: int('total_pages', { unsigned: true }).notNull().default(0),
-    /** 本次从第几页开始（续采时为断点的下一页，普通执行为 1） */
-    startPage: int('start_page', { unsigned: true }).notNull().default(1),
     /** 已完成到第几页，断点续采用 */
     lastPage: int('last_page', { unsigned: true }).notNull().default(0),
+    /** 被续采了几次 */
+    resumeCount: int('resume_count', { unsigned: true }).notNull().default(0),
+    /** 累计中断时长（毫秒），用于从总耗时里扣掉停机时间 */
+    interruptedMs: bigint('interrupted_ms', { mode: 'number', unsigned: true }).notNull().default(0),
     total: int('total', { unsigned: true }).notNull().default(0),
     inserted: int('inserted', { unsigned: true }).notNull().default(0),
     updated: int('updated', { unsigned: true }).notNull().default(0),
