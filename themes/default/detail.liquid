@@ -50,7 +50,10 @@
     </dl>
 
     {% if vod.intro != blank %}
-    <p class="intro">{{ vod.intro | escape }}</p>
+    <div class="intro-row">
+      <span class="intro-label">简介</span>
+      <p class="intro">{{ vod.intro | escape }}</p>
+    </div>
     {% endif %}
 
     {% if vod.content != blank %}
