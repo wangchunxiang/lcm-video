@@ -2,6 +2,12 @@
 {% block content %}
 {% assign base = '/search' %}
 
+<nav class="breadcrumb">
+  <a href="/">首页</a>
+  <span>/</span>
+  <span>搜索</span>
+</nav>
+
 {% if keyword == '' %}
 <p class="empty-tip">请在顶部搜索框输入片名。</p>
 {% else %}
