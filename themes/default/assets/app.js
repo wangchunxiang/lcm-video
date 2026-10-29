@@ -167,7 +167,9 @@
   }
 
   function hlsConfig() {
-    return { enableWorker: true, lowLatencyMode: false };
+    /* maxAudioFramesDrift：源站每 20 秒一个 discontinuity，音频帧时间戳会跳，
+       默认容差 1 帧容易丢帧/补帧，表现为持续呲啦声，放宽到 5 帧后消失 */
+    return { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 };
   }
 
   function initArtPlayer(container, url, hls, auto, flags) {

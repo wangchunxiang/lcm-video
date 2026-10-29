@@ -73,9 +73,9 @@
   var cfgText = document.getElementById('cfgText');
 
   var CONFIGS = [
-    { label: '默认', value: { enableWorker: true, lowLatencyMode: false } },
+    { label: '默认（站点现用：worker + drift 5）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
     { label: '无 worker', value: { enableWorker: false, lowLatencyMode: false } },
-    { label: 'drift 5', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
+    { label: 'drift 5（旧默认 + 放宽）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
     { label: '无 worker + drift 5', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
     { label: '对齐', value: { enableWorker: true, lowLatencyMode: false, stretchShortVideoTrack: true, maxAudioFramesDrift: 5 } },
     { label: '全关', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 0, stretchShortVideoTrack: true } },
