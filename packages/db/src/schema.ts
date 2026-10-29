@@ -55,6 +55,9 @@ export const vod = mysqlTable(
   (t) => [
     index('idx_category_status').on(t.categoryId, t.status),
     index('idx_pid_status').on(t.categoryPid, t.status),
+    // 分类页的「年份筛选」与「总数统计」按分类 + 年份走索引，避免扫整类
+    index('idx_category_status_year').on(t.categoryId, t.status, t.year),
+    index('idx_pid_status_year').on(t.categoryPid, t.status, t.year),
     index('idx_letter').on(t.letter),
     index('idx_name_hash').on(t.nameHash),
     index('idx_status_collected').on(t.status, t.collectedAt),

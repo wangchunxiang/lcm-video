@@ -2,6 +2,11 @@ import mysql from 'mysql2/promise';
 import { drizzle } from 'drizzle-orm/mysql2';
 import * as schema from './schema.ts';
 
+export interface DbOptions {
+  /** 开启 MySQL 协议压缩：大结果集省带宽，小查询有少量 CPU 开销 */
+  compress?: boolean;
+}
+
 export interface DbConfig {
   host: string;
   port: number;
@@ -11,7 +16,7 @@ export interface DbConfig {
   connectionLimit?: number;
 }
 
-export function createDb(config: DbConfig) {
+export function createDb(config: DbConfig, options: DbOptions = {}) {
   const pool = mysql.createPool({
     host: config.host,
     port: config.port,
@@ -23,6 +28,9 @@ export function createDb(config: DbConfig) {
     charset: 'utf8mb4',
     timezone: '+08:00',
     supportBigNumbers: true,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+    compress: options.compress ?? false,
   });
 
   const db = drizzle(pool, { schema, mode: 'default' });

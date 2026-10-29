@@ -69,7 +69,16 @@ export function clearSiteConfigCache(): void {
   cachedConfig = null;
 }
 
+/** 导航树变化极少，缓存 60 秒；后台改动分类时由 clearNavCache() 立即失效 */
+let cachedNav: { at: number; value: NavItem[] } | null = null;
+
+export function clearNavCache(): void {
+  cachedNav = null;
+}
+
 export async function loadNav(db: Db): Promise<NavItem[]> {
+  if (cachedNav && Date.now() - cachedNav.at < 60_000) return cachedNav.value;
+
   const rows = await db
     .select({ id: category.id, pid: category.pid, name: category.name, alias: category.alias })
     .from(category)
@@ -88,6 +97,7 @@ export async function loadNav(db: Db): Promise<NavItem[]> {
     if (row.pid === 0) continue;
     index.get(row.pid)?.children.push({ id: row.id, name: row.name, alias: row.alias, children: [] });
   }
+  cachedNav = { at: Date.now(), value: parents };
   return parents;
 }
 

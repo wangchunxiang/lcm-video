@@ -85,6 +85,73 @@ function buildIframeUrl(parseUrl: string, url: string): string {
   return `${parseUrl}${url}`;
 }
 
+/**
+ * 分类页的统计与年份：一级分类用两条单条件查询并行，避免 `OR` 导致索引失效。
+ * 年份结果按分类缓存 60 秒——采集后新出现的年份最多晚一分钟展示，可接受。
+ */
+async function countByParent(db: Db, categoryId: number, year: number): Promise<number> {
+  const yearCond = year > 0 ? eq(vod.year, year) : undefined;
+  const [byId, byPid] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(vod)
+      .where(and(eq(vod.status, 1), eq(vod.categoryId, categoryId), yearCond)),
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(vod)
+      .where(and(eq(vod.status, 1), eq(vod.categoryPid, categoryId), yearCond)),
+  ]);
+  return Number(byId[0]?.total ?? 0) + Number(byPid[0]?.total ?? 0);
+}
+
+const yearCache = new Map<string, { at: number; years: number[] }>();
+
+async function loadYears(db: Db, categoryId: number, scope: 'parent' | 'type'): Promise<number[]> {
+  const key = `${scope}:${categoryId}`;
+  const hit = yearCache.get(key);
+  if (hit && Date.now() - hit.at < 60_000) return hit.years;
+
+  const base = [
+    eq(vod.status, 1),
+    sql`${vod.year} > 0`,
+    lte(vod.year, sql`YEAR(NOW())`),
+  ];
+  const pick = (rows: Array<{ year: number }>) => rows.map((row) => row.year);
+
+  let years: number[];
+  if (scope === 'type') {
+    const rows = await db
+      .select({ year: vod.year })
+      .from(vod)
+      .where(and(...base, eq(vod.categoryId, categoryId)))
+      .groupBy(vod.year)
+      .orderBy(desc(vod.year))
+      .limit(15);
+    years = pick(rows);
+  } else {
+    const [byPid, byId] = await Promise.all([
+      db
+        .select({ year: vod.year })
+        .from(vod)
+        .where(and(...base, eq(vod.categoryPid, categoryId)))
+        .groupBy(vod.year)
+        .orderBy(desc(vod.year))
+        .limit(15),
+      db
+        .select({ year: vod.year })
+        .from(vod)
+        .where(and(...base, eq(vod.categoryId, categoryId)))
+        .groupBy(vod.year)
+        .orderBy(desc(vod.year))
+        .limit(15),
+    ]);
+    years = [...new Set([...pick(byPid), ...pick(byId)])].sort((a, b) => b - a).slice(0, 15);
+  }
+
+  yearCache.set(key, { at: Date.now(), years });
+  return years;
+}
+
 export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
@@ -161,36 +228,44 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   /* ------------------------------- 首页 ------------------------------- */
 
   app.get('/', async (_req, reply) => {
-    const config = await loadSiteConfig(db);
-    const rows = await db
-      .select(vodColumns())
-      .from(vod)
-      .leftJoin(category, eq(category.id, vod.categoryId))
-      .where(eq(vod.status, 1))
-      .orderBy(desc(vod.collectedAt), desc(vod.id))
-      .limit(HOME_VOD_COUNT);
-
-    const todayRows = await db
-      .select({ total: sql<number>`count(*)` })
-      .from(vod)
-      .where(and(eq(vod.status, 1), sql`${vod.collectedAt} >= CURDATE()`));
-    const todayCount = Number(todayRows[0]?.total ?? 0);
-
-    const nav = await loadNav(db);
-    const homeCategories: Array<{ name: string; alias: string; vods: VodCard[] }> = [];
-    for (const item of nav) {
-      const list = await db
+    // 首页要查的东西彼此独立，全部并行发出，避免串行累加往返时间
+    const [config, rows, todayRows, nav] = await Promise.all([
+      loadSiteConfig(db),
+      db
         .select(vodColumns())
         .from(vod)
         .leftJoin(category, eq(category.id, vod.categoryId))
-        .where(
-          and(
-            eq(vod.status, 1),
-            or(eq(vod.categoryPid, item.id), eq(vod.categoryId, item.id)),
-          ),
-        )
+        .where(eq(vod.status, 1))
         .orderBy(desc(vod.collectedAt), desc(vod.id))
-        .limit(HOME_CATEGORY_COUNT);
+        .limit(HOME_VOD_COUNT),
+      db
+        .select({ total: sql<number>`count(*)` })
+        .from(vod)
+        .where(and(eq(vod.status, 1), sql`${vod.collectedAt} >= CURDATE()`)),
+      loadNav(db),
+    ]);
+    const todayCount = Number(todayRows[0]?.total ?? 0);
+
+    // 每个一级分类各取最新 N 条，同样并行
+    const sections = await Promise.all(
+      nav.map(async (item) => ({
+        item,
+        list: await db
+          .select(vodColumns())
+          .from(vod)
+          .leftJoin(category, eq(category.id, vod.categoryId))
+          .where(
+            and(
+              eq(vod.status, 1),
+              or(eq(vod.categoryPid, item.id), eq(vod.categoryId, item.id)),
+            ),
+          )
+          .orderBy(desc(vod.collectedAt), desc(vod.id))
+          .limit(HOME_CATEGORY_COUNT),
+      })),
+    );
+    const homeCategories: Array<{ name: string; alias: string; vods: VodCard[] }> = [];
+    for (const { item, list } of sections) {
       if (list.length === 0) continue;
       homeCategories.push({ name: item.name, alias: item.alias, vods: list.map(toCard) });
     }
@@ -243,8 +318,11 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     if (year > 0) conditions.push(eq(vod.year, year));
     const where = and(...conditions);
 
-    const countRows = await db.select({ total: sql<number>`count(*)` }).from(vod).where(where);
-    const total = Number(countRows[0]?.total ?? 0);
+    // 一级分类页的「父分类 OR 子分类」会让优化器放弃分类索引、退化成全表扫，
+    // 这里拆成两条单条件查询并行执行，各自都能走索引。
+    const total = activeType
+      ? Number((await db.select({ total: sql<number>`count(*)` }).from(vod).where(where))[0]?.total ?? 0)
+      : await countByParent(db, parent.id, year);
     const pagination = buildPagination(page, config.listPageSize, total);
     if (page > pagination.total_pages) return notFound(reply);
 
@@ -258,23 +336,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       .limit(config.listPageSize)
       .offset((page - 1) * config.listPageSize);
 
-    // 可选年份：当前分类下出现过的年份
-    const yearScope = await db
-      .select({ year: vod.year })
-      .from(vod)
-      .where(
-        and(
-          eq(vod.status, 1),
-          lte(vod.year, sql`YEAR(NOW())`),
-          activeType
-            ? eq(vod.categoryId, activeType.id)
-            : or(eq(vod.categoryPid, parent.id), eq(vod.categoryId, parent.id)),
-        ),
-      )
-      .groupBy(vod.year)
-      .orderBy(desc(vod.year))
-      .limit(15);
-    const years = yearScope.map((row) => row.year).filter((value) => value > 0);
+    // 可选年份：当前分类下出现过的年份（同样拆单条件，并缓存 60 秒）
+    const years = await loadYears(db, activeType ? activeType.id : parent.id, activeType ? 'type' : 'parent');
 
     const titleName = activeType ? `${activeType.name} - ${parent.name}在线观看` : `${parent.name}在线观看`;
     return render(

@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   PRIMARY KEY (`id`),
   KEY `idx_category_status` (`category_id`,`status`),
   KEY `idx_pid_status` (`category_pid`,`status`),
+  KEY `idx_category_status_year` (`category_id`,`status`,`year`),
+  KEY `idx_pid_status_year` (`category_pid`,`status`,`year`),
   KEY `idx_letter` (`letter`),
   KEY `idx_name_hash` (`name_hash`),
   KEY `idx_status_collected` (`status`,`collected_at`)

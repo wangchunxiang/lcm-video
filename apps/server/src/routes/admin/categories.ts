@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { category, collectSourceCategory, vod } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { clearNavCache } from '../../lib/theme.ts';
 
 export interface CategoryRouteOpts {
   db: Db;
@@ -84,6 +85,11 @@ async function validateBody(
 
 export const categoryRoutes: FastifyPluginAsync<CategoryRouteOpts> = async (app, opts) => {
   const { db } = opts;
+
+  // 分类有写操作就让前台导航缓存立刻失效，不用等 TTL
+  app.addHook('onResponse', async (req) => {
+    if (req.method !== 'GET') clearNavCache();
+  });
 
   app.get('/', async (req, reply) => {
     const query = req.query as { keyword?: string; is_show?: string };

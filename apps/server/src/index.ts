@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import Fastify from 'fastify';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
@@ -38,9 +39,19 @@ const app = Fastify({
 });
 
 const { db, pool } = createDb(env.db);
+// 采集是批量读写，数据量大（一页 100 部影片 + 全部线路），单独用一条压缩连接池省带宽；
+// 前台/后台的零散查询仍走不压缩的池，避免小查询的压缩开销。
+const { db: bulkDb, pool: bulkPool } = createDb(env.db, { compress: true });
 const requireAdmin = createRequireAdmin(db, env.jwtSecret);
 
 await mkdir(env.paths.uploadDir, { recursive: true });
+
+// 文本响应统一压缩：HTML/JSON/CSS/JS 走 br（浏览器不支持时退 gzip），小响应不压
+await app.register(compress, {
+  global: true,
+  threshold: 1024,
+  encodings: ['br', 'gzip', 'deflate'],
+});
 
 await app.register(cookie);
 await app.register(multipart, {
@@ -90,7 +101,7 @@ await app.register(
     await admin.register(sourceRoutes, { prefix: '/sources', db });
     await admin.register(sourceCategoryRoutes, { prefix: '/sources', db });
     await admin.register(adsRoutes, { prefix: '/sources', db });
-    await admin.register(taskRoutes, { prefix: '/tasks', db });
+    await admin.register(taskRoutes, { prefix: '/tasks', db: bulkDb });
     await admin.register(logRoutes, { prefix: '/logs', db });
     await admin.register(lineRoutes, { prefix: '/lines', db });
     await admin.register(vodRoutes, { prefix: '/vods', db });
@@ -136,7 +147,7 @@ const close = async (signal: string) => {
   app.log.info(`收到 ${signal}，正在关闭服务`);
   stopScheduler();
   await app.close();
-  await pool.end();
+  await Promise.all([pool.end(), bulkPool.end()]);
   process.exit(0);
 };
 process.on('SIGINT', () => void close('SIGINT'));
