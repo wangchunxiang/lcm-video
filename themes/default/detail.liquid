@@ -44,10 +44,10 @@
     </div>
 
     <dl class="d-fields">
-      {% if vod.director != blank %}<div><dt>导演</dt><dd>{{ vod.director }}</dd></div>{% endif %}
+      <div><dt>导演</dt><dd>{% if vod.director != blank %}{{ vod.director }}{% else %}—{% endif %}</dd></div>
       <div><dt>编剧</dt><dd>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
-      {% if vod.actor != blank %}<div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>{% endif %}
-      {% if vod.intro != blank %}<div class="wide"><dt>简介</dt><dd>{{ vod.intro | escape }}</dd></div>{% endif %}
+      <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
+      <div class="wide"><dt>简介</dt><dd>{% if vod.intro != blank %}{{ vod.intro | escape }}{% else %}—{% endif %}</dd></div>
     </dl>
   </div>
 </div>
