@@ -741,7 +741,8 @@ img { border: 0; vertical-align: middle; }
 
 /* 播放页：按视口高度反推容器宽度，让播放器与右侧面板都落在一屏内，
    同时容器整体收窄，面包屑、播放器、右侧面板三者左右边缘对齐 */
-@media (min-width: 1101px) {
+/* 只有屏幕高度不够（<950px）时才收窄，够高的屏幕保持与其他页面同宽 */
+@media (min-width: 1101px) and (max-height: 949px) {
   .container:has(> .play-row) {
     --play-container: max(808px, calc(380px + var(--space-4) + (100vh - 300px) * 16 / 9 + 48px));
     max-width: var(--play-container);
