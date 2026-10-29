@@ -5,15 +5,29 @@
   var panel = document.querySelector('[data-intro-float-panel]');
   if (!panel) return;
 
+  var body = panel.querySelector('.intro-float-bd');
+
+  function close() {
+    panel.classList.remove('is-open');
+    if (body) body.scrollTop = 0;
+  }
+
   Array.prototype.forEach.call(triggers, function (el) {
-    el.addEventListener('click', function () {
-      panel.classList.toggle('is-open');
-      if (!panel.classList.contains('is-open')) panel.querySelector('.intro-float-bd').scrollTop = 0;
+    el.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = panel.classList.toggle('is-open');
+      if (!open && body) body.scrollTop = 0;
     });
   });
 
+  document.addEventListener('click', function (e) {
+    if (!panel.classList.contains('is-open')) return;
+    if (panel.contains(e.target)) return;
+    close();
+  });
+
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') panel.classList.remove('is-open');
+    if (e.key === 'Escape') close();
   });
 })();
 
