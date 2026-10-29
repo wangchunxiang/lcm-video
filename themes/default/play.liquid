@@ -10,75 +10,123 @@
   <span>{{ current_ep_name }}</span>
 </nav>
 
-<section class="player-wrap">
-  <div class="player">
-    {% if iframe_url != blank %}
-    <iframe
-      src="{{ iframe_url }}"
-      allowfullscreen
-      allow="autoplay; fullscreen; encrypted-media"
-      frameborder="0"
-      scrolling="no"
-    ></iframe>
-    {% else %}
-    <div
-      id="player"
-      class="player-box"
-      data-src="{{ play_url }}"
-      data-hls="{% if is_hls %}1{% else %}0{% endif %}"
-      data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
-      data-autonext="{% if autonext %}1{% else %}0{% endif %}"
-      data-resume="{% if resume %}1{% else %}0{% endif %}"
-      data-screenshot="{% if screenshot %}1{% else %}0{% endif %}"
-      data-webfullscreen="{% if webfullscreen %}1{% else %}0{% endif %}"
-      data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
-      data-setting="{% if setting %}1{% else %}0{% endif %}"
-      data-lang="zh-cn"
-      data-poster="{{ vod.cover }}"
-      data-vod-id="{{ vod.id }}"
-      data-ep="{{ current_ep }}"
-      data-next="{{ next_url }}"
-    ></div>
-    {% endif %}
+<div class="play-row">
+  <div class="play-left">
+    <div class="player">
+      {% if iframe_url != blank %}
+      <iframe
+        src="{{ iframe_url }}"
+        allowfullscreen
+        allow="autoplay; fullscreen; encrypted-media"
+        frameborder="0"
+        scrolling="no"
+      ></iframe>
+      {% else %}
+      <div
+        id="player"
+        class="player-box"
+        data-src="{{ play_url }}"
+        data-hls="{% if is_hls %}1{% else %}0{% endif %}"
+        data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
+        data-autonext="{% if autonext %}1{% else %}0{% endif %}"
+        data-resume="{% if resume %}1{% else %}0{% endif %}"
+        data-screenshot="{% if screenshot %}1{% else %}0{% endif %}"
+        data-webfullscreen="{% if webfullscreen %}1{% else %}0{% endif %}"
+        data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
+        data-setting="{% if setting %}1{% else %}0{% endif %}"
+        data-lang="zh-cn"
+        data-poster="{{ vod.cover }}"
+        data-vod-id="{{ vod.id }}"
+        data-ep="{{ current_ep }}"
+        data-next="{{ next_url }}"
+      ></div>
+      {% endif %}
+    </div>
+
+    <div class="card play-bar">
+      <div class="play-title">
+        <h1>{{ vod.name }}</h1>
+        <span class="play-ep">{{ current_ep_name }}</span>
+        <span class="play-badge">{{ line.name }}</span>
+      </div>
+      <div class="play-actions">
+        {% if prev_url != blank %}
+        <a class="btn" href="{{ prev_url }}">上一集</a>
+        {% endif %}
+        {% if next_url != blank %}
+        <a class="btn primary" href="{{ next_url }}">下一集</a>
+        {% endif %}
+        <a class="btn" href="/detail/{{ vod.id }}">返回详情</a>
+      </div>
+    </div>
   </div>
 
-  <div class="play-head">
-    <h1>{{ vod.name }}</h1>
-    <span class="play-ep">{{ current_ep_name }}</span>
-    {% if current_ep > 1 %}
-    <a class="btn" href="{{ play_base }}/{{ current_ep | minus: 1 }}">上一集</a>
-    {% endif %}
-    {% if current_ep < line.episode_count %}
-    <a class="btn" href="{{ play_base }}/{{ current_ep | plus: 1 }}">下一集</a>
-    {% endif %}
-    <a class="btn" href="/detail/{{ vod.id }}">返回详情</a>
-  </div>
-</section>
+  <aside class="card play-side">
+    <div class="play-tabs">
+      <button type="button" class="play-tab is-active" data-play-tab="episodes">
+        选集<em>{{ line.episode_count }}</em>
+      </button>
+      <button type="button" class="play-tab" data-play-tab="lines">
+        线路<em>{{ lines.size }}</em>
+      </button>
+      <button type="button" class="play-tab" data-play-tab="info">影片信息</button>
+    </div>
 
-<section class="section">
-  <h2>播放线路</h2>
-  <div class="line-tabs">
-    {% for l in lines %}
-    <a class="line-tab{% if l.id == line.id %} active{% endif %}"
-       href="/play/{{ vod.id }}/{{ l.id }}/1">{{ l.name }}
-      <span class="count">{{ l.episode_count }}</span>
-    </a>
-    {% endfor %}
-  </div>
+    <div class="play-panel is-active" data-play-panel="episodes">
+      <div class="episode-grid">
+        {% for item in episodes %}
+        <a class="episode-btn{% if item.index == current_ep %} current{% endif %}"
+           href="{{ play_base }}/{{ item.index }}">{{ item.name }}</a>
+        {% endfor %}
+      </div>
+      {% if pagination.total_pages > 1 %}
+      <div class="episode-pager">
+        {% if pagination.page > 1 %}
+        <a class="page-btn" href="{{ play_base }}/{{ current_ep }}?page={{ pagination.page | minus: 1 }}">上一页</a>
+        {% endif %}
+        <span class="page-info">{{ pagination.page }} / {{ pagination.total_pages }}</span>
+        {% if pagination.page < pagination.total_pages %}
+        <a class="page-btn" href="{{ play_base }}/{{ current_ep }}?page={{ pagination.page | plus: 1 }}">下一页</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
 
-  {% render 'partials/episode-list', episodes: episodes, current_ep: current_ep, play_base: play_base %}
+    <div class="play-panel" data-play-panel="lines">
+      <div class="side-lines">
+        {% for l in lines %}
+        <a class="side-line{% if l.id == line.id %} is-active{% endif %}" href="/play/{{ vod.id }}/{{ l.id }}/1">
+          <span class="side-line-name">{{ l.name }}</span>
+          <span class="side-line-count">{{ l.episode_count }} 集</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
 
-  {% if pagination.total_pages > 1 %}
-  <div class="episode-pager">
-    {% if pagination.page > 1 %}
-    <a class="page-btn" href="{{ play_base }}/1?page={{ pagination.page | minus: 1 }}">上一页</a>
-    {% endif %}
-    <span class="page-info">{{ pagination.page }} / {{ pagination.total_pages }}</span>
-    {% if pagination.page < pagination.total_pages %}
-    <a class="page-btn" href="{{ play_base }}/1?page={{ pagination.page | plus: 1 }}">下一页</a>
-    {% endif %}
-  </div>
-  {% endif %}
-</section>
+    <div class="play-panel" data-play-panel="info">
+      <dl class="side-info">
+        {% if vod.category_name != blank %}
+        <div><dt>分类</dt><dd>{{ vod.category_name }}</dd></div>
+        {% endif %}
+        {% if vod.year > 0 %}
+        <div><dt>年份</dt><dd>{{ vod.year }}</dd></div>
+        {% endif %}
+        {% if vod.area != blank %}
+        <div><dt>地区</dt><dd>{{ vod.area }}</dd></div>
+        {% endif %}
+        {% if vod.director != blank %}
+        <div><dt>导演</dt><dd>{{ vod.director }}</dd></div>
+        {% endif %}
+        {% if vod.actor != blank %}
+        <div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>
+        {% endif %}
+      </dl>
+      {% if vod.intro != blank %}
+      <p class="side-intro">{{ vod.intro | escape }}</p>
+      {% endif %}
+      <a class="side-more" href="/detail/{{ vod.id }}">查看详情</a>
+    </div>
+  </aside>
+</div>
 {% endblock %}
 {% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}

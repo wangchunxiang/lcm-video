@@ -696,11 +696,9 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- player ---------- */
 
-.player-wrap {
+.card {
   background: #fff;
   border-radius: var(--radius);
-  padding: var(--space-4);
-  margin: 0 0 var(--gap-block);
   box-shadow: var(--shadow);
 }
 
@@ -733,27 +731,185 @@ img { border: 0; vertical-align: middle; }
   height: 100%;
 }
 
-.play-head {
+/* 播放页：左播放器 + 右侧标签面板 */
+
+.play-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.play-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.play-side {
+  width: 380px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.play-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.play-tab {
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.play-tab em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.play-tab:hover { color: var(--primary); }
+
+.play-tab.is-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+
+.play-tab.is-active em { color: var(--primary); }
+
+.play-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.play-panel.is-active { display: block; }
+
+.play-side .episode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.play-side .episode-pager { margin-top: var(--space-3); }
+
+.play-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-top: var(--space-4);
+  gap: var(--space-3);
+  padding: 10px var(--space-4);
   flex-wrap: wrap;
 }
 
-.play-head h1 { font-size: 18px; margin: 0; }
+.play-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
 
-.play-ep { color: var(--text-3); font-size: 14px; }
+.play-title h1 {
+  font-size: 16px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-.play-head .btn {
-  padding: 6px 16px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
+.play-ep {
+  flex: none;
+  color: var(--text-3);
   font-size: 13px;
+}
+
+.play-badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eff4ff;
+  color: var(--primary);
+  font-size: 12px;
+}
+
+.play-actions {
+  flex: none;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.play-bar .btn { padding: 5px 14px; border-radius: 4px; font-size: 13px; }
+
+.play-bar .btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.side-lines { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.side-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
   color: var(--text-2);
 }
 
-.play-head .btn:hover { border-color: var(--primary); color: var(--primary); }
+.side-line:hover { border-color: var(--primary); color: var(--primary); }
+
+.side-line.is-active {
+  border-color: var(--primary);
+  background: #eff4ff;
+  color: var(--primary);
+}
+
+.side-line-count { font-size: 12px; color: var(--text-3); }
+.side-line.is-active .side-line-count { color: var(--primary); }
+
+.side-info {
+  margin: 0 0 var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.side-info > div { display: flex; gap: var(--space-2); font-size: 13px; }
+
+.side-info dt { flex: none; width: 40px; color: var(--text-3); }
+.side-info dd { margin: 0; color: var(--text-2); }
+
+.side-intro {
+  margin: 0 0 var(--space-3);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-2);
+}
+
+.side-more { font-size: 13px; color: var(--primary); }
+
+@media (max-width: 1100px) {
+  .play-row { flex-direction: column; }
+  .play-side { width: 100%; max-height: 460px; }
+}
 
 .episode-pager {
   display: flex;

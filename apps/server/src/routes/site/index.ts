@@ -465,8 +465,20 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   ): Promise<FastifyReply> {
     const config = await loadSiteConfig(db);
     const rows = await db
-      .select({ id: vod.id, name: vod.name, cover: vod.cover, remarks: vod.remarks })
+      .select({
+        id: vod.id,
+        name: vod.name,
+        cover: vod.cover,
+        remarks: vod.remarks,
+        year: vod.year,
+        area: vod.area,
+        actor: vod.actor,
+        director: vod.director,
+        intro: vod.intro,
+        category_name: category.name,
+      })
       .from(vod)
+      .leftJoin(category, eq(category.id, vod.categoryId))
       .where(and(eq(vod.id, id), eq(vod.status, 1)))
       .limit(1);
     const row = rows[0];
@@ -515,7 +527,18 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         canonical: `/play/${row.id}/${line.id}/${currentEp}`,
       },
       {
-        vod: { id: row.id, name: row.name, cover: row.cover, remarks: row.remarks },
+        vod: {
+          id: row.id,
+          name: row.name,
+          cover: row.cover,
+          remarks: row.remarks,
+          year: row.year,
+          area: row.area,
+          actor: row.actor,
+          director: row.director,
+          intro: row.intro,
+          category_name: row.category_name ?? '',
+        },
         line: { id: line.id, name: line.source_name, parse_url: line.parse_url, episode_count: all.length },
         lines: lines.map((item) => ({ id: item.id, name: item.source_name, episode_count: item.episode_count })),
         episodes: pageEpisodes,
