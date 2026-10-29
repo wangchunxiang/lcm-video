@@ -45,7 +45,7 @@
     <dl class="d-fields">
       <div><dt>导演</dt><dd class="line-1">{% if vod.director != blank %}{{ vod.director }}{% else %}—{% endif %}</dd></div>
       <div><dt>编剧</dt><dd class="line-1">{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
-      <div><dt>演员</dt><dd class="line-2">{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
+      <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
       <div class="wide">
         <dt>简介</dt>
         <dd class="intro-dd">{% if vod.content != blank and vod.content != vod.intro %}{{ vod.intro | slice: 0, 200 | escape }}…<a class="intro-link" href="javascript:void(0)" data-intro-float>详情</a>{% else %}{{ vod.intro | escape }}{% endif %}</dd>
