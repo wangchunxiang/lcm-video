@@ -460,13 +460,13 @@ img { border: 0; vertical-align: middle; }
 }
 
 .intro-dd {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
-.intro-dd > span { flex: 1; min-width: 0; }
-.intro-dd .intro-link { flex: none; line-height: inherit; }
+.intro-dd .intro-link { margin-left: 4px; white-space: nowrap; }
 
 .detail-actions {
   margin-top: auto;
