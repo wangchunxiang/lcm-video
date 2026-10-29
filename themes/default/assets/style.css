@@ -364,7 +364,7 @@ img { border: 0; vertical-align: middle; }
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .detail-info h1 { margin: 0; font-size: 24px; }
@@ -383,7 +383,7 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   flex-wrap: wrap;
   gap: 4px 28px;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 13px;
   color: var(--text-2);
 }
@@ -432,7 +432,7 @@ img { border: 0; vertical-align: middle; }
 }
 
 .sub-name {
-  margin: 0 0 16px;
+  margin: 0 0 8px;
   color: var(--text-3);
   font-size: 14px;
 }
@@ -466,7 +466,7 @@ img { border: 0; vertical-align: middle; }
 .meta-line a:hover { color: var(--primary); }
 
 .info-list {
-  margin: 0 0 18px;
+  margin: 0 0 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
