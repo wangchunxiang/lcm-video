@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
 
@@ -128,40 +128,78 @@ export function signatureOf(durs: number[]): string {
   return durs.map((n) => n.toFixed(2)).join(',');
 }
 
-/** 从该源随机抽 N 个有播放地址的作品 */
+/**
+ * 从该源随机抽 N 个有播放地址的作品。
+ *
+ * 不能用 `ORDER BY RAND() LIMIT N`：那会让 MySQL 全表扫 vod 再做 filesort，
+ * 还要把 play_url（动辄几十 KB）一起塞进排序缓冲，61 万行级别的库上是 4 秒起步。
+ * 改成「按主键区间取一小段 → 内存里随机挑 → 再按主键回表取 play_url」，三次往返即可。
+ */
 export async function pickSampleVods(db: Db, sourceId: number, size = SAMPLE_SIZE): Promise<SampleVod[]> {
-  const rows = await db
-    .select({
-      id: vod.id,
-      name: vod.name,
-      sourceVodId: vodPlay.sourceVodId,
-      playUrl: vodPlay.playUrl,
-    })
+  const picked: Array<{ id: number; vodId: number; name: string }> = [];
+  const seen = new Set<number>();
+
+  for (let attempt = 0; attempt < 6 && picked.length < size; attempt += 1) {
+    const [range] = await db
+      .select({ low: sql<number>`MIN(${vodPlay.id})`, high: sql<number>`MAX(${vodPlay.id})` })
+      .from(vodPlay)
+      .where(eq(vodPlay.sourceId, sourceId));
+    const low = Number(range?.low ?? 0);
+    const high = Number(range?.high ?? 0);
+    if (high <= 0 || high <= low) break;
+
+    /* 随机开一个窗口，取窗口内的一小段行（不带 play_url） */
+    const width = Math.max(2000, Math.ceil((high - low) / 50));
+    const start = low + Math.floor(Math.random() * Math.max(1, high - low - width));
+    const rows = await db
+      .select({ id: vodPlay.id, vodId: vodPlay.vodId, name: vod.name })
+      .from(vodPlay)
+      .innerJoin(vod, eq(vod.id, vodPlay.vodId))
+      .where(
+        and(
+          eq(vodPlay.sourceId, sourceId),
+          eq(vod.status, 1),
+          isNotNull(vodPlay.playUrl),
+          ne(vodPlay.playUrl, ''),
+          gte(vodPlay.id, start),
+          lte(vodPlay.id, start + width),
+        ),
+      )
+      .orderBy(vodPlay.id)
+      .limit(120);
+
+    for (const row of rows) {
+      if (picked.length >= size * 3) break;
+      if (seen.has(row.vodId)) continue;
+      seen.add(row.vodId);
+      picked.push({ id: row.id, vodId: row.vodId, name: row.name });
+    }
+  }
+
+  if (!picked.length) return [];
+
+  /* 洗牌后取前 size 个，再回表拿 play_url */
+  for (let i = picked.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = picked[i]!;
+    picked[i] = picked[j]!;
+    picked[j] = tmp;
+  }
+  const chosen = picked.slice(0, size);
+  const urls = await db
+    .select({ id: vodPlay.id, playUrl: vodPlay.playUrl })
     .from(vodPlay)
-    .innerJoin(vod, eq(vod.id, vodPlay.vodId))
-    .where(
-      and(
-        eq(vodPlay.sourceId, sourceId),
-        isNotNull(vodPlay.playUrl),
-        ne(vodPlay.playUrl, ''),
-        eq(vod.status, 1),
-      ),
-    )
-    .orderBy(sql`RAND()`)
-    .limit(size);
+    .where(inArray(vodPlay.id, chosen.map((row) => row.id)));
+  const urlMap = new Map<number, string>();
+  for (const row of urls) urlMap.set(row.id, row.playUrl ?? '');
 
   const out: SampleVod[] = [];
-  for (const row of rows) {
-    const playUrl = row.playUrl ?? '';
+  for (const row of chosen) {
+    const playUrl = urlMap.get(row.id) ?? '';
     const first = playUrl.split('#')[0] ?? '';
     const url = first.split('$').pop() ?? '';
     if (!/^https?:\/\//i.test(url)) continue;
-    out.push({
-      id: row.id,
-      name: row.name,
-      episode: `第 1 集`,
-      url,
-    });
+    out.push({ id: row.vodId, name: row.name, episode: '第 1 集', url });
   }
   return out;
 }
