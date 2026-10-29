@@ -306,7 +306,7 @@ img { border: 0; vertical-align: middle; }
   flex-wrap: wrap;
 }
 
-.filter-row + .filter-row { margin-top: 6px; }
+.filter-row + .filter-row { margin-top: var(--space-2); }
 
 .filter-block { margin: 0 0 var(--gap-block); }
 
