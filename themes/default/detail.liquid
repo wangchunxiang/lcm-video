@@ -24,9 +24,6 @@
       <div class="no-cover big">{{ vod.name | truncate_text: 8 }}</div>
       {% endif %}
     </div>
-    {% if lines.size > 0 %}
-    <a class="btn-primary side-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
-    {% endif %}
   </div>
 
   <div class="detail-info">
@@ -34,6 +31,7 @@
       <div class="title-row">
         <h1>{{ vod.name }}</h1>
         {% if vod.remarks != blank %}<span class="title-badge">{{ vod.remarks }}</span>{% endif %}
+        {% if lines.size > 0 %}<a class="btn-primary btn-play-inline" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>{% endif %}
       </div>
       {% if vod.sub_name != blank %}<p class="sub-name">{{ vod.sub_name }}</p>{% endif %}
     </div>

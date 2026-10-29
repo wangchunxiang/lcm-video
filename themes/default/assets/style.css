@@ -424,12 +424,11 @@ img { border: 0; vertical-align: middle; }
 
 .d-fields > div.wide dd { white-space: pre-wrap; }
 
-.side-play {
-  display: block;
-  width: 100%;
-  margin-top: 12px;
-  padding: 10px 0;
-  text-align: center;
+.btn-play-inline {
+  margin-left: auto;
+  padding: 6px 20px;
+  font-size: 14px;
+  border-radius: 18px;
 }
 
 .btn-primary {
