@@ -518,19 +518,21 @@ img { border: 0; vertical-align: middle; }
 .ep-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 2px;
   margin: 0 0 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .ep-tab {
-  border: 1px solid var(--line);
-  background: #fff;
+  position: relative;
+  border: 0;
+  background: none;
   color: var(--text-2);
-  border-radius: 6px;
-  padding: 6px 14px;
+  padding: 8px 16px 10px;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  border-radius: 4px 4px 0 0;
 }
 
 .ep-tab .count {
@@ -539,15 +541,25 @@ img { border: 0; vertical-align: middle; }
   font-size: 12px;
 }
 
-.ep-tab:hover { border-color: var(--primary); color: var(--primary); }
+.ep-tab:hover { color: var(--primary); background: #f7f8fa; }
 
 .ep-tab.is-active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
+  color: var(--primary);
+  font-weight: 600;
 }
 
-.ep-tab.is-active .count { color: rgba(255, 255, 255, .75); }
+.ep-tab.is-active .count { color: var(--primary); }
+
+.ep-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--primary);
+}
 
 .ep-panel { display: none; }
 .ep-panel.is-active { display: block; }
