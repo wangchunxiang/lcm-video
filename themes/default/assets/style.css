@@ -416,6 +416,15 @@ img { border: 0; vertical-align: middle; }
   color: var(--text-3);
 }
 
+.intro-toggle {
+  margin-left: 6px;
+  color: var(--primary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.intro-toggle:hover { text-decoration: underline; }
+
 .d-fields dd {
   margin: 0;
   color: var(--text-2);

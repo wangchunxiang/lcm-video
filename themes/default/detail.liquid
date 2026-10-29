@@ -47,7 +47,13 @@
       <div><dt>导演</dt><dd>{% if vod.director != blank %}{{ vod.director }}{% else %}—{% endif %}</dd></div>
       <div><dt>编剧</dt><dd>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
-      <div class="wide"><dt>简介</dt><dd>{% if vod.intro != blank %}{{ vod.intro | escape }}{% else %}—{% endif %}</dd></div>
+      <div class="wide">
+        <dt>简介</dt>
+        <dd>
+          <span class="intro-text">{% if vod.intro != blank %}{{ vod.intro | escape }}{% else %}—{% endif %}</span>
+          {% if vod.content != blank and vod.content != vod.intro %}<a class="intro-toggle" href="javascript:void(0)" data-intro-toggle>展开</a><span class="intro-full" hidden>{{ vod.content | escape }}</span>{% endif %}
+        </dd>
+      </div>
     </dl>
   </div>
 </div>
