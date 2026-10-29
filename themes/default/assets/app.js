@@ -1,4 +1,23 @@
 (function () {
+  var tabs = document.querySelectorAll('[data-ep-tab]');
+  if (!tabs.length) return;
+
+  Array.prototype.forEach.call(tabs, function (tab) {
+    tab.addEventListener('click', function () {
+      var id = tab.getAttribute('data-ep-tab');
+
+      Array.prototype.forEach.call(tabs, function (item) {
+        item.classList.toggle('is-active', item === tab);
+      });
+
+      Array.prototype.forEach.call(document.querySelectorAll('[data-ep-panel]'), function (panel) {
+        panel.classList.toggle('is-active', panel.getAttribute('data-ep-panel') === id);
+      });
+    });
+  });
+})();
+
+(function () {
   var box = document.getElementById('player');
   if (!box) return;
 

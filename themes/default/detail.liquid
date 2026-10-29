@@ -62,48 +62,28 @@
 </section>
 {% endif %}
 
-{% if lines.size > 0 %}
+{% if line_tabs.size > 0 %}
 <section class="section detail-eps">
-  <h2>播放列表{% if current_line %} <span class="section-count">共 {{ current_line.episode_count }} 集</span>{% endif %}</h2>
-
-  <div class="line-tabs">
-    {% for line in lines %}
-    <a class="line-tab{% if line.id == current_line.id %} active{% endif %}"
-       href="/detail/{{ vod.id }}?line={{ line.id }}">{{ line.name }}
-      <span class="count">{{ line.episode_count }}</span>
-    </a>
+  <div class="ep-tabs" role="tablist">
+    {% for line in line_tabs %}
+    <button type="button" class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" data-ep-tab="{{ line.id }}">{{ line.name }} <span class="count">{{ line.total }}</span></button>
     {% endfor %}
   </div>
-
-  {% if episodes.size > 0 %}
-  {% assign play_base = '/play/' | append: vod.id | append: '/' | append: current_line.id %}
-  {% assign ep_base = '/detail/' | append: vod.id | append: '?line=' | append: current_line.id %}
-  {% render 'partials/episode-list', episodes: episodes, current_ep: 0, play_base: play_base %}
-
-  {% if pagination.total_pages > 1 %}
-  <nav class="ep-pager">
-    {% if pagination.page > 1 %}
-    <a class="ep-page" href="{{ ep_base }}&ep={{ pagination.page | minus: 1 }}">上一页</a>
+  {% for line in line_tabs %}
+  <div class="ep-panel{% if line.id == current_line_id %} is-active{% endif %}" data-ep-panel="{{ line.id }}">
+    {% if line.total > 0 %}
+    <div class="ep-scroll">
+      <div class="episode-grid">
+        {% for ep in line.episodes %}
+        <a class="ep" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}">{{ ep.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
     {% else %}
-    <span class="ep-page disabled">上一页</span>
+    <p class="empty-tip">该线路还没有剧集</p>
     {% endif %}
-    {% for p in page_numbers %}
-    {% if p == 'gap' %}
-    <span class="ep-page gap">…</span>
-    {% else %}
-    <a class="ep-page{% if p == pagination.page %} active{% endif %}" href="{{ ep_base }}&ep={{ p }}">{{ p }}</a>
-    {% endif %}
-    {% endfor %}
-    {% if pagination.page < pagination.total_pages %}
-    <a class="ep-page" href="{{ ep_base }}&ep={{ pagination.page | plus: 1 }}">下一页</a>
-    {% else %}
-    <span class="ep-page disabled">下一页</span>
-    {% endif %}
-  </nav>
-  {% endif %}
-  {% else %}
-  <p class="empty-tip">该线路还没有剧集</p>
-  {% endif %}
+  </div>
+  {% endfor %}
 </section>
 {% endif %}
 {% endblock %}

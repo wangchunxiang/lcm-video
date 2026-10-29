@@ -472,32 +472,51 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- line tabs & episodes ---------- */
 
-.line-tabs {
+.ep-tabs {
   display: flex;
-  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin: 0 0 14px;
 }
 
-.line-tab {
-  padding: 7px 18px;
+.ep-tab {
   border: 1px solid var(--line);
-  border-radius: 20px;
-  font-size: 14px;
+  background: #fff;
   color: var(--text-2);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.line-tab:hover { border-color: var(--primary); color: var(--primary); }
+.ep-tab .count {
+  color: var(--text-3);
+  margin-left: 4px;
+  font-size: 12px;
+}
 
-.line-tab.active {
+.ep-tab:hover { border-color: var(--primary); color: var(--primary); }
+
+.ep-tab.is-active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
 }
 
-.line-tab .count { font-size: 12px; opacity: 0.8; margin-left: 2px; }
+.ep-tab.is-active .count { color: rgba(255, 255, 255, .75); }
 
-.episode-title { font-size: 15px; margin: 4px 0 12px; }
+.ep-panel { display: none; }
+.ep-panel.is-active { display: block; }
+
+.ep-scroll {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.ep-scroll::-webkit-scrollbar { width: 6px; }
+.ep-scroll::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
 
 .episode-grid {
   display: grid;
@@ -544,38 +563,6 @@ img { border: 0; vertical-align: middle; }
   white-space: pre-wrap;
 }
 
-.story-toggle { margin: 8px 0 0; font-size: 13px; }
-.story-toggle a { color: var(--primary); cursor: pointer; }
-
-.ep-pager {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 16px;
-}
-
-.ep-page {
-  min-width: 34px;
-  padding: 5px 12px;
-  text-align: center;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 13px;
-  color: var(--text-2);
-}
-
-.ep-page:hover { border-color: var(--primary); color: var(--primary); }
-
-.ep-page.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
-.ep-page.disabled { color: #c6cad1; }
-
-.ep-page.gap { border-color: transparent; color: var(--text-3); }
 
 /* ---------- player ---------- */
 

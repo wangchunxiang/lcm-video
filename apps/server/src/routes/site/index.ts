@@ -382,6 +382,16 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const wantedLineId = toInt(query.line);
     const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
     const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
+    const lineTabs = lines.map((item) => {
+      const eps = parsePlayUrl(item.playUrl);
+      return {
+        id: item.id,
+        name: item.source_name,
+        total: eps.length,
+        episodes: eps.map((ep, index) => ({ index: index + 1, name: ep.name, url: ep.url })),
+      };
+    });
+    const currentLineId = currentLine?.id ?? 0;
 
     const epSize = 50;
     const totalPages = Math.max(1, Math.ceil(allEpisodes.length / epSize));
@@ -432,8 +442,10 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           episode_count: item.episode_count,
         })),
         episodes,
-        pagination: buildPagination(epPage, epSize, allEpisodes.length),
-        page_numbers: buildPageList(epPage, Math.max(1, Math.ceil(allEpisodes.length / epSize))),
+        line_tabs: lineTabs,
+        current_line_id: currentLineId,
+        pagination: buildPagination(epPage, epSize, currentLine?.episode_count ?? 0),
+        page_numbers: buildPageList(epPage, Math.max(1, Math.ceil((currentLine?.episode_count ?? 0) / epSize))),
         current_line: currentLine
           ? { id: currentLine.id, name: currentLine.source_name, episode_count: allEpisodes.length }
           : null,
