@@ -12,9 +12,21 @@ export function normalizeName(input: string): string {
     .trim();
 }
 
+/**
+ * 判重键：在归一化基础上再去掉所有空白与标点，并转小写。
+ * 源站标题的空格、间隔号、冒号写法很不统一（「仙逆剧场版 神临之战」与
+ * 「仙逆剧场版神临之战」），只折叠空格对不上，必须抹掉这些字符才能判成同一部。
+ */
+export function matchKey(input: string): string {
+  return normalizeName(input)
+    .replace(/[\s ]+/g, '')
+    .replace(/[\u00b7\u2022\u30fb:\uff1a,\uff0c\u3001\u3002.;\uff1b!\uff01?\uff1f\u300a\u300b<>\uff08\uff09\u3010\u3011{}\u2014\u2013\-_~\uff5e+\uff0b&\uff06\/]/g, '')
+    .toLowerCase();
+}
+
 /** 归一化名称的 MD5，判重用。不含年份。 */
 export function nameHash(name: string): string {
-  return createHash('md5').update(normalizeName(name), 'utf8').digest('hex');
+  return createHash('md5').update(matchKey(name), 'utf8').digest('hex');
 }
 
 export interface Episode {
