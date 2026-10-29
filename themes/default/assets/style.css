@@ -62,6 +62,9 @@ img { border: 0; vertical-align: middle; }
 
 /* ---------- header ---------- */
 
+/* 始终预留滚动条位置：页面宽度不随滚动条出现与否变化 */
+html { scrollbar-gutter: stable; }
+
 .site-header {
   background: #fff;
   border-bottom: 1px solid var(--line);
@@ -69,6 +72,20 @@ img { border: 0; vertical-align: middle; }
   top: 0;
   z-index: 50;
 }
+
+/* 头尾是白底，需要补上预留区那一截，否则右侧像被切掉 */
+.site-header::after,
+.site-footer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: calc(-1 * (100vw - 100%));
+  width: calc(100vw - 100%);
+  background: #fff;
+}
+
+.site-header::after { border-bottom: 1px solid var(--line); }
 
 .header-inner {
   display: flex;
@@ -850,6 +867,8 @@ img { border: 0; vertical-align: middle; }
   border-top: 1px solid var(--line);
   background: #fff;
 }
+.site-footer { position: relative; }
+.site-footer::after { border-top: 1px solid var(--line); }
 
 .disclaimer {
   margin: 0 0 4px;
