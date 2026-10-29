@@ -137,16 +137,23 @@ export async function cleanPlaylist(db: Db, sourceId: number, url: string): Prom
   if (removed === 0) return null;
 
   const output: string[] = [...parsed.head];
-  let previousDiscontinuity = false;
+  // 删掉一段分片后，时间轴会往前跳，必须在接缝处补一个 discontinuity，
+  // 否则播放器会把这个跳变当成连续数据，声音在接缝处会爆音。
+  let removedRun = false;
   parsed.segments.forEach((segment, index) => {
-    if (isAd[index]) return;
+    if (isAd[index]) {
+      removedRun = true;
+      return;
+    }
+    const hasDiscontinuity = segment.tags.some((tag) => tag.startsWith('#EXT-X-DISCONTINUITY'));
     for (const tag of segment.tags) {
-      if (tag.startsWith('#EXT-X-DISCONTINUITY') && previousDiscontinuity) continue;
+      if (tag.startsWith('#EXT-X-DISCONTINUITY')) continue;
       output.push(tag);
     }
+    if (hasDiscontinuity || removedRun) output.push('#EXT-X-DISCONTINUITY');
+    removedRun = false;
     output.push(`#EXTINF:${segment.dur.toFixed(6)},`);
     output.push(absolutize(base, segment.uri));
-    previousDiscontinuity = segment.tags.some((tag) => tag.startsWith('#EXT-X-DISCONTINUITY'));
   });
   if (!output.includes('#EXT-X-ENDLIST')) output.push('#EXT-X-ENDLIST');
 
