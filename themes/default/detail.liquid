@@ -55,6 +55,13 @@
   </div>
 </div>
 
+{% if vod.content != blank and vod.content != vod.intro %}
+<section class="section detail-story" id="story">
+  <h2>详细剧情</h2>
+  <div class="story-text">{{ vod.content | escape }}</div>
+</section>
+{% endif %}
+
 {% if lines.size > 0 %}
 <section class="section detail-eps">
   <h2>播放列表{% if current_line %} <span class="section-count">共 {{ current_line.episode_count }} 集</span>{% endif %}</h2>
@@ -99,11 +106,4 @@
   {% endif %}
 </section>
 {% endif %}
-{% if vod.content != blank and vod.content != vod.intro %}
-<section class="section detail-story" id="story">
-  <h2>详细剧情</h2>
-  <div class="story-text">{{ vod.content | escape }}</div>
-</section>
-{% endif %}
-
 {% endblock %}
