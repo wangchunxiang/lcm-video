@@ -355,7 +355,8 @@ img { border: 0; vertical-align: middle; }
 
 .detail-info h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 23px;
+  font-weight: 600;
   line-height: 1.3;
 }
 
