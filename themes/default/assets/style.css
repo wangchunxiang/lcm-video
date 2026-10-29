@@ -452,7 +452,7 @@ img { border: 0; vertical-align: middle; }
 }
 
 .d-fields dd.line-2,
-.d-fields dd.line-2 > span {
+.d-fields dd > span.line-2 {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
