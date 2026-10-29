@@ -49,18 +49,17 @@
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
       <div class="wide">
         <dt>简介</dt>
-        <dd>{{ vod.intro | escape }}{% if vod.content != blank and vod.content != vod.intro %}<a class="intro-link" href="#story">详情</a>{% endif %}</dd>
+        <dd>{{ vod.intro | escape }}{% if vod.content != blank and vod.content != vod.intro %}<a class="intro-link" href="javascript:void(0)" data-intro-float>详情</a>{% endif %}</dd>
       </div>
     </dl>
   </div>
+  {% if vod.content != blank and vod.content != vod.intro %}
+  <div class="intro-float" data-intro-float-panel>
+    <div class="intro-float-hd"><span>剧情简介</span><a class="intro-link" href="javascript:void(0)" data-intro-float>收起</a></div>
+    <div class="intro-float-bd">{{ vod.content | escape }}</div>
+  </div>
+  {% endif %}
 </div>
-
-{% if vod.content != blank and vod.content != vod.intro %}
-<section class="section detail-story" id="story">
-  <h2>详细剧情</h2>
-  <div class="story-text">{{ vod.content | escape }}</div>
-</section>
-{% endif %}
 
 {% if line_tabs.size > 0 %}
 <section class="section detail-eps">

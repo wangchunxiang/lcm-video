@@ -1,4 +1,23 @@
 (function () {
+  var triggers = document.querySelectorAll('[data-intro-float]');
+  if (!triggers.length) return;
+
+  var panel = document.querySelector('[data-intro-float-panel]');
+  if (!panel) return;
+
+  Array.prototype.forEach.call(triggers, function (el) {
+    el.addEventListener('click', function () {
+      panel.classList.toggle('is-open');
+      if (!panel.classList.contains('is-open')) panel.querySelector('.intro-float-bd').scrollTop = 0;
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') panel.classList.remove('is-open');
+  });
+})();
+
+(function () {
   var tabs = document.querySelectorAll('[data-ep-tab]');
   if (!tabs.length) return;
 
