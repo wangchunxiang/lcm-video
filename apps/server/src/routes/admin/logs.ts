@@ -72,8 +72,12 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
 
     const counted = await db.select({ count: sql<number>`COUNT(*)` }).from(collectLog).where(where);
 
+    // GREATEST 走 DECIMAL，driver 会把它当字符串返回，这里统一成数字，
+    // 否则前端 lastPage + 1 会变成字符串拼接（198 → "1981"）。
+    const items = rows.map((row) => ({ ...row, lastPage: Number(row.lastPage ?? 0) }));
+
     return ok(reply, {
-      items: rows,
+      items,
       total: Number(counted[0]?.count ?? 0),
       page,
       page_size: pageSize,
