@@ -743,7 +743,9 @@ img { border: 0; vertical-align: middle; }
    同时容器整体收窄，面包屑、播放器、右侧面板三者左右边缘对齐 */
 @media (min-width: 1101px) {
   .container:has(> .play-row) {
-    max-width: max(808px, calc(380px + var(--space-4) + (100vh - 300px) * 16 / 9 + 48px));
+    --play-container: max(808px, calc(380px + var(--space-4) + (100vh - 300px) * 16 / 9 + 48px));
+    max-width: var(--play-container);
+    margin-left: max(24px, calc((100vw - var(--play-container)) / 2));
   }
 }
 
