@@ -34,6 +34,9 @@ html, body {
   padding: 0;
 }
 
+/* 始终为滚动条预留位置，避免不同长度页面之间内容左右跳动 */
+html { scrollbar-gutter: stable; }
+
 body {
   display: flex;
   flex-direction: column;
