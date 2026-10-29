@@ -183,7 +183,7 @@
         poster: flags.poster || '',
         lang: flags.lang,
         autoplay: auto,
-        hotkey: false,
+        hotkey: true,
         autoSize: false,
         airplay: true,
         screenshot: !!flags.screenshot,
@@ -204,14 +204,6 @@
     } catch (error) {
       return initNative(container, url, hls, auto);
     }
-
-    // ArtPlayer 的 Esc 退出网页全屏写在快捷键插件里，跟随 hotkey 选项一起被关掉了，
-    // 这里自己补一个：网页全屏时按 Esc 退出。
-    document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && art.fullscreenWeb) {
-        art.fullscreenWeb = false;
-      }
-    });
 
     return art.video || null;
   }
