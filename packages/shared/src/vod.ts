@@ -13,20 +13,32 @@ export function normalizeName(input: string): string {
 }
 
 /**
- * 判重键：在归一化基础上再去掉所有空白与标点，并转小写。
- * 源站标题的空格、间隔号、冒号写法很不统一（「仙逆剧场版 神临之战」与
- * 「仙逆剧场版神临之战」），只折叠空格对不上，必须抹掉这些字符才能判成同一部。
+ * 严格判重键：在归一化基础上去掉所有空白并转小写，标点保留。
+ * 源站标题的空格写法不统一（「仙逆剧场版 神临之战」与「仙逆剧场版神临之战」），
+ * 只折叠空格对不上，必须删掉空白才能判成同一部；标点可能是片名的一部分，不删。
  */
 export function matchKey(input: string): string {
   return normalizeName(input)
     .replace(/[\s ]+/g, '')
-    .replace(/[\u00b7\u2022\u30fb:\uff1a,\uff0c\u3001\u3002.;\uff1b!\uff01?\uff1f\u300a\u300b<>\uff08\uff09\u3010\u3011{}\u2014\u2013\-_~\uff5e+\uff0b&\uff06\/]/g, '')
     .toLowerCase();
 }
 
-/** 归一化名称的 MD5，判重用。不含年份。 */
+/** 宽松键：在严格键基础上去掉标点，只用于后台「疑似重复」提示，不参与自动判重。 */
+export function looseKey(input: string): string {
+  return matchKey(input).replace(
+    /[\u00b7\u2022\u30fb:\uff1a,\uff0c\u3001\u3002.;\uff1b!\uff01?\uff1f\u300a\u300b<>\uff08\uff09\u3010\u3011{}\u2014\u2013\-_~\uff5e+\uff0b&\uff06\/]/g,
+    '',
+  );
+}
+
+/** 严格键的 MD5，入库判重用。不含年份。 */
 export function nameHash(name: string): string {
   return createHash('md5').update(matchKey(name), 'utf8').digest('hex');
+}
+
+/** 宽松键的 MD5，仅用于后台疑似重复提示。 */
+export function looseHash(name: string): string {
+  return createHash('md5').update(looseKey(name), 'utf8').digest('hex');
 }
 
 export interface Episode {

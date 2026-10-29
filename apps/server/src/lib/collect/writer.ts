@@ -1,7 +1,14 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
-import { countEpisodes, htmlToSummary, htmlToText, nameHash, normalizeName } from '@lcm/shared';
+import {
+  countEpisodes,
+  htmlToSummary,
+  htmlToText,
+  looseHash,
+  nameHash,
+  normalizeName,
+} from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
 import { splitPlayGroups } from './parser.ts';
 
@@ -75,7 +82,15 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
   const seenLines = new Set<string>();
 
   // 先完成不依赖数据库的过滤：分类映射、必填校验
-  const candidates: Array<{ item: SourceVod; categoryId: number; categoryPid: number; name: string; hash: string; year: number }> = [];
+  const candidates: Array<{
+    item: SourceVod;
+    categoryId: number;
+    categoryPid: number;
+    name: string;
+    hash: string;
+    looseHash: string;
+    year: number;
+  }> = [];
 
   for (const item of input.items) {
     counters.total += 1;
@@ -116,6 +131,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
       categoryPid: category.pid,
       name,
       hash: nameHash(name),
+      looseHash: looseHash(name),
       year: item.year || 0,
     });
   }
@@ -182,7 +198,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
 
     // 4. 逐条写库
     for (const { candidate, vodId: matchedId } of decisions) {
-      const { item, name, hash, categoryId, categoryPid, year } = candidate;
+      const { item, name, hash, looseHash: loose, categoryId, categoryPid, year } = candidate;
       const groups = splitPlayGroups(item.playFrom, item.playUrl);
 
       // 增量：同源同线路的 source_updated_at 与本次 vod_time 相同则整条跳过
@@ -211,6 +227,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
         const content = {
           name,
           nameHash: hash,
+          nameHashLoose: loose,
           subName: item.subName,
           letter: /^[A-Z0-9]$/.test(item.letter) ? item.letter : '',
           cover: item.cover,

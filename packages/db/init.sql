@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   `category_pid`  BIGINT UNSIGNED NOT NULL DEFAULT 0       COMMENT '父分类ID，冗余；分类为一级时为 0',
   `name`          VARCHAR(255)   NOT NULL DEFAULT ''       COMMENT '标题，存归一化后的值',
   `name_hash`     CHAR(32)       NOT NULL DEFAULT ''       COMMENT '归一化名称的 MD5，判重用',
+  `name_hash_loose` CHAR(32)     NOT NULL DEFAULT ''       COMMENT '宽松键（再去掉标点）的 MD5，仅用于提示疑似重复',
   `sub_name`      VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '副标题',
   `letter`        CHAR(1)        NOT NULL DEFAULT ''       COMMENT '首字母，A-Z 或 0-9，其余存空',
   `cover`         VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '封面，源站完整 URL',
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   KEY `idx_pid_status_year` (`category_pid`,`status`,`year`),
   KEY `idx_letter` (`letter`),
   KEY `idx_name_hash` (`name_hash`),
+  KEY `idx_name_hash_loose` (`name_hash_loose`),
   KEY `idx_status_collected` (`status`,`collected_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

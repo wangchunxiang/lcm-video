@@ -33,6 +33,8 @@ export const vod = mysqlTable(
     categoryPid: fk('category_pid'),
     name: varchar('name', { length: 255 }).notNull().default(''),
     nameHash: char('name_hash', { length: 32 }).notNull().default(''),
+    /** 宽松键（再去掉标点）的 MD5，只用于后台提示疑似重复，不参与自动判重 */
+    nameHashLoose: char('name_hash_loose', { length: 32 }).notNull().default(''),
     subName: varchar('sub_name', { length: 500 }).notNull().default(''),
     letter: char('letter', { length: 1 }).notNull().default(''),
     cover: varchar('cover', { length: 500 }).notNull().default(''),
@@ -60,6 +62,7 @@ export const vod = mysqlTable(
     index('idx_pid_status_year').on(t.categoryPid, t.status, t.year),
     index('idx_letter').on(t.letter),
     index('idx_name_hash').on(t.nameHash),
+    index('idx_name_hash_loose').on(t.nameHashLoose),
     index('idx_status_collected').on(t.status, t.collectedAt),
   ],
 );

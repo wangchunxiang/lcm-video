@@ -15,6 +15,7 @@ import Tasks from '../views/collect/Tasks.vue';
 import SiteSetting from '../views/setting/Site.vue';
 import AccountSetting from '../views/setting/Account.vue';
 import DataTools from '../views/tools/Data.vue';
+import MergeTools from '../views/tools/Merge.vue';
 import PlayLines from '../views/playback/Lines.vue';
 import PlaybackSetting from '../views/playback/Config.vue';
 
@@ -28,6 +29,7 @@ const implemented: Record<string, Component> = {
   '/setting/site': SiteSetting,
   '/setting/account': AccountSetting,
   '/tools/data': DataTools,
+  '/tools/merge': MergeTools,
   '/playback/lines': PlayLines,
   '/playback/config': PlaybackSetting,
 };
