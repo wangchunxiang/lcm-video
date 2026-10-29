@@ -40,13 +40,39 @@ export interface FoundFeature {
   sample: Array<{ vod_id: number; vod_name: string; start: number; start_sec: number; url: string }>;
 }
 
-async function fetchText(url: string): Promise<string> {
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
+async function fetchTextOnce(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { 'user-agent': UA, accept: '*/*' },
     signal: AbortSignal.timeout(15000),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}（${hostOf(url)}）`);
+  const text = await res.text();
+  if (!text.trim()) throw new Error(`响应为空（${hostOf(url)}）`);
+  return text;
+}
+
+/** 拉取重试一次：源站偶发 403 / 超时很常见，重试基本能恢复 */
+async function fetchText(url: string): Promise<string> {
+  try {
+    return await fetchTextOnce(url);
+  } catch (error) {
+    const first = error instanceof Error ? error.message : String(error);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    try {
+      return await fetchTextOnce(url);
+    } catch (second) {
+      const msg = second instanceof Error ? second.message : String(second);
+      throw new Error(`${msg}；重试前：${first}`);
+    }
+  }
 }
 
 function resolveUrl(base: string, ref: string): string {
@@ -237,7 +263,7 @@ export async function analyzeSource(
       return { sample, segments, candidates, error: '' };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log(`${sample.name}：解析失败 (${msg})`);
+      log(`${sample.name}：解析失败（${msg}）`);
       return { sample, segments: [], candidates: [], error: msg };
     }
   });
@@ -272,6 +298,14 @@ export async function analyzeSource(
         });
       }
     }
+  }
+
+  if (parsed === 0) {
+    log('全部作品都拉取失败：通常是源站按 IP 或 UA 拦截（403），或这批片的第一集地址已失效');
+    return { features: [], sampled: samples.length };
+  }
+  if (parsed < samples.length) {
+    log(`${samples.length - parsed} 部作品拉取失败，已跳过，仅用成功的 ${parsed} 部参与比对`);
   }
 
   const minHits = 4;
