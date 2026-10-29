@@ -1,21 +1,4 @@
 (function () {
-  var links = document.querySelectorAll('[data-intro-toggle]');
-  if (!links.length) return;
-
-  Array.prototype.forEach.call(links, function (link) {
-    var dd = link.parentElement;
-    var box = dd.querySelector('.intro-box');
-    if (!box) return;
-
-    link.addEventListener('click', function () {
-      var open = box.classList.toggle('is-open');
-      link.textContent = open ? '收起' : '展开';
-      if (!open) box.scrollTop = 0;
-    });
-  });
-})();
-
-(function () {
   var box = document.getElementById('player');
   if (!box) return;
 

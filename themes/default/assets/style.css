@@ -439,26 +439,18 @@ img { border: 0; vertical-align: middle; }
   word-break: break-word;
 }
 
-.intro-box {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
-  white-space: pre-wrap;
+.intro-link {
+  margin-left: 6px;
+  color: var(--primary);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
-.intro-box .intro-full { display: none; }
+.intro-link:hover { text-decoration: underline; }
 
-.intro-box.is-open {
-  display: block;
-  -webkit-line-clamp: unset;
-  max-height: 90px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
+.detail-story { scroll-margin-top: 84px; }
 
-.intro-box.is-open .intro-text { display: none; }
-.intro-box.is-open .intro-full { display: block; }
+.story-text { white-space: pre-wrap; line-height: 1.9; }
 
 .btn-play-inline {
   margin-left: auto;
