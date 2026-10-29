@@ -439,8 +439,26 @@ img { border: 0; vertical-align: middle; }
   word-break: break-word;
 }
 
-.intro-text,
-.intro-full { white-space: pre-wrap; }
+.intro-box {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  white-space: pre-wrap;
+}
+
+.intro-box .intro-full { display: none; }
+
+.intro-box.is-open {
+  display: block;
+  -webkit-line-clamp: unset;
+  max-height: 90px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.intro-box.is-open .intro-text { display: none; }
+.intro-box.is-open .intro-full { display: block; }
 
 .btn-play-inline {
   margin-left: auto;

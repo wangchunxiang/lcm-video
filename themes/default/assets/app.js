@@ -4,17 +4,13 @@
 
   Array.prototype.forEach.call(links, function (link) {
     var dd = link.parentElement;
-    var text = dd.querySelector('.intro-text');
-    var full = dd.querySelector('.intro-full');
-    if (!text || !full) return;
-
-    var brief = text.textContent;
-    var expanded = false;
+    var box = dd.querySelector('.intro-box');
+    if (!box) return;
 
     link.addEventListener('click', function () {
-      expanded = !expanded;
-      text.textContent = expanded ? full.textContent : brief;
-      link.textContent = expanded ? '收起' : '展开';
+      var open = box.classList.toggle('is-open');
+      link.textContent = open ? '收起' : '展开';
+      if (!open) box.scrollTop = 0;
     });
   });
 })();
