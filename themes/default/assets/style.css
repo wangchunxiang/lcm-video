@@ -447,13 +447,6 @@ img { border: 0; vertical-align: middle; }
   white-space: nowrap;
 }
 
-.d-fields dd > span.line-2 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
 .intro-dd {
   display: -webkit-box;
   -webkit-box-orient: vertical;
