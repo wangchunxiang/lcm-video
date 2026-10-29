@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS `lcm_collect_log` (
   `source_id`   BIGINT UNSIGNED NOT NULL DEFAULT 0       COMMENT '采集源ID',
   `status`      TINYINT UNSIGNED NOT NULL DEFAULT 0      COMMENT '0进行中 1成功 2失败 3已取消',
   `total_pages` INT UNSIGNED NOT NULL DEFAULT 0     COMMENT '总页数，取自接口 pagecount，0 表示未知',
+  `last_page`   INT UNSIGNED NOT NULL DEFAULT 0     COMMENT '已完成到第几页，断点续采用',
   `total`       INT UNSIGNED NOT NULL DEFAULT 0     COMMENT '处理总数',
   `inserted`    INT UNSIGNED NOT NULL DEFAULT 0     COMMENT '新增',
   `updated`     INT UNSIGNED NOT NULL DEFAULT 0     COMMENT '更新',

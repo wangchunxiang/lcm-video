@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -12,6 +12,7 @@ interface LogRow {
   sourceName: string | null;
   status: number;
   totalPages: number;
+  lastPage: number;
   total: number;
   inserted: number;
   updated: number;
@@ -305,9 +306,18 @@ onBeforeUnmount(() => {
             <template #default="{ row }">{{ liveDuration(row) }}</template>
           </el-table-column>
           <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
-          <el-table-column label="操作" width="90" align="center" fixed="right">
+          <el-table-column label="操作" width="130" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDetail(row)">明细</el-button>
+              <el-button
+                v-if="canResume(row)"
+                link
+                type="warning"
+                :loading="resuming === row.id"
+                @click="resume(row)"
+              >
+                续采
+              </el-button>
             </template>
           </el-table-column>
         </el-table>

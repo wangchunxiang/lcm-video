@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectLog, collectLogDetail, collectSource, collectTask } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { startResume } from '../../lib/collect/runner.ts';
 
 export interface LogRouteOpts {
   db: Db;
@@ -46,6 +47,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
+        lastPage: collectLog.lastPage,
         total: collectLog.total,
         inserted: collectLog.inserted,
         updated: collectLog.updated,
@@ -88,6 +90,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
         sourceName: collectSource.name,
         status: collectLog.status,
         totalPages: collectLog.totalPages,
+        lastPage: collectLog.lastPage,
         total: collectLog.total,
         inserted: collectLog.inserted,
         updated: collectLog.updated,
@@ -127,5 +130,15 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
       page,
       page_size: pageSize,
     });
+  });
+
+  /** 断点续采：从这条记录停下的下一页继续 */
+  app.post('/:id/resume', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    if (id <= 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '记录 ID 不正确');
+
+    const result = await startResume(db, id);
+    if (!result.started) return fail(reply, 409, ErrorCode.BAD_REQUEST, result.message);
+    return ok(reply, { logId: result.logId, message: result.message });
   });
 };

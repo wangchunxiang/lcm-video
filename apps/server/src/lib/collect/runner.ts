@@ -109,6 +109,7 @@ async function executeRun(
   task: typeof collectTask.$inferSelect,
   source: typeof collectSource.$inferSelect,
   logId: number,
+  startPage = 1,
 ): Promise<void> {
   const playFromSet = new Set<string>(
     (source.playFrom ?? '')
@@ -141,7 +142,7 @@ async function executeRun(
     const mapping = await loadMapping(db, source.id, categories);
     const hours = RANGE_HOURS[task.rangeType];
 
-    for (let page = 1; page <= 100000; page++) {
+    for (let page = startPage; page <= 100000; page++) {
       if (cancelFlags.get(logId)) {
         cancelled = true;
         break;
@@ -215,7 +216,8 @@ async function executeRun(
         failDetail: result.fails.length > 0 ? result.fails : null,
       });
 
-      await db.update(collectLog).set({ ...counters }).where(eq(collectLog.id, logId));
+      // 记下已完成到第几页，失败后可以从这里续采
+      await db.update(collectLog).set({ ...counters, lastPage: page }).where(eq(collectLog.id, logId));
 
       pagesDone += 1;
       if (pageCount > 0 && page >= pageCount) break;
@@ -306,4 +308,59 @@ export async function startTask(
     });
 
   return { started: true, message: '已开始执行', logId };
+}
+
+/**
+ * 断点续采：拿一条失败/取消的记录，从它停下的下一页继续跑。
+ * 用任务当前的配置（range_type、cron 之外的部分），并新开一条采集记录。
+ */
+export async function startResume(
+  db: Db,
+  logId: number,
+): Promise<{ started: boolean; message: string; logId?: number }> {
+  const logRows = await db.select().from(collectLog).where(eq(collectLog.id, logId)).limit(1);
+  const log = logRows[0];
+  if (!log) return { started: false, message: '采集记录不存在' };
+  if (log.status === 0) return { started: false, message: '这条记录还在执行中' };
+
+  const startPage = log.lastPage + 1;
+  if (log.totalPages > 0 && startPage > log.totalPages) {
+    return { started: false, message: '这条记录已跑完全部页面，无需续采' };
+  }
+
+  const taskRows = await db.select().from(collectTask).where(eq(collectTask.id, log.taskId)).limit(1);
+  const task = taskRows[0];
+  if (!task) return { started: false, message: '原任务已被删除，无法续采' };
+
+  const sourceRows = await db.select().from(collectSource).where(eq(collectSource.id, task.sourceId)).limit(1);
+  const source = sourceRows[0];
+  if (!source) return { started: false, message: '采集源不存在' };
+  if (source.isEnabled !== 1) return { started: false, message: '采集源已停用' };
+  if (runningBySource.has(source.id)) return { started: false, message: '同一采集源的另一个任务正在执行' };
+
+  const inserted = await db
+    .insert(collectLog)
+    .values({ taskId: task.id, sourceId: source.id, status: 0, totalPages: log.totalPages, lastPage: log.lastPage })
+    .$returningId();
+  const newLogId = inserted[0]?.id;
+  if (!newLogId) return { started: false, message: '创建采集记录失败' };
+
+  runningBySource.set(source.id, newLogId);
+  runningByTask.set(task.id, newLogId);
+
+  void executeRun(db, task, source, newLogId, startPage)
+    .catch(async (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      await db
+        .update(collectLog)
+        .set({ status: 2, message: message.slice(0, 500), finishedAt: sql`NOW()` })
+        .where(eq(collectLog.id, newLogId));
+    })
+    .finally(() => {
+      runningBySource.delete(source.id);
+      runningByTask.delete(task.id);
+      cancelFlags.delete(newLogId);
+    });
+
+  return { started: true, message: `已从第 ${startPage} 页继续`, logId: newLogId };
 }
