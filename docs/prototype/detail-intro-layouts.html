@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>详情页简介展开方案对比</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #f0f2f5;
+    color: #1f2329;
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1480px; margin: 0 auto; padding: 28px 24px 80px; }
+  .head { margin-bottom: 24px; }
+  .head h1 { margin: 0 0 6px; font-size: 22px; }
+  .head p { margin: 0; color: #8f959e; font-size: 13px; }
+
+  .demo { margin-bottom: 40px; }
+  .demo-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; }
+  .demo-title h2 { margin: 0; font-size: 16px; }
+  .demo-title span { color: #8f959e; font-size: 12px; }
+
+  .stage {
+    background: #f5f6f8;
+    border: 1px dashed #d8dbe0;
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    position: relative;
+  }
+  .cover-wrap { flex: none; width: 220px; }
+  .cover {
+    width: 220px; height: 293px; border-radius: 6px; display: block;
+    background: linear-gradient(150deg, #c7d2fe, #fbcfe8 70%);
+  }
+  .play-btn {
+    display: block; margin-top: 12px; height: 36px; line-height: 36px;
+    background: #2563eb; color: #fff; text-align: center; border-radius: 6px; font-size: 14px;
+  }
+  .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .title-row { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 22px; font-weight: 700; line-height: 1.35; }
+  .badge { background: #eaf1fe; color: #2563eb; font-size: 12px; font-weight: 400; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .sub-name { margin: 0; color: #8f959e; font-size: 13px; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 0; }
+  .tags span { display: inline-flex; align-items: center; gap: 6px; background: #f2f3f5; border-left: 3px solid #d0d3d9; padding: 2px 10px 2px 9px; font-size: 13px; border-radius: 0 4px 4px 0; }
+  .tags i { font-style: normal; color: #8f959e; font-size: 12px; }
+  .tags .cat { border-left-color: #2563eb; }
+  .tags .year { border-left-color: #0e7490; }
+  .tags .area { border-left-color: #16a34a; }
+  .tags .lang { border-left-color: #7c3aed; }
+
+  dl.fields { margin: 4px 0 0; display: flex; flex-direction: column; gap: 4px; }
+  dl.fields > div { display: flex; gap: 8px; min-width: 0; }
+  dl.fields dt { flex: none; width: 42px; text-align: right; color: #8f959e; }
+  dl.fields dd { margin: 0; min-width: 0; color: #1f2329; }
+
+  .intro-toggle { margin-left: 6px; color: #2563eb; font-size: 13px; white-space: nowrap; cursor: pointer; }
+  .intro-toggle:hover { text-decoration: underline; }
+
+  .btn { display: inline-block; padding: 4px 12px; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; font-size: 13px; cursor: pointer; }
+  .btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .hint { color: #8f959e; font-size: 12px; margin: 10px 0 0; }
+  .vline { height: 1px; background: #eceef2; margin: 6px 0; }
+
+  /* 简介文本 */
+  .intro-brief { display: block; }
+  .intro-fulltext { display: none; }
+  .is-open .intro-brief { display: none; }
+  .is-open .intro-fulltext { display: block; }
+
+  /* A：卡片定高 + 简介区滚动 */
+  .opt-a .card-body { display: flex; gap: 20px; }
+  .opt-a .info { max-height: 293px; }
+  .opt-a .intro-block { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .opt-a .intro-scroll { overflow-y: auto; padding-right: 6px; }
+  .opt-a .intro-scroll::-webkit-scrollbar { width: 6px; }
+  .opt-a .intro-scroll::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
+
+  /* B：展开弹窗 */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+    display: none; align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal-mask.show { display: flex; }
+  .modal {
+    width: 640px; max-width: 90vw; max-height: 70vh; background: #fff;
+    border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-hd { padding: 14px 18px; border-bottom: 1px solid #eceef2; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+  .modal-bd { padding: 16px 18px; overflow-y: auto; }
+  .modal-ft { padding: 12px 18px; border-top: 1px solid #eceef2; text-align: right; }
+  .close-x { cursor: pointer; color: #8f959e; }
+
+  /* C：卡片内浮动层 */
+  .opt-c .floating {
+    position: absolute; left: 220px; right: 20px; bottom: 20px; top: auto;
+    max-height: 60%; background: #fff; border: 1px solid #e8eaed;
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+    padding: 14px 16px; display: none; flex-direction: column; overflow: hidden;
+  }
+  .opt-c .floating.show { display: flex; }
+  .opt-c .floating-bd { overflow-y: auto; }
+  .opt-c .floating-hd { display: flex; justify-content: space-between; margin-bottom: 6px; color: #8f959e; font-size: 13px; }
+
+  /* D：右侧抽屉 */
+  .opt-d { position: relative; }
+  .drawer {
+    position: absolute; top: 16px; right: 16px; bottom: 16px; width: 420px; max-width: 70%;
+    background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(15, 23, 42, .18);
+    display: none; flex-direction: column; overflow: hidden; z-index: 5;
+  }
+  .drawer.show { display: flex; }
+  .drawer-hd { padding: 14px 16px; border-bottom: 1px solid #eceef2; display: flex; justify-content: space-between; font-weight: 600; }
+  .drawer-bd { padding: 14px 16px; overflow-y: auto; flex: 1; }
+
+  /* E：简介折叠 + 页内区块 */
+  .opt-e .story-block {
+    display: none; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+    padding: 18px 20px; margin-top: 16px;
+  }
+  .opt-e .story-block.show { display: block; }
+  .opt-e .story-hd { font-weight: 600; margin-bottom: 8px; }
+
+  /* F：卡片下方手风琴 */
+  .opt-f .acc {
+    display: none; background: #fff; border-radius: 0 0 8px 8px; padding: 0 20px 18px;
+    margin-top: -2px; box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+  }
+  .opt-f .acc.show { display: block; }
+  .opt-f .acc-inner { border-top: 1px solid #eceef2; padding-top: 12px; }
+
+  .lorem { color: #1f2329; }
+  .skeleton-row { display: flex; gap: 10px; margin-top: 10px; }
+  .skeleton-row span { flex: 1; height: 10px; background: #eef0f3; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>详情页「信息卡片」布局方案对比</h1>
+    <p>痛点：简介展开后把卡片撑高，页面内容跳动。以下 6 种方案都保证「展开简介时卡片高度不变」，差异在于长文显示在哪里。点击「展开」查看效果。</p>
+  </div>
+
+  <!-- ========== A ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 A：卡片定高 + 简介区内滚动</h2><span>卡片高度锁定为封面高度，展开后简介区自己滚动</span></div>
+    <div class="stage">
+      <div class="card opt-a">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+          </dl>
+          <div class="intro-block" id="a-intro">
+            <dl class="fields" style="margin:0">
+              <div><dt>简介</dt><dd>
+                <div class="intro-scroll">
+                  <span class="intro-brief">本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗…</span>
+                  <span class="intro-fulltext">本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。<br><br>这是一段用于演示的长文本，展开后只会让简介区域出现滚动条，信息卡片本身的高度不变。文字继续往下堆叠，模拟真实源站动辄一两千字的剧情简介：主角在恋爱精灵的帮助下不断碰壁、学习、试错，最终学会如何表达自己的心意，也理解了“被喜欢”与“喜欢”的区别。<br><br>再补一段文字让高度明显超过可视区，这样就能看到滚动效果。你可以拖动右侧滚动条，或者用鼠标滚轮在简介区域内滚动。</span>
+                </div>
+                <a class="intro-toggle" data-toggle="a-intro">展开</a>
+              </dd></div>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <p class="hint">优点：结构改动最小；卡片永远等高，视觉稳定。缺点：简介区高度被压缩，长文阅读体验一般（内部滚动 + 外层滚动两套滚动条）。</p>
+    </div>
+  </section>
+
+  <!-- ========== B ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 B：展开为弹窗</h2><span>卡片完全不动，点「展开」弹出居中浮层显示全文</span></div>
+    <div class="stage">
+      <div class="card">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+            <div><dt>简介</dt><dd>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗…<a class="intro-toggle" data-modal="b-modal">展开</a></dd></div>
+          </dl>
+        </div>
+      </div>
+      <p class="hint">优点：卡片永远不变，全文阅读有足够的宽度和高度；适合长文。缺点：多一层浮层，移动端体验要单独处理。</p>
+    </div>
+  </section>
+
+  <!-- ========== C ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 C：卡片内浮动层</h2><span>展开后在卡片内浮起一块半透明面板，覆盖信息区而不是撑高</span></div>
+    <div class="stage">
+      <div class="card opt-c" id="c-card">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+            <div><dt>简介</dt><dd>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”…<a class="intro-toggle" data-float="c-card">展开</a></dd></div>
+          </dl>
+        </div>
+        <div class="floating">
+          <div class="floating-hd"><span>剧情简介</span><a class="intro-toggle" data-float="c-card">收起</a></div>
+          <div class="floating-bd">
+            本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。<br><br>
+            这是一段用于演示的长文本。浮动层覆盖在信息区之上，卡片本身的高度完全不变。文字可以继续堆叠，超过可视高度时浮动层内部滚动。<br><br>
+            再补一段文字让内容明显超出一屏，这样能看到浮动层内部的滚动效果。
+          </div>
+        </div>
+      </div>
+      <p class="hint">优点：展开时信息卡高度完全不变，视觉上「原地展开」。缺点：浮层遮挡了演员、导演等信息，阅读全文时看不到上下文。</p>
+    </div>
+  </section>
+
+  <!-- ========== D ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 D：右侧抽屉</h2><span>从右侧滑出 420px 抽屉显示全文，卡片不动</span></div>
+    <div class="stage opt-d" id="d-stage">
+      <div class="card">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+            <div><dt>简介</dt><dd>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”…<a class="intro-toggle" data-drawer="d-stage">展开</a></dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="drawer">
+        <div class="drawer-hd"><span>剧情简介</span><a class="intro-toggle" data-drawer="d-stage">收起</a></div>
+        <div class="drawer-bd">
+          本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。<br><br>
+          抽屉从右侧滑出，宽度 420px，卡片主体仍然完整可见（只是右侧被压住一部分）。适合长文，滚动区域独立。<br><br>
+          再补一段文字让内容超出一屏，演示抽屉内部的滚动。
+        </div>
+      </div>
+      <p class="hint">优点：长文阅读空间足够，卡片高度不变。缺点：会遮住卡片右侧一部分；和「播放列表」区块的视觉关系需要再排。</p>
+    </div>
+  </section>
+
+  <!-- ========== E ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 E：简介只留摘要 + 页内独立「剧情」区块</h2><span>卡片里永远只有两行摘要，展开后在下方出现整宽区块</span></div>
+    <div class="stage opt-e">
+      <div class="card">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+            <div><dt>简介</dt><dd>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”…<a class="intro-toggle" data-story="e-story">展开</a></dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="story-block" id="e-story">
+        <div class="story-hd">剧情简介</div>
+        <div>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。</div>
+        <p>这个区块是整宽的，位于信息卡与「播放列表」之间。展开它只会让页面往下长，不会影响上面卡片的高度。</p>
+        <p>再补一段，模拟两三千字的真实简介。</p>
+      </div>
+      <p class="hint">优点：卡片永远干净；长文放在整宽区块里阅读最舒服。缺点：展开后页面会变长（但这是往下长，不是撑高上面的卡片）。</p>
+    </div>
+  </section>
+
+  <!-- ========== F ========== -->
+  <section class="demo">
+    <div class="demo-title"><h2>方案 F：卡片下方手风琴</h2><span>展开区域与上方卡片视觉相连，像是卡片向下「翻」出一段</span></div>
+    <div class="stage opt-f">
+      <div class="card" style="border-radius:8px 8px 0 0;box-shadow:none;border-bottom:1px solid #eceef2">
+        <div class="cover-wrap">
+          <div class="cover"></div>
+          <a class="play-btn">立即播放</a>
+        </div>
+        <div class="info">
+          <h1 class="title-row">溺爱男友养成法 ~从性关系到成为本命女孩的故事~ <span class="badge">更新至第05集</span></h1>
+          <p class="sub-name">溺愛彼氏育成法</p>
+          <div class="tags">
+            <span class="cat"><i>分类</i>日韩剧</span>
+            <span class="year"><i>年份</i>2026</span>
+            <span class="area"><i>地区</i>日本</span>
+            <span class="lang"><i>语言</i>日语</span>
+          </div>
+          <dl class="fields">
+            <div><dt>导演</dt><dd>加藤绫佳,室井岳人,藤涉</dd></div>
+            <div><dt>编剧</dt><dd>—</dd></div>
+            <div><dt>演员</dt><dd>与田祐希,野村周平</dd></div>
+            <div><dt>简介</dt><dd>本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”…<a class="intro-toggle" data-acc="f-acc">展开</a></dd></div>
+          </dl>
+        </div>
+      </div>
+      <div class="acc" id="f-acc">
+        <div class="acc-inner">
+          本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。<br><br>
+          手风琴展开后与卡片连成一体，视觉上更连贯；但它同样是把页面往下撑长，卡片主体高度不变。
+        </div>
+      </div>
+      <p class="hint">与方案 E 接近，区别只是视觉上「长在卡片里」而不是独立的卡片。</p>
+    </div>
+  </section>
+
+  <div class="head" style="margin-top:8px">
+    <h2 style="font-size:16px;margin:0 0 8px">怎么选</h2>
+    <p>A / C / D 是「卡片高度绝对不变」的方案；B 是「弹层显示」；E / F 是「卡片不变、页面变长」。</p>
+  </div>
+</div>
+
+<div class="modal-mask" id="b-modal">
+  <div class="modal">
+    <div class="modal-hd"><span>剧情简介</span><a class="close-x" data-modal="b-modal">✕</a></div>
+    <div class="modal-bd">
+      本剧是以《初恋、ざらり》等作品为人所知的漫画家ざくざくろ创作的同名漫画。故事讲述了性格单纯的女主角险些被男人眼中的“便利女人”，在突然出现的恋爱精灵严厉指导下，为成为“本命女友”而奋斗的故事。<br><br>
+      弹窗最大高度 70vh，内容超出时内部滚动。卡片本身完全不受影响。<br><br>
+      再补一段文字让内容明显超高，演示弹窗内部滚动。
+    </div>
+    <div class="modal-ft"><a class="btn btn-primary" data-modal="b-modal">知道了</a></div>
+  </div>
+</div>
+
+<script>
+  // A：切换摘要/全文
+  function bindToggle(selector, rootSelector, openClass) {
+    document.querySelectorAll(selector).forEach(function (el) {
+      el.addEventListener('click', function () {
+        var root = document.querySelector(rootSelector);
+        if (!root) return;
+        root.classList.toggle(openClass);
+        var open = root.classList.contains(openClass);
+        el.textContent = open ? '收起' : '展开';
+      });
+    });
+  }
+
+  bindToggle('[data-toggle="a-intro"]', '#a-intro', 'is-open');
+  bindToggle('[data-acc="f-acc"]', null, '');
+
+  // B：弹窗
+  document.querySelectorAll('[data-modal]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var m = document.getElementById(el.getAttribute('data-modal'));
+      if (m) m.classList.toggle('show');
+    });
+  });
+
+  // C：卡片内浮动层
+  document.querySelectorAll('[data-float]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var card = document.getElementById(el.getAttribute('data-float'));
+      if (!card) return;
+      var f = card.querySelector('.floating');
+      if (!f) return;
+      f.classList.toggle('show');
+    });
+  });
+
+  // D：右侧抽屉
+  document.querySelectorAll('[data-drawer]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var stage = document.getElementById(el.getAttribute('data-drawer'));
+      if (!stage) return;
+      var d = stage.querySelector('.drawer');
+      if (!d) return;
+      d.classList.toggle('show');
+    });
+  });
+
+  // E / F：页内区块
+  document.querySelectorAll('[data-story]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var b = document.getElementById(el.getAttribute('data-story'));
+      if (!b) return;
+      b.classList.toggle('show');
+      el.textContent = b.classList.contains('show') ? '收起' : '展开';
+    });
+  });
+
+  document.querySelectorAll('[data-acc="f-acc"]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var b = document.getElementById('f-acc');
+      if (!b) return;
+      b.classList.toggle('show');
+      el.textContent = b.classList.contains('show') ? '收起' : '展开';
+    });
+  });
+</script>
+</body>
+</html>
