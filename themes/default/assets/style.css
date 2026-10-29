@@ -734,14 +734,11 @@ img { border: 0; vertical-align: middle; }
 /* 播放页：左播放器 + 右侧标签面板 */
 
 .play-row {
+  position: relative;
   display: flex;
-  gap: var(--space-4);
-  align-items: stretch;
+  gap: var(--space-3);
+  align-items: flex-start;
 }
-
-/* 播放页：按视口高度反推容器宽度，让播放器与右侧面板都落在一屏内，
-   同时容器整体收窄，面包屑、播放器、右侧面板三者左右边缘对齐 */
-
 
 .play-left {
   flex: 1;
