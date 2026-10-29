@@ -51,6 +51,23 @@
   });
 })();
 
+// 详情页封面：比例接近 3:4 的海报轻微拉伸填满，比例差太大的横图/长图保持完整显示
+(function () {
+  var img = document.querySelector('.detail-cover img');
+  if (!img) return;
+
+  function fit() {
+    var ratio = img.naturalWidth / img.naturalHeight;
+    if (!ratio) return;
+    // 框是 220x293，比例 0.751；偏差 8% 以内拉伸，肉眼看不出来
+    var diff = Math.abs(ratio / (220 / 293) - 1);
+    img.style.objectFit = diff <= 0.08 ? 'fill' : 'contain';
+  }
+
+  if (img.complete) fit();
+  else img.addEventListener('load', fit);
+})();
+
 (function () {
   var tabs = document.querySelectorAll('[data-ep-tab]');
   if (!tabs.length) return;
