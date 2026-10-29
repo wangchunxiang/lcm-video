@@ -27,6 +27,18 @@
   <button id="load">加载</button>
 </div>
 
+<div class="bar">
+  <select id="cfg" style="padding:8px 10px;border:1px solid #dcdfe6;border-radius:4px;font-size:13px">
+    <option value="0">① 默认（站点现用配置）</option>
+    <option value="1">② 关闭 worker 转封装</option>
+    <option value="2">③ maxAudioFramesDrift = 5</option>
+    <option value="3">④ 关闭 worker + drift 5</option>
+    <option value="4">⑤ stretchShortVideoTrack + 对齐</option>
+    <option value="5">⑥ 全部关闭 worker/drift/对齐</option>
+  </select>
+  <span id="cfgText" style="font-size:12px;color:#8a9099;align-self:center"></span>
+</div>
+
 <div class="row">
   <div class="card">
     <h2>A · 纯 hls.js（原生 video，不套播放器）</h2>
@@ -53,6 +65,29 @@
   var artBox = document.getElementById('art');
   var hlsPlain = null;
   var art = null;
+  var select = document.getElementById('cfg');
+  var cfgText = document.getElementById('cfgText');
+
+  var CONFIGS = [
+    { label: '默认', value: { enableWorker: true, lowLatencyMode: false } },
+    { label: '无 worker', value: { enableWorker: false, lowLatencyMode: false } },
+    { label: 'drift 5', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
+    { label: '无 worker + drift 5', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
+    { label: '对齐', value: { enableWorker: true, lowLatencyMode: false, stretchShortVideoTrack: true, maxAudioFramesDrift: 5 } },
+    { label: '全关', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 0, stretchShortVideoTrack: true } },
+  ];
+
+  function currentConfig() {
+    var index = Number(select.value) || 0;
+    var item = CONFIGS[index] || CONFIGS[0];
+    cfgText.textContent = 'A 使用：' + item.label + ' ' + JSON.stringify(item.value);
+    return item.value;
+  }
+
+  select.addEventListener('change', function () {
+    currentConfig();
+    if (input.value.trim()) play(input.value.trim());
+  });
 
   var defaultUrl = params.get('url') || '';
   input.value = defaultUrl;
@@ -72,7 +107,7 @@
     linkBox.innerHTML = '当前地址：<a href="' + url + '" target="_blank" rel="noreferrer">' + url + '</a>';
 
     /* A：纯 hls.js */
-    hlsPlain = new window.Hls({ enableWorker: true, lowLatencyMode: false });
+    hlsPlain = new window.Hls(currentConfig());
     hlsPlain.loadSource(url);
     hlsPlain.attachMedia(plain);
     hlsPlain.on(window.Hls.Events.ERROR, function (_e, data) {
@@ -114,6 +149,7 @@
     if (e.key === 'Enter') play(input.value.trim());
   });
 
+  currentConfig();
   if (defaultUrl) play(defaultUrl);
 })();
 </script>
