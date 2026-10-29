@@ -183,6 +183,10 @@ img { border: 0; vertical-align: middle; }
 .section-head h2 { margin: 0; font-size: 18px; }
 
 /* 首页不套卡片，直接铺在页面上 */
+.home {
+  padding-top: var(--space-4);
+}
+
 .home .section {
   background: transparent;
   border-radius: 0;
