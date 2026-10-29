@@ -34,8 +34,6 @@ html, body {
   padding: 0;
 }
 
-/* 始终保留竖向滚动条，避免不同长度页面之间内容左右跳动 */
-html { overflow-y: scroll; }
 
 body {
   display: flex;
