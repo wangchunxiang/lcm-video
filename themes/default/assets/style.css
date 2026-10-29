@@ -530,7 +530,8 @@ img { border: 0; vertical-align: middle; }
 
 .btn-play-inline {
   padding: 8px 32px;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   border-radius: 18px;
 }
 
