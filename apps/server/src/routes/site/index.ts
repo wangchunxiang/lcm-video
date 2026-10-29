@@ -552,7 +552,13 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           category_name: row.category_name ?? '',
         },
         line: { id: line.id, name: line.source_name, parse_url: line.parse_url, episode_count: all.length },
-        lines: lines.map((item) => ({ id: item.id, name: item.source_name, episode_count: item.episode_count })),
+        lines: lines.map((item) => ({
+          id: item.id,
+          name: item.source_name,
+          episode_count: item.episode_count,
+          // 换线路时保持当前集数，超出该线路集数则退到最后一集
+          ep: Math.max(1, Math.min(currentEp, item.episode_count)),
+        })),
         episodes,
         current_ep: currentEp,
         current_ep_name: episodeName,

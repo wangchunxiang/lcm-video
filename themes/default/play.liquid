@@ -49,7 +49,7 @@
     <nav class="line-tabs">
       {% for l in lines %}
       <a class="line-tab{% if l.id == line.id %} is-active{% endif %}"
-         href="/play/{{ vod.id }}/{{ l.id }}/1"
+         href="/play/{{ vod.id }}/{{ l.id }}/{{ l.ep }}"
          title="{{ l.name }}">{{ l.name }}</a>
       {% endfor %}
     </nav>
