@@ -257,25 +257,3 @@
 })();
 
 
-/* 播放页右侧标签面板：选集 / 线路 / 影片信息 */
-(function () {
-  var tabs = document.querySelectorAll('[data-play-tab]');
-  if (tabs.length === 0) return;
-
-  var panels = document.querySelectorAll('[data-play-panel]');
-
-  function activate(name) {
-    tabs.forEach(function (tab) {
-      tab.classList.toggle('is-active', tab.getAttribute('data-play-tab') === name);
-    });
-    panels.forEach(function (panel) {
-      panel.classList.toggle('is-active', panel.getAttribute('data-play-panel') === name);
-    });
-  }
-
-  tabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      activate(tab.getAttribute('data-play-tab'));
-    });
-  });
-})();

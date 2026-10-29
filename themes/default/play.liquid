@@ -46,17 +46,15 @@
   </div>
 
   <aside class="card play-side">
-    <div class="play-tabs">
-      <button type="button" class="play-tab is-active" data-play-tab="episodes">
-        选集<em>{{ line.episode_count }}</em>
-      </button>
-      <button type="button" class="play-tab" data-play-tab="lines">
-        线路<em>{{ lines.size }}</em>
-      </button>
-      <button type="button" class="play-tab" data-play-tab="info">影片信息</button>
-    </div>
+    <nav class="line-tabs">
+      {% for l in lines %}
+      <a class="line-tab{% if l.id == line.id %} is-active{% endif %}"
+         href="/play/{{ vod.id }}/{{ l.id }}/1"
+         title="{{ l.name }}">{{ l.name }}</a>
+      {% endfor %}
+    </nav>
 
-    <div class="play-panel is-active" data-play-panel="episodes">
+    <div class="line-panel">
       <div class="episode-grid">
         {% for item in episodes %}
         <a class="episode-btn{% if item.index == current_ep %} current{% endif %}"
@@ -74,41 +72,6 @@
         {% endif %}
       </div>
       {% endif %}
-    </div>
-
-    <div class="play-panel" data-play-panel="lines">
-      <div class="side-lines">
-        {% for l in lines %}
-        <a class="side-line{% if l.id == line.id %} is-active{% endif %}" href="/play/{{ vod.id }}/{{ l.id }}/1">
-          <span class="side-line-name">{{ l.name }}</span>
-          <span class="side-line-count">{{ l.episode_count }} 集</span>
-        </a>
-        {% endfor %}
-      </div>
-    </div>
-
-    <div class="play-panel" data-play-panel="info">
-      <dl class="side-info">
-        {% if vod.category_name != blank %}
-        <div><dt>分类</dt><dd>{{ vod.category_name }}</dd></div>
-        {% endif %}
-        {% if vod.year > 0 %}
-        <div><dt>年份</dt><dd>{{ vod.year }}</dd></div>
-        {% endif %}
-        {% if vod.area != blank %}
-        <div><dt>地区</dt><dd>{{ vod.area }}</dd></div>
-        {% endif %}
-        {% if vod.director != blank %}
-        <div><dt>导演</dt><dd>{{ vod.director }}</dd></div>
-        {% endif %}
-        {% if vod.actor != blank %}
-        <div><dt>演员</dt><dd>{{ vod.actor }}</dd></div>
-        {% endif %}
-      </dl>
-      {% if vod.intro != blank %}
-      <p class="side-intro">{{ vod.intro | escape }}</p>
-      {% endif %}
-      <a class="side-more" href="/detail/{{ vod.id }}">查看详情</a>
     </div>
   </aside>
 </div>
