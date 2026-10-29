@@ -3,16 +3,6 @@
 {% assign base = '/list/' | append: category.alias %}
 {% assign clear = filter | with_type: '' | with_year: '' %}
 
-<nav class="breadcrumb">
-  <a href="/">首页</a>
-  <span>/</span>
-  <a href="{{ base }}">{{ category.name }}</a>
-  {% if filter.type_name != blank %}
-  <span>/</span>
-  <span>{{ filter.type_name }}</span>
-  {% endif %}
-</nav>
-
 {% if types.size > 0 or years.size > 0 %}
 <div class="filter-block">
 {% endif %}
