@@ -35,7 +35,7 @@
         data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
         data-setting="{% if setting %}1{% else %}0{% endif %}"
         data-lang="zh-cn"
-        data-poster="{{ vod.cover }}"
+        data-poster="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
         data-vod-id="{{ vod.id }}"
         data-ep="{{ current_ep }}"
         data-next="{{ next_url }}"

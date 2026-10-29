@@ -18,11 +18,11 @@
 <div class="detail-card">
   <div class="detail-cover-wrap">
     <div class="detail-cover">
-      {% if vod.cover != blank %}
-      <img src="{{ vod.cover }}" alt="{{ vod.name }}">
-      {% else %}
-      <div class="no-cover big">{{ vod.name | truncate_text: 8 }}</div>
-      {% endif %}
+      <img
+        src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
+        alt="{{ vod.name }}"
+        onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
+      >
     </div>
   </div>
 
