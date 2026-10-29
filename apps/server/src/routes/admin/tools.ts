@@ -208,6 +208,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     status: number;
     playCount: number;
     collectedAt: string;
+    /** 严格键，用于区分「只差空格」与「标点不同」 */
+    strictKey: string;
   }
 
   interface MergeGroup {
@@ -229,7 +231,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     if (keys.length === 0) return [];
 
     const [rawRows] = await db.execute(
-      sql`SELECT v.id, v.name, v.year, v.status, v.${sql.raw(column)} AS k,
+      sql`SELECT v.id, v.name, v.year, v.status, v.name_hash, v.${sql.raw(column)} AS k,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
           FROM lcm_vod v WHERE v.${sql.raw(column)} IN (${sql.join(keys.map((key) => sql`${key}`), sql`, `)})`,
@@ -240,6 +242,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       year: number;
       status: number;
       k: string;
+      name_hash: string;
       collected_at: string;
       play_count: number;
     }>;
@@ -254,6 +257,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         status: Number(row.status) || 0,
         playCount: Number(row.play_count) || 0,
         collectedAt: row.collected_at,
+        strictKey: row.name_hash,
       });
       byKey.set(row.k, list);
     }
@@ -319,8 +323,9 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
     const auto = strictGroups.filter((group) => yearCompatible(group.members));
     const conflict = strictGroups.filter((group) => !yearCompatible(group.members));
+    // 疑似：去掉标点后同名，但严格键不止一种（即标点差异，不是空格差异）
     const suspects = looseGroups.filter(
-      (group) => new Set(group.members.map((item) => item.name)).size > 1 && group.members.length > 1,
+      (group) => new Set(group.members.map((item) => item.strictKey)).size > 1,
     );
 
     return ok(reply, {
@@ -356,6 +361,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       status: Number(row.status) || 0,
       playCount: Number(row.play_count) || 0,
       collectedAt: String(row.collected_at),
+      strictKey: '',
     }));
 
     const merged = await mergeGroup(members);
