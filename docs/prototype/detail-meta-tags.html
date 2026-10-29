@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情页信息标签 · 样式方案</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+    --line: #e8eaed; --primary: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #eceef2; color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 24px 80px; }
+  h1 { margin: 0 0 6px; font-size: 20px; }
+  .sub { margin: 0 0 22px; color: var(--text-3); font-size: 13px; }
+  .item { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(15,23,42,.06); margin-bottom: 14px; overflow: hidden; }
+  .head { display: flex; align-items: baseline; gap: 10px; padding: 11px 16px; background: #fafbfc; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .head b { font-size: 14px; }
+  .head span { color: var(--text-3); font-size: 12px; }
+  .demo { padding: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .demo.mini { padding-top: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  /* 基础结构：每个标签 = i(小标签) + 值 */
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .meta-row span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; line-height: 20px; }
+  .meta-row i { font-style: normal; opacity: .72; }
+
+  /* 1 浅底深字（现状） */
+  .ts1 span { padding: 2px 10px; border-radius: 4px; }
+  .ts1 .cat { background: #eef4ff; color: #2563eb; }
+  .ts1 .year { background: #e6f6fa; color: #0e7490; }
+  .ts1 .area { background: #e9f7ef; color: #16a34a; }
+  .ts1 .lang { background: #f3edff; color: #7c3aed; }
+
+  /* 2 描边胶囊 */
+  .ts2 span { padding: 2px 11px; border-radius: 999px; background: #fff; border: 1px solid; }
+  .ts2 .cat { border-color: #93b4f7; color: #2563eb; }
+  .ts2 .year { border-color: #8fd0df; color: #0e7490; }
+  .ts2 .area { border-color: #9ad9b4; color: #16a34a; }
+  .ts2 .lang { border-color: #c4a9f7; color: #7c3aed; }
+
+  /* 3 实心色块 */
+  .ts3 span { padding: 2px 10px; border-radius: 4px; color: #fff; }
+  .ts3 i { opacity: .8; color: #fff; }
+  .ts3 .cat { background: #2563eb; }
+  .ts3 .year { background: #0e7490; }
+  .ts3 .area { background: #16a34a; }
+  .ts3 .lang { background: #7c3aed; }
+
+  /* 4 浅底 + 左侧色条 */
+  .ts4 span { padding: 2px 10px 2px 9px; border-radius: 3px; background: var(--bg); color: var(--text-2); border-left: 3px solid; }
+  .ts4 .cat { border-color: #2563eb; }
+  .ts4 .year { border-color: #0e7490; }
+  .ts4 .area { border-color: #16a34a; }
+  .ts4 .lang { border-color: #7c3aed; }
+  .ts4 i { color: var(--text-3); opacity: 1; }
+
+  /* 5 无底色 + 前置圆点 */
+  .ts5 span { padding: 2px 0; color: var(--text-2); }
+  .ts5 span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .ts5 .cat { color: #2563eb; }
+  .ts5 .year { color: #0e7490; }
+  .ts5 .area { color: #16a34a; }
+  .ts5 .lang { color: #7c3aed; }
+  .ts5 span::before { order: -1; }
+  .ts5 i { opacity: .7; }
+
+  /* 6 中性灰底 + 彩色圆点 */
+  .ts6 span { padding: 2px 10px 2px 8px; border-radius: 4px; background: var(--bg); color: var(--text-2); }
+  .ts6 span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .ts6 .cat::before { background: #2563eb; }
+  .ts6 .year::before { background: #0e7490; }
+  .ts6 .area::before { background: #16a34a; }
+  .ts6 .lang::before { background: #7c3aed; }
+  .ts6 i { color: var(--text-3); opacity: 1; }
+
+  /* 7 单色深浅 */
+  .ts7 span { padding: 2px 10px; border-radius: 4px; }
+  .ts7 .cat { background: #dbe7fe; color: #1d4ed8; }
+  .ts7 .year { background: #e8effc; color: #2f5fc4; }
+  .ts7 .area { background: #f0f4fb; color: #46628f; }
+  .ts7 .lang { background: #f6f8fc; color: #5b6b83; }
+
+  /* 8 方形徽章 */
+  .ts8 span { padding: 3px 10px; border-radius: 2px; background: var(--bg); color: var(--text-2); letter-spacing: .3px; }
+  .ts8 .cat { background: #eef4ff; color: #2563eb; }
+  .ts8 .year { background: #e6f6fa; color: #0e7490; }
+  .ts8 .area { background: #e9f7ef; color: #16a34a; }
+  .ts8 .lang { background: #f3edff; color: #7c3aed; }
+  .ts8 span { font-variant-numeric: tabular-nums; }
+
+  /* 9 深色底 */
+  .dark { background: #1a1d23; border-radius: 6px; padding: 14px 16px; }
+  .ts9 span { padding: 2px 10px; border-radius: 4px; background: rgba(255,255,255,.07); color: #d7dbe2; }
+  .ts9 .cat { background: rgba(37,99,235,.22); color: #93b4f7; }
+  .ts9 .year { background: rgba(14,116,144,.24); color: #8fd0df; }
+  .ts9 .area { background: rgba(22,163,74,.22); color: #9ad9b4; }
+  .ts9 .lang { background: rgba(124,58,237,.24); color: #c4a9f7; }
+  .ts9 i { opacity: .8; }
+
+  /* 上下文示例：套进真实详情头，看整体观感 */
+  .ctx { display: flex; gap: 16px; padding: 16px; align-items: flex-start; background: #fff; }
+  .ctx + .ctx { border-top: 1px dashed var(--line); }
+  .poster { flex: none; width: 88px; height: 118px; border-radius: 5px; background: linear-gradient(135deg, #dbe3f0, #c7d3e6); }
+  .ctx-body h3 { margin: 0 0 2px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  .ctx-body .badge { font-size: 12px; line-height: 18px; padding: 1px 8px; border-radius: 3px; background: #eaf1fe; color: #2563eb; font-weight: 400; }
+  .ctx-body .sub2 { margin: 0 0 8px; color: var(--text-3); font-size: 13px; }
+  .ctx-tag { margin-bottom: 8px; }
+  .ctx-fields { font-size: 13px; color: var(--text-2); display: grid; gap: 2px; }
+  .ctx-fields i { font-style: normal; color: var(--text-3); display: inline-block; width: 34px; }
+  .note { color: var(--text-3); font-size: 12px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>详情页信息标签 · 九种样式</h1>
+  <p class="sub">同一组数据：分类 国产剧 / 年份 2026 / 地区 中国大陆 / 语言 汉语普通话。下方最后两块是套进真实详情头的效果。</p>
+
+  <div class="item">
+    <div class="head"><b>方案 1 · 浅底深字 (当前线上)</b><span>柔和，四种色同明度，不抢正文</span></div>
+    <div class="demo"><div class="meta-row ts1"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 2 · 描边胶囊</b><span>白底 + 同色描边，全圆角；更像“标签”而非“块”</span></div>
+    <div class="demo"><div class="meta-row ts2"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 3 · 实心色块</b><span>彩色底 + 白字，最醒目；四个一起会偏重</span></div>
+    <div class="demo"><div class="meta-row ts3"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 4 · 左侧色条</b><span>灰底 + 左侧 3px 彩条，颜色点到为止</span></div>
+    <div class="demo"><div class="meta-row ts4"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 5 · 前置圆点</b><span>无底色无边框，只用一个彩色小圆点区分类型</span></div>
+    <div class="demo"><div class="meta-row ts5"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 6 · 中性底 + 彩色圆点</b><span>底色统一，只有圆点带颜色；最克制的一种</span></div>
+    <div class="demo"><div class="meta-row ts6"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 7 · 单色深浅</b><span>全部用主色，只靠深浅区分；最“商务”，但类型信息被弱化</span></div>
+    <div class="demo"><div class="meta-row ts7"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 8 · 方形徽章</b><span>小圆角 + 字间距，像影片信息表的一格</span></div>
+    <div class="demo"><div class="meta-row ts8"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 9 · 深色版</b><span>半透明底色 + 亮色字；如果以后做夜间模式可参考</span></div>
+    <div class="demo mini" style="padding-top:16px">
+      <div class="dark"><div class="meta-row ts9"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+    </div>
+  </div>
+
+  <h1 style="font-size:17px;margin:26px 0 10px">套进详情头看整体</h1>
+
+  <div class="item">
+    <div class="head"><b>方案 1（当前）</b></div>
+    <div class="ctx">
+      <div class="poster"></div>
+      <div class="ctx-body">
+        <h3>大哥请赐教 <span class="badge">更新至第08集</span></h3>
+        <p class="sub2">赐教</p>
+        <div class="ctx-tag"><div class="meta-row ts1"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+        <div class="ctx-fields"><div><i>上映</i>2026-10-26</div><div><i>导演</i>信鹏,李亚泽</div><div><i>演员</i>纪凌尘,赵小棠,唐振超,田倚凡,刘闯</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 5（前置圆点）</b></div>
+    <div class="ctx">
+      <div class="poster"></div>
+      <div class="ctx-body">
+        <h3>大哥请赐教 <span class="badge">更新至第08集</span></h3>
+        <p class="sub2">赐教</p>
+        <div class="ctx-tag"><div class="meta-row ts5"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+        <div class="ctx-fields"><div><i>上映</i>2026-10-26</div><div><i>导演</i>信鹏,李亚泽</div><div><i>演员</i>纪凌尘,赵小棠,唐振超,田倚凡,刘闯</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="head"><b>方案 2（描边胶囊）</b></div>
+    <div class="ctx">
+      <div class="poster"></div>
+      <div class="ctx-body">
+        <h3>大哥请赐教 <span class="badge">更新至第08集</span></h3>
+        <p class="sub2">赐教</p>
+        <div class="ctx-tag"><div class="meta-row ts2"><span class="cat"><i>分类</i>国产剧</span><span class="year"><i>年份</i>2026</span><span class="area"><i>地区</i>中国大陆</span><span class="lang"><i>语言</i>汉语普通话</span></div></div>
+        <div class="ctx-fields"><div><i>上映</i>2026-10-26</div><div><i>导演</i>信鹏,李亚泽</div><div><i>演员</i>纪凌尘,赵小棠,唐振超,田倚凡,刘闯</div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">提示：四种语义色只对「分类」有实际含义（可点）；其余三个颜色纯粹是装饰性的类型区分。</p>
+</div>
+</body>
+</html>
