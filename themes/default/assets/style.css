@@ -388,10 +388,28 @@ img { border: 0; vertical-align: middle; }
   color: var(--text-2);
 }
 
+.meta-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.meta-row span.cat {
+  background: #eef4ff;
+  color: var(--primary);
+}
+
+.meta-row span.cat i { color: var(--primary); opacity: .75; }
+
 .meta-row i {
   font-style: normal;
   color: var(--text-3);
-  margin-right: 8px;
+  margin-right: 0;
 }
 
 .extra-line {
