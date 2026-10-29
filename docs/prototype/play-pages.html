@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>播放页方案 P1–P4</title>
+<style>
+:root {
+  --bg: #f5f6f8; --card: #fff; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+  --line: #e8eaed; --primary: #2563eb; --primary-dark: #1d4ed8; --radius: 8px;
+  --shadow: 0 1px 3px rgba(15,23,42,.06);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 32px 0 64px; background: #eceef1; color: var(--text);
+  font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.doc { max-width: 1480px; margin: 0 auto; padding: 0 24px; }
+.doc > h1 { font-size: 20px; margin: 0 0 8px; }
+.doc > p.lead { color: var(--text-2); margin: 0 0 28px; font-size: 13px; }
+
+.opt { margin-bottom: 40px; }
+.opt > h2 { font-size: 16px; margin: 0 0 4px; }
+.opt > h2 span { color: var(--primary); }
+.opt > p.desc { color: var(--text-2); font-size: 13px; margin: 0 0 12px; }
+
+.frame {
+  width: 1440px; background: var(--bg); border: 1px solid #d9dce1; border-radius: 10px;
+  overflow: hidden; box-shadow: 0 2px 10px rgba(15,23,42,.06);
+}
+
+/* 通用：站点头部 */
+.hd { background: #fff; border-bottom: 1px solid var(--line); }
+.hd-in { height: 60px; display: flex; align-items: center; gap: 32px; padding: 0 24px; }
+.logo { font-size: 19px; font-weight: 700; color: var(--primary); letter-spacing: 1px; }
+.nav { display: flex; gap: 22px; font-size: 15px; }
+.nav a { color: var(--text); text-decoration: none; }
+.nav a.on { color: var(--primary); font-weight: 600; }
+.search { margin-left: auto; display: flex; width: 300px; height: 34px; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.search input { flex: 1; border: 0; outline: 0; padding: 0 14px; font-size: 13px; background: transparent; }
+.search button { border: 0; background: transparent; padding: 0 14px; color: var(--text-3); font-size: 13px; }
+
+.crumb { padding: 14px 24px 0; color: var(--text-3); font-size: 13px; }
+.crumb a { color: var(--text-3); text-decoration: none; }
+.crumb i { margin: 0 6px; font-style: normal; }
+.crumb b { color: var(--text-2); font-weight: 400; }
+
+.wrap { padding: 12px 24px 24px; }
+
+/* 播放器（静态示意） */
+.plr {
+  position: relative; background: #0b0d10; border-radius: 6px; overflow: hidden;
+  aspect-ratio: 16 / 9; color: #fff;
+}
+.plr .poster {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 20% 10%, #334155 0%, #111827 55%, #06080b 100%);
+}
+.plr .title-tag {
+  position: absolute; left: 16px; top: 12px; font-size: 13px; color: rgba(255,255,255,.82);
+  background: rgba(0,0,0,.35); padding: 4px 10px; border-radius: 4px; backdrop-filter: blur(4px);
+}
+.plr .center {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+}
+.plr .playbtn {
+  width: 62px; height: 62px; border-radius: 50%; border: 0; cursor: pointer;
+  background: rgba(255,255,255,.16); color: #fff; font-size: 22px; display: flex;
+  align-items: center; justify-content: center; backdrop-filter: blur(6px);
+}
+.plr .ctrl {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 10px;
+  background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0));
+  display: flex; align-items: center; gap: 12px; font-size: 13px;
+}
+.plr .bar { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.28); position: relative; }
+.plr .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 38%; background: var(--primary); border-radius: 2px; }
+.plr .bar b {
+  position: absolute; left: 38%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  border-radius: 50%; background: #fff;
+}
+.plr .ico { opacity: .9; }
+
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+/* 剧集按钮 */
+.eps { display: grid; gap: 8px; }
+.ep {
+  height: 28px; display: flex; align-items: center; justify-content: center;
+  background: #f2f3f5; border-radius: 4px; font-size: 12px; color: var(--text-2);
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.ep:hover { background: #e8f0fe; color: var(--primary); }
+.ep.on { background: var(--primary); color: #fff; }
+.ep.more { color: var(--text-3); background: #f7f8fa; }
+
+/* 线路标签 */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab {
+  height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 4px; background: #fff; cursor: pointer;
+  font-size: 13px; color: var(--text-2);
+}
+.tab.on { border-color: var(--primary); color: var(--primary); background: #eff4ff; }
+.tab u { text-decoration: none; font-size: 12px; color: var(--text-3); }
+.tab.on u { color: var(--primary); }
+
+.meta-row { display: flex; align-items: center; gap: 16px; color: var(--text-2); font-size: 13px; }
+.meta-row h1 { font-size: 17px; margin: 0; color: var(--text); font-weight: 600; }
+.btn {
+  height: 30px; padding: 0 14px; border-radius: 4px; border: 1px solid var(--line);
+  background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer;
+}
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.dot { width: 4px; height: 4px; border-radius: 50%; background: var(--line); }
+
+/* ---------- P1 左右分栏 ---------- */
+.p1 .row { display: flex; gap: 16px; align-items: flex-start; }
+.p1 .left { flex: 1; min-width: 0; }
+.p1 .right { width: 320px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.p1 .eps { grid-template-columns: repeat(5, minmax(0, 1fr)); max-height: 330px; overflow: auto; }
+.p1 .side { padding: 14px 14px 16px; }
+.p1 .side h3 { margin: 0 0 10px; font-size: 13px; color: var(--text-3); font-weight: 400; }
+
+/* ---------- P2 沉浸大屏 ---------- */
+.p2 .plr { border-radius: 0; max-width: 1600px; margin: 0 auto; }
+.p2 .bare { padding: 12px 24px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.p2 .under { display: flex; gap: 16px; align-items: flex-start; }
+.p2 .under .left { flex: 1; min-width: 0; }
+.p2 .under .right { width: 300px; flex: none; }
+.p2 .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.p2 .body { padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+/* ---------- P3 标签页 ---------- */
+.p3 .row { display: flex; gap: 16px; align-items: flex-start; }
+.p3 .left { flex: 1; min-width: 0; }
+.p3 .right { width: 380px; flex: none; }
+.p3 .panel-hd { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 8px 8px 0; }
+.p3 .ptab {
+  padding: 8px 14px; font-size: 13px; color: var(--text-2); cursor: pointer; border: 0; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.p3 .ptab.on { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.p3 .panel-bd { padding: 14px; height: 342px; overflow: auto; }
+.p3 .eps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.p3 .info-line { display: flex; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.p3 .info-line b { color: var(--text-3); font-weight: 400; flex: none; width: 40px; }
+
+/* ---------- P4 暗色沉浸 ---------- */
+.p4 { background: #14161a; border-color: #23262b; }
+.p4 .hd { background: #1b1e23; border-bottom-color: #262a30; }
+.p4 .nav a { color: #c9ccd1; }
+.p4 .nav a.on { color: #6ea2ff; }
+.p4 .logo { color: #6ea2ff; }
+.p4 .search { border-color: #333840; }
+.p4 .search input { color: #d7dae0; }
+.p4 .crumb { color: #7c828b; }
+.p4 .crumb a, .p4 .crumb b { color: #9aa0a8; }
+.p4 .card { background: #1b1e23; box-shadow: none; border: 1px solid #262a30; }
+.p4 .meta-row h1 { color: #e8eaee; }
+.p4 .meta-row { color: #9aa0a8; }
+.p4 .btn { background: #22262c; border-color: #333840; color: #c9ccd1; }
+.p4 .btn.primary { background: #2f6fe4; border-color: #2f6fe4; color: #fff; }
+.p4 .ep { background: #22262c; color: #9aa0a8; }
+.p4 .ep:hover { background: #2c3340; color: #6ea2ff; }
+.p4 .ep.on { background: #2f6fe4; color: #fff; }
+.p4 .tab { background: #22262c; border-color: #333840; color: #9aa0a8; }
+.p4 .tab.on { background: #1d2b45; border-color: #2f6fe4; color: #6ea2ff; }
+.p4 .plr { border-radius: 0; }
+.p4 .p4body { padding: 12px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+.p4 .p4grid { display: flex; gap: 16px; align-items: flex-start; }
+.p4 .p4grid .left { flex: 1; min-width: 0; }
+.p4 .p4grid .right { width: 300px; flex: none; }
+.p4 .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+.p4 .side-note { color: #7c828b; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <h1>播放页 · 四个方案</h1>
+  <p class="lead">
+    同一部片、同一集、同样的数据（《名侦探柯南》第 1003 集，3 条线路，共 120 集），只换排布方式。
+    1440 宽下的效果，实际容器 1600。
+  </p>
+
+  <!-- ============ P1 ============ -->
+  <div class="opt">
+    <h2>P1 <span>左右分栏</span>：播放器 + 右侧固定剧集栏</h2>
+    <p class="desc">
+      播放器占主区，右侧 320px 常驻剧集栏，5 列网格内部滚动。信息与上一集/下一集在播放器下方。
+      优点是一屏内既能看播放器又能随时切集，切集不用滚动页面；缺点是播放器宽度被压缩约 340px。
+    </p>
+    <div class="frame p1">
+      <div class="hd"><div class="hd-in">
+        <div class="logo">蓝草莓影视</div>
+        <div class="nav"><a href="#">首页</a><a href="#">电影</a><a class="on" href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a></div>
+        <div class="search"><input placeholder="搜索影片"><button>搜索</button></div>
+      </div></div>
+      <nav class="crumb"><a href="#">首页</a><i>/</i><a href="#">名侦探柯南</a><i>/</i><b>第 1003 集</b></nav>
+      <div class="wrap row">
+        <div class="left">
+          <div class="plr">
+            <div class="poster"></div>
+            <div class="title-tag">名侦探柯南 · 第 1003 集</div>
+            <div class="center"><button class="playbtn">▶</button></div>
+            <div class="ctrl">
+              <span class="ico">▶</span>
+              <span>12:04</span>
+              <div class="bar"><i></i><b></b></div>
+              <span>24:18</span>
+              <span class="ico">🔊</span>
+              <span class="ico">⛶</span>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;gap:16px;">
+            <div class="meta-row" style="flex:1;min-width:0;">
+              <h1>名侦探柯南</h1>
+              <span class="dot"></span>
+              <span>第 1003 集</span>
+              <span class="dot"></span>
+              <span>如意资源</span>
+            </div>
+            <button class="btn">上一集</button>
+            <button class="btn primary">下一集</button>
+            <button class="btn">返回详情</button>
+          </div>
+        </div>
+        <div class="right">
+          <div class="card side">
+            <h3>播放线路</h3>
+            <div class="tabs">
+              <span class="tab on">如意资源 <u>120</u></span>
+              <span class="tab">量子资源 <u>118</u></span>
+              <span class="tab">电影天堂 <u>60</u></span>
+            </div>
+          </div>
+          <div class="card side" style="flex:1;">
+            <h3>选集（共 120 集）</h3>
+            <div class="eps">
+              <span class="ep">1</span><span class="ep">2</span><span class="ep">3</span><span class="ep">4</span><span class="ep">5</span>
+              <span class="ep">6</span><span class="ep">7</span><span class="ep">8</span><span class="ep">9</span><span class="ep">10</span>
+              <span class="ep">11</span><span class="ep">12</span><span class="ep">13</span><span class="ep">14</span><span class="ep">15</span>
+              <span class="ep">16</span><span class="ep">17</span><span class="ep">18</span><span class="ep">19</span><span class="ep">20</span>
+              <span class="ep">21</span><span class="ep">22</span><span class="ep">23</span><span class="ep">24</span><span class="ep">25</span>
+              <span class="ep">26</span><span class="ep">27</span><span class="ep">28</span><span class="ep">29</span><span class="ep">30</span>
+              <span class="ep">31</span><span class="ep">32</span><span class="ep">33</span><span class="ep">34</span><span class="ep">35</span>
+              <span class="ep">36</span><span class="ep">37</span><span class="ep">38</span><span class="ep">39</span><span class="ep">40</span>
+              <span class="ep">41</span><span class="ep">42</span><span class="ep">43</span><span class="ep">44</span><span class="ep">45</span>
+              <span class="ep">46</span><span class="ep">47</span><span class="ep">48</span><span class="ep">49</span><span class="ep">50</span>
+              <span class="ep">51</span><span class="ep">52</span><span class="ep">53</span><span class="ep">54</span><span class="ep">55</span>
+              <span class="ep">56</span><span class="ep">57</span><span class="ep">58</span><span class="ep">59</span><span class="ep">60</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ P2 ============ -->
+  <div class="opt">
+    <h2>P2 <span>沉浸大屏</span>：播放器顶到容器满宽，剧集横排在下</h2>
+    <p class="desc">
+      播放器占据整行（1600 宽、900 高），像影院一样。下方一行是标题与上一集/下一集，再往下左侧是剧集 10 列横排（3 行）右侧是线路。
+      优点是播放器最大化，适合正片观看；缺点是切集要往下看，首屏放不下全部剧集。
+    </p>
+    <div class="frame p2">
+      <div class="hd"><div class="hd-in">
+        <div class="logo">蓝草莓影视</div>
+        <div class="nav"><a href="#">首页</a><a href="#">电影</a><a class="on" href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a></div>
+        <div class="search"><input placeholder="搜索影片"><button>搜索</button></div>
+      </div></div>
+      <nav class="crumb"><a href="#">首页</a><i>/</i><a href="#">名侦探柯南</a><i>/</i><b>第 1003 集</b></nav>
+      <div style="padding-top:12px;">
+        <div class="plr">
+          <div class="poster"></div>
+          <div class="title-tag">名侦探柯南 · 第 1003 集</div>
+          <div class="center"><button class="playbtn">▶</button></div>
+          <div class="ctrl">
+            <span class="ico">▶</span><span>12:04</span>
+            <div class="bar"><i></i><b></b></div>
+            <span>24:18</span><span class="ico">🔊</span><span class="ico">⛶</span>
+          </div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:16px;">
+          <div class="meta-row" style="flex:1;min-width:0;">
+            <h1>名侦探柯南</h1><span class="dot"></span><span>第 1003 集</span>
+            <span class="dot"></span><span>如意资源</span>
+          </div>
+          <button class="btn">上一集</button>
+          <button class="btn primary">下一集</button>
+          <button class="btn">返回详情</button>
+        </div>
+        <div class="under">
+          <div class="left card" style="padding:14px 16px;">
+            <div class="meta-row" style="margin-bottom:10px;">
+              <strong style="font-size:13px;font-weight:400;color:var(--text-3);">选集（共 120 集）</strong>
+            </div>
+            <div class="eps">
+              <span class="ep">1001</span><span class="ep">1002</span><span class="ep on">1003</span><span class="ep">1004</span><span class="ep">1005</span>
+              <span class="ep">1006</span><span class="ep">1007</span><span class="ep">1008</span><span class="ep">1009</span><span class="ep">1010</span>
+              <span class="ep">1011</span><span class="ep">1012</span><span class="ep">1013</span><span class="ep">1014</span><span class="ep">1015</span>
+              <span class="ep">1016</span><span class="ep">1017</span><span class="ep">1018</span><span class="ep">1019</span><span class="ep">1020</span>
+              <span class="ep">1021</span><span class="ep">1022</span><span class="ep">1023</span><span class="ep">1024</span><span class="ep">1025</span>
+              <span class="ep">1026</span><span class="ep">1027</span><span class="ep">1028</span><span class="ep">1029</span><span class="ep">1030</span>
+            </div>
+          </div>
+          <div class="right card" style="padding:14px 16px;">
+            <div class="meta-row" style="margin-bottom:10px;">
+              <strong style="font-size:13px;font-weight:400;color:var(--text-3);">播放线路</strong>
+            </div>
+            <div class="tabs">
+              <span class="tab on">如意资源 <u>120</u></span>
+              <span class="tab">量子资源 <u>118</u></span>
+              <span class="tab">电影天堂 <u>60</u></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ P3 ============ -->
+  <div class="opt">
+    <h2>P3 <span>右侧标签页</span>：剧集 / 线路 / 影片信息三合一面板</h2>
+    <p class="desc">
+      右侧 380px 面板用标签页承载「选集 / 线路 / 详情」，面板高度固定一屏，内容内部滚动。
+      优点是右侧只有一块卡片、信息密度高，且「线路」和「影片信息」不占额外竖向空间；缺点是切线路要点两次（先切标签再点线路）。
+    </p>
+    <div class="frame p3">
+      <div class="hd"><div class="hd-in">
+        <div class="logo">蓝草莓影视</div>
+        <div class="nav"><a href="#">首页</a><a href="#">电影</a><a class="on" href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a></div>
+        <div class="search"><input placeholder="搜索影片"><button>搜索</button></div>
+      </div></div>
+      <nav class="crumb"><a href="#">首页</a><i>/</i><a href="#">名侦探柯南</a><i>/</i><b>第 1003 集</b></nav>
+      <div class="wrap row">
+        <div class="left">
+          <div class="plr">
+            <div class="poster"></div>
+            <div class="title-tag">名侦探柯南 · 第 1003 集</div>
+            <div class="center"><button class="playbtn">▶</button></div>
+            <div class="ctrl">
+              <span class="ico">▶</span><span>12:04</span>
+              <div class="bar"><i></i><b></b></div>
+              <span>24:18</span><span class="ico">🔊</span><span class="ico">⛶</span>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;padding:14px 16px;display:flex;align-items:center;gap:16px;">
+            <div class="meta-row" style="flex:1;min-width:0;">
+              <h1>名侦探柯南</h1><span class="dot"></span><span>第 1003 集</span>
+              <span class="dot"></span><span>如意资源</span>
+            </div>
+            <button class="btn">上一集</button>
+            <button class="btn primary">下一集</button>
+            <button class="btn">返回详情</button>
+          </div>
+        </div>
+        <div class="right card">
+          <div class="panel-hd">
+            <button class="ptab on">选集 120</button>
+            <button class="ptab">线路 3</button>
+            <button class="ptab">影片信息</button>
+          </div>
+          <div class="panel-bd">
+            <div class="eps">
+              <span class="ep">1001</span><span class="ep">1002</span><span class="ep on">1003</span><span class="ep">1004</span>
+              <span class="ep">1005</span><span class="ep">1006</span><span class="ep">1007</span><span class="ep">1008</span>
+              <span class="ep">1009</span><span class="ep">1010</span><span class="ep">1011</span><span class="ep">1012</span>
+              <span class="ep">1013</span><span class="ep">1014</span><span class="ep">1015</span><span class="ep">1016</span>
+              <span class="ep">1017</span><span class="ep">1018</span><span class="ep">1019</span><span class="ep">1020</span>
+              <span class="ep">1021</span><span class="ep">1022</span><span class="ep">1023</span><span class="ep">1024</span>
+              <span class="ep">1025</span><span class="ep">1026</span><span class="ep">1027</span><span class="ep">1028</span>
+              <span class="ep">1029</span><span class="ep">1030</span><span class="ep">1031</span><span class="ep">1032</span>
+              <span class="ep">1033</span><span class="ep">1034</span><span class="ep">1035</span><span class="ep">1036</span>
+              <span class="ep">1037</span><span class="ep">1038</span><span class="ep">1039</span><span class="ep">1040</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ P4 ============ -->
+  <div class="opt">
+    <h2>P4 <span>暗色沉浸</span>：整页深色，播放器满宽，剧集在下方</h2>
+    <p class="desc">
+      全站深色外壳 + 满宽播放器 + 下方剧集 10 列横排，右侧放线路与「接下来播放」。
+      优点是看片时四周不刺眼、视觉重心全在画面上；缺点是与站内其他页面（浅色）割裂，需要额外维护一套暗色样式。
+    </p>
+    <div class="frame p4">
+      <div class="hd"><div class="hd-in">
+        <div class="logo">蓝草莓影视</div>
+        <div class="nav"><a href="#">首页</a><a href="#">电影</a><a class="on" href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a></div>
+        <div class="search"><input placeholder="搜索影片"><button>搜索</button></div>
+      </div></div>
+      <nav class="crumb"><a href="#">首页</a><i>/</i><a href="#">名侦探柯南</a><i>/</i><b>第 1003 集</b></nav>
+      <div style="padding-top:12px;">
+        <div class="plr">
+          <div class="poster"></div>
+          <div class="title-tag">名侦探柯南 · 第 1003 集</div>
+          <div class="center"><button class="playbtn">▶</button></div>
+          <div class="ctrl">
+            <span class="ico">▶</span><span>12:04</span>
+            <div class="bar"><i></i><b></b></div>
+            <span>24:18</span><span class="ico">🔊</span><span class="ico">⛶</span>
+          </div>
+        </div>
+      </div>
+      <div class="p4body">
+        <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:16px;">
+          <div class="meta-row" style="flex:1;min-width:0;">
+            <h1>名侦探柯南</h1><span class="dot"></span><span>第 1003 集</span>
+            <span class="dot"></span><span>如意资源</span>
+          </div>
+          <button class="btn">上一集</button>
+          <button class="btn primary">下一集</button>
+          <button class="btn">返回详情</button>
+        </div>
+        <div class="p4grid">
+          <div class="left card" style="padding:14px 16px;">
+            <div class="meta-row" style="margin-bottom:10px;">
+              <strong style="font-size:13px;font-weight:400;color:#7c828b;">选集（共 120 集）</strong>
+            </div>
+            <div class="eps">
+              <span class="ep">1001</span><span class="ep">1002</span><span class="ep on">1003</span><span class="ep">1004</span><span class="ep">1005</span>
+              <span class="ep">1006</span><span class="ep">1007</span><span class="ep">1008</span><span class="ep">1009</span><span class="ep">1010</span>
+              <span class="ep">1011</span><span class="ep">1012</span><span class="ep">1013</span><span class="ep">1014</span><span class="ep">1015</span>
+              <span class="ep">1016</span><span class="ep">1017</span><span class="ep">1018</span><span class="ep">1019</span><span class="ep">1020</span>
+            </div>
+          </div>
+          <div class="right">
+            <div class="card" style="padding:14px 16px;margin-bottom:12px;">
+              <div class="meta-row" style="margin-bottom:10px;">
+                <strong style="font-size:13px;font-weight:400;color:#7c828b;">播放线路</strong>
+              </div>
+              <div class="tabs">
+                <span class="tab on">如意资源 <u>120</u></span>
+                <span class="tab">量子资源 <u>118</u></span>
+                <span class="tab">电影天堂 <u>60</u></span>
+              </div>
+            </div>
+            <div class="card" style="padding:14px 16px;">
+              <div class="meta-row" style="margin-bottom:10px;">
+                <strong style="font-size:13px;font-weight:400;color:#7c828b;">接下来播放</strong>
+              </div>
+              <div class="side-note">第 1004 集 · 如意资源</div>
+              <div class="side-note">第 1005 集</div>
+              <div class="side-note">第 1006 集</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
