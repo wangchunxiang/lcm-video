@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { sourceRule, vod, vodPlay } from '@lcm/db';
 import {
@@ -176,13 +176,35 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
       else index.set(row.nameHash, [item]);
     }
 
-    // 2. 内存判重（年份相等或任一方为 0），多条命中取 id 最小
+    // 2. 同一采集源里 source_vod_id 是不变的身份：优先用它认片，
+    //    避免源站改标题 / 改年份时被当成新片插一条重复记录
+    const sourceVodIds = [...new Set(candidates.map((c) => c.item.vodId).filter(Boolean))];
+    const sameSource =
+      sourceVodIds.length === 0
+        ? []
+        : await tx
+            .select({ vodId: vodPlay.vodId, sourceVodId: vodPlay.sourceVodId })
+            .from(vodPlay)
+            .where(and(eq(vodPlay.sourceId, sourceId), inArray(vodPlay.sourceVodId, sourceVodIds)));
+
+    const bySourceVodId = new Map<string, number>();
+    for (const row of sameSource) {
+      const prev = bySourceVodId.get(row.sourceVodId);
+      if (prev === undefined || row.vodId < prev) bySourceVodId.set(row.sourceVodId, row.vodId);
+    }
+
+    // 3. 内存判重（年份相等或任一方为 0），多条命中取 id 最小
     const forced = input.forceVodId ?? 0;
     const matchedIds: number[] = [];
     const decisions = candidates.map((candidate) => {
       if (forced > 0) {
         matchedIds.push(forced);
         return { candidate, vodId: forced };
+      }
+      const known = bySourceVodId.get(candidate.item.vodId);
+      if (known !== undefined) {
+        matchedIds.push(known);
+        return { candidate, vodId: known };
       }
       const hits = (index.get(candidate.hash) ?? []).filter(
         (row) => row.year === candidate.year || row.year === 0 || candidate.year === 0,
@@ -193,7 +215,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
       return { candidate, vodId };
     });
 
-    // 3. 批量取这些影片已有的线路
+    // 4. 批量取这些影片已有的线路
     const uniqueVodIds = [...new Set(matchedIds)];
     const plays: PlayRow[] =
       uniqueVodIds.length === 0
@@ -213,7 +235,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
     const playsByKey = new Map<string, PlayRow>();
     for (const row of plays) playsByKey.set(playKey(row.vodId, row.sourceId, row.sourceFrom), row);
 
-    // 4. 逐条写库
+    // 5. 逐条写库
     for (const { candidate, vodId: matchedId } of decisions) {
       const { item, name, hash, looseHash: loose, categoryId, categoryPid, year } = candidate;
       const groups = splitPlayGroups(item.playFrom, item.playUrl).map((group) => ({
