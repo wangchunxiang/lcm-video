@@ -78,4 +78,26 @@ export const themeAssetRoutes: FastifyPluginAsync<ThemeAssetOpts> = async (app, 
   });
 
   app.get('/favicon.ico', async (_req, reply) => sendThemeAsset(reply, 'favicon.ico'));
+
+  /** Android / PWA 安装图标；名称取站点设置，主题色与前台主色一致 */
+  app.get('/site.webmanifest', async (_req, reply) => {
+    const config = await loadSiteConfig(db);
+    const body = {
+      name: config.name,
+      short_name: config.name,
+      description: config.description,
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#ffffff',
+      theme_color: '#2563eb',
+      icons: [
+        { src: '/assets/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/assets/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      ],
+    };
+    return reply
+      .type('application/manifest+json; charset=utf-8')
+      .header('Cache-Control', 'public, max-age=3600')
+      .send(JSON.stringify(body));
+  });
 };
