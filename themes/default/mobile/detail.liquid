@@ -52,7 +52,7 @@
     {% if line.total > 0 %}
     <div class="episode-grid m-ep-grid">
       {% for ep in line.episodes %}
-      <a class="m-ep ep-w{{ ep.width }}" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
+      <a class="m-ep" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
       {% endfor %}
     </div>
     {% else %}
