@@ -13,7 +13,7 @@
 </nav>
 
 {% if keyword == '' %}
-<p class="empty-tip">请在顶部搜索框输入片名。</p>
+<p class="empty-tip">输入片名开始搜索。</p>
 {% else %}
 {% if years.size > 0 %}
 <div class="filter-block">
@@ -41,7 +41,7 @@
   {% for v in vods %}
   {% render 'partials/vod-card', card: v %}
   {% else %}
-  <p class="empty-tip">没有找到与「{{ keyword }}」相关的影片，换个关键词试试。</p>
+  <p class="empty-tip">没有找到「{{ keyword }}」，换个关键词试试。</p>
   {% endfor %}
 </div>
 
