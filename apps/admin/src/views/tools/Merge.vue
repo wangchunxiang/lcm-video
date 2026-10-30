@@ -16,6 +16,8 @@ interface MemberLine {
   sourceId: number;
   sourceFrom: string;
   sourceName: string;
+  episodes?: number;
+  updatedAt?: string;
 }
 
 interface Member {
@@ -27,6 +29,12 @@ interface Member {
   playCount: number;
   collectedAt: string;
   lines: MemberLine[];
+  subName?: string;
+  category?: string;
+  area?: string;
+  lang?: string;
+  actor?: string;
+  episodeCount?: number;
 }
 
 interface GroupDetail {
@@ -121,6 +129,24 @@ function statusText(status: number): string {
 function yearText(member: Member): string {
   return member.year > 0 ? `${member.year}` : '未知';
 }
+
+/** 演员只取前三位，避免把长名单铺满一行 */
+function firstActors(actor?: string): string {
+  const list = (actor ?? '')
+    .split(/[,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return list.slice(0, 3).join('、');
+}
+
+/** 该组里集数最多的线路，用来高亮「谁更完整」 */
+const maxEpisodes = computed(() => {
+  let max = 0;
+  for (const member of detail.value?.members ?? []) {
+    for (const line of member.lines) max = Math.max(max, line.episodes ?? 0);
+  }
+  return max;
+});
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -337,21 +363,27 @@ onMounted(load);
                     <span v-for="(mark, index) in marks(member.name)" :key="index" :class="mark.cls">{{ mark.ch }}</span>
                   </div>
                   <div class="member-meta">
-                    <span>ID {{ member.id }}</span>
-                    <span>{{ yearText(member) }}</span>
-                    <span>{{ statusText(member.status) }}</span>
-                    <span>{{ member.playCount }} 条线路</span>
-                    <span class="muted">采集于 {{ member.collectedAt }}</span>
+                    <span><i>ID</i> {{ member.id }}</span>
+                    <span><i>年份</i> {{ yearText(member) }}</span>
+                    <span><i>分类</i> {{ member.category || '—' }}</span>
+                    <span><i>地区</i> {{ member.area || '—' }}</span>
+                    <span><i>语言</i> {{ member.lang || '—' }}</span>
+                    <span><i>总集数</i> {{ member.episodeCount || '—' }}</span>
+                    <span><i>状态</i> {{ statusText(member.status) }}</span>
+                    <span><i>演员</i> {{ firstActors(member.actor) || '—' }}</span>
+                    <span class="muted"><i>采集</i> {{ member.collectedAt }}</span>
                   </div>
                   <div class="member-lines">
-                    <el-tag
+                    <span
                       v-for="line in member.lines"
                       :key="`${line.sourceId}-${line.sourceFrom}`"
-                      size="small"
-                      effect="plain"
+                      class="line-chip"
+                      :class="{ best: (line.episodes ?? 0) > 0 && line.episodes === maxEpisodes }"
                     >
-                      {{ line.sourceName }} · {{ line.sourceFrom }}
-                    </el-tag>
+                      {{ line.sourceName }} · {{ line.sourceFrom }} ·
+                      <b>{{ line.episodes ?? 0 }}</b> 集
+                      <template v-if="line.updatedAt"> · {{ line.updatedAt.slice(5) }}</template>
+                    </span>
                     <span v-if="member.lines.length === 0" class="muted">没有线路</span>
                   </div>
                 </div>
@@ -613,16 +645,46 @@ onMounted(load);
 .member-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 2px 14px;
   font-size: 12px;
   color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
+}
+
+.member-meta i {
+  font-style: normal;
+  color: var(--el-text-color-placeholder);
+  margin-right: 2px;
 }
 
 .member-lines {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.line-chip {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.line-chip b {
+  color: var(--el-text-color-primary);
+  font-weight: 600;
+}
+
+.line-chip.best {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.line-chip.best b {
+  color: var(--el-color-primary);
 }
 
 .keep-badge {

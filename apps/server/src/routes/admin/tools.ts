@@ -211,12 +211,20 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     collectedAt: string;
     strictKey: string;
     lines: MergeLine[];
+    subName?: string;
+    category?: string;
+    area?: string;
+    lang?: string;
+    actor?: string;
+    episodeCount?: number;
   }
 
   interface MergeLine {
     sourceId: number;
     sourceFrom: string;
     sourceName: string;
+    episodes?: number;
+    updatedAt?: string;
   }
 
   interface MergeGroup {
@@ -353,16 +361,20 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     if (ids.length === 0) return [];
     const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
     const [rawRows] = await db.execute(
-      sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash,
+      sql`SELECT v.id, v.name, v.sub_name, v.year, v.status, v.cover, v.name_hash,
+            v.area, v.lang, v.actor, v.episode_count, c.name AS category_name,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
-          FROM lcm_vod v WHERE v.id IN (${idList}) ORDER BY v.id`,
+          FROM lcm_vod v LEFT JOIN lcm_category c ON c.id = v.category_id
+          WHERE v.id IN (${idList}) ORDER BY v.id`,
     );
     const rows = rawRows as unknown as Array<Record<string, unknown>>;
     if (rows.length === 0) return [];
 
     const [lineRows] = await db.execute(
-      sql`SELECT p.vod_id, p.source_id, p.source_from, s.name AS source_name
+      sql`SELECT p.vod_id, p.source_id, p.source_from, s.name AS source_name, p.source_updated_at,
+            CASE WHEN p.play_url = '' THEN 0
+                 ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END AS episodes
           FROM lcm_vod_play p LEFT JOIN lcm_collect_source s ON s.id = p.source_id
           WHERE p.vod_id IN (${idList})
           ORDER BY p.source_id, p.id`,
@@ -375,6 +387,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         sourceId: Number(row.source_id),
         sourceFrom: String(row.source_from),
         sourceName: row.source_name ? String(row.source_name) : '手工添加',
+        episodes: Number(row.episodes) || 0,
+        updatedAt: row.source_updated_at
+          ? String(row.source_updated_at).slice(0, 10)
+          : '',
       });
       linesByVod.set(vodId, list);
     }
@@ -389,6 +405,12 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       collectedAt: String(row.collected_at),
       strictKey: String(row.name_hash),
       lines: linesByVod.get(Number(row.id)) ?? [],
+      subName: row.sub_name ? String(row.sub_name) : '',
+      category: row.category_name ? String(row.category_name) : '',
+      area: row.area ? String(row.area) : '',
+      lang: row.lang ? String(row.lang) : '',
+      actor: row.actor ? String(row.actor) : '',
+      episodeCount: Number(row.episode_count) || 0,
     }));
   };
 
