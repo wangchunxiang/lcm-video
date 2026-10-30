@@ -341,13 +341,18 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
 
-  const actorSet = (text?: string): Set<string> =>
-    new Set(
-      String(text ?? '')
-        .split(/[,，、/]/)
+  const actorSet = (text?: string): Set<string> => {
+    const raw = String(text ?? '');
+    // 有的源用空格分隔（"法老 小精灵 王瀚哲"），有的用逗号。带逗号时按逗号分，
+    // 否则按空白分——这样带逗号的源里 "Poppy Ratchapong" 这类英文名不会被拆碎。
+    const separator = /[,，、/]/.test(raw) ? /[,，、/]+/ : /\s+/;
+    return new Set(
+      raw
+        .split(separator)
         .map((item) => item.trim().toLowerCase())
         .filter(Boolean),
     );
+  };
 
   /** 组内两两比较演员名单，取最小重合率；有一方为空则返回 0（不足以下结论） */
   const actorOverlap = (members: MergeMember[]): number => {
@@ -367,8 +372,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     return min;
   };
 
-  /** 演员判定阈值：短名单里有 70% 出现在对方名单里 */
-  const ACTOR_MATCH_MIN = 0.7;
+  /** 演员判定阈值：短名单里有 60% 出现在对方名单里 */
+  const ACTOR_MATCH_MIN = 0.6;
 
   /** 宽松键组能否按「名称 + 年份 + 演员」升级为可合并 */
   const actorMatched = (group: MergeGroup): boolean =>
