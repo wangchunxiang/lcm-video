@@ -7,6 +7,7 @@ import {
   htmlToText,
   looseHash,
   nameHash,
+  normalizeCover,
   normalizeName,
 } from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
@@ -230,7 +231,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
           nameHashLoose: loose,
           subName: item.subName,
           letter: /^[A-Z0-9]$/.test(item.letter) ? item.letter : '',
-          cover: item.cover,
+          cover: normalizeCover(item.cover),
           actor: item.actor,
           director: item.director,
           writer: item.writer,

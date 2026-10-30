@@ -80,3 +80,16 @@ export function episodeSpan(label: string): 1 | 2 | 3 {
 export function episodeLabel(episode: Episode, index: number): string {
   return episode.name || `第 ${index + 1} 集`;
 }
+
+/** 已知的封面域名迁移：源站换了图床但接口仍返回旧域名时，就地改写 */
+const COVER_HOST_MAP: Array<[string, string]> = [['ps.ryzypics.com', 'pic.ry-pic.com']];
+
+/** 把源站返回的封面地址里的旧域名换成新域名 */
+export function normalizeCover(url: string | null | undefined): string {
+  const text = String(url ?? '').trim();
+  if (!text) return '';
+  for (const [from, to] of COVER_HOST_MAP) {
+    if (text.includes(from)) return text.split(from).join(to);
+  }
+  return text;
+}
