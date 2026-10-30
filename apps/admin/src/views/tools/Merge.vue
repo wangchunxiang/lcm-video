@@ -62,6 +62,21 @@ interface Preview {
   };
 }
 
+/** 封面加载失败时的占位图，用内联 SVG 避免再发一次请求（否则会反复触发 error 闪烁） */
+const COVER_PLACEHOLDER =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="64"><rect width="48" height="64" fill="#dcdfe6"/><text x="24" y="36" font-size="10" fill="#909399" text-anchor="middle">无封面</text></svg>',
+  );
+
+/** 只兜底一次，防止占位图再次失败时进死循环 */
+const onCoverError = (event: Event) => {
+  const img = event.target as HTMLImageElement;
+  if (img.dataset.fallback === '1') return;
+  img.dataset.fallback = '1';
+  img.src = COVER_PLACEHOLDER;
+};
+
 const loading = ref(false);
 const busy = ref(false);
 const preview = ref<Preview | null>(null);
@@ -500,7 +515,7 @@ onMounted(load);</script>
                   <span class="sr-only">保留这条</span>
                 </el-radio>
 
-                <img class="cover" :src="member.cover || '/assets/img/poster-placeholder.svg'" alt="" @error="($event.target as HTMLImageElement).src = '/assets/img/poster-placeholder.svg'" />
+                <img class="cover" :src="member.cover || COVER_PLACEHOLDER" alt="" @error="onCoverError" />
 
                 <div class="member-main">
                   <div class="member-name">

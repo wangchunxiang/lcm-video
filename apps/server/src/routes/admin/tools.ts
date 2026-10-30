@@ -208,6 +208,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     status: number;
     cover: string;
     playCount: number;
+    episodeTotal: number;
     collectedAt: string;
     strictKey: string;
     lines: MergeLine[];
@@ -262,7 +263,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash, v.${sql.raw(column)} AS k,
             v.actor,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
-            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
+            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count,
+          (SELECT COALESCE(SUM(CASE WHEN p.play_url = '' THEN 0
+              ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END), 0)
+            FROM lcm_vod_play p WHERE p.vod_id = v.id) AS ep_total
           FROM lcm_vod v WHERE v.${sql.raw(column)} IN (${sql.join(keys.map((key) => sql`${key}`), sql`, `)})`,
     );
     const rows = rawRows as unknown as Array<{
@@ -276,6 +280,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       actor: string | null;
       collected_at: string;
       play_count: number;
+      ep_total: number;
     }>;
 
     const byKey = new Map<string, MergeMember[]>();
@@ -288,6 +293,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         status: Number(row.status) || 0,
         cover: row.cover ?? '',
         playCount: Number(row.play_count) || 0,
+        episodeTotal: Number(row.ep_total) || 0,
         collectedAt: row.collected_at,
         strictKey: row.name_hash,
         lines: [],
@@ -379,9 +385,18 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   const actorMatched = (group: MergeGroup): boolean =>
     group.members.length > 1 && yearCompatible(group.members) && actorOverlap(group.members) >= ACTOR_MATCH_MIN;
 
-  /** 分组的默认保留项：线路最多，并列取 id 最小 */
+  /**
+   * 分组的默认保留项：线路最多 → 总集数最多 → 采集时间最新 → id 最小。
+   * 线路决定合并后还剩多少条线路；集数与采集时间决定留下的这条元信息是否最新。
+   */
   const defaultKeep = (members: MergeMember[]): MergeMember =>
-    [...members].sort((a, b) => b.playCount - a.playCount || a.id - b.id)[0]!;
+    [...members].sort(
+      (a, b) =>
+        b.playCount - a.playCount ||
+        b.episodeTotal - a.episodeTotal ||
+        String(b.collectedAt).localeCompare(String(a.collectedAt)) ||
+        a.id - b.id,
+    )[0]!;
 
   /** 合并一组：keepId 指定保留项，其余线路并过去后删掉 */
   const mergeGroup = async (members: MergeMember[], keepId?: number): Promise<number> => {
@@ -433,7 +448,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       sql`SELECT v.id, v.name, v.sub_name, v.year, v.status, v.cover, v.name_hash,
             v.area, v.lang, v.actor, v.episode_count, c.name AS category_name,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
-            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
+            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count,
+            (SELECT COALESCE(SUM(CASE WHEN p.play_url = '' THEN 0
+                ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END), 0)
+              FROM lcm_vod_play p WHERE p.vod_id = v.id) AS ep_total
           FROM lcm_vod v LEFT JOIN lcm_category c ON c.id = v.category_id
           WHERE v.id IN (${idList}) ORDER BY v.id`,
     );
@@ -471,6 +489,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       status: Number(row.status) || 0,
       cover: row.cover ? String(row.cover) : '',
       playCount: Number(row.play_count) || 0,
+      episodeTotal: Number(row.ep_total) || 0,
       collectedAt: String(row.collected_at),
       strictKey: String(row.name_hash),
       lines: linesByVod.get(Number(row.id)) ?? [],
@@ -694,7 +713,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     const [rawRows] = await db.execute(
       sql`SELECT v.id, v.name, v.year, v.status,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
-            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
+            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count,
+            (SELECT COALESCE(SUM(CASE WHEN p.play_url = '' THEN 0
+                ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END), 0)
+              FROM lcm_vod_play p WHERE p.vod_id = v.id) AS ep_total
           FROM lcm_vod v WHERE v.id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`,
     );
     const members: MergeMember[] = (rawRows as unknown as Array<Record<string, unknown>>).map((row) => ({
@@ -704,6 +726,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       status: Number(row.status) || 0,
       cover: '',
       playCount: Number(row.play_count) || 0,
+      episodeTotal: Number(row.ep_total) || 0,
       collectedAt: String(row.collected_at),
       strictKey: '',
       lines: [],
