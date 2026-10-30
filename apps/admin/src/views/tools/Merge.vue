@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -276,8 +276,120 @@ async function mergeAll(): Promise<void> {
   }
 }
 
-onMounted(load);
-</script>
+/* ---------- 左列多选 ---------- */
+
+const checked = ref<LightGroup[]>([]);
+
+const groupId = (group: LightGroup): string => `${group.kind}:${group.key}`;
+
+const isChecked = (group: LightGroup): boolean =>
+  checked.value.some((item) => groupId(item) === groupId(group));
+
+function toggleChecked(group: LightGroup): void {
+  const id = groupId(group);
+  checked.value = isChecked(group)
+    ? checked.value.filter((item) => groupId(item) !== id)
+    : [...checked.value, group];
+}
+
+const allChecked = computed(
+  () => filtered.value.length > 0 && filtered.value.every((group) => isChecked(group)),
+);
+
+const someChecked = computed(() => checked.value.length > 0 && !allChecked.value);
+
+function toggleAll(value: boolean | string | number): void {
+  checked.value = value ? [...filtered.value] : [];
+}
+
+watch(tab, () => {
+  checked.value = [];
+});
+
+async function batchMerge(): Promise<void> {
+  const keys = checked.value.map((group) => ({ key: group.key, kind: group.kind }));
+  if (keys.length === 0) return;
+
+  let plan: { groups: number; vods: number; skipped: number };
+  try {
+    plan = await api.post<{ groups: number; vods: number; skipped: number }>(
+      '/tools/merge-vods/batch-keys',
+      { keys, action: 'merge', confirm: false },
+    );
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    return;
+  }
+
+  if (plan.groups === 0) {
+    ElMessage.warning(`所选 ${keys.length} 组的年份都冲突，不能自动合并`);
+    return;
+  }
+
+  const skipText = plan.skipped > 0 ? `，另有 ${plan.skipped} 组年份冲突会跳过` : '';
+  try {
+    await ElMessageBox.confirm(
+      `将合并 ${plan.groups} 组、删除 ${plan.vods} 条重复影片${skipText}，确定继续吗？`,
+      '合并所选',
+      { type: 'warning', confirmButtonText: '合并', cancelButtonText: '取消' },
+    );
+  } catch {
+    return;
+  }
+
+  busy.value = true;
+  try {
+    const res = await api.post<{ groups: number; merged: number; skipped: number }>(
+      '/tools/merge-vods/batch-keys',
+      { keys, action: 'merge', confirm: true },
+    );
+    const after = res.skipped > 0 ? `，跳过 ${res.skipped} 组` : '';
+    ElMessage.success(`已合并 ${res.groups} 组，删除 ${res.merged} 条${after}`);
+    checked.value = [];
+    activeGroup.value = null;
+    detail.value = null;
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '合并失败');
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function batchIgnore(): Promise<void> {
+  const keys = checked.value.map((group) => ({ key: group.key, kind: group.kind }));
+  if (keys.length === 0) return;
+
+  try {
+    await ElMessageBox.confirm(
+      `把这 ${keys.length} 组标记为「不是重复」，之后不再出现在列表里，确定吗？`,
+      '忽略所选',
+      { type: 'warning', confirmButtonText: '忽略', cancelButtonText: '取消' },
+    );
+  } catch {
+    return;
+  }
+
+  busy.value = true;
+  try {
+    const res = await api.post<{ ignored: number }>('/tools/merge-vods/batch-keys', {
+      keys,
+      action: 'ignore',
+      confirm: true,
+    });
+    ElMessage.success(`已忽略 ${res.ignored} 组`);
+    checked.value = [];
+    activeGroup.value = null;
+    detail.value = null;
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '忽略失败');
+  } finally {
+    busy.value = false;
+  }
+}
+
+onMounted(load);</script>
 
 <template>
   <div class="page">
@@ -306,18 +418,44 @@ onMounted(load);
           </el-radio-group>
           <el-input v-model="keyword" size="small" placeholder="搜索片名" clearable />
 
+          <div class="list-toolbar">
+            <el-checkbox
+              :model-value="allChecked"
+              :indeterminate="someChecked"
+              @change="toggleAll"
+            >
+              全选
+            </el-checkbox>
+            <div class="list-actions">
+              <el-button size="small" :disabled="checked.length === 0 || busy" @click="batchMerge">
+                合并所选
+              </el-button>
+              <el-button size="small" :disabled="checked.length === 0 || busy" @click="batchIgnore">
+                忽略所选
+              </el-button>
+            </div>
+          </div>
+
           <div class="list">
-            <button
+            <div
               v-for="group in filtered"
               :key="`${group.kind}:${group.key}`"
-              type="button"
               class="item"
               :class="{ active: isActive(group) }"
+              role="button"
+              tabindex="0"
               @click="select(group)"
+              @keydown.enter="select(group)"
             >
+              <el-checkbox
+                class="item-check"
+                :model-value="isChecked(group)"
+                @click.stop
+                @change="toggleChecked(group)"
+              />
               <span class="item-name">{{ group.name }}</span>
               <span class="item-count">{{ group.count }}</span>
-            </button>
+            </div>
             <div v-if="filtered.length === 0" class="list-empty">没有待处理的分组</div>
           </div>
         </aside>
@@ -487,6 +625,30 @@ onMounted(load);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
+}
+
+.item-check {
+  flex: none;
+  height: 16px;
+  margin-right: -2px;
+}
+
+.item-check :deep(.el-checkbox__label) {
+  display: none;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.list-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .item:hover {

@@ -641,4 +641,56 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     }
     return ok(reply, { groups: auto.length, merged });
   });
+
+  /** 对勾选的若干分组批量合并或忽略 */
+  app.post('/merge-vods/batch-keys', async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      keys?: Array<{ key?: string; kind?: string }>;
+      action?: string;
+      confirm?: boolean;
+    };
+    const action = body.action === 'ignore' ? 'ignore' : 'merge';
+    const keys = (Array.isArray(body.keys) ? body.keys : [])
+      .map((item) => {
+        const kind = item.kind === 'same' ? 'same' : item.kind === 'suspect' ? 'suspect' : 'auto';
+        const key = String(item.key ?? '').trim();
+        return { kind, key } as const;
+      })
+      .filter((item) => (item.kind === 'same' ? isSameKey(item.key) : isHashKey(item.key)));
+    if (keys.length === 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请先选择分组');
+
+    const groups: MergeGroup[] = [];
+    for (const { kind, key } of keys) {
+      const group = await loadGroupDetail(kind, key);
+      if (group) groups.push(group);
+    }
+    const mergeable = groups.filter((group) => yearCompatible(group.members));
+    const skipped = groups.length - mergeable.length;
+
+    if (!body.confirm) {
+      return ok(reply, {
+        needConfirm: true,
+        action,
+        groups: action === 'merge' ? mergeable.length : groups.length,
+        vods: mergeable.reduce((sum, group) => sum + group.members.length - 1, 0),
+        skipped,
+      });
+    }
+
+    if (action === 'ignore') {
+      for (const group of groups) {
+        await db.execute(
+          sql`INSERT INTO lcm_vod_merge_ignore (merge_key, kind) VALUES (${ignoreKey(group.kind, group.key)}, ${group.kind})
+              ON DUPLICATE KEY UPDATE kind = ${group.kind}`,
+        );
+      }
+      return ok(reply, { groups: groups.length, merged: 0, skipped: 0, ignored: groups.length });
+    }
+
+    let merged = 0;
+    for (const group of mergeable) {
+      merged += await mergeGroup(group.members);
+    }
+    return ok(reply, { groups: mergeable.length, merged, skipped, ignored: 0 });
+  });
 };
