@@ -26,6 +26,17 @@ const MIME: Record<string, string> = {
   '.mp4': 'video/mp4',
 };
 
+/**
+ * 第三方库带 ?v= 版本参数、内容不会变，长缓存；
+ * 自己写的脚本和样式还在改，走协商缓存，避免升级后用户看到的还是旧文件。
+ */
+function cacheControlFor(relative: string, ext: string): string {
+  const clean = relative.split(String.fromCharCode(92)).join('/');
+  if (clean.startsWith('vendor/') || clean.startsWith('img/')) return 'public, max-age=2592000, immutable';
+  if (ext === '.js' || ext === '.css' || ext === '.html') return 'no-cache';
+  return 'public, max-age=604800';
+}
+
 export interface ThemeAssetOpts {
   db: Db;
 }
@@ -51,7 +62,7 @@ export const themeAssetRoutes: FastifyPluginAsync<ThemeAssetOpts> = async (app, 
       const ext = path.extname(target).toLowerCase();
       return reply
         .type(MIME[ext] ?? 'application/octet-stream')
-        .header('Cache-Control', 'public, max-age=604800')
+        .header('Cache-Control', cacheControlFor(wildcard, ext))
         .send(createReadStream(target));
     } catch {
       return reply.code(404).send('Not Found');
