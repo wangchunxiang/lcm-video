@@ -264,11 +264,13 @@ onBeforeUnmount(() => {
               <el-switch :model-value="row.isEnabled === 1" @change="toggle(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150" align="center" fixed="right">
+          <el-table-column label="操作" width="180" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-              <el-button link type="warning" :loading="applying === row.id" @click="apply(row)">重刷</el-button>
-              <el-button link type="danger" @click="remove(row)">删除</el-button>
+              <div class="row-actions">
+                <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+                <el-button link type="warning" :loading="applying === row.id" @click="apply(row)">重刷</el-button>
+                <el-button link type="danger" @click="remove(row)">删除</el-button>
+              </div>
             </template>
           </el-table-column>
           <template #empty>
@@ -315,6 +317,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
 .page {
   height: 100%;
   display: flex;
