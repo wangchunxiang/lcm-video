@@ -7,9 +7,14 @@ import { parseVodPage } from '../collect/parser.ts';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
 
-/** 抽样张数：先看 3 张，异常再扩到 20 张 */
-const FIRST_SAMPLE = 3;
-const WIDE_SAMPLE = 20;
+/** 每个域名抽 2 张 */
+const SAMPLE_COUNT = 2;
+/** 同一域名两次图片请求之间的间隔 */
+const SAMPLE_INTERVAL_MS = 3000;
+/** 检查全部时同时进行的域名数 */
+export const HOST_PARALLEL = 5;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 export type CheckResult = {
   host: string;
@@ -28,6 +33,37 @@ export function hostOf(url: string): string {
   }
 }
 
+/** 每个域名上次图片请求结束的时间戳 */
+const lastProbeAt = new Map<string, number>();
+/** 每个域名一条串行队列，保证同一域名的探测不会同时发出 */
+const hostQueues = new Map<string, Promise<unknown>>();
+
+/** 同一域名两次图片请求之间至少间隔 3 秒 */
+async function withHostThrottle<T>(host: string, run: () => Promise<T>): Promise<T> {
+  if (lastProbeAt.size > 500) {
+    const cutoff = Date.now() - 60_000;
+    for (const [key, at] of lastProbeAt) if (at < cutoff) lastProbeAt.delete(key);
+  }
+  const previous = hostQueues.get(host) ?? Promise.resolve();
+  const next = previous.then(async () => {
+    const wait = SAMPLE_INTERVAL_MS - (Date.now() - (lastProbeAt.get(host) ?? 0));
+    if (wait > 0) await sleep(wait);
+    try {
+      return await run();
+    } finally {
+      lastProbeAt.set(host, Date.now());
+    }
+  });
+  hostQueues.set(
+    host,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
+}
+
 /** 探测一张图片是否可访问：先 HEAD，失败再退回 GET 取首字节 */
 export async function probeImage(url: string, timeoutMs = 5000): Promise<{ ok: boolean; message: string }> {
   if (!url) return { ok: false, message: '地址为空' };
@@ -38,11 +74,23 @@ export async function probeImage(url: string, timeoutMs = 5000): Promise<{ ok: b
   return get.ok ? get : head;
 }
 
+/** 每个 HTTP 请求都按时限流：同一域名两次请求间隔 3 秒 */
 async function request(
   url: string,
   method: 'HEAD' | 'GET',
   timeoutMs: number,
   extra: Record<string, string> = {},
+): Promise<{ ok: boolean; message: string }> {
+  const host = hostOf(url);
+  if (!host) return requestOnce(url, method, timeoutMs, extra);
+  return withHostThrottle(host, () => requestOnce(url, method, timeoutMs, extra));
+}
+
+async function requestOnce(
+  url: string,
+  method: 'HEAD' | 'GET',
+  timeoutMs: number,
+  extra: Record<string, string>,
 ): Promise<{ ok: boolean; message: string }> {
   try {
     const response = await fetch(url, {
@@ -88,47 +136,26 @@ async function sampleUrls(db: Db, host: string, limit: number): Promise<string[]
   return urls;
 }
 
-/** 检查单个域名：抽 3 张，1–2 张失败时扩大到 20 张再判断 */
+/** 检查单个域名：抽 2 张，同一域名内两次请求间隔 3 秒 */
 export async function checkHost(db: Db, host: string): Promise<CheckResult> {
-  const first = await sampleUrls(db, host, FIRST_SAMPLE);
-  if (first.length === 0) {
+  const urls = await sampleUrls(db, host, SAMPLE_COUNT);
+  if (urls.length === 0) {
     return { host, ok: false, okCount: 0, failCount: 0, message: '库里没有该域名的图片' };
   }
-  const firstResults = await Promise.all(first.map((url) => probeImage(url)));
-  const failFirst = firstResults.filter((result) => !result.ok);
-  if (failFirst.length === 0) {
-    return { host, ok: true, okCount: first.length, failCount: 0, message: `${first.length}/${first.length} 正常` };
-  }
-  if (failFirst.length === first.length) {
-    return {
-      host,
-      ok: false,
-      okCount: 0,
-      failCount: first.length,
-      message: failFirst[0]?.message ?? '全部失败',
-    };
-  }
 
-  // 部分失败：扩大样本
-  const wide = await sampleUrls(db, host, WIDE_SAMPLE);
-  const wideResults = await Promise.all(wide.map((url) => probeImage(url)));
-  const failWide = wideResults.filter((result) => !result.ok).length;
-  const okWide = wideResults.length - failWide;
-  if (failWide > wideResults.length / 2) {
-    return {
-      host,
-      ok: false,
-      okCount: okWide,
-      failCount: failWide,
-      message: `扩样 ${wideResults.length} 张，失败 ${failWide}`,
-    };
+  const results: Array<{ ok: boolean; message: string }> = [];
+  for (const url of urls) results.push(await probeImage(url));
+  const failFirst = results.filter((result) => !result.ok);
+  const okCount = results.length - failFirst.length;
+  if (failFirst.length === 0) {
+    return { host, ok: true, okCount, failCount: 0, message: `${okCount}/${results.length} 正常` };
   }
   return {
     host,
-    ok: true,
-    okCount: okWide,
-    failCount: failWide,
-    message: `扩样 ${wideResults.length} 张，失败 ${failWide}`,
+    ok: false,
+    okCount,
+    failCount: failFirst.length,
+    message: `${okCount}/${results.length} 正常，失败：${failFirst[0]?.message ?? '未知原因'}`,
   };
 }
 
@@ -173,12 +200,22 @@ export async function repairHostCovers(
     .from(collectSource)
     .where(eq(collectSource.isEnabled, 1));
 
+  const clients = new Map<number, CollectClient>();
+  const clientFor = (source: SourceRow): CollectClient => {
+    let client = clients.get(source.id);
+    if (!client) {
+      client = clientOf(source);
+      clients.set(source.id, client);
+    }
+    return client;
+  };
+
   const items: RepairItem[] = [];
   let fixed = 0;
   let failed = 0;
 
   for (const target of targets) {
-    const found = await resolveCover(db, target.id, target.name, sources);
+    const found = await resolveCover(db, target.id, target.name, sources, clientFor);
     if (found) {
       await db.update(vod).set({ cover: found.url }).where(eq(vod.id, target.id));
       fixed += 1;
@@ -235,6 +272,7 @@ async function resolveCover(
   vodId: number,
   name: string,
   sources: SourceRow[],
+  clientFor: (source: SourceRow) => CollectClient,
 ): Promise<{ url: string; reason: string } | null> {
   // 先看库里同名影片（往往是重复条目）有没有能用的封面，不用发网络请求
   const [self] = await db.select({ nameHash: vod.nameHash }).from(vod).where(eq(vod.id, vodId));
@@ -261,12 +299,12 @@ async function resolveCover(
     seen.add(play.sourceId);
     const source = sources.find((row) => row.id === play.sourceId);
     if (!source) continue;
-    const url = await usableCover(await detailCover(source, play.sourceVodId));
+    const url = await usableCover(await detailCover(clientFor(source), play.sourceVodId));
     if (url) return { url, reason: `来自线路源「${source.name}」` };
   }
 
   for (const source of sources) {
-    const url = await usableCover(await searchCover(source, name));
+    const url = await usableCover(await searchCover(clientFor(source), name));
     if (url) return { url, reason: `搜索源「${source.name}」` };
   }
   return null;
@@ -279,16 +317,16 @@ function clientOf(source: SourceRow): CollectClient {
     apiUrl: source.apiUrl,
     apiFormat: source.apiFormat,
     apiParams: source.apiParams,
-    intervalSec: 1,
+    intervalSec: source.intervalSec,
     timeout: source.timeout,
     retryTimes: 0,
   });
 }
 
-async function detailCover(source: SourceRow, sourceVodId: string): Promise<string> {
+async function detailCover(client: CollectClient, sourceVodId: string): Promise<string> {
   try {
-    const raw = await clientOf(source).request({ ac: 'detail', ids: sourceVodId, at: source.apiFormat });
-    const parsed = parseVodPage(raw, source.apiFormat);
+    const raw = await client.request({ ac: 'detail', ids: sourceVodId, at: client.apiFormat });
+    const parsed = parseVodPage(raw, client.apiFormat);
     const item = parsed.list.find((row) => row.vodId === sourceVodId) ?? parsed.list[0];
     return item?.cover?.trim() ? item.cover.trim() : '';
   } catch {
@@ -296,10 +334,10 @@ async function detailCover(source: SourceRow, sourceVodId: string): Promise<stri
   }
 }
 
-async function searchCover(source: SourceRow, name: string): Promise<string> {
+async function searchCover(client: CollectClient, name: string): Promise<string> {
   try {
-    const raw = await clientOf(source).request({ ac: 'videolist', wd: name, at: source.apiFormat, pg: 1 });
-    const parsed = parseVodPage(raw, source.apiFormat);
+    const raw = await client.request({ ac: 'videolist', wd: name, at: client.apiFormat, pg: 1 });
+    const parsed = parseVodPage(raw, client.apiFormat);
     const hit = parsed.list.find((row) => row.name.trim() === name.trim()) ?? parsed.list[0];
     return hit?.cover?.trim() ? hit.cover.trim() : '';
   } catch {

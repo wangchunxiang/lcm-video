@@ -3,7 +3,7 @@ import { eq, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { coverCheck, vod } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
-import { clearHostCovers, listCoverHosts, repairHostCovers, scanHost } from '../../lib/covers/check.ts';
+import { HOST_PARALLEL, clearHostCovers, listCoverHosts, repairHostCovers, scanHost } from '../../lib/covers/check.ts';
 
 type Options = { db: Db };
 
@@ -51,9 +51,9 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
 
     const hosts = await listCoverHosts(db);
     const results = [];
-    // 同一批最多 4 个域名并行，域名内部已经是并发抽 3 张
-    for (let i = 0; i < hosts.length; i += 4) {
-      const slice = hosts.slice(i, i + 4);
+    // 域名之间 5 个并行，域名内部抽 2 张、间隔 3 秒
+    for (let i = 0; i < hosts.length; i += HOST_PARALLEL) {
+      const slice = hosts.slice(i, i + HOST_PARALLEL);
       const part = await Promise.all(slice.map((item) => scanHost(db, item.host, item.vodCount)));
       results.push(...part);
     }
