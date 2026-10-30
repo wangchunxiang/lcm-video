@@ -104,15 +104,6 @@
     attachBehaviors(video, box);
   }
 
-  /* 排查模式：播放页地址后加 ?debug=1，右下角出现「播放排查」链接 */
-  if (/[?&]debug=1/.test(location.search) && isHls) {
-    var debug = document.createElement('a');
-    debug.href = '/assets/probe.html?src=' + encodeURIComponent(src);
-    debug.target = '_blank';
-    debug.textContent = '播放排查';
-    debug.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;padding:6px 12px;border-radius:4px;background:#2563eb;color:#fff;font:13px/1.4 system-ui;text-decoration:none;opacity:.85';
-    document.body.appendChild(debug);
-  }
 
   /* 播放结束后自动跳下一集、本地记录播放进度 */
   function attachBehaviors(element, container) {

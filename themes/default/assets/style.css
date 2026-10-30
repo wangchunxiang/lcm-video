@@ -995,18 +995,3 @@ img { border: 0; vertical-align: middle; }
   .main-nav { display: none; }
   .search-box input { width: 120px; }
 }
-
-.play-debug {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 9999;
-  padding: 6px 12px;
-  border-radius: 4px;
-  background: var(--primary, #2563eb);
-  color: #fff;
-  font-size: 13px;
-  text-decoration: none;
-  opacity: 0.85;
-}
-.play-debug:hover { opacity: 1; }
