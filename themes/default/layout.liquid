@@ -6,15 +6,15 @@
 <title>{{ meta.title }}</title>
 <meta name="description" content="{{ meta.description }}">
 {% if meta.noindex %}<meta name="robots" content="noindex, nofollow">{% else %}<meta name="robots" content="index, follow">{% endif %}
-{% if meta.canonical != blank %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
-{% if site.favicon != blank %}
+{%- if meta.canonical != blank %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
+{%- if site.favicon != blank %}
 <link rel="icon" href="{{ site.favicon }}">
-{% else %}
+{%- else %}
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ 'favicon-32.png' | asset }}">
 <link rel="icon" type="image/png" sizes="16x16" href="{{ 'favicon-16.png' | asset }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ 'apple-touch-icon.png' | asset }}">
-{% endif %}
+{%- endif %}
 <link rel="manifest" href="/site.webmanifest">
 <link rel="stylesheet" href="{{ 'style.css' | asset }}">
 </head>
