@@ -467,7 +467,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     } else {
       const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
       const [rawRows] = await db.execute(
-        sql`SELECT id FROM lcm_vod WHERE v.${sql.raw(column)} = ${key}`,
+        sql`SELECT id FROM lcm_vod WHERE ${sql.raw(column)} = ${key}`,
       );
       ids = (rawRows as unknown as Array<{ id: number }>).map((row) => Number(row.id));
     }
