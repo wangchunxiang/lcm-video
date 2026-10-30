@@ -41,6 +41,9 @@
         data-next="{{ next_url }}"
       ></div>
       {% endif %}
+      {% if debug %}
+      <a class="play-debug" href="{{ probe_url }}" target="_blank" rel="noopener">播放排查</a>
+      {% endif %}
     </div>
 
   </div>

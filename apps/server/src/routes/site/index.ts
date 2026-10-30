@@ -535,6 +535,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     playId: number,
     ep: number,
     page: number,
+    debug = false,
   ): Promise<FastifyReply> {
     const config = await loadSiteConfig(db);
     const rows = await db
@@ -637,6 +638,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         next_url: currentEp < all.length ? `/play/${row.id}/${line.id}/${currentEp + 1}` : '',
         prev_url: currentEp > 1 ? `/play/${row.id}/${line.id}/${currentEp - 1}` : '',
         iframe_url: iframeUrl,
+        debug,
+        probe_url: `/assets/probe.html?src=${encodeURIComponent(proxyPlayUrl || current.url)}`,
       },
     );
   }
@@ -644,14 +647,14 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   app.get('/play/:id', async (req, reply) => {
     const id = toInt((req.params as { id: string }).id);
     if (id <= 0) return notFound(reply);
-    return renderPlay(reply, id, 0, 0, 1);
+    return renderPlay(reply, id, 0, 0, 1, (req.query as { debug?: string }).debug === '1');
   });
 
   app.get('/play/:id/:playId', async (req, reply) => {
     const { id, playId } = req.params as { id: string; playId: string };
     const vodId = toInt(id);
     if (vodId <= 0) return notFound(reply);
-    return renderPlay(reply, vodId, toInt(playId), 0, 1);
+    return renderPlay(reply, vodId, toInt(playId), 0, 1, (req.query as { debug?: string }).debug === '1');
   });
 
   app.get('/play/ad/:id/:playId/:ep', async (req, reply) => {
@@ -685,7 +688,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const query = req.query as Record<string, string | undefined>;
     const vodId = toInt(id);
     if (vodId <= 0) return notFound(reply);
-    return renderPlay(reply, vodId, toInt(playId), toInt(ep), parsePage(query.page));
+    return renderPlay(reply, vodId, toInt(playId), toInt(ep), parsePage(query.page), query.debug === '1');
   });
 
   /* ------------------------------- 搜索 ------------------------------- */
