@@ -8,8 +8,10 @@ import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
   createEngine,
+  isMobileRequest,
   loadCategories,
   loadNav,
+  pickTemplate,
   renderErrorPage,
   loadSiteConfig,
   parsePage,
@@ -163,7 +165,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   ): Promise<FastifyReply> {
     const config: SiteConfig = await loadSiteConfig(db);
     const nav: NavItem[] = await loadNav(db);
-    const html = await engineFor(config.theme).renderFile(template, {
+    // 手机走 mobile/ 下的模板，桌面走根目录；同一 URL 两种 HTML，靠 Vary 区分缓存
+    const mobile = isMobileRequest(reply.request.headers);
+    const html = await engineFor(config.theme).renderFile(pickTemplate(config.theme, template, mobile), {
       ...data,
       site: config,
       nav,
@@ -171,7 +175,10 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       keyword: data['keyword'] ?? '',
       nav_path: data['nav_path'] ?? '',
     });
-    return reply.type('text/html; charset=utf-8').send(html);
+    return reply
+      .header('vary', 'User-Agent, Sec-CH-UA-Mobile')
+      .type('text/html; charset=utf-8')
+      .send(html);
   }
 
   async function notFound(reply: FastifyReply): Promise<FastifyReply> {

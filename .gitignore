@@ -6,3 +6,6 @@ dist/
 logs/
 tmp/
 uploads/
+
+# 开发截图
+.shots/

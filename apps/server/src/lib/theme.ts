@@ -163,19 +163,47 @@ export async function renderErrorPage(
 ): Promise<FastifyReply> {
   const config = await loadSiteConfig(db);
   const nav = await loadNav(db);
-  const html = await createEngine(config.theme).renderFile('404', {
+  const mobile = isMobileRequest(reply.request.headers);
+  const template = pickTemplate(config.theme, '404', mobile);
+  const html = await createEngine(config.theme).renderFile(template, {
     site: config,
     nav,
     status,
     message,
     meta: { title: `${status} ${message} - ${config.name}`, description: config.description, noindex: true },
   });
-  return reply.code(status).type('text/html; charset=utf-8').send(html);
+  return reply
+    .code(status)
+    .header('vary', 'User-Agent, Sec-CH-UA-Mobile')
+    .type('text/html; charset=utf-8')
+    .send(html);
 }
 
 /** 主题名只允许字母数字与下划线，避免路径穿越 */
 export function safeThemeName(name: string): string {
   return /^[a-zA-Z0-9_-]+$/.test(name) ? name : 'default';
+}
+
+/**
+ * 是否手机浏览器访问。
+ * 优先看 Client Hints（Chrome/Edge/安卓浏览器会发 Sec-CH-UA-Mobile，比 UA 可靠）；
+ * 没有该头时用 UA 兜底，并排除 iPad 与不带 Mobile 的安卓平板。
+ */
+export function isMobileRequest(headers: Record<string, unknown>): boolean {
+  const hint = headers['sec-ch-ua-mobile'];
+  if (hint === '?1') return true;
+
+  const ua = typeof headers['user-agent'] === 'string' ? headers['user-agent'] : '';
+  if (!ua) return false;
+  if (/iPad|Tablet|PlayBook|Silk|Kindle/i.test(ua)) return false;
+  if (/Android/i.test(ua) && !/Mobile/i.test(ua)) return false;
+  return /iPhone|iPod|Android|Windows Phone|HarmonyOS|Mobile Safari/i.test(ua);
+}
+
+/** 手机访问且主题里有 mobile/<模板>.liquid 时优先用它，否则用桌面模板兜底 */
+export function pickTemplate(theme: string, template: string, mobile: boolean): string {
+  if (!mobile) return template;
+  return existsSync(`${themeDirOf(theme)}/mobile/${template}.liquid`) ? `mobile/${template}` : template;
 }
 
 /** 静态资源版本号：取文件 mtime，文件改动后 URL 自动变化，避免浏览器用旧缓存 */
@@ -194,11 +222,15 @@ function assetVersion(themeDir: string, rel: string): string {
   }
 }
 
-export function createEngine(theme: string): Liquid {
+/** 主题目录：主题不存在时退回 default */
+export function themeDirOf(theme: string): string {
   const safe = safeThemeName(theme);
-  const themeDir = existsSync(`${env.paths.themesDir}/${safe}`)
-    ? `${env.paths.themesDir}/${safe}`
-    : `${env.paths.themesDir}/default`;
+  const dir = `${env.paths.themesDir}/${safe}`;
+  return existsSync(dir) ? dir : `${env.paths.themesDir}/default`;
+}
+
+export function createEngine(theme: string): Liquid {
+  const themeDir = themeDirOf(theme);
   const engine = new Liquid({
     root: [themeDir],
     layouts: [themeDir],

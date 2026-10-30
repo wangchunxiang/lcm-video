@@ -1,0 +1,18 @@
+<a class="m-row" href="/detail/{{ card.id }}">
+  <div class="m-row-cover">
+    <img
+      src="{{ card.cover | default: '/assets/img/poster-placeholder.svg' }}"
+      alt="{{ card.name }}"
+      loading="lazy"
+      onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
+    >
+  </div>
+  <div class="m-row-body">
+    <div class="m-row-title">{{ card.name }}</div>
+    <div class="m-row-meta">
+      {{ card.year }}{% if card.category_name != blank %} · {{ card.category_name }}{% endif %}{% if card.area != blank %} · {{ card.area }}{% endif %}
+    </div>
+    {% if card.remarks != blank %}<div class="m-row-remark">{{ card.remarks }}</div>{% endif %}
+  </div>
+  <span class="m-row-arrow" aria-hidden="true">›</span>
+</a>

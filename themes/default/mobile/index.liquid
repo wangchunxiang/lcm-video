@@ -1,0 +1,37 @@
+{% layout 'mobile/layout' %}
+{% block content %}
+<nav class="m-cats" aria-label="分类导航">
+  <a class="m-cat is-on" href="/">首页</a>
+  {% for item in nav %}
+  <a class="m-cat" href="/list/{{ item.alias }}">{{ item.name }}</a>
+  {% endfor %}
+</nav>
+
+<section class="m-sec">
+  <div class="m-sec-head">
+    <h2>最新更新</h2>
+    <span class="m-sec-extra">今日 {{ today_count }} 部</span>
+  </div>
+  <div class="m-rows">
+    {% for v in vods %}
+    {% render 'mobile/partials/vod-row', card: v %}
+    {% else %}
+    <p class="m-empty">暂无影片，稍后再来看看。</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% for block in home_categories %}
+<section class="m-sec">
+  <div class="m-sec-head">
+    <h2>{{ block.name }}</h2>
+    <a class="m-more" href="/list/{{ block.alias }}">更多 ›</a>
+  </div>
+  <div class="m-grid">
+    {% for v in block.vods %}
+    {% render 'mobile/partials/poster-card', card: v %}
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

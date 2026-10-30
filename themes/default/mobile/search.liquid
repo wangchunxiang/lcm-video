@@ -1,0 +1,50 @@
+{% layout 'mobile/layout' %}
+{% assign base = '/search' %}
+{% block content %}
+<form class="m-searchbar" action="/search" method="get" role="search">
+  <input type="search" name="wd" value="{{ keyword }}" placeholder="搜索片名" autocomplete="off" enterkeyhint="search">
+  <button type="submit">搜索</button>
+</form>
+
+{% if keyword == '' %}
+<p class="m-empty m-empty-lg">输入片名开始搜索。</p>
+{% else %}
+<p class="m-hit">「{{ keyword }}」共 {{ pagination.total }} 部</p>
+
+{% if years.size > 0 %}
+<div class="m-filter">
+  <div class="m-filter-row">
+    <span class="m-filter-label">年份</span>
+    {% assign fy_all = filter | with_year: '' %}
+    <a class="m-chip{% if filter.year == '' %} is-on{% endif %}" href="{{ base | page_url: fy_all, 1 }}">全部</a>
+    {% for y in years %}
+    {% assign fy = filter | with_year: y %}
+    <a class="m-chip{% if filter.year == y %} is-on{% endif %}" href="{{ base | page_url: fy, 1 }}">{{ y }}</a>
+    {% endfor %}
+  </div>
+  <div class="m-filter-row">
+    <span class="m-filter-label">排序</span>
+    {% assign fs_time = filter | with_sort: 'time' %}
+    {% assign fs_new = filter | with_sort: 'new' %}
+    <a class="m-chip{% if filter.sort == 'time' %} is-on{% endif %}" href="{{ base | page_url: fs_time, 1 }}">最近更新</a>
+    <a class="m-chip{% if filter.sort == 'new' %} is-on{% endif %}" href="{{ base | page_url: fs_new, 1 }}">最新入库</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="m-grid" id="m-list">
+  {% for v in vods %}
+  {% render 'mobile/partials/poster-card', card: v %}
+  {% else %}
+  <p class="m-empty">没有找到「{{ keyword }}」，换个关键词试试。</p>
+  {% endfor %}
+</div>
+
+{% if pagination.page < pagination.total_pages %}
+{% assign next_page = pagination.page | plus: 1 %}
+<div class="m-more-wrap">
+  <a class="m-more-btn" id="m-more" href="{{ base | page_url: filter, next_page }}">加载更多</a>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
