@@ -1,3 +1,4 @@
+import '../net.ts';
 import { eq } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { adFeature } from '@lcm/db';
@@ -22,10 +23,12 @@ function absolutize(base: string, uri: string): string {
   }
 }
 
-async function fetchText(url: string): Promise<string> {
+/** 拉取正文，同时带回重定向后的最终地址：源站的 m3u8 常 302 到另一个域名，
+ *  分片相对地址要按最终地址解析，否则会拼到旧域名上被拒 */
+async function fetchText(url: string): Promise<{ text: string; finalUrl: string }> {
   const res = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
+  return { text: await res.text(), finalUrl: res.url || url };
 }
 
 /** 解析播放列表正文，返回头部标签与分片；遇到 master playlist 返回 null */
@@ -83,16 +86,16 @@ function markAds(durations: number[], patterns: number[][]): boolean[] {
 }
 
 const CACHE_TTL = 60_000;
-const cache = new Map<string, { at: number; text: string }>();
+const cache = new Map<string, { at: number; text: string; finalUrl: string }>();
 
-async function fetchCached(url: string): Promise<string> {
+async function fetchCached(url: string): Promise<{ text: string; finalUrl: string }> {
   const hit = cache.get(url);
   const now = Date.now();
-  if (hit && now - hit.at < CACHE_TTL) return hit.text;
-  const text = await fetchText(url);
+  if (hit && now - hit.at < CACHE_TTL) return { text: hit.text, finalUrl: hit.finalUrl };
+  const fetched = await fetchText(url);
   if (cache.size > 200) cache.clear();
-  cache.set(url, { at: now, text });
-  return text;
+  cache.set(url, { at: now, text: fetched.text, finalUrl: fetched.finalUrl });
+  return fetched;
 }
 
 export interface CleanResult {
@@ -101,33 +104,32 @@ export interface CleanResult {
   total: number;
 }
 
-/**
- * 拉取上游播放列表，按该源已确认的广告特征剔除对应分片。
- * 没有命中广告时返回 null，调用方直接用原始地址。
- */
-export async function cleanPlaylist(db: Db, sourceId: number, url: string): Promise<CleanResult | null> {
+/** 该采集源已确认的广告分片时长特征 */
+export async function loadAdPatterns(db: Db, sourceId: number): Promise<number[][]> {
   const rows = await db
     .select({ durations: adFeature.durations })
     .from(adFeature)
     .where(eq(adFeature.sourceId, sourceId));
-  const patterns = rows
+  return rows
     .map((row) => row.durations.split(',').map((item) => Number.parseFloat(item) || 0))
     .filter((pattern) => pattern.length > 0 && pattern.every((item) => item > 0));
-  if (!patterns.length) return null;
+}
 
-  let base = url;
-  let text = await fetchCached(url);
-
-  if (text.includes('#EXT-X-STREAM-INF')) {
-    const variant = text
+/** 拉取播放列表；遇到 master playlist 时取第一个变体，返回可用的分片列表地址 */
+export async function fetchMediaPlaylist(url: string): Promise<{ base: string; text: string } | null> {
+  let fetched = await fetchCached(url);
+  for (let depth = 0; depth < 2 && fetched.text.includes('#EXT-X-STREAM-INF'); depth += 1) {
+    const variant = fetched.text
       .split(/\r?\n/)
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith('#'));
     if (!variant) return null;
-    base = absolutize(url, variant);
-    text = await fetchCached(base);
+    fetched = await fetchCached(absolutize(fetched.finalUrl, variant));
   }
+  return { base: fetched.finalUrl, text: fetched.text };
+}
 
+export function cleanMedia(text: string, base: string, patterns: number[][]): CleanResult | null {
   const parsed = parseMedia(text);
   if (!parsed || parsed.segments.length === 0) return null;
 
@@ -158,4 +160,16 @@ export async function cleanPlaylist(db: Db, sourceId: number, url: string): Prom
   if (!output.includes('#EXT-X-ENDLIST')) output.push('#EXT-X-ENDLIST');
 
   return { text: `${output.join('\n')}\n`, removed, total: parsed.segments.length };
+}
+
+/**
+ * 拉取上游播放列表，按该源已确认的广告特征剔除对应分片。
+ * 没有命中广告时返回 null，调用方直接用原始地址。
+ */
+export async function cleanPlaylist(db: Db, sourceId: number, url: string): Promise<CleanResult | null> {
+  const patterns = await loadAdPatterns(db, sourceId);
+  if (!patterns.length) return null;
+  const media = await fetchMediaPlaylist(url);
+  if (!media) return null;
+  return cleanMedia(media.text, media.base, patterns);
 }

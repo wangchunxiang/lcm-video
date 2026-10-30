@@ -5,6 +5,9 @@ import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm
 import type { Liquid } from 'liquidjs';
 import { episodeLabel, episodeSpan, parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
+import { buildProxiedPlaylist, fetchSegment, readSegmentToken } from '../../lib/ads/proxy.ts';
+import { env } from '../../env.ts';
+import { Readable } from 'node:stream';
 import {
   buildPagination,
   createEngine,
@@ -631,6 +634,22 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const current = parsePlayUrl(line.playUrl)[epIndex - 1];
     if (!current) return notFound(reply);
 
+    /* 手机浏览器（尤其 iOS 的 WKWebView）直接拉源站分片常被 403，
+       这类终端改由本站转发播放列表与分片 */
+    if (isMobileRequest(req.headers)) {
+      try {
+        const proxied = await buildProxiedPlaylist(db, line.source_id, current.url, env.jwtSecret);
+        if (proxied) {
+          return reply
+            .header('content-type', 'application/vnd.apple.mpegurl')
+            .header('cache-control', 'no-store')
+            .send(proxied);
+        }
+      } catch {
+        /* 回退到直连源站 */
+      }
+    }
+
     try {
       const cleaned = await cleanPlaylist(db, line.source_id, current.url);
       if (!cleaned) return reply.redirect(current.url, 302);
@@ -640,6 +659,32 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         .send(cleaned.text);
     } catch {
       return reply.redirect(current.url, 302);
+    }
+  });
+
+  /** 分片代理：手机上所有 .ts 都从这里过一道，避免源站防盗链、证书或路由问题 */
+  app.get('/play/seg', async (req, reply) => {
+    const token = String((req.query as { u?: string }).u || '');
+    const url = readSegmentToken(token, env.jwtSecret);
+    if (!url) return reply.code(403).send('forbidden');
+
+    try {
+      const upstream = await fetchSegment(url, req.headers.range);
+      if (!upstream.ok && upstream.status !== 206) {
+        return reply.code(upstream.status).send('upstream error');
+      }
+      const length = upstream.headers.get('content-length');
+      const contentRange = upstream.headers.get('content-range');
+      reply.code(upstream.status);
+      reply.header('content-type', upstream.headers.get('content-type') || 'video/mp2t');
+      reply.header('accept-ranges', 'bytes');
+      reply.header('cache-control', 'private, max-age=3600');
+      if (length) reply.header('content-length', length);
+      if (contentRange) reply.header('content-range', contentRange);
+      if (!upstream.body) return reply.send();
+      return reply.send(Readable.fromWeb(upstream.body as ReadableStream<Uint8Array>));
+    } catch {
+      return reply.code(502).send('bad gateway');
     }
   });
 
