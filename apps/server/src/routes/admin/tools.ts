@@ -206,14 +206,22 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     name: string;
     year: number;
     status: number;
+    cover: string;
     playCount: number;
     collectedAt: string;
-    /** 严格键，用于区分「只差空格」与「标点不同」 */
     strictKey: string;
+    lines: MergeLine[];
+  }
+
+  interface MergeLine {
+    sourceId: number;
+    sourceFrom: string;
+    sourceName: string;
   }
 
   interface MergeGroup {
     key: string;
+    kind: 'auto' | 'suspect';
     name: string;
     year: number;
     members: MergeMember[];
@@ -222,8 +230,16 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
   type Column = 'name_hash' | 'name_hash_loose';
 
-  /** 按指定哈希列取重复分组，附带每条影片的线路数与采集时间 */
-  const loadGroups = async (column: Column): Promise<MergeGroup[]> => {
+  /** 被忽略的重复分组，键为「类型:哈希」 */
+  const ignoreKey = (kind: string, key: string): string => `${kind}:${key}`;
+
+  const loadIgnored = async (): Promise<Set<string>> => {
+    const [rows] = await db.execute(sql`SELECT merge_key FROM lcm_vod_merge_ignore`);
+    return new Set((rows as unknown as Array<{ merge_key: string }>).map((row) => row.merge_key));
+  };
+
+  /** 按指定哈希列取重复分组 */
+  const loadGroups = async (column: Column, kind: 'auto' | 'suspect'): Promise<MergeGroup[]> => {
     const [hashRows] = await db.execute(
       sql`SELECT ${sql.raw(column)} AS k FROM lcm_vod WHERE ${sql.raw(column)} <> '' GROUP BY ${sql.raw(column)} HAVING COUNT(*) > 1`,
     );
@@ -231,7 +247,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     if (keys.length === 0) return [];
 
     const [rawRows] = await db.execute(
-      sql`SELECT v.id, v.name, v.year, v.status, v.name_hash, v.${sql.raw(column)} AS k,
+      sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash, v.${sql.raw(column)} AS k,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
           FROM lcm_vod v WHERE v.${sql.raw(column)} IN (${sql.join(keys.map((key) => sql`${key}`), sql`, `)})`,
@@ -241,6 +257,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       name: string;
       year: number;
       status: number;
+      cover: string;
       k: string;
       name_hash: string;
       collected_at: string;
@@ -255,9 +272,11 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         name: row.name,
         year: Number(row.year) || 0,
         status: Number(row.status) || 0,
+        cover: row.cover ?? '',
         playCount: Number(row.play_count) || 0,
         collectedAt: row.collected_at,
         strictKey: row.name_hash,
+        lines: [],
       });
       byKey.set(row.k, list);
     }
@@ -267,13 +286,14 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       members.sort((a, b) => a.id - b.id);
       groups.push({
         key,
+        kind,
         name: members[0]?.name ?? '',
         year: members.find((item) => item.year > 0)?.year ?? 0,
         members,
         playTotal: members.reduce((sum, item) => sum + item.playCount, 0),
       });
     }
-    return groups.sort((a, b) => b.members.length - a.members.length || a.members[0]!.id - b.members[0]!.id);
+    return groups;
   };
 
   /** 年份相容：所有非 0 年份相同 */
@@ -282,26 +302,39 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     return years.size <= 1;
   };
 
-  /** 合并一组：保留线路最多（并列取 id 最小）的一条，其余线路并过去后删掉 */
-  const mergeGroup = async (members: MergeMember[]): Promise<number> => {
-    const sorted = [...members].sort((a, b) => b.playCount - a.playCount || a.id - b.id);
-    const keep = sorted[0]!;
-    const others = sorted.slice(1).map((item) => item.id);
+  /** 分组的默认保留项：线路最多，并列取 id 最小 */
+  const defaultKeep = (members: MergeMember[]): MergeMember =>
+    [...members].sort((a, b) => b.playCount - a.playCount || a.id - b.id)[0]!;
+
+  /** 合并一组：keepId 指定保留项，其余线路并过去后删掉 */
+  const mergeGroup = async (members: MergeMember[], keepId?: number): Promise<number> => {
+    const keep = members.find((item) => item.id === keepId) ?? defaultKeep(members);
+    const others = members.filter((item) => item.id !== keep.id).map((item) => item.id);
     if (others.length === 0) return 0;
 
     const idList = sql.join(others.map((id) => sql`${id}`), sql`, `);
-    const latest = sorted.map((item) => item.collectedAt).sort().at(-1) ?? null;
+    const latest = members.map((item) => item.collectedAt).sort().at(-1) ?? null;
 
     await db.transaction(async (tx) => {
-      await tx.execute(
-        sql`INSERT INTO lcm_vod_play
-              (vod_id, source_id, source_from, play_url, source_vod_id, source_updated_at, collected_at)
-            SELECT ${keep.id}, source_id, source_from, play_url, source_vod_id, source_updated_at, collected_at
-            FROM lcm_vod_play WHERE vod_id IN (${idList})
-            ON DUPLICATE KEY UPDATE
-              source_vod_id = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(source_vod_id), source_vod_id),
-              play_url = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(play_url), play_url)`,
+      // 逐条搬线路：INSERT … SELECT 在 MySQL 里同一张表既当源又当目标，
+      // ON DUPLICATE UPDATE 中的列名会报 ambiguous，所以先查出来再逐条写。
+      const [rawLines] = await tx.execute(
+        sql`SELECT source_id, source_from, play_url, source_vod_id, source_updated_at, collected_at
+            FROM lcm_vod_play WHERE vod_id IN (${idList})`,
       );
+      const lines = rawLines as unknown as Array<Record<string, unknown>>;
+      for (const line of lines) {
+        await tx.execute(
+          sql`INSERT INTO lcm_vod_play
+                (vod_id, source_id, source_from, play_url, source_vod_id, source_updated_at, collected_at)
+              VALUES (${keep.id}, ${Number(line.source_id)}, ${String(line.source_from)}, ${String(line.play_url)},
+                ${line.source_vod_id === null ? null : String(line.source_vod_id)},
+                ${line.source_updated_at ?? null}, ${line.collected_at ?? null})
+              ON DUPLICATE KEY UPDATE
+                source_vod_id = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(source_vod_id), source_vod_id),
+                play_url = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(play_url), play_url)`,
+        );
+      }
       await tx.execute(sql`DELETE FROM lcm_vod_play WHERE vod_id IN (${idList})`);
       if (latest) {
         await tx.execute(
@@ -314,37 +347,113 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     return others.length;
   };
 
-  /** 预览：可自动合并的分组 + 疑似重复（宽松键相同但严格键不同） */
+  /** 取一组重复影片，含线路来源，用于右侧对比 */
+  const loadGroupDetail = async (kind: 'auto' | 'suspect', key: string): Promise<MergeGroup | null> => {
+    const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
+    const [rawRows] = await db.execute(
+      sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash,
+            DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
+            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
+          FROM lcm_vod v WHERE v.${sql.raw(column)} = ${key} ORDER BY v.id`,
+    );
+    const rows = rawRows as unknown as Array<Record<string, unknown>>;
+    if (rows.length < 2) return null;
+
+    const ids = rows.map((row) => Number(row.id));
+    const [lineRows] = await db.execute(
+      sql`SELECT p.vod_id, p.source_id, p.source_from, s.name AS source_name
+          FROM lcm_vod_play p LEFT JOIN lcm_collect_source s ON s.id = p.source_id
+          WHERE p.vod_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+          ORDER BY p.source_id, p.id`,
+    );
+    const linesByVod = new Map<number, MergeLine[]>();
+    for (const row of lineRows as unknown as Array<Record<string, unknown>>) {
+      const vodId = Number(row.vod_id);
+      const list = linesByVod.get(vodId) ?? [];
+      list.push({
+        sourceId: Number(row.source_id),
+        sourceFrom: String(row.source_from),
+        sourceName: row.source_name ? String(row.source_name) : '手工添加',
+      });
+      linesByVod.set(vodId, list);
+    }
+
+    const members: MergeMember[] = rows.map((row) => ({
+      id: Number(row.id),
+      name: String(row.name),
+      year: Number(row.year) || 0,
+      status: Number(row.status) || 0,
+      cover: row.cover ? String(row.cover) : '',
+      playCount: Number(row.play_count) || 0,
+      collectedAt: String(row.collected_at),
+      strictKey: String(row.name_hash),
+      lines: linesByVod.get(Number(row.id)) ?? [],
+    }));
+
+    return {
+      key,
+      kind,
+      name: members[0]?.name ?? '',
+      year: members.find((item) => item.year > 0)?.year ?? 0,
+      members,
+      playTotal: members.reduce((sum, item) => sum + item.playCount, 0),
+    };
+  };
+
+  /** 预览：分组的轻量列表（不含线路明细） */
   app.get('/merge-vods/preview', async (_req, reply) => {
-    const [strictGroups, looseGroups] = await Promise.all([
-      loadGroups('name_hash'),
-      loadGroups('name_hash_loose'),
+    const [strictGroups, looseGroups, ignored] = await Promise.all([
+      loadGroups('name_hash', 'auto'),
+      loadGroups('name_hash_loose', 'suspect'),
+      loadIgnored(),
     ]);
 
-    const auto = strictGroups.filter((group) => yearCompatible(group.members));
+    const auto = strictGroups
+      .filter((group) => yearCompatible(group.members))
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)));
     const conflict = strictGroups.filter((group) => !yearCompatible(group.members));
     // 疑似：去掉标点后同名，但严格键不止一种（即标点差异，不是空格差异）
-    const suspects = looseGroups.filter(
-      (group) => new Set(group.members.map((item) => item.strictKey)).size > 1,
-    );
+    const suspects = looseGroups
+      .filter((group) => new Set(group.members.map((item) => item.strictKey)).size > 1)
+      .filter((group) => !ignored.has(ignoreKey('suspect', group.key)));
+
+    const light = (group: MergeGroup) => ({
+      key: group.key,
+      kind: group.kind,
+      name: group.name,
+      year: group.year,
+      count: group.members.length,
+      playTotal: group.playTotal,
+    });
 
     return ok(reply, {
-      auto,
-      conflictCount: conflict.length,
-      conflictExamples: conflict.slice(0, 20),
-      suspects,
+      auto: auto.map(light),
+      suspects: suspects.map(light),
       summary: {
         autoGroups: auto.length,
         autoVods: auto.reduce((sum, group) => sum + group.members.length - 1, 0),
         suspectGroups: suspects.length,
         conflictGroups: conflict.length,
+        ignored: ignored.size,
       },
     });
   });
 
-  /** 合并指定的一组影片 */
+  /** 单组详情：成员与线路来源 */
+  app.get('/merge-vods/group', async (req, reply) => {
+    const query = req.query as { key?: string; kind?: string };
+    const key = (query.key ?? '').trim();
+    const kind = query.kind === 'suspect' ? 'suspect' : 'auto';
+    if (!/^[0-9a-f]{32}$/.test(key)) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
+
+    const group = await loadGroupDetail(kind, key);
+    if (!group) return fail(reply, 404, ErrorCode.NOT_FOUND, '这组影片已经不存在了');
+    return ok(reply, group);
+  });
+
+  /** 合并一组影片，可指定保留哪一条 */
   app.post('/merge-vods', async (req, reply) => {
-    const body = (req.body ?? {}) as { ids?: number[] };
+    const body = (req.body ?? {}) as { ids?: number[]; keep_id?: number };
     const ids = (Array.isArray(body.ids) ? body.ids : []).map((id) => Number(id)).filter((id) => id > 0);
     if (ids.length < 2) return fail(reply, 400, ErrorCode.BAD_REQUEST, '请至少选择两条影片');
 
@@ -354,24 +463,48 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
           FROM lcm_vod v WHERE v.id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})`,
     );
-    const members = (rawRows as unknown as Array<Record<string, unknown>>).map((row) => ({
+    const members: MergeMember[] = (rawRows as unknown as Array<Record<string, unknown>>).map((row) => ({
       id: Number(row.id),
       name: String(row.name),
       year: Number(row.year) || 0,
       status: Number(row.status) || 0,
+      cover: '',
       playCount: Number(row.play_count) || 0,
       collectedAt: String(row.collected_at),
       strictKey: '',
+      lines: [],
     }));
 
-    const merged = await mergeGroup(members);
+    const merged = await mergeGroup(members, Number(body.keep_id ?? 0) || undefined);
     return ok(reply, { merged });
+  });
+
+  /** 忽略 / 恢复一个重复分组 */
+  app.post('/merge-vods/ignore', async (req, reply) => {
+    const body = (req.body ?? {}) as { key?: string; kind?: string; ignored?: boolean };
+    const key = (body.key ?? '').trim();
+    const kind = body.kind === 'suspect' ? 'suspect' : 'auto';
+    if (!/^[0-9a-f]{32}$/.test(key)) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
+
+    const mergeKey = ignoreKey(kind, key);
+    if (body.ignored === false) {
+      await db.execute(sql`DELETE FROM lcm_vod_merge_ignore WHERE merge_key = ${mergeKey}`);
+    } else {
+      await db.execute(
+        sql`INSERT INTO lcm_vod_merge_ignore (merge_key, kind) VALUES (${mergeKey}, ${kind})
+            ON DUPLICATE KEY UPDATE kind = ${kind}`,
+      );
+    }
+    return ok(reply, { ignored: body.ignored !== false });
   });
 
   /** 一键合并全部可自动合并的分组 */
   app.post('/merge-vods/batch', async (req, reply) => {
     const body = (req.body ?? {}) as { confirm?: boolean };
-    const auto = (await loadGroups('name_hash')).filter((group) => yearCompatible(group.members));
+    const [strictGroups, ignored] = await Promise.all([loadGroups('name_hash', 'auto'), loadIgnored()]);
+    const auto = strictGroups
+      .filter((group) => yearCompatible(group.members))
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)));
 
     if (!body.confirm) {
       return ok(reply, {

@@ -209,6 +209,13 @@ CREATE TABLE IF NOT EXISTS `lcm_ad_feature` (
   KEY `idx_source` (`source_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `lcm_vod_merge_ignore` (
+  `merge_key` VARCHAR(40) NOT NULL COMMENT '类型:哈希，如 auto:abcdef',
+  `kind` VARCHAR(10) NOT NULL DEFAULT 'auto' COMMENT 'auto 严格重复 suspect 疑似重复',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`merge_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `lcm_setting` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(50)    NOT NULL DEFAULT ''       COMMENT '配置键',
