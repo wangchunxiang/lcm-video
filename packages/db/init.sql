@@ -216,6 +216,36 @@ CREATE TABLE IF NOT EXISTS `lcm_vod_merge_ignore` (
   PRIMARY KEY (`merge_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `lcm_source_rule` (
+  `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `source_id`  BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '所属采集源',
+  `kind`       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 播放地址 2 图片地址',
+  `from_url`   VARCHAR(255)    NOT NULL DEFAULT '' COMMENT '原地址前缀',
+  `to_url`     VARCHAR(255)    NOT NULL DEFAULT '' COMMENT '新地址前缀',
+  `is_enabled` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `sort`       INT UNSIGNED    NOT NULL DEFAULT 0,
+  `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_source_kind` (`source_id`,`kind`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `lcm_cover_check` (
+  `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `host`        VARCHAR(100)    NOT NULL DEFAULT '' COMMENT '图片域名',
+  `vod_count`   INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '引用该域名的影片数（检查时快照）',
+  `status`      TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0未检查 1正常 2失效',
+  `sample_ok`   INT UNSIGNED    NOT NULL DEFAULT 0,
+  `sample_fail` INT UNSIGNED    NOT NULL DEFAULT 0,
+  `message`     VARCHAR(255)    NOT NULL DEFAULT '' COMMENT '检查结论，如 HTTP 418 / 连接超时',
+  `checked_at`  DATETIME        NULL,
+  `created_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_host` (`host`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `lcm_setting` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name`        VARCHAR(50)    NOT NULL DEFAULT ''       COMMENT '配置键',

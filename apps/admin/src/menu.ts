@@ -13,6 +13,7 @@ export const menus: MenuItem[] = [
     icon: 'Download',
     children: [
       { path: '/collect/sources', title: '采集源站', icon: 'Link' },
+      { path: '/collect/rules', title: '替换规则', icon: 'Switch' },
       { path: '/collect/mapping', title: '分类映射', icon: 'Share' },
       { path: '/collect/tasks', title: '采集任务', icon: 'AlarmClock' },
       { path: '/collect/logs', title: '采集记录', icon: 'Tickets' },

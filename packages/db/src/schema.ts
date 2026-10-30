@@ -273,6 +273,44 @@ export const adFeature = mysqlTable(
   ],
 );
 
+/** 采集源的地址替换规则：写库前把旧地址前缀换成新地址前缀 */
+export const sourceRule = mysqlTable(
+  'lcm_source_rule',
+  {
+    id: pk(),
+    sourceId: fk('source_id'),
+    /** 1 播放地址 2 图片地址 */
+    kind: tinyint('kind', { unsigned: true }).notNull().default(1),
+    fromUrl: varchar('from_url', { length: 255 }).notNull().default(''),
+    toUrl: varchar('to_url', { length: 255 }).notNull().default(''),
+    isEnabled: tinyint('is_enabled', { unsigned: true }).notNull().default(1),
+    sort: int('sort', { unsigned: true }).notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index('idx_source_kind').on(t.sourceId, t.kind)],
+);
+
+/** 图片域名体检结果，一行一个域名 */
+export const coverCheck = mysqlTable(
+  'lcm_cover_check',
+  {
+    id: pk(),
+    host: varchar('host', { length: 100 }).notNull().default(''),
+    /** 引用该域名的影片数，检查时统计的快照 */
+    vodCount: int('vod_count', { unsigned: true }).notNull().default(0),
+    /** 0 未检查 1 正常 2 失效 */
+    status: tinyint('status', { unsigned: true }).notNull().default(0),
+    sampleOk: int('sample_ok', { unsigned: true }).notNull().default(0),
+    sampleFail: int('sample_fail', { unsigned: true }).notNull().default(0),
+    message: varchar('message', { length: 255 }).notNull().default(''),
+    checkedAt: datetime('checked_at'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex('uk_host').on(t.host), index('idx_status').on(t.status)],
+);
+
 /** 重复影片分组的人工忽略标记，键为「类型:哈希」 */
 export const vodMergeIgnore = mysqlTable(
   'lcm_vod_merge_ignore',

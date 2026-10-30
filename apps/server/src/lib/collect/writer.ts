@@ -1,7 +1,9 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
-import { vod, vodPlay } from '@lcm/db';
+import { sourceRule, vod, vodPlay } from '@lcm/db';
 import {
+  applyCoverRules,
+  applyPlayUrlRules,
   countEpisodes,
   htmlToSummary,
   htmlToText,
@@ -81,6 +83,20 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
   const fails: FailItem[] = [];
   const { sourceId, mapping, categories } = input;
   const seenLines = new Set<string>();
+
+  // 源站地址替换规则：写库前统一套用，播放与图片分开
+  const rules = await db
+    .select({
+      kind: sourceRule.kind,
+      fromUrl: sourceRule.fromUrl,
+      toUrl: sourceRule.toUrl,
+      isEnabled: sourceRule.isEnabled,
+      sort: sourceRule.sort,
+    })
+    .from(sourceRule)
+    .where(eq(sourceRule.sourceId, sourceId));
+  const playRules = rules.filter((rule) => rule.kind === 1);
+  const coverRules = rules.filter((rule) => rule.kind === 2);
 
   // 先完成不依赖数据库的过滤：分类映射、必填校验
   const candidates: Array<{
@@ -200,7 +216,10 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
     // 4. 逐条写库
     for (const { candidate, vodId: matchedId } of decisions) {
       const { item, name, hash, looseHash: loose, categoryId, categoryPid, year } = candidate;
-      const groups = splitPlayGroups(item.playFrom, item.playUrl);
+      const groups = splitPlayGroups(item.playFrom, item.playUrl).map((group) => ({
+        ...group,
+        url: applyPlayUrlRules(group.url, playRules),
+      }));
 
       // 增量：同源同线路的 source_updated_at 与本次 vod_time 相同则整条跳过
       // 「重新采集单片」时强制重写，不做增量判断
@@ -231,7 +250,7 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
           nameHashLoose: loose,
           subName: item.subName,
           letter: /^[A-Z0-9]$/.test(item.letter) ? item.letter : '',
-          cover: normalizeCover(item.cover),
+          cover: applyCoverRules(normalizeCover(item.cover), coverRules),
           actor: item.actor,
           director: item.director,
           writer: item.writer,
