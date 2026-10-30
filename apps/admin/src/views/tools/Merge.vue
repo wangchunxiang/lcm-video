@@ -382,7 +382,7 @@ onMounted(load);
                     >
                       {{ line.sourceName }} · {{ line.sourceFrom }} ·
                       <b>{{ line.episodes ?? 0 }}</b> 集
-                      <template v-if="line.updatedAt"> · {{ line.updatedAt.slice(5) }}</template>
+                      <template v-if="line.updatedAt"> · 更新 {{ line.updatedAt.slice(5) }}</template>
                     </span>
                     <span v-if="member.lines.length === 0" class="muted">没有线路</span>
                   </div>
