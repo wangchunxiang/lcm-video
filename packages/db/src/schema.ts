@@ -85,6 +85,7 @@ export const vodPlay = mysqlTable(
   (t) => [
     uniqueIndex('uk_vod_source_from').on(t.vodId, t.sourceId, t.sourceFrom),
     index('idx_source').on(t.sourceId),
+    index('idx_source_vod').on(t.sourceId, t.sourceVodId),
   ],
 );
 
