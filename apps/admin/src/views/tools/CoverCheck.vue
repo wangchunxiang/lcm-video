@@ -246,14 +246,17 @@ async function repair(row: HostRow): Promise<void> {
       fixed += result.fixed;
       failed += result.failed;
       if (result.remaining === 0) break;
-      if (result.fixed === 0 && result.failed === 0) idle += 1;
+      // 这一轮一个都没修好（修不了的会留在原地被反复选中），连续两轮没进展就收工
+      if (result.fixed === 0) idle += 1;
+      else idle = 0;
       if (idle >= 2) break;
     }
     await load();
     ElNotification({
-      title: '修复完成',
+      title: fixed > 0 ? '修复完成' : '没有可用的替代封面',
       type: fixed > 0 ? 'success' : 'warning',
-      message: `已替换 ${fixed} 部，未能找到可用封面 ${failed} 部`,
+      message: fixed > 0 ? `已替换 ${fixed} 部，${failed} 部没找到可用封面` : `这 ${failed} 部在其他线路和源站都没有可用封面，可以试试「清空」`,
+      duration: 8000,
     });
   } finally {
     repairing.value = '';
