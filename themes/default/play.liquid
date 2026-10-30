@@ -61,19 +61,6 @@
            href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
         {% endfor %}
       </div>
-      {% if ep_pages.size > 0 %}
-      <nav class="ep-pagination" aria-label="剧集分页">
-        {% for p in ep_pages %}
-        {% if p.gap %}
-        <span class="page-btn is-gap">…</span>
-        {% elsif p.active %}
-        <span class="page-btn current">{{ p.no }}</span>
-        {% else %}
-        <a class="page-btn" href="{{ p.url }}">{{ p.no }}</a>
-        {% endif %}
-        {% endfor %}
-      </nav>
-      {% endif %}
     </div>
   </aside>
 </div>

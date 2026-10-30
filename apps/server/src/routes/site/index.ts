@@ -22,10 +22,6 @@ import {
 const HOME_VOD_COUNT = 16;
 /** 首页每个一级分类展示的条数：一行 8 个 */
 const HOME_CATEGORY_COUNT = 16;
-/** 播放页每页渲染的剧集数：超长番分页，避免一次输出几千个按钮 */
-const EP_PAGE_SIZE = 50;
-/** 详情页每条线路最多渲染的剧集数：超长番只给前 100 集，其余点「查看全部」进播放页 */
-const DETAIL_EP_LIMIT = 100;
 
 export interface SiteRouteOpts {
   db: Db;
@@ -346,22 +342,18 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
   /* ------------------------------- 详情 ------------------------------- */
 
-  /**
-   * 线路元信息：集数直接在库里数 `play_url` 的 `#` 分隔符，不把整条播放串传回来。
-   * 2000+ 集的番一条线路就是 200KB+，播放页原来一次拉全部线路，光传输就要几百毫秒。
-   */
-  async function loadLines(vodId: number): Promise<Array<LineView>> {
+  async function loadLines(vodId: number): Promise<Array<LineView & { playUrl: string }>> {
     const rows = await db
       .select({
         id: vodPlay.id,
         sourceId: vodPlay.sourceId,
         sourceFrom: vodPlay.sourceFrom,
+        playUrl: vodPlay.playUrl,
         sourceName: collectSource.name,
         parseUrl: collectSource.parseUrl,
         lineName: playLine.name,
         lineSort: playLine.sort,
         lineEnabled: playLine.isEnabled,
-        episodeCount: sql<number>`CASE WHEN CHAR_LENGTH(${vodPlay.playUrl}) = 0 THEN 0 ELSE CHAR_LENGTH(${vodPlay.playUrl}) - CHAR_LENGTH(REPLACE(${vodPlay.playUrl}, '#', '')) + 1 END`,
       })
       .from(vodPlay)
       .leftJoin(collectSource, eq(collectSource.id, vodPlay.sourceId))
@@ -380,18 +372,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           (row.sourceId === 0 ? row.sourceFrom : row.sourceName) ||
           '默认线路',
         parse_url: row.parseUrl ?? '',
-        episode_count: Number(row.episodeCount ?? 0),
+        episode_count: parsePlayUrl(row.playUrl).length,
+        playUrl: row.playUrl,
       }));
-  }
-
-  /** 按需取播放串：只取真正要展开的线路 */
-  async function loadPlayUrls(ids: number[]): Promise<Map<number, string>> {
-    if (ids.length === 0) return new Map();
-    const rows = await db
-      .select({ id: vodPlay.id, playUrl: vodPlay.playUrl })
-      .from(vodPlay)
-      .where(inArray(vodPlay.id, ids));
-    return new Map(rows.map((row) => [row.id, row.playUrl]));
   }
 
   app.get('/detail/:id', async (req, reply) => {
@@ -443,26 +426,20 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const query = req.query as { line?: string; ep?: string };
     const wantedLineId = toInt(query.line);
     const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
-    const currentLineId = currentLine?.id ?? 0;
-    // 只给「集数不超过 100」的线路取播放串；超长番在详情页只显示集数和「查看全部」，
-    // 否则光把几条 200KB+ 的播放串拉回来就要几百毫秒，HTML 也能撑到 700KB。
-    const playUrls = await loadPlayUrls(
-      lines.filter((item) => item.episode_count <= DETAIL_EP_LIMIT).map((item) => item.id),
-    );
+    const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
     const lineTabs = lines.map((item) => {
-      const eps = parsePlayUrl(playUrls.get(item.id) ?? '');
+      const eps = parsePlayUrl(item.playUrl);
       return {
         id: item.id,
         name: item.source_name,
-        total: item.episode_count,
-        play_base: `/play/${row.id}/${item.id}`,
-        limited: item.episode_count > DETAIL_EP_LIMIT,
+        total: eps.length,
         episodes: eps.map((ep, index) => {
           const label = episodeLabel(ep, index);
           return { index: index + 1, name: ep.name, url: ep.url, width: episodeSpan(label) };
         }),
       };
     });
+    const currentLineId = currentLine?.id ?? 0;
     return render(
       reply,
       'detail',
@@ -505,7 +482,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         line_tabs: lineTabs,
         current_line_id: currentLineId,
         current_line: currentLine
-          ? { id: currentLine.id, name: currentLine.source_name, episode_count: currentLine.episode_count }
+          ? { id: currentLine.id, name: currentLine.source_name, episode_count: allEpisodes.length }
           : null,
         nav_path: parent?.alias ?? '',
       },
@@ -542,8 +519,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const line = playId > 0 ? lines.find((item) => item.id === playId) : lines[0];
     if (!line) return notFound(reply);
 
-    const playUrls = await loadPlayUrls([line.id]);
-    const all = parsePlayUrl(playUrls.get(line.id) ?? '');
+    const all = parsePlayUrl(line.playUrl);
     if (all.length === 0) return notFound(reply);
 
     const currentEp = ep > 0 ? ep : 1;
@@ -563,28 +539,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         : [];
     const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
 
-    // 剧集按 50 集一页渲染：超长番（2000+ 集）一次全量输出会让 HTML 到 350KB 以上、渲染几百毫秒
-    const epPageCount = Math.ceil(all.length / EP_PAGE_SIZE);
-    const epPage = Math.floor((currentEp - 1) / EP_PAGE_SIZE) + 1;
-    const epStart = (epPage - 1) * EP_PAGE_SIZE;
-    const episodes: EpisodeView[] = all
-      .slice(epStart, epStart + EP_PAGE_SIZE)
-      .map((item, index) => ({
-        index: epStart + index + 1,
-        name: item.name,
-        url: item.url,
-        width: episodeSpan(item.name || `第 ${epStart + index + 1} 集`),
-      }));
-
-    const epPageLink = (no: number) => `/play/${row.id}/${line.id}/${(no - 1) * EP_PAGE_SIZE + 1}`;
-    const epPages: Array<{ no: number; url: string; active?: boolean; gap?: boolean }> = [];
-    for (let no = 1; no <= epPageCount; no += 1) {
-      if (no === 1 || no === epPageCount || Math.abs(no - epPage) <= 2) {
-        epPages.push({ no, url: epPageLink(no), active: no === epPage });
-      } else if (epPages[epPages.length - 1]?.gap !== true) {
-        epPages.push({ no: 0, url: '', gap: true });
-      }
-    }
+    const episodes: EpisodeView[] = all.map((item, index) => ({
+      index: index + 1,
+      name: item.name,
+      url: item.url,
+      width: episodeSpan(item.name || `第 ${index + 1} 集`),
+    }));
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
@@ -619,7 +579,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           ep: Math.max(1, Math.min(currentEp, item.episode_count)),
         })),
         episodes,
-        ep_pages: epPageCount > 1 ? epPages : [],
         current_ep: currentEp,
         current_ep_name: episodeName,
         play_url: proxyPlayUrl || current.url,
@@ -662,8 +621,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const line = lines.find((item) => item.id === lineId);
     if (!line) return notFound(reply);
 
-    const playUrls = await loadPlayUrls([line.id]);
-    const current = parsePlayUrl(playUrls.get(line.id) ?? '')[epIndex - 1];
+    const current = parsePlayUrl(line.playUrl)[epIndex - 1];
     if (!current) return notFound(reply);
 
     try {
