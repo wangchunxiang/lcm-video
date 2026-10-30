@@ -3,6 +3,7 @@ import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { beginDupCompute, endDupCompute, getDupSnapshot, markDupDirty, setDupSnapshot } from '../../lib/dup-cache.ts';
 
 export interface ToolOpts {
   db: Db;
@@ -698,27 +699,22 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   /** 预览：分组的轻量列表（不含线路明细） */
-  // 分组扫描要全表读 8.2 万影片与 15 万线路，结果缓存 60 秒；合并、忽略、采集写库后立即失效
-  let previewCache: { at: number; data: unknown } | null = null;
-  let previewPending = false;
-  const PREVIEW_TTL = 60_000;
-  const PREVIEW_REFRESH_AFTER = 45_000;
   const invalidatePreview = (): void => {
-    previewCache = null;
+    markDupDirty();
   };
 
-  /** 后台重算缓存，不阻塞请求；并发只允许一个 */
-  const refreshPreviewInBackground = (): void => {
-    if (previewPending) return;
-    previewPending = true;
+  /** 后台重算分组快照：不阻塞请求，同一时间只跑一个 */
+  const recomputePreview = (): void => {
+    if (!beginDupCompute()) return;
     void (async () => {
       try {
         const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
-        previewCache = { at: Date.now(), data: buildPreviewPayload(candidates, sameSource) };
+        setDupSnapshot(buildPreviewPayload(candidates, sameSource));
       } catch {
-        // 后台刷新失败就沿用旧缓存，下次请求再试
+        // 重算失败保留旧快照，脏标记留着，下次进页面再试
+        invalidatePreview();
       } finally {
-        previewPending = false;
+        endDupCompute();
       }
     })();
   };
@@ -765,14 +761,21 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   app.get('/merge-vods/preview', async (_req, reply) => {
-    if (previewCache && Date.now() - previewCache.at < PREVIEW_TTL) {
-      if (Date.now() - previewCache.at > PREVIEW_REFRESH_AFTER) refreshPreviewInBackground();
-      return ok(reply, previewCache.data);
+    const state = getDupSnapshot();
+
+    if (!state.data) {
+      recomputePreview();
+      return ok(reply, {
+        computing: true,
+        auto: [],
+        suspects: [],
+        same: [],
+        summary: { autoGroups: 0, autoVods: 0, suspectGroups: 0, sameGroups: 0, conflictGroups: 0, ignored: 0 },
+      });
     }
-    const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
-    const payload = buildPreviewPayload(candidates, sameSource);
-    previewCache = { at: Date.now(), data: payload };
-    return ok(reply, payload);
+
+    if (state.dirty) recomputePreview();
+    return ok(reply, { ...(state.data as Record<string, unknown>), stale: state.dirty || state.computing });
   });
 
   /** 单组详情：成员与线路来源 */
