@@ -557,14 +557,20 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       );
       ids = (rawRows as unknown as Array<{ vod_id: number }>).map((row) => Number(row.vod_id));
     } else {
-      const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
       const [hash, yearText] = key.split('#');
       const year = Number(yearText);
       const yearFilter = year > 0 ? sql` AND year = ${year}` : sql``;
       const [rawRows] = await db.execute(
-        sql`SELECT id FROM lcm_vod WHERE ${sql.raw(column)} = ${String(hash)}${yearFilter}`,
+        sql`SELECT id FROM lcm_vod WHERE ${sql.raw(kind === 'auto' ? 'name_hash' : 'name_hash_loose')} = ${String(hash)}${yearFilter}`,
       );
       ids = (rawRows as unknown as Array<{ id: number }>).map((row) => Number(row.id));
+      // 可合并组也可能来自宽松键（演员判定升级的那批），严格键查不到时退回宽松键
+      if (kind === 'auto' && ids.length < 2) {
+        const [looseRows] = await db.execute(
+          sql`SELECT id FROM lcm_vod WHERE name_hash_loose = ${String(hash)}${yearFilter}`,
+        );
+        ids = (looseRows as unknown as Array<{ id: number }>).map((row) => Number(row.id));
+      }
     }
 
     const members = await loadMembersByIds(ids);
