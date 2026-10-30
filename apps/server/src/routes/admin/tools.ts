@@ -3,7 +3,14 @@ import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
-import { beginDupCompute, endDupCompute, getDupSnapshot, markDupDirty, setDupSnapshot } from '../../lib/dup-cache.ts';
+import {
+  beginDupCompute,
+  endDupCompute,
+  getDupSnapshot,
+  markDupDirty,
+  setDupRecompute,
+  setDupSnapshot,
+} from '../../lib/dup-cache.ts';
 
 export interface ToolOpts {
   db: Db;
@@ -711,13 +718,17 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
         setDupSnapshot(buildPreviewPayload(candidates, sameSource));
       } catch {
-        // 重算失败保留旧快照，脏标记留着，下次进页面再试
-        invalidatePreview();
+        // 重算失败把脏标记留着，等下一次数据变更或首个请求再试
+        markDupDirty();
       } finally {
         endDupCompute();
       }
     })();
   };
+
+  // 数据变更时由 dup-cache 回调重算；启动后先算一次，页面第一眼就是结果
+  setDupRecompute(recomputePreview);
+  setTimeout(recomputePreview, 1500);
 
   const buildPreviewPayload = (
     candidates: { auto: MergeGroup[]; conflict: MergeGroup[]; suspects: MergeGroup[]; ignored: Set<string> },
@@ -762,20 +773,17 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
   app.get('/merge-vods/preview', async (_req, reply) => {
     const state = getDupSnapshot();
+    if (state.data) return ok(reply, state.data);
 
-    if (!state.data) {
-      recomputePreview();
-      return ok(reply, {
-        computing: true,
-        auto: [],
-        suspects: [],
-        same: [],
-        summary: { autoGroups: 0, autoVods: 0, suspectGroups: 0, sameGroups: 0, conflictGroups: 0, ignored: 0 },
-      });
-    }
-
-    if (state.dirty) recomputePreview();
-    return ok(reply, { ...(state.data as Record<string, unknown>), stale: state.dirty || state.computing });
+    // 启动后的第一次计算还没完成（通常只有服务刚起来的前两秒会遇到）
+    recomputePreview();
+    return ok(reply, {
+      computing: true,
+      auto: [],
+      suspects: [],
+      same: [],
+      summary: { autoGroups: 0, autoVods: 0, suspectGroups: 0, sameGroups: 0, conflictGroups: 0, ignored: 0 },
+    });
   });
 
   /** 单组详情：成员与线路来源 */

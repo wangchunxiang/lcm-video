@@ -50,7 +50,6 @@ interface GroupDetail {
 
 interface Preview {
   computing?: boolean;
-  stale?: boolean;
   auto: LightGroup[];
   suspects: LightGroup[];
   same: LightGroup[];
@@ -169,7 +168,7 @@ const maxEpisodes = computed(() => {
 
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** 服务端在后台重算分组（从没算过或数据变过），页面先拿旧结果，过两秒再取一次 */
+/** 服务刚启动时快照还没算好，返回 computing，过两秒再取一次 */
 function schedulePoll(): void {
   if (pollTimer) clearTimeout(pollTimer);
   pollTimer = setTimeout(() => {
@@ -183,7 +182,7 @@ async function load(silent = false): Promise<void> {
   try {
     const data = await api.get<Preview>('/tools/merge-vods/preview');
     preview.value = data;
-    if (data.computing || data.stale) schedulePoll();
+    if (data.computing) schedulePoll();
     if (groups.value.length === 0) {
       activeGroup.value = null;
       detail.value = null;
