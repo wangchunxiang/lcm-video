@@ -3,14 +3,6 @@ import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
-import {
-  beginDupCompute,
-  endDupCompute,
-  getDupSnapshot,
-  markDupDirty,
-  setDupRecompute,
-  setDupSnapshot,
-} from '../../lib/dup-cache.ts';
 
 export interface ToolOpts {
   db: Db;
@@ -706,30 +698,6 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   /** 预览：分组的轻量列表（不含线路明细） */
-  const invalidatePreview = (): void => {
-    markDupDirty();
-  };
-
-  /** 后台重算分组快照：不阻塞请求，同一时间只跑一个 */
-  const recomputePreview = (): void => {
-    if (!beginDupCompute()) return;
-    void (async () => {
-      try {
-        const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
-        setDupSnapshot(buildPreviewPayload(candidates, sameSource));
-      } catch {
-        // 重算失败把脏标记留着，等下一次数据变更或首个请求再试
-        markDupDirty();
-      } finally {
-        endDupCompute();
-      }
-    })();
-  };
-
-  // 数据变更时由 dup-cache 回调重算；启动后先算一次，页面第一眼就是结果
-  setDupRecompute(recomputePreview);
-  setTimeout(recomputePreview, 1500);
-
   const buildPreviewPayload = (
     candidates: { auto: MergeGroup[]; conflict: MergeGroup[]; suspects: MergeGroup[]; ignored: Set<string> },
     sameSource: SameSourceGroup[],
@@ -772,18 +740,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   app.get('/merge-vods/preview', async (_req, reply) => {
-    const state = getDupSnapshot();
-    if (state.data) return ok(reply, state.data);
-
-    // 启动后的第一次计算还没完成（通常只有服务刚起来的前两秒会遇到）
-    recomputePreview();
-    return ok(reply, {
-      computing: true,
-      auto: [],
-      suspects: [],
-      same: [],
-      summary: { autoGroups: 0, autoVods: 0, suspectGroups: 0, sameGroups: 0, conflictGroups: 0, ignored: 0 },
-    });
+    const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
+    return ok(reply, buildPreviewPayload(candidates, sameSource));
   });
 
   /** 单组详情：成员与线路来源 */
@@ -828,7 +786,6 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     }));
 
     const merged = await mergeGroup(members, Number(body.keep_id ?? 0) || undefined);
-    invalidatePreview();
     return ok(reply, { merged });
   });
 
@@ -849,7 +806,6 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
             ON DUPLICATE KEY UPDATE kind = ${kind}`,
       );
     }
-    invalidatePreview();
     return ok(reply, { ignored: body.ignored !== false });
   });
 
@@ -870,7 +826,6 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     for (const group of auto) {
       merged += await mergeGroup(group.members);
     }
-    invalidatePreview();
     return ok(reply, { groups: auto.length, merged });
   });
 
@@ -916,15 +871,13 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
               ON DUPLICATE KEY UPDATE kind = ${group.kind}`,
         );
       }
-      invalidatePreview();
-      return ok(reply, { groups: groups.length, merged: 0, skipped: 0, ignored: groups.length });
+        return ok(reply, { groups: groups.length, merged: 0, skipped: 0, ignored: groups.length });
     }
 
     let merged = 0;
     for (const group of mergeable) {
       merged += await mergeGroup(group.members);
     }
-    invalidatePreview();
     return ok(reply, { groups: mergeable.length, merged, skipped, ignored: 0 });
   });
 };

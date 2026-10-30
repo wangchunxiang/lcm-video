@@ -7,7 +7,6 @@ import {
   collectSourceCategory,
   collectTask,
 } from '@lcm/db';
-import { markDupDirty } from '../dup-cache.ts';
 import { autoMatchCategory, loadCategories } from './match.ts';
 import { CollectClient } from './client.ts';
 import { parseVodPage } from './parser.ts';
@@ -307,8 +306,6 @@ export async function startTask(
       runningBySource.delete(source.id);
       runningByTask.delete(task.id);
       cancelFlags.delete(logId);
-      // 采集跑完可能新增了影片，重复影片快照标脏，下次进页面后台重算
-      markDupDirty();
     });
 
   return { started: true, message: '已开始执行', logId };
@@ -393,8 +390,6 @@ export async function startResume(
       runningBySource.delete(source.id);
       runningByTask.delete(task.id);
       cancelFlags.delete(logId);
-      // 采集跑完可能新增了影片，重复影片快照标脏，下次进页面后台重算
-      markDupDirty();
     });
 
   return { started: true, message: `已从第 ${startPage} 页继续`, logId };

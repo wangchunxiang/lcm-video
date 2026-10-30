@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -49,7 +49,6 @@ interface GroupDetail {
 }
 
 interface Preview {
-  computing?: boolean;
   auto: LightGroup[];
   suspects: LightGroup[];
   same: LightGroup[];
@@ -166,23 +165,10 @@ const maxEpisodes = computed(() => {
   return max;
 });
 
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-/** 服务刚启动时快照还没算好，返回 computing，过两秒再取一次 */
-function schedulePoll(): void {
-  if (pollTimer) clearTimeout(pollTimer);
-  pollTimer = setTimeout(() => {
-    pollTimer = null;
-    void load(true);
-  }, 2000);
-}
-
-async function load(silent = false): Promise<void> {
-  if (!silent) loading.value = true;
+async function load(): Promise<void> {
+  loading.value = true;
   try {
-    const data = await api.get<Preview>('/tools/merge-vods/preview');
-    preview.value = data;
-    if (data.computing) schedulePoll();
+    preview.value = await api.get<Preview>('/tools/merge-vods/preview');
     if (groups.value.length === 0) {
       activeGroup.value = null;
       detail.value = null;
@@ -190,13 +176,9 @@ async function load(silent = false): Promise<void> {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载失败');
   } finally {
-    if (!silent) loading.value = false;
+    loading.value = false;
   }
 }
-
-onBeforeUnmount(() => {
-  if (pollTimer) clearTimeout(pollTimer);
-});
 
 async function select(group: LightGroup): Promise<void> {
   activeGroup.value = group;
@@ -437,7 +419,7 @@ onMounted(load);</script>
           <span class="muted">年份冲突 {{ summary.conflictGroups }} 组已排除<span v-if="summary.ignored"> · 已忽略 {{ summary.ignored }} 组</span></span>
         </div>
         <div class="head-actions">
-          <el-button :loading="loading" @click="load()">刷新</el-button>
+          <el-button :loading="loading" @click="load">刷新</el-button>
           <el-button type="primary" :disabled="summary.autoGroups === 0" :loading="busy" @click="mergeAll">
             一键合并可合并的
           </el-button>
