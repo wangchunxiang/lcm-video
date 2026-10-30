@@ -331,7 +331,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       const members = group.members.filter((item) => item.year === year);
       return {
         ...group,
-        key: `${group.key}#${year}`,
+        key: `${group.key}~${year}`,
         name: members[0]?.name ?? group.name,
         year,
         members,
@@ -538,8 +538,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     });
   };
 
-  /** 分组键：32 位哈希，宽松键分组可能带 `#年份` 后缀 */
-  const isHashKey = (key: string): boolean => /^[0-9a-f]{32}(#\d{1,4})?$/.test(key);
+  /** 分组键：32 位哈希，宽松键分组可能带 `~年份` 后缀（不能用 #，会被浏览器当锚点截断） */
+  const isHashKey = (key: string): boolean => /^[0-9a-f]{32}(~\d{1,4})?$/.test(key);
   const isSameKey = (key: string): boolean => /^\d+-[^\s-][^\s]*$/.test(key);
 
   /** 取一组重复影片，含线路来源，用于右侧对比 */
@@ -557,7 +557,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       );
       ids = (rawRows as unknown as Array<{ vod_id: number }>).map((row) => Number(row.vod_id));
     } else {
-      const [hash, yearText] = key.split('#');
+      const [hash, yearText] = key.split('~');
       const year = Number(yearText);
       const yearFilter = year > 0 ? sql` AND year = ${year}` : sql``;
       const [rawRows] = await db.execute(
