@@ -10,6 +10,8 @@ interface LightGroup {
   year: number;
   count: number;
   playTotal: number;
+  matchedBy?: 'strict' | 'actor';
+  actorOverlap?: number;
 }
 
 interface MemberLine {
@@ -454,6 +456,7 @@ onMounted(load);</script>
                 @change="toggleChecked(group)"
               />
               <span class="item-name">{{ group.name }}</span>
+              <span v-if="group.matchedBy === 'actor'" class="item-tag">演员一致</span>
               <span class="item-count">{{ group.count }}</span>
             </div>
             <div v-if="filtered.length === 0" class="list-empty">没有待处理的分组</div>
@@ -473,6 +476,9 @@ onMounted(load);</script>
                 <span class="detail-name">{{ detail.name }}</span>
                 <el-tag :type="kindTagType(detail.kind)" size="small" effect="plain">
                   {{ kindText(detail.kind) }}
+                </el-tag>
+                <el-tag v-if="activeGroup?.matchedBy === 'actor'" type="success" size="small" effect="plain">
+                  演员一致 {{ Math.round((activeGroup.actorOverlap ?? 0) * 100) }}%
                 </el-tag>
               </div>
               <div class="detail-actions">
@@ -672,6 +678,16 @@ onMounted(load);</script>
   flex: none;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.item-tag {
+  flex: none;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 4px;
+  border-radius: 2px;
+  color: var(--el-color-success);
+  background: var(--el-color-success-light-9);
 }
 
 .list-empty,

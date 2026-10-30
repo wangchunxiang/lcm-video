@@ -234,6 +234,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     year: number;
     members: MergeMember[];
     playTotal: number;
+    /** 判定依据：strict=严格键相同；actor=宽松键 + 年份 + 演员重合 */
+    matchedBy?: 'strict' | 'actor';
+    /** 演员重合率 0-1，仅 matchedBy=actor 时有意义 */
+    actorOverlap?: number;
   }
 
   type Column = 'name_hash' | 'name_hash_loose';
@@ -256,6 +260,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
     const [rawRows] = await db.execute(
       sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash, v.${sql.raw(column)} AS k,
+            v.actor,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
           FROM lcm_vod v WHERE v.${sql.raw(column)} IN (${sql.join(keys.map((key) => sql`${key}`), sql`, `)})`,
@@ -268,6 +273,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       cover: string;
       k: string;
       name_hash: string;
+      actor: string | null;
       collected_at: string;
       play_count: number;
     }>;
@@ -285,6 +291,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         collectedAt: row.collected_at,
         strictKey: row.name_hash,
         lines: [],
+        actor: row.actor ?? '',
       });
       byKey.set(row.k, list);
     }
@@ -309,6 +316,40 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     const years = new Set(members.map((item) => item.year).filter((year) => year > 0));
     return years.size <= 1;
   };
+
+  /** 演员名单拆成集合，去重、去空白、转小写 */
+  const actorSet = (text?: string): Set<string> =>
+    new Set(
+      String(text ?? '')
+        .split(/[,，、/]/)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean),
+    );
+
+  /** 组内两两比较演员名单，取最小重合率；有一方为空则返回 0（不足以下结论） */
+  const actorOverlap = (members: MergeMember[]): number => {
+    const sets = members.map((item) => actorSet(item.actor));
+    if (sets.some((set) => set.size === 0)) return 0;
+    let min = 1;
+    for (let i = 0; i < sets.length; i += 1) {
+      for (let j = i + 1; j < sets.length; j += 1) {
+        const left = sets[i]!;
+        const right = sets[j]!;
+        let hit = 0;
+        for (const name of left) if (right.has(name)) hit += 1;
+        const ratio = hit / Math.min(left.size, right.size);
+        if (ratio < min) min = ratio;
+      }
+    }
+    return min;
+  };
+
+  /** 演员判定阈值：短名单里有 70% 出现在对方名单里 */
+  const ACTOR_MATCH_MIN = 0.7;
+
+  /** 宽松键组能否按「名称 + 年份 + 演员」升级为可合并 */
+  const actorMatched = (group: MergeGroup): boolean =>
+    group.members.length > 1 && yearCompatible(group.members) && actorOverlap(group.members) >= ACTOR_MATCH_MIN;
 
   /** 分组的默认保留项：线路最多，并列取 id 最小 */
   const defaultKeep = (members: MergeMember[]): MergeMember =>
@@ -507,23 +548,54 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     };
   };
 
-  /** 预览：分组的轻量列表（不含线路明细） */
-  app.get('/merge-vods/preview', async (_req, reply) => {
-    const [strictGroups, looseGroups, sameSource, ignored] = await Promise.all([
+  /**
+   * 可合并 / 疑似 / 冲突 三类分组。
+   * 可合并 = 严格键相同且年份相容，或者宽松键相同 + 年份相容 + 演员高度重合。
+   */
+  const loadMergeCandidates = async (): Promise<{
+    auto: MergeGroup[];
+    conflict: MergeGroup[];
+    suspects: MergeGroup[];
+    ignored: Set<string>;
+  }> => {
+    const [strictGroups, looseGroups, ignored] = await Promise.all([
       loadGroups('name_hash', 'auto'),
       loadGroups('name_hash_loose', 'suspect'),
-      loadSameSourceGroups(),
       loadIgnored(),
     ]);
 
-    const auto = strictGroups
+    const strictAuto = strictGroups
       .filter((group) => yearCompatible(group.members))
-      .filter((group) => !ignored.has(ignoreKey('auto', group.key)));
-    const conflict = strictGroups.filter((group) => !yearCompatible(group.members));
-    // 疑似：去掉标点后同名，但严格键不止一种（即标点差异，不是空格差异）
-    const suspects = looseGroups
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
+      .map((group) => ({ ...group, matchedBy: 'strict' as const }));
+
+    // 疑似：去掉标点后同名，但严格键不止一种（标点差异，不是空格差异）
+    const looseSuspects = looseGroups
       .filter((group) => new Set(group.members.map((item) => item.strictKey)).size > 1)
       .filter((group) => !ignored.has(ignoreKey('suspect', group.key)));
+
+    const upgraded = looseSuspects
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
+      .filter((group) => actorMatched(group))
+      .map((group) => ({
+        ...group,
+        matchedBy: 'actor' as const,
+        actorOverlap: actorOverlap(group.members),
+      }));
+    const upgradedKeys = new Set(upgraded.map((group) => group.key));
+
+    return {
+      auto: [...strictAuto, ...upgraded],
+      conflict: strictGroups.filter((group) => !yearCompatible(group.members)),
+      suspects: looseSuspects.filter((group) => !upgradedKeys.has(group.key)),
+      ignored,
+    };
+  };
+
+  /** 预览：分组的轻量列表（不含线路明细） */
+  app.get('/merge-vods/preview', async (_req, reply) => {
+    const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
+    const { auto, conflict, suspects, ignored } = candidates;
 
     const light = (group: MergeGroup) => ({
       key: group.key,
@@ -532,6 +604,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       year: group.year,
       count: group.members.length,
       playTotal: group.playTotal,
+      matchedBy: group.matchedBy,
+      actorOverlap: group.actorOverlap,
     });
 
     const same = sameSource.filter((group) => !ignored.has(ignoreKey('same', group.key)));
@@ -622,10 +696,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   /** 一键合并全部可自动合并的分组 */
   app.post('/merge-vods/batch', async (req, reply) => {
     const body = (req.body ?? {}) as { confirm?: boolean };
-    const [strictGroups, ignored] = await Promise.all([loadGroups('name_hash', 'auto'), loadIgnored()]);
-    const auto = strictGroups
-      .filter((group) => yearCompatible(group.members))
-      .filter((group) => !ignored.has(ignoreKey('auto', group.key)));
+    const { auto } = await loadMergeCandidates();
 
     if (!body.confirm) {
       return ok(reply, {
