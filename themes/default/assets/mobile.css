@@ -430,7 +430,20 @@ button { font: inherit; color: inherit; }
   color: var(--primary);
   font-size: 13px;
 }
-.m-sheet .m-ep-grid { max-height: none; overflow-y: auto; padding-bottom: 4px; }
+.m-sheet .ep-panel.is-active {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.m-sheet .m-ep-grid {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-bottom: 4px;
+  overscroll-behavior: contain;
+}
 
 /* ---------- 搜索页 ---------- */
 .m-searchbar {

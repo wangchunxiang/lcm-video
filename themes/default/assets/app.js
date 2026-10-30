@@ -61,6 +61,7 @@
 
       Array.prototype.forEach.call(tabs, function (item) {
         item.classList.toggle('is-active', item === tab);
+        item.classList.toggle('is-on', item === tab);
       });
 
       Array.prototype.forEach.call(document.querySelectorAll('[data-ep-panel]'), function (panel) {
