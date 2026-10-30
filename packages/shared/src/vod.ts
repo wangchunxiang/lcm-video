@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { decodeEntities } from './html.ts';
 
 /**
  * 影片名归一化：去首尾空格、全角转半角、合并连续空格。
@@ -86,7 +87,8 @@ const COVER_HOST_MAP: Array<[string, string]> = [['ps.ryzypics.com', 'pic.ry-pic
 
 /** 把源站返回的封面地址里的旧域名换成新域名 */
 export function normalizeCover(url: string | null | undefined): string {
-  const text = String(url ?? '').trim();
+  // 源站偶尔把 & 写成 &amp;，直接当图片地址用会 400
+  const text = decodeEntities(String(url ?? '')).trim();
   if (!text) return '';
   for (const [from, to] of COVER_HOST_MAP) {
     if (text.includes(from)) return text.split(from).join(to);

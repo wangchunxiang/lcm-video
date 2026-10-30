@@ -17,6 +17,7 @@ import SiteSetting from '../views/setting/Site.vue';
 import AccountSetting from '../views/setting/Account.vue';
 import DataTools from '../views/tools/Data.vue';
 import MergeTools from '../views/tools/Merge.vue';
+import CoverCheck from '../views/tools/CoverCheck.vue';
 import PlayLines from '../views/playback/Lines.vue';
 import PlaybackSetting from '../views/playback/Config.vue';
 
@@ -32,6 +33,7 @@ const implemented: Record<string, Component> = {
   '/setting/account': AccountSetting,
   '/tools/data': DataTools,
   '/tools/merge': MergeTools,
+  '/tools/cover-check': CoverCheck,
   '/playback/lines': PlayLines,
   '/playback/config': PlaybackSetting,
 };
