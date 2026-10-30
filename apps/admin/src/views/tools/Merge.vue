@@ -410,7 +410,7 @@ onMounted(load);</script>
 
 <template>
   <div class="page">
-    <el-card class="page-card" v-loading="loading">
+    <el-card shadow="never" class="page-card" v-loading="loading">
       <div class="head">
         <div class="summary">
           <span>可自动合并 <b>{{ summary.autoGroups }}</b> 组（减少 {{ summary.autoVods }} 条）</span>
