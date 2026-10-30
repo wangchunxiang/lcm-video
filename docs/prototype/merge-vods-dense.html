@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>重复影片 · 信息密度方案</title>
+<style>
+  :root {
+    --primary: #2563eb; --success: #16a34a; --warning: #d97706; --danger: #dc2626;
+    --text: #303133; --regular: #606266; --secondary: #909399; --placeholder: #a8abb2;
+    --border: #dcdfe6; --border-light: #e4e7ed; --lighter: #ebeef5; --fill-light: #f5f7fa;
+    --page: #f0f2f5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: var(--page); color: var(--text);
+    font: 13px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--secondary); font-size: 12px; margin-bottom: 18px; }
+  .switcher { display: flex; gap: 8px; margin-bottom: 16px; }
+  .switcher button { padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; color: var(--regular); font-size: 13px; cursor: pointer; }
+  .switcher button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .card { background: #fff; border: 1px solid var(--border-light); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .card-title { font-size: 14px; font-weight: 600; }
+  .tag { font-size: 12px; padding: 1px 7px; border-radius: 4px; border: 1px solid; }
+  .tag.auto { color: var(--success); border-color: #b7e0c4; background: #f0fbf4; }
+  .tag.warn { color: var(--warning); border-color: #f3d3a4; background: #fff8ee; }
+  .muted { color: var(--secondary); }
+  .hint { color: var(--placeholder); font-size: 12px; }
+
+  .rowb { display: flex; gap: 12px; align-items: center; padding: 10px 12px;
+    border: 1px solid var(--border-light); border-radius: 6px; margin-bottom: 8px; }
+  .rowb.chosen { border-color: #a9c5f8; background: #f2f7fe; }
+  .radio { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); flex: none; }
+  .radio.on { border: 4px solid var(--primary); }
+  .cover { width: 48px; height: 64px; border-radius: 4px; object-fit: fill; background: var(--fill-light); flex: none; }
+  .rowb-main { flex: 1; min-width: 0; }
+  .rowb-name { font-size: 14px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rowb-name .ws { background: #dbeafe; border-radius: 2px; }
+  .rowb-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--regular); }
+  .rowb-meta i { font-style: normal; color: var(--placeholder); }
+  .rowb-lines { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .linechip { font-size: 12px; padding: 1px 8px; border-radius: 4px; background: var(--fill-light);
+    color: var(--regular); white-space: nowrap; }
+  .linechip b { color: var(--text); font-weight: 600; }
+  .linechip.best { background: #eef6ff; color: #1d4ed8; }
+  .keep { font-size: 12px; color: var(--primary); flex: none; }
+
+  table.cmp { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.cmp th, table.cmp td { border: 1px solid var(--lighter); padding: 7px 10px;
+    vertical-align: top; font-size: 12px; word-break: break-all; }
+  table.cmp th { background: var(--fill-light); font-weight: 500; color: var(--regular); text-align: left; }
+  table.cmp th.field { width: 92px; }
+  table.cmp thead th { font-size: 13px; color: var(--text); }
+  table.cmp td.diff { background: #fff4f4; }
+  table.cmp td.diff::after { content: " ≠"; color: var(--danger); font-size: 11px; }
+  table.cmp td.same { color: var(--secondary); }
+  .cmplines { display: flex; flex-direction: column; gap: 3px; }
+  .cmpline { font-size: 12px; color: var(--regular); }
+  .cmpline b { color: var(--text); }
+  .cmpline.best { color: #1d4ed8; }
+  .hidden { display: none; }
+  .legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--secondary); }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+</style>
+</head>
+<body>
+  <h1>重复影片 · 让每条记录显示更多信息</h1>
+  <div class="lead">真实数据。行高不增加，靠把横向空间用起来，另外把「线路有几集」直接放到标签上。</div>
+
+  <div class="switcher">
+    <button class="on" data-view="b">方案 B · 紧凑行（线路带集数）</button>
+    <button data-view="e">方案 E · 并排对比</button>
+  </div>
+
+  <div id="view-b"></div>
+  <div id="view-e" class="hidden"></div>
+
+  <script>
+    const GROUPS = [[{"id":7237,"name":"化学反应","sub_name":"男女命相 / 男女的婚姻 / 男人和女人的婚姻 / Marital Harmony of Man and Woman","year":2016,"area":"韩国","lang":"韩语","actor":"李智友,이유희","director":"蔡吉丙","status":1,"cover":"https://img.dytt-tupian.com/upload/vod/20251228-1/182ad97f729148182004176d2faa3ad4.jpg","episode_count":0,"remarks":"HD","category":"伦理片","collected":"2026-10-29 05:46","lines":[{"source":"西瓜资源","from":"xiguam3u8","eps":1,"updated":"2025-12-27T22:54:47.000Z"},{"source":"电影天堂","from":"dyttm3u8","eps":1,"updated":"2025-12-27T22:54:47.000Z"}]},{"id":49113,"name":"化学反应","sub_name":"Chemical Reaction","year":2007,"area":"大陆","lang":"国语","actor":"张杰,刘奕均,冯海煜,王迅,余代军","director":"赵淑彬","status":1,"cover":"https://img.dytt-tupian.com/upload/vod/20250301-1/45e142889e588e6ce7bd617d83f8b597.jpg","episode_count":0,"remarks":"HD国语","category":"剧情片","collected":"2026-10-29 06:56","lines":[{"source":"西瓜资源","from":"xiguam3u8","eps":1,"updated":"2025-03-01T00:44:28.000Z"},{"source":"电影天堂","from":"dyttm3u8","eps":1,"updated":"2025-03-01T00:44:28.000Z"}]},{"id":83553,"name":"化学反应","sub_name":"The Chemistry / The Chemistry Series","year":2026,"area":"泰国","lang":"泰语","actor":"BEVER PATSAPON,通琉维·梅塔帕·钦穆奎尔","director":"","status":1,"cover":"https://pic.ry-pic.com/upload/vod/20261030-1/ff00966a7c7b4cecf29407d019badaf9.webp","episode_count":0,"remarks":"更新至第01集","category":"海外剧","collected":"2026-10-29 22:00","lines":[{"source":"如意资源","from":"rym3u8","eps":1,"updated":"2026-10-29T13:10:39.000Z"}]}],[{"id":38546,"name":"少年歌行 风花雪月篇","sub_name":"","year":2021,"area":"大陆","lang":"国语","actor":"张博恒,张杰,杨婧,魏超","director":"陈升垚","status":1,"cover":"https://img.dytt-tupian.com/upload/vod/20250326-1/d64cc9796c993b5492f206fb11137e33.jpg","episode_count":0,"remarks":"已完结","category":"国产动漫","collected":"2026-10-29 06:46","lines":[{"source":"西瓜资源","from":"xiguam3u8","eps":33,"updated":"2025-03-26T00:20:41.000Z"},{"source":"电影天堂","from":"dyttm3u8","eps":33,"updated":"2025-03-26T00:20:41.000Z"}]},{"id":76745,"name":"少年歌行风花雪月篇","sub_name":"少年歌行 第二季 / Youths and Golden Coffin / Great Journey of Teenagers 2nd Season","year":2021,"area":"中国大陆","lang":"汉语普通话","actor":"张博恒,张杰,杨婧,魏超","director":"陈升垚","status":1,"cover":"https://ry-pic.com/upload/vod/20240903-1/7dd503b12808781722eca5f7ecfef3cf.jpg","episode_count":32,"remarks":"已完结","category":"国产动漫","collected":"2026-10-29 06:56","lines":[{"source":"如意资源","from":"rym3u8","eps":32,"updated":"2024-09-02T17:46:43.000Z"}]}]];
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const shortDate = (iso) => (iso ? String(iso).slice(5, 10).replace('-', '/') : '—');
+    const firstActors = (t) => (t || '').split(/[,，]/).slice(0, 3).join('、');
+    const maxEpsOf = (v) => Math.max(0, ...(v.lines || []).map((l) => l.eps));
+
+    function nameHtml(name, all) {
+      const longest = all.reduce((a, b) => (b.name.length > a.length ? b.name : a), '');
+      if (name.length >= longest.length) return esc(name);
+      let out = '';
+      let i = 0;
+      for (const ch of longest) {
+        const same = ch === name[i];
+        out += same ? esc(ch) : '<span class="ws"> </span>';
+        if (same) i += 1;
+      }
+      return out;
+    }
+
+    function renderB() {
+      document.getElementById('view-b').innerHTML = GROUPS.map((group) => {
+        const best = group.reduce((a, b) => (maxEpsOf(b) > maxEpsOf(a) ? b : a), group[0]);
+        const maxEps = Math.max(...group.map(maxEpsOf));
+        const sameYear = new Set(group.map((v) => v.year)).size === 1;
+        const rows = group.map((v) => {
+          const chosen = v.id === best.id;
+          const lines = (v.lines || []).map((l) =>
+            '<span class="linechip' + (l.eps === maxEps ? ' best' : '') + '">' + esc(l.source) + ' · ' + esc(l.from) +
+            ' · <b>' + l.eps + '</b> 集 · ' + shortDate(l.updated) + '</span>').join('');
+          return '<div class="rowb' + (chosen ? ' chosen' : '') + '">' +
+            '<span class="radio' + (chosen ? ' on' : '') + '"></span>' +
+            '<img class="cover" src="' + esc(v.cover) + '" alt="" />' +
+            '<div class="rowb-main">' +
+              '<div class="rowb-name">' + nameHtml(v.name, group) +
+                (v.sub_name ? '<span class="muted"> · ' + esc(v.sub_name.split('/')[0].trim()) + '</span>' : '') + '</div>' +
+              '<div class="rowb-meta">' +
+                '<span><i>ID</i> ' + v.id + '</span>' +
+                '<span><i>年份</i> ' + (v.year || '未知') + '</span>' +
+                '<span><i>分类</i> ' + esc(v.category || '—') + '</span>' +
+                '<span><i>地区</i> ' + esc(v.area || '—') + '</span>' +
+                '<span><i>语言</i> ' + esc(v.lang || '—') + '</span>' +
+                '<span><i>总集数</i> ' + (v.episode_count || '—') + '</span>' +
+                '<span><i>演员</i> ' + esc(firstActors(v.actor) || '—') + '</span>' +
+                '<span><i>采集</i> ' + esc(v.collected) + '</span>' +
+              '</div>' +
+              '<div class="rowb-lines">' + (lines || '<span class="hint">没有线路</span>') + '</div>' +
+            '</div>' + (chosen ? '<span class="keep">保留</span>' : '') + '</div>';
+        }).join('');
+        return '<div class="card"><div class="card-head">' +
+          '<span class="card-title">' + esc(group[0].name) + '</span>' +
+          '<span class="tag ' + (sameYear ? 'auto' : 'warn') + '">' + (sameYear ? '可合并' : '年份不同，需人工判断') + '</span>' +
+          '<span class="hint">' + group.length + ' 条记录</span></div>' + rows + '</div>';
+      }).join('');
+    }
+
+    const FIELDS = [
+      ['片名', (v) => v.name],
+      ['副标题', (v) => v.sub_name || '—'],
+      ['年份', (v) => v.year || '未知'],
+      ['分类', (v) => v.category || '—'],
+      ['地区', (v) => v.area || '—'],
+      ['语言', (v) => v.lang || '—'],
+      ['总集数', (v) => v.episode_count || '—'],
+      ['备注', (v) => v.remarks || '—'],
+      ['演员', (v) => (v.actor || '—').split(/[,，]/).slice(0, 6).join('、')],
+      ['导演', (v) => v.director || '—'],
+      ['状态', (v) => (v.status === 1 ? '已上架' : '已下架')],
+      ['采集时间', (v) => v.collected],
+    ];
+
+    function renderE() {
+      document.getElementById('view-e').innerHTML = GROUPS.map((group) => {
+        const maxEps = Math.max(...group.map(maxEpsOf));
+        const sameYear = new Set(group.map((v) => v.year)).size === 1;
+        const head = '<tr><th class="field">字段</th>' + group.map((v) =>
+          '<th>' + esc(v.name) + '<div class="hint">ID ' + v.id + '</div></th>').join('') + '</tr>';
+        const body = FIELDS.map(([label, get]) => {
+          const values = group.map(get);
+          const differ = new Set(values.map((x) => String(x))).size > 1;
+          const cells = values.map((value) =>
+            '<td class="' + (differ ? 'diff' : 'same') + '">' + esc(value) + '</td>').join('');
+          return '<tr><th class="field">' + label + '</th>' + cells + '</tr>';
+        }).join('');
+        const lineRow = '<tr><th class="field">线路</th>' + group.map((v) => {
+          const lines = (v.lines || []).map((l) =>
+            '<div class="cmpline' + (l.eps === maxEps ? ' best' : '') + '">' + esc(l.source) + ' · ' + esc(l.from) +
+            ' · <b>' + l.eps + '</b> 集 · ' + shortDate(l.updated) + '</div>').join('');
+          return '<td>' + (lines ? '<div class="cmplines">' + lines + '</div>' : '<span class="hint">没有线路</span>') + '</td>';
+        }).join('') + '</tr>';
+        return '<div class="card"><div class="card-head">' +
+          '<span class="card-title">' + esc(group[0].name) + '</span>' +
+          '<span class="tag ' + (sameYear ? 'auto' : 'warn') + '">' + (sameYear ? '可合并' : '年份冲突') + '</span></div>' +
+          '<table class="cmp"><thead>' + head + '</thead><tbody>' + body + lineRow + '</tbody></table>' +
+          '<div class="legend"><span><span class="swatch" style="background:#fff4f4;border:1px solid #f3c2c2"></span>该字段两条记录不一致</span>' +
+          '<span><span class="swatch" style="background:#eef6ff;border:1px solid #cfe0ff"></span>集数最多的线路</span></div></div>';
+      }).join('');
+    }
+
+    document.querySelectorAll('.switcher button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.switcher button').forEach((item) => item.classList.toggle('on', item === button));
+        const view = button.dataset.view;
+        document.getElementById('view-b').classList.toggle('hidden', view !== 'b');
+        document.getElementById('view-e').classList.toggle('hidden', view !== 'e');
+      });
+    });
+
+    renderB();
+    renderE();
+  </script>
+</body>
+</html>
