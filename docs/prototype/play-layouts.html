@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>播放页布局方案</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+    --line: #e8eaed; --primary: #2563eb; --primary-dark: #1d4ed8; --radius: 8px;
+    --shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 0 24px 60px; }
+  .page-title { margin: 28px 0 6px; font-size: 20px; }
+  .page-sub { margin: 0 0 18px; color: var(--text-3); font-size: 13px; }
+  .demo { background: #fff; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 36px; overflow: hidden; }
+  .demo-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .demo-head h2 { margin: 0; font-size: 16px; }
+  .demo-head span { color: var(--text-3); font-size: 12px; }
+  .demo-body { padding: 18px 20px 22px; }
+
+  .bc { display: flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 13px; margin-bottom: 12px; }
+  .bc a:hover { color: var(--primary); }
+  .bc .sep { color: #c9cdd4; }
+  .bc .now { color: var(--text-2); }
+
+  /* 播放器占位 */
+  .player { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0b0d12; border-radius: 6px; overflow: hidden; }
+  .player .glow { position: absolute; inset: 0;
+    background: radial-gradient(60% 60% at 50% 42%, rgba(37,99,235,.20), transparent 70%); }
+  .player .frame { position: absolute; inset: 14% 8% 18%; border: 1px solid rgba(255,255,255,.07); border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,.035), rgba(255,255,255,0)); }
+  .player .play-btn { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%);
+    width: 62px; height: 62px; border-radius: 50%; background: rgba(255,255,255,.92);
+    display: flex; align-items: center; justify-content: center; }
+  .player .play-btn::after { content: ""; margin-left: 4px; border-style: solid;
+    border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #0b0d12; }
+  .player .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; padding: 0 14px;
+    background: linear-gradient(transparent, rgba(0,0,0,.62)); display: flex; align-items: center; gap: 10px; }
+  .player .bar .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.85); }
+  .player .bar .track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.24); position: relative; }
+  .player .bar .track i { position: absolute; left: 0; top: 0; bottom: 0; width: 34%; background: var(--primary); border-radius: 2px; }
+  .player .bar .track i::after { content: ""; position: absolute; right: -5px; top: -3px; width: 10px; height: 10px;
+    border-radius: 50%; background: #fff; }
+  .player .bar .t { color: rgba(255,255,255,.82); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .player .bar .ico { width: 16px; height: 16px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 3px; }
+  .player .tag { position: absolute; left: 14px; top: 12px; padding: 2px 8px; border-radius: 4px;
+    background: rgba(37,99,235,.92); color: #fff; font-size: 12px; }
+
+  .vod-title { margin: 14px 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .vod-title .ep-no { font-size: 15px; color: var(--text-2); font-weight: 400; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--text-3); font-size: 13px; }
+  .meta b { font-weight: 400; color: var(--text-2); }
+
+  .line-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { padding: 5px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .pill:hover { border-color: var(--primary); color: var(--primary); }
+  .pill.on { border-color: var(--primary); color: var(--primary); background: #eef4ff; font-weight: 600; }
+
+  .eps { display: grid; gap: 8px; }
+  .ep { padding: 6px 0; text-align: center; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .ep:hover { border-color: var(--primary); color: var(--primary); }
+  .ep.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .ep.w2 { grid-column: span 2; }
+  .scroll { overflow-y: auto; }
+
+  .sec-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+  .sec-title h3 { margin: 0; font-size: 16px; }
+  .sec-title small { color: var(--text-3); font-size: 12px; }
+  .muted { color: var(--text-3); font-size: 12px; }
+
+  /* ---------- A 现状 ---------- */
+  .va-row { display: flex; gap: 12px; align-items: stretch; }
+  .va-left { flex: 1; min-width: 0; }
+  .va-side { flex: none; width: 380px; min-height: 470px; display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; }
+  .va-lines { flex: none; width: 104px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: #fafbfc; overflow-y: auto; }
+  .va-line { padding: 7px 8px; font-size: 13px; color: var(--text-2); text-align: center; border-left: 2px solid transparent;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .va-line.on { color: var(--primary); background: #eff4ff; border-left-color: var(--primary); font-weight: 600; }
+  .va-panel { flex: 1; min-width: 0; padding: 12px; overflow-y: auto; }
+  .va-panel .eps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .va-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .va-btn { padding: 6px 16px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .va-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ---------- B 影院通栏 ---------- */
+  .vb { max-width: 1120px; margin: 0 auto; }
+  .vb-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .vb-head .vod-title { margin: 0; }
+  .vb-player-wrap { padding: 0; }
+  .vb-player { box-shadow: 0 18px 46px rgba(15,23,42,.22); border-radius: 8px; }
+  .vb-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 20px; flex-wrap: wrap; }
+  .vb-nav { display: flex; gap: 8px; }
+  .vb-card { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 16px; background: #fff; }
+  .vb-card .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .vb-card .scroll { max-height: 246px; }
+
+  /* ---------- C 左播放右信息 ---------- */
+  .vc-row { display: flex; gap: 16px; align-items: flex-start; }
+  .vc-left { flex: 1; min-width: 0; }
+  .vc-right { flex: none; width: 320px; display: flex; flex-direction: column; gap: 14px; }
+  .vc-card { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 14px; }
+  .vc-cover { width: 100%; aspect-ratio: 3 / 4; border-radius: 6px; overflow: hidden;
+    background: linear-gradient(150deg, #1e3a8a, #2563eb 45%, #0ea5e9); position: relative; }
+  .vc-cover span { position: absolute; left: 0; right: 0; bottom: 0; padding: 30px 12px 10px;
+    background: linear-gradient(transparent, rgba(0,0,0,.55)); color: #fff; font-size: 13px; }
+  .vc-title { margin: 12px 0 6px; font-size: 17px; }
+  .vc-info { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2); }
+  .vc-info div { display: flex; gap: 10px; }
+  .vc-info dt { flex: none; width: 40px; color: var(--text-3); }
+  .vc-info dd { margin: 0; }
+  .vc-intro { margin: 10px 0 0; font-size: 13px; color: var(--text-2); line-height: 1.75;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .vc-eps { margin-top: 14px; }
+  .vc-eps .eps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .vc-eps .scroll { max-height: 268px; }
+  .btn-primary { display: block; width: 100%; padding: 10px 0; border: 0; border-radius: 6px;
+    background: var(--primary); color: #fff; font-size: 14px; cursor: pointer; }
+  .btn-primary:hover { background: var(--primary-dark); }
+
+  /* ---------- D 沉浸暗色 ---------- */
+  .vd { margin: 0; padding: 18px 20px 22px; background: #0f1115; color: #e6e8ec; }
+  .vd .bc { color: #7c828d; }
+  .vd .bc .now { color: #b9bec8; }
+  .vd-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .vd-title { margin: 0; font-size: 20px; color: #f3f4f6; display: flex; align-items: center; gap: 10px; }
+  .vd-title .ep-no { color: #9aa0aa; font-size: 15px; font-weight: 400; }
+  .vd .pill { background: transparent; border-color: #2a2f39; color: #9aa0aa; }
+  .vd .pill:hover { border-color: #3b82f6; color: #93b4ff; }
+  .vd .pill.on { background: #1b2434; border-color: #3b82f6; color: #93b4ff; }
+  .vd-stage { display: flex; gap: 16px; align-items: flex-start; }
+  .vd-main { flex: 1; min-width: 0; }
+  .vd-player { border-radius: 10px; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+  .vd-rail { margin-top: 16px; border: 1px solid #232833; border-radius: 10px; background: #141821; padding: 12px 14px; }
+  .vd-rail-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .vd-rail-head b { color: #dfe3ea; font-weight: 600; }
+  .vd-rail-track { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+  .vd-chip { flex: none; padding: 6px 14px; border-radius: 6px; border: 1px solid #262c38; background: #171c26;
+    color: #a9b0bb; font-size: 13px; cursor: pointer; }
+  .vd-chip:hover { border-color: #3b82f6; color: #93b4ff; }
+  .vd-chip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .vd-drawer { flex: none; width: 340px; border: 1px solid #232833; border-radius: 10px; background: #141821;
+    height: 470px; display: flex; flex-direction: column; overflow: hidden; }
+  .vd-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #232833; }
+  .vd-drawer-head b { color: #dfe3ea; }
+  .vd-drawer-body { padding: 12px 14px; overflow-y: auto; }
+  .vd-drawer .eps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .vd-drawer .ep { background: #171c26; border-color: #262c38; color: #a9b0bb; }
+  .vd-drawer .ep:hover { border-color: #3b82f6; color: #93b4ff; }
+  .vd-drawer .ep.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .vd-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; color: #9aa0aa; font-size: 13px; }
+  .vd-btn { padding: 7px 18px; border-radius: 6px; border: 1px solid #2a2f39; background: #171c26; color: #c3c9d4; font-size: 13px; cursor: pointer; }
+  .vd-btn:hover { border-color: #3b82f6; color: #93b4ff; }
+
+  @media (max-width: 1100px) {
+    .va-row { flex-direction: column; }
+    .va-side { width: 100%; height: 420px; }
+    .vc-row { flex-direction: column; }
+    .vc-right { width: 100%; flex-direction: row; }
+    .vc-card.cover-card { width: 320px; flex: none; }
+    .vb-card .eps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .vd-stage { flex-direction: column; }
+    .vd-drawer { width: 100%; height: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">播放页布局方案</h1>
+  <p class="page-sub">四个方案的静态示意，数据与现有播放页一致（火影忍者疾风传 · 第 12 集 · 2688 集 · 3 条线路）。从上往下依次是 A 现状、B 影院通栏、C 左播放右信息、D 沉浸暗色。</p>
+
+  <!-- ================= A ================= -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>方案 A · 现状（左侧播放 + 右侧选集栏）</h2>
+      <span>改动成本：0，仅作对照</span>
+    </div>
+    <div class="demo-body">
+      <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+      <div class="va-row">
+        <div class="va-left">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div>
+            <div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span><span><b>线路：</b>量子资源</span></div>
+          <div class="va-actions">
+            <button class="va-btn">← 上一集</button>
+            <button class="va-btn">下一集 →</button>
+            <button class="va-btn">播放设置</button>
+          </div>
+        </div>
+
+        <div class="va-side">
+          <div class="va-lines">
+            <span class="va-line on">量子资源</span>
+            <span class="va-line">非凡资源</span>
+            <span class="va-line">静电资源</span>
+          </div>
+          <div class="va-panel">
+            <div class="eps" id="a-eps"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= B ================= -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>方案 B · 影院通栏（播放器居中放大 + 下方通栏剧集）</h2>
+      <span>改动成本：小，只换布局与 CSS</span>
+    </div>
+    <div class="demo-body">
+      <div class="vb">
+        <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+        <div class="vb-head">
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="vb-player">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div>
+            <div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+        </div>
+
+        <div class="vb-bar">
+          <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span></div>
+          <div class="vb-nav">
+            <button class="va-btn">← 上一集</button>
+            <button class="va-btn">下一集 →</button>
+          </div>
+        </div>
+
+        <div class="vb-card">
+          <div class="sec-title">
+            <h3>选集 <small>共 2688 集</small></h3>
+            <span class="muted">正序</span>
+          </div>
+          <div class="scroll"><div class="eps" id="b-eps"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= C ================= -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>方案 C · 左播放右信息（B 站式：播放器 + 剧集在左，影片信息卡在右）</h2>
+      <span>改动成本：中，信息卡内容从详情页搬过来</span>
+    </div>
+    <div class="demo-body">
+      <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+      <div class="vc-row">
+        <div class="vc-left">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div>
+            <div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span></div>
+
+          <div class="vc-card vc-eps">
+            <div class="sec-title"><h3>选集 <small>共 2688 集</small></h3><span class="muted">正序</span></div>
+            <div class="scroll"><div class="eps" id="c-eps"></div></div>
+          </div>
+        </div>
+
+        <aside class="vc-right">
+          <div class="vc-card cover-card">
+            <div class="vc-cover"><span>火影忍者疾风传</span></div>
+            <div class="vc-title">火影忍者疾风传</div>
+            <dl class="vc-info">
+              <div><dt>年份</dt><dd>2007</dd></div>
+              <div><dt>地区</dt><dd>日本</dd></div>
+              <div><dt>类型</dt><dd>动漫 / 热血</dd></div>
+              <div><dt>集数</dt><dd>2688 集</dd></div>
+            </dl>
+            <p class="vc-intro">少年鸣人与伙伴们一步步成长，从木叶村走向忍界大战。这里放 intro 的前几行，超出四行截断。</p>
+            <div class="line-pills" style="margin-top:12px">
+              <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+            </div>
+            <button class="btn-primary" style="margin-top:12px">查看详情</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= D ================= -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>方案 D · 沉浸暗色（深色页面 + 横向剧集条 + 右侧选集抽屉）</h2>
+      <span>改动成本：中，需单独一套暗色变量</span>
+    </div>
+    <div class="demo-body" style="padding:0">
+      <div class="vd">
+        <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+        <div class="vd-top">
+          <div class="vd-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="vd-stage">
+          <div class="vd-main">
+            <div class="vd-player">
+              <div class="player">
+                <div class="glow"></div><div class="frame"></div>
+                <div class="tag">正在播放</div>
+                <div class="play-btn"></div>
+                <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+              </div>
+            </div>
+
+            <div class="vd-rail">
+              <div class="vd-rail-head"><b>剧集</b><span class="muted">共 2688 集 · 左右滑动</span></div>
+              <div class="vd-rail-track" id="d-rail"></div>
+            </div>
+
+            <div class="vd-foot">
+              <span>即将播放：第 13 集</span>
+              <div style="display:flex;gap:8px">
+                <button class="vd-btn">← 上一集</button>
+                <button class="vd-btn">下一集 →</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="vd-drawer">
+            <div class="vd-drawer-head"><b>选集</b><span class="muted">共 2688 集</span></div>
+            <div class="vd-drawer-body"><div class="eps" id="d-eps"></div></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="muted">说明：六个区块的剧集按钮都只铺了前 40 集做示意，真实页面由服务端一次性输出全部剧集。</p>
+</div>
+
+<script>
+  const cur = 12;
+  function build(id, count) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    let html = '';
+    for (let i = 1; i <= count; i++) {
+      const on = i === cur ? ' on' : '';
+      html += '<span class="ep' + on + '">第 ' + i + ' 集</span>';
+    }
+    box.innerHTML = html;
+  }
+  build('a-eps', 40);
+  build('b-eps', 40);
+  build('c-eps', 40);
+  build('d-eps', 40);
+
+  const rail = document.getElementById('d-rail');
+  if (rail) {
+    let html = '';
+    for (let i = 1; i <= 40; i++) {
+      html += '<span class="vd-chip' + (i === cur ? ' on' : '') + '">第 ' + i + ' 集</span>';
+    }
+    rail.innerHTML = html;
+  }
+</script>
+</body>
+</html>

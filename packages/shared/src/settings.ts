@@ -82,6 +82,7 @@ export const SETTINGS: SettingField[] = [
     label: '站点图标',
     type: 'text',
     default: '',
+    hint: '留空则使用主题自带图标。自定义建议上传 48×48 PNG/ICO，iOS 主屏图标另需 180×180。',
   },
   {
     key: 'site_disclaimer',

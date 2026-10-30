@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>播放页 · 影院通栏方向的五个方案</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #fff; --text: #1f2329; --text-2: #646a73; --text-3: #8f959e;
+    --line: #e8eaed; --primary: #2563eb; --primary-dark: #1d4ed8; --radius: 8px;
+    --shadow: 0 1px 3px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1520px; margin: 0 auto; padding: 0 24px 60px; }
+  .page-title { margin: 28px 0 6px; font-size: 20px; }
+  .page-sub { margin: 0 0 18px; color: var(--text-3); font-size: 13px; }
+  .demo { background: #fff; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 36px; overflow: hidden; }
+  .demo-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .demo-head h2 { margin: 0; font-size: 16px; }
+  .demo-head span { color: var(--text-3); font-size: 12px; }
+  .demo-body { padding: 18px 20px 22px; }
+
+  .bc { display: flex; align-items: center; gap: 6px; color: var(--text-3); font-size: 13px; margin-bottom: 12px; }
+  .bc .sep { color: #c9cdd4; }
+  .bc .now { color: var(--text-2); }
+
+  .player { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0b0d12; border-radius: 6px; overflow: hidden; }
+  .player .glow { position: absolute; inset: 0; background: radial-gradient(60% 60% at 50% 42%, rgba(37,99,235,.20), transparent 70%); }
+  .player .frame { position: absolute; inset: 14% 8% 18%; border: 1px solid rgba(255,255,255,.07); border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,.035), rgba(255,255,255,0)); }
+  .player .play-btn { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%);
+    width: 62px; height: 62px; border-radius: 50%; background: rgba(255,255,255,.92);
+    display: flex; align-items: center; justify-content: center; }
+  .player .play-btn::after { content: ""; margin-left: 4px; border-style: solid;
+    border-width: 10px 0 10px 17px; border-color: transparent transparent transparent #0b0d12; }
+  .player .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; padding: 0 14px;
+    background: linear-gradient(transparent, rgba(0,0,0,.62)); display: flex; align-items: center; gap: 10px; }
+  .player .bar .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.85); }
+  .player .bar .track { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.24); position: relative; }
+  .player .bar .track i { position: absolute; left: 0; top: 0; bottom: 0; width: 34%; background: var(--primary); border-radius: 2px; }
+  .player .bar .track i::after { content: ""; position: absolute; right: -5px; top: -3px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+  .player .bar .t { color: rgba(255,255,255,.82); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .player .bar .ico { width: 16px; height: 16px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 3px; }
+  .player .tag { position: absolute; left: 14px; top: 12px; padding: 2px 8px; border-radius: 4px;
+    background: rgba(37,99,235,.92); color: #fff; font-size: 12px; }
+
+  .vod-title { margin: 14px 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .vod-title .ep-no { font-size: 15px; color: var(--text-2); font-weight: 400; }
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--text-3); font-size: 13px; }
+  .meta b { font-weight: 400; color: var(--text-2); }
+
+  .line-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { padding: 5px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .pill:hover { border-color: var(--primary); color: var(--primary); }
+  .pill.on { border-color: var(--primary); color: var(--primary); background: #eef4ff; font-weight: 600; }
+
+  .eps { display: grid; gap: 8px; }
+  .ep { padding: 6px 0; text-align: center; border: 1px solid var(--line); border-radius: 6px;
+    background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .ep:hover { border-color: var(--primary); color: var(--primary); }
+  .ep.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .card { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 14px 16px 16px; }
+  .sec-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .sec-title h3 { margin: 0; font-size: 16px; }
+  .sec-title small { color: var(--text-3); font-size: 12px; }
+  .muted { color: var(--text-3); font-size: 12px; }
+  .btn-sm { padding: 5px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text-2); font-size: 13px; cursor: pointer; }
+  .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+  .scan { height: 246px; overflow-y: auto; }
+
+  /* ---------- B1 居中宽幕 ---------- */
+  .b1 { max-width: 1120px; margin: 0 auto; }
+  .b1-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .b1-head .vod-title { margin: 0; }
+  .b1-player { box-shadow: 0 16px 40px rgba(15,23,42,.2); border-radius: 8px; }
+  .b1-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 18px; flex-wrap: wrap; }
+  .b1-bar .btns { display: flex; gap: 8px; }
+  .b1 .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+
+  /* ---------- B2 满宽沉浸 ---------- */
+  .b2-strip { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin: 0; padding: 14px 20px; background: #10141a; border-radius: 0; }
+  .b2-strip .t { margin: 0; color: #f2f4f7; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .b2-strip .t small { color: #9aa2ad; font-size: 14px; font-weight: 400; }
+  .b2-strip .pill { background: transparent; border-color: #2b323d; color: #9aa2ad; }
+  .b2-strip .pill:hover { border-color: #3b82f6; color: #a9c5ff; }
+  .b2-strip .pill.on { background: #1a2433; border-color: #3b82f6; color: #a9c5ff; }
+  .b2-player { margin: 0; }
+  .b2-player .player { border-radius: 0; }
+  .b2-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 14px 0 12px; flex-wrap: wrap; }
+  .b2-search { display: flex; align-items: center; gap: 8px; }
+  .b2-input { width: 120px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; color: var(--text-3); background: #fff; }
+  .b2 .eps { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+  .b2 .ep { padding: 5px 0; font-size: 12px; }
+
+  /* ---------- B3 上播下分栏 ---------- */
+  .b3 { max-width: 1180px; margin: 0 auto; }
+  .b3-player { box-shadow: 0 16px 40px rgba(15,23,42,.2); border-radius: 8px; }
+  .b3-row { display: flex; gap: 16px; align-items: flex-start; margin-top: 18px; }
+  .b3-eps { flex: 1; min-width: 0; }
+  .b3-eps .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .b3-side { flex: none; width: 320px; display: flex; flex-direction: column; gap: 14px; }
+  .b3-side .intro { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.75; }
+  .b3-rec { display: flex; gap: 10px; margin-bottom: 10px; }
+  .b3-rec:last-child { margin-bottom: 0; }
+  .b3-thumb { flex: none; width: 62px; height: 84px; border-radius: 4px;
+    background: linear-gradient(150deg, #1e3a8a, #2563eb 50%, #0ea5e9); }
+  .b3-rec .rt { font-size: 13px; color: var(--text); margin-bottom: 2px; }
+  .b3-rec .rs { font-size: 12px; color: var(--text-3); }
+
+  /* ---------- B4 剧集分页 ---------- */
+  .b4 { max-width: 1180px; margin: 0 auto; }
+  .b4-player { box-shadow: 0 16px 40px rgba(15,23,42,.2); border-radius: 8px; }
+  .b4-nav { display: flex; align-items: center; gap: 8px; }
+  .b4-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .b4-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .b4 .eps { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+  .b4 .ep { padding: 5px 0; font-size: 12px; }
+  .b4-pager { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+  .pg { min-width: 30px; height: 30px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--text-2); font-size: 12px; cursor: pointer; }
+  .pg:hover { border-color: var(--primary); color: var(--primary); }
+  .pg.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .pg.gap { border: 0; background: none; color: var(--text-3); }
+
+  /* ---------- B5 深色播放区 ---------- */
+  .b5-stage { margin: 0; padding: 18px 20px 22px; background: #0f1319; }
+  .b5-stage .bc { color: #7d8590; margin-bottom: 10px; }
+  .b5-stage .bc .now { color: #b6bdc7; }
+  .b5-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap;
+    max-width: 1180px; margin-left: auto; margin-right: auto; }
+  .b5-head .t { margin: 0; color: #f2f4f7; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .b5-head .t small { color: #9aa2ad; font-size: 14px; font-weight: 400; }
+  .b5-head .pill { background: transparent; border-color: #2b323d; color: #9aa2ad; }
+  .b5-head .pill:hover { border-color: #3b82f6; color: #a9c5ff; }
+  .b5-head .pill.on { background: #1a2433; border-color: #3b82f6; color: #a9c5ff; }
+  .b5-player { max-width: 1180px; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,.5); border-radius: 8px; }
+  .b5-meta { max-width: 1180px; margin: 14px auto 0; display: flex; gap: 18px; color: #9aa2ad; font-size: 13px; flex-wrap: wrap; }
+  .b5 .eps { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .b5-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 0; }
+
+  @media (max-width: 1100px) {
+    .b3-row { flex-direction: column; }
+    .b3-side { width: 100%; flex-direction: row; flex-wrap: wrap; }
+    .b1 .eps, .b3-eps .eps, .b5 .eps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .b2 .eps, .b4 .eps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page-title">播放页 · 影院通栏方向的五个方案</h1>
+  <p class="page-sub">共同点：播放器在上、剧集在下方通栏，「选集」不再挤在右侧窄栏里。差别在播放器宽度、信息放哪、剧集怎么排。数据统一用：火影忍者疾风传 · 第 12 集 · 共 2688 集 · 3 条线路。</p>
+
+  <!-- ============ B1 ============ -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>B1 · 居中宽幕</h2>
+      <span>播放器 1120px 居中，剧集 10 列通栏 · 改动成本最小</span>
+    </div>
+    <div class="demo-body">
+      <div class="b1">
+        <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+        <div class="b1-head">
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="b1-player">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div><div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+        </div>
+
+        <div class="b1-bar">
+          <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span></div>
+          <div class="btns"><button class="btn-sm">← 上一集</button><button class="btn-sm">下一集 →</button></div>
+        </div>
+
+        <div class="card">
+          <div class="sec-title"><h3>选集 <small>共 2688 集</small></h3><span class="muted">正序</span></div>
+          <div class="scan"><div class="eps" id="b1-eps"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B2 ============ -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>B2 · 满宽沉浸</h2>
+      <span>播放器顶到容器两边，标题压在深色条里，剧集 12 列更紧凑 + 跳集输入</span>
+    </div>
+    <div class="demo-body" style="padding:0">
+      <div class="b2" style="padding:0">
+        <div class="b2-strip">
+          <h2 class="t">火影忍者疾风传 <small>第 12 集</small></h2>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="b2-player">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div><div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+        </div>
+
+        <div style="padding:0 20px 22px">
+          <div class="b2-actions">
+            <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span></div>
+            <div class="b2-search">
+              <span class="muted">跳到第</span><span class="b2-input">12</span><span class="muted">集</span>
+              <button class="btn-sm">跳转</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="sec-title"><h3>选集 <small>共 2688 集</small></h3><span class="muted">正序 · 12 列</span></div>
+            <div class="scan"><div class="eps" id="b2-eps"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B3 ============ -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>B3 · 上播下分栏（左剧集 / 右信息）</h2>
+      <span>播放器居中，下面左边剧集、右边简介 + 演员 + 推荐，信息不外链到详情页</span>
+    </div>
+    <div class="demo-body">
+      <div class="b3">
+        <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+        <div class="b1-head">
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="b3-player">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div><div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+        </div>
+
+        <div class="b3-row">
+          <div class="card b3-eps">
+            <div class="sec-title"><h3>选集 <small>共 2688 集</small></h3><span class="muted">正序</span></div>
+            <div class="scan"><div class="eps" id="b3-eps"></div></div>
+          </div>
+
+          <aside class="b3-side">
+            <div class="card">
+              <div class="sec-title"><h3>简介</h3><a class="muted" href="#">详情 →</a></div>
+              <p class="intro">少年鸣人与伙伴们一步步成长，从木叶村走向忍界大战。这里放 intro 的前几行，超出可展开。</p>
+            </div>
+            <div class="card">
+              <div class="sec-title"><h3>猜你喜欢</h3></div>
+              <div class="b3-rec"><div class="b3-thumb"></div><div><div class="rt">海贼王</div><div class="rs">动漫 · 更新至 1120 集</div></div></div>
+              <div class="b3-rec"><div class="b3-thumb"></div><div><div class="rt">死神</div><div class="rs">动漫 · 366 集</div></div></div>
+              <div class="b3-rec"><div class="b3-thumb"></div><div><div class="rt">银魂</div><div class="rs">动漫 · 367 集</div></div></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B4 ============ -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>B4 · 剧集分页版</h2>
+      <span>播放器居中，剧集区带线路 tab + 正/倒序 + 页码，每页 60 集 12 列</span>
+    </div>
+    <div class="demo-body">
+      <div class="b4">
+        <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+
+        <div class="b1-head">
+          <div class="vod-title">火影忍者疾风传 <span class="ep-no">第 12 集</span></div>
+          <div class="line-pills">
+            <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+          </div>
+        </div>
+
+        <div class="b4-player">
+          <div class="player">
+            <div class="glow"></div><div class="frame"></div><div class="tag">正在播放</div>
+            <div class="play-btn"></div>
+            <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+          </div>
+        </div>
+
+        <div class="b1-bar">
+          <div class="meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span></div>
+          <div class="b4-nav"><button class="btn-sm">← 上一集</button><button class="btn-sm">下一集 →</button></div>
+        </div>
+
+        <div class="card">
+          <div class="b4-toolbar">
+            <div class="b4-tabs">
+              <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-sm">正序</button>
+              <button class="btn-sm">倒序</button>
+            </div>
+          </div>
+          <div class="eps" id="b4-eps"></div>
+          <div class="b4-pager">
+            <span class="pg">上一页</span>
+            <span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span>
+            <span class="pg gap">…</span>
+            <span class="pg">45</span>
+            <span class="pg">下一页</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ B5 ============ -->
+  <section class="demo">
+    <div class="demo-head">
+      <h2>B5 · 深色播放区 + 浅色剧集区</h2>
+      <span>只有播放器那一块是深色背景，剧集区仍是浅色卡片，折中沉浸感与整站风格</span>
+    </div>
+    <div class="demo-body" style="padding:0">
+      <div class="b5">
+        <div class="b5-stage">
+          <div class="bc"><a href="#">首页</a><span class="sep">/</span><a href="#">火影忍者疾风传</a><span class="sep">/</span><span class="now">第 12 集</span></div>
+          <div class="b5-head">
+            <h2 class="t">火影忍者疾风传 <small>第 12 集</small></h2>
+            <div class="line-pills">
+              <span class="pill on">量子资源</span><span class="pill">非凡资源</span><span class="pill">静电资源</span>
+            </div>
+          </div>
+          <div class="b5-player">
+            <div class="player">
+              <div class="glow"></div><div class="frame"></div><div class="tag">正在播放</div>
+              <div class="play-btn"></div>
+              <div class="bar"><span class="dot"></span><span class="track"><i></i></span><span class="t">08:32 / 23:40</span><span class="ico"></span></div>
+            </div>
+          </div>
+          <div class="b5-meta"><span>动漫</span><span>2007</span><span>日本</span><span>共 2688 集</span><span>量子资源</span></div>
+        </div>
+
+        <div style="padding:18px 20px 22px">
+          <div class="card">
+            <div class="sec-title"><h3>选集 <small>共 2688 集</small></h3><span class="muted">正序</span></div>
+            <div class="scan"><div class="eps" id="b5-eps"></div></div>
+          </div>
+          <div class="b5-bar">
+            <div class="meta"><span>即将播放：第 13 集</span></div>
+            <div style="display:flex;gap:8px"><button class="btn-sm">← 上一集</button><button class="btn-sm">下一集 →</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const cur = 12;
+  function build(id, count) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    let html = '';
+    for (let i = 1; i <= count; i++) {
+      html += '<span class="ep' + (i === cur ? ' on' : '') + '">第 ' + i + ' 集</span>';
+    }
+    box.innerHTML = html;
+  }
+  ['b1-eps','b2-eps','b3-eps','b4-eps','b5-eps'].forEach(function (id) { build(id, 60); });
+</script>
+</body>
+</html>

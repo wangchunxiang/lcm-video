@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type { Db } from '@lcm/db';
 import { env } from '../../env.ts';
 import { loadSiteConfig, safeThemeName } from '../../lib/theme.ts';
@@ -45,8 +45,11 @@ export interface ThemeAssetOpts {
 export const themeAssetRoutes: FastifyPluginAsync<ThemeAssetOpts> = async (app, opts) => {
   const { db } = opts;
 
-  app.get('/assets/*', async (req, reply) => {
-    const wildcard = (req.params as Record<string, string>)['*'] ?? '';
+  /**
+   * 浏览器即使页面里写了 <link rel="icon"> 也可能另行请求根路径的 /favicon.ico，
+   * 这里直接吐主题里那份，省得每次都 404 刷一条日志。
+   */
+  async function sendThemeAsset(reply: FastifyReply, wildcard: string) {
     if (!wildcard || wildcard.includes('\0')) return reply.code(404).send('Not Found');
 
     const config = await loadSiteConfig(db);
@@ -67,5 +70,12 @@ export const themeAssetRoutes: FastifyPluginAsync<ThemeAssetOpts> = async (app, 
     } catch {
       return reply.code(404).send('Not Found');
     }
+  }
+
+  app.get('/assets/*', async (req, reply) => {
+    const wildcard = (req.params as Record<string, string>)['*'] ?? '';
+    return sendThemeAsset(reply, wildcard);
   });
+
+  app.get('/favicon.ico', async (_req, reply) => sendThemeAsset(reply, 'favicon.ico'));
 };
