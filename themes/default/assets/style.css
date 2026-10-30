@@ -191,11 +191,6 @@ img { border: 0; vertical-align: middle; }
   margin: 0 0 var(--space-6);
 }
 
-.sub-links { display: flex; gap: var(--space-3); flex-wrap: wrap; }
-.sub-links a { color: var(--text-2); font-size: var(--fs-small); }
-.sub-links a:hover { color: var(--primary); }
-.more { color: var(--text-3); font-size: var(--fs-small); }
-
 .today-count { margin-left: auto; color: var(--text-3); font-size: var(--fs-small); }
 .more:hover { color: var(--primary); }
 
@@ -969,11 +964,23 @@ img { border: 0; vertical-align: middle; }
   .vod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .episode-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
-  /* 导航不隐藏，改为可横向滚动，移动端仍能切换分类 */
-  .header-inner { gap: var(--space-3); }
-  .main-nav { overflow-x: auto; }
-  .main-nav > a { padding: 0 var(--space-2); }
-  .search-box input { width: 120px; }
+  /* 导航不隐藏，折行显示，移动端也能点到全部分类 */
+  .header-inner {
+    height: auto;
+    flex-wrap: wrap;
+    padding: var(--space-2) 0;
+    gap: var(--space-2) var(--space-3);
+  }
+  .main-nav {
+    order: 3;
+    flex: 1 0 100%;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .main-nav > a { line-height: 36px; padding: 0 var(--space-2); }
+  .search-box { margin-left: auto; }
+  .search-box input { width: 132px; }
 
   .detail-card { flex-direction: column; }
   .detail-info { min-height: 0; }
