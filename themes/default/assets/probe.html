@@ -29,12 +29,13 @@
 
 <div class="bar">
   <select id="cfg" style="padding:8px 10px;border:1px solid #dcdfe6;border-radius:4px;font-size:13px">
-    <option value="0">① 默认（站点现用配置）</option>
-    <option value="1">② 关闭 worker 转封装</option>
-    <option value="2">③ maxAudioFramesDrift = 5</option>
-    <option value="3">④ 关闭 worker + drift 5</option>
-    <option value="4">⑤ stretchShortVideoTrack + 对齐</option>
-    <option value="5">⑥ 全部关闭 worker/drift/对齐</option>
+    <option value="0">① 站点现用（worker + drift 5）</option>
+    <option value="1">② 无 worker</option>
+    <option value="2">③ drift 10</option>
+    <option value="3">④ drift 20</option>
+    <option value="4">⑤ drift 100（几乎不修正）</option>
+    <option value="5">⑥ 无 worker + drift 20</option>
+    <option value="6">⑦ drift 0 + 对齐（旧行为）</option>
   </select>
   <span id="cfgText" style="font-size:12px;color:#8a9099;align-self:center"></span>
 </div>
@@ -58,6 +59,11 @@
 <script src="/assets/vendor/artplayer.min.js?v=3"></script>
 <script>
 (function () {
+  var preset = new URLSearchParams(location.search).get('src');
+  if (preset) {
+    document.getElementById('url').value = preset;
+    setTimeout(function () { document.getElementById('load').click(); }, 300);
+  }
   var params = new URLSearchParams(location.search);
   var input = document.getElementById('url');
   var tip = document.getElementById('tip');
@@ -73,12 +79,13 @@
   var cfgText = document.getElementById('cfgText');
 
   var CONFIGS = [
-    { label: '默认（站点现用：worker + drift 5）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
-    { label: '无 worker', value: { enableWorker: false, lowLatencyMode: false } },
-    { label: 'drift 5（旧默认 + 放宽）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
-    { label: '无 worker + drift 5', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
-    { label: '对齐', value: { enableWorker: true, lowLatencyMode: false, stretchShortVideoTrack: true, maxAudioFramesDrift: 5 } },
-    { label: '全关', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 0, stretchShortVideoTrack: true } },
+    { label: '站点现用：worker + drift 5', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 } },
+    { label: '无 worker（drift 默认 1）', value: { enableWorker: false, lowLatencyMode: false } },
+    { label: 'drift 10', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 10 } },
+    { label: 'drift 20', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 20 } },
+    { label: 'drift 100（几乎不修正时间戳）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 100 } },
+    { label: '无 worker + drift 20', value: { enableWorker: false, lowLatencyMode: false, maxAudioFramesDrift: 20 } },
+    { label: 'drift 0 + 对齐（旧行为）', value: { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 0, stretchShortVideoTrack: true } },
   ];
 
   function currentConfig() {
