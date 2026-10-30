@@ -64,6 +64,9 @@ export const vod = mysqlTable(
     index('idx_name_hash').on(t.nameHash),
     index('idx_name_hash_loose').on(t.nameHashLoose),
     index('idx_status_collected').on(t.status, t.collectedAt),
+    // 前台搜索按片名做 %关键字% 匹配：这条覆盖索引让「状态 + 片名」的扫描不出索引，
+    // 一次索引扫描即可拿到 id、年份与两个时间，总数和年份在内存里算。
+    index('idx_search').on(t.status, t.name, t.year, t.collectedAt, t.createdAt),
   ],
 );
 

@@ -74,6 +74,36 @@ let cachedNav: { at: number; value: NavItem[] } | null = null;
 
 export function clearNavCache(): void {
   cachedNav = null;
+  cachedCategories = null;
+}
+
+/** 分类整表（含隐藏项）：分类页按别名找父级、按 pid 找子级，整表取一次缓存 60 秒 */
+export interface CategoryRow {
+  id: number;
+  pid: number;
+  name: string;
+  alias: string;
+  isShow: number;
+  sort: number;
+}
+
+let cachedCategories: { at: number; value: CategoryRow[] } | null = null;
+
+export async function loadCategories(db: Db): Promise<CategoryRow[]> {
+  if (cachedCategories && Date.now() - cachedCategories.at < 60_000) return cachedCategories.value;
+  const rows = await db
+    .select({
+      id: category.id,
+      pid: category.pid,
+      name: category.name,
+      alias: category.alias,
+      isShow: category.isShow,
+      sort: category.sort,
+    })
+    .from(category)
+    .orderBy(category.sort, category.id);
+  cachedCategories = { at: Date.now(), value: rows };
+  return rows;
 }
 
 export async function loadNav(db: Db): Promise<NavItem[]> {

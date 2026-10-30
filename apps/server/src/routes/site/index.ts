@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
-import { and, desc, eq, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
@@ -8,6 +8,7 @@ import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
   createEngine,
+  loadCategories,
   loadNav,
   renderErrorPage,
   loadSiteConfig,
@@ -21,6 +22,10 @@ import {
 const HOME_VOD_COUNT = 16;
 /** 首页每个一级分类展示的条数：一行 8 个 */
 const HOME_CATEGORY_COUNT = 16;
+/** 播放页每页渲染的剧集数：超长番分页，避免一次输出几千个按钮 */
+const EP_PAGE_SIZE = 50;
+/** 详情页每条线路最多渲染的剧集数：超长番只给前 100 集，其余点「查看全部」进播放页 */
+const DETAIL_EP_LIMIT = 100;
 
 export interface SiteRouteOpts {
   db: Db;
@@ -86,6 +91,12 @@ async function countByParent(db: Db, categoryId: number, year: number): Promise<
   return Number(byId[0]?.total ?? 0) + Number(byPid[0]?.total ?? 0);
 }
 
+/** 单条件计数，配合 Promise.all 与其他查询并行发出 */
+async function countWhere(db: Db, where: SQL | undefined): Promise<number> {
+  const [row] = await db.select({ total: sql<number>`count(*)` }).from(vod).where(where);
+  return Number(row?.total ?? 0);
+}
+
 const yearCache = new Map<string, { at: number; years: number[] }>();
 
 async function loadYears(db: Db, categoryId: number, scope: 'parent' | 'type'): Promise<number[]> {
@@ -131,34 +142,6 @@ async function loadYears(db: Db, categoryId: number, scope: 'parent' | 'type'): 
   }
 
   yearCache.set(key, { at: Date.now(), years });
-  return years;
-}
-
-const searchYearCache = new Map<string, { at: number; years: number[] }>();
-
-/** 搜索结果里出现过的年份，供搜索页年份筛选 */
-async function loadSearchYears(db: Db, keyword: string): Promise<number[]> {
-  const hit = searchYearCache.get(keyword);
-  if (hit && Date.now() - hit.at < 60_000) return hit.years;
-
-  const rows = await db
-    .select({ year: vod.year })
-    .from(vod)
-    .where(
-      and(
-        eq(vod.status, 1),
-        like(vod.name, `%${keyword}%`),
-        sql`${vod.year} > 0`,
-        lte(vod.year, sql`YEAR(NOW())`),
-      ),
-    )
-    .groupBy(vod.year)
-    .orderBy(desc(vod.year))
-    .limit(15);
-
-  const years = rows.map((row) => row.year);
-  if (searchYearCache.size > 500) searchYearCache.clear();
-  searchYearCache.set(keyword, { at: Date.now(), years });
   return years;
 }
 
@@ -298,19 +281,12 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const query = req.query as Record<string, string | undefined>;
     const config = await loadSiteConfig(db);
 
-    const parentRows = await db
-      .select({ id: category.id, name: category.name, alias: category.alias })
-      .from(category)
-      .where(and(eq(category.alias, alias), eq(category.pid, 0)))
-      .limit(1);
-    const parent = parentRows[0];
+    // 分类整表已在内存里缓存 60 秒，父级与子级都在本地筛，省掉两次库往返
+    const categories = await loadCategories(db);
+    const parent = categories.find((row) => row.pid === 0 && row.alias === alias);
     if (!parent) return notFound(reply);
 
-    const children = await db
-      .select({ id: category.id, name: category.name, alias: category.alias })
-      .from(category)
-      .where(and(eq(category.pid, parent.id), eq(category.isShow, 1)))
-      .orderBy(category.sort, category.id);
+    const children = categories.filter((row) => row.pid === parent.id && row.isShow === 1);
 
     const typeAlias = (query.type ?? '').trim();
     const activeType = children.find((child) => child.alias === typeAlias);
@@ -330,24 +306,22 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
     // 一级分类页的「父分类 OR 子分类」会让优化器放弃分类索引、退化成全表扫，
     // 这里拆成两条单条件查询并行执行，各自都能走索引。
-    const total = activeType
-      ? Number((await db.select({ total: sql<number>`count(*)` }).from(vod).where(where))[0]?.total ?? 0)
-      : await countByParent(db, parent.id, year);
+    // 总数、列表、年份三件事互不依赖，一次并行发出，只等一个往返。
+    const order = sort === 'new' ? [desc(vod.createdAt), desc(vod.id)] : [desc(vod.collectedAt), desc(vod.id)];
+    const [total, rows, years] = await Promise.all([
+      activeType ? countWhere(db, where) : countByParent(db, parent.id, year),
+      db
+        .select(vodColumns())
+        .from(vod)
+        .leftJoin(category, eq(category.id, vod.categoryId))
+        .where(where)
+        .orderBy(...order)
+        .limit(config.listPageSize)
+        .offset((page - 1) * config.listPageSize),
+      loadYears(db, activeType ? activeType.id : parent.id, activeType ? 'type' : 'parent'),
+    ]);
     const pagination = buildPagination(page, config.listPageSize, total);
     if (page > pagination.total_pages) return notFound(reply);
-
-    const order = sort === 'new' ? [desc(vod.createdAt), desc(vod.id)] : [desc(vod.collectedAt), desc(vod.id)];
-    const rows = await db
-      .select(vodColumns())
-      .from(vod)
-      .leftJoin(category, eq(category.id, vod.categoryId))
-      .where(where)
-      .orderBy(...order)
-      .limit(config.listPageSize)
-      .offset((page - 1) * config.listPageSize);
-
-    // 可选年份：当前分类下出现过的年份（同样拆单条件，并缓存 60 秒）
-    const years = await loadYears(db, activeType ? activeType.id : parent.id, activeType ? 'type' : 'parent');
 
     const titleName = activeType ? `${activeType.name} - ${parent.name}在线观看` : `${parent.name}在线观看`;
     return render(
@@ -372,18 +346,22 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
   /* ------------------------------- 详情 ------------------------------- */
 
-  async function loadLines(vodId: number): Promise<Array<LineView & { playUrl: string }>> {
+  /**
+   * 线路元信息：集数直接在库里数 `play_url` 的 `#` 分隔符，不把整条播放串传回来。
+   * 2000+ 集的番一条线路就是 200KB+，播放页原来一次拉全部线路，光传输就要几百毫秒。
+   */
+  async function loadLines(vodId: number): Promise<Array<LineView>> {
     const rows = await db
       .select({
         id: vodPlay.id,
         sourceId: vodPlay.sourceId,
         sourceFrom: vodPlay.sourceFrom,
-        playUrl: vodPlay.playUrl,
         sourceName: collectSource.name,
         parseUrl: collectSource.parseUrl,
         lineName: playLine.name,
         lineSort: playLine.sort,
         lineEnabled: playLine.isEnabled,
+        episodeCount: sql<number>`CASE WHEN CHAR_LENGTH(${vodPlay.playUrl}) = 0 THEN 0 ELSE CHAR_LENGTH(${vodPlay.playUrl}) - CHAR_LENGTH(REPLACE(${vodPlay.playUrl}, '#', '')) + 1 END`,
       })
       .from(vodPlay)
       .leftJoin(collectSource, eq(collectSource.id, vodPlay.sourceId))
@@ -402,9 +380,18 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           (row.sourceId === 0 ? row.sourceFrom : row.sourceName) ||
           '默认线路',
         parse_url: row.parseUrl ?? '',
-        episode_count: parsePlayUrl(row.playUrl).length,
-        playUrl: row.playUrl,
+        episode_count: Number(row.episodeCount ?? 0),
       }));
+  }
+
+  /** 按需取播放串：只取真正要展开的线路 */
+  async function loadPlayUrls(ids: number[]): Promise<Map<number, string>> {
+    if (ids.length === 0) return new Map();
+    const rows = await db
+      .select({ id: vodPlay.id, playUrl: vodPlay.playUrl })
+      .from(vodPlay)
+      .where(inArray(vodPlay.id, ids));
+    return new Map(rows.map((row) => [row.id, row.playUrl]));
   }
 
   app.get('/detail/:id', async (req, reply) => {
@@ -456,21 +443,26 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const query = req.query as { line?: string; ep?: string };
     const wantedLineId = toInt(query.line);
     const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
-    const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
+    const currentLineId = currentLine?.id ?? 0;
+    // 只给「集数不超过 100」的线路取播放串；超长番在详情页只显示集数和「查看全部」，
+    // 否则光把几条 200KB+ 的播放串拉回来就要几百毫秒，HTML 也能撑到 700KB。
+    const playUrls = await loadPlayUrls(
+      lines.filter((item) => item.episode_count <= DETAIL_EP_LIMIT).map((item) => item.id),
+    );
     const lineTabs = lines.map((item) => {
-      const eps = parsePlayUrl(item.playUrl);
+      const eps = parsePlayUrl(playUrls.get(item.id) ?? '');
       return {
         id: item.id,
         name: item.source_name,
-        total: eps.length,
+        total: item.episode_count,
+        play_base: `/play/${row.id}/${item.id}`,
+        limited: item.episode_count > DETAIL_EP_LIMIT,
         episodes: eps.map((ep, index) => {
           const label = episodeLabel(ep, index);
           return { index: index + 1, name: ep.name, url: ep.url, width: episodeSpan(label) };
         }),
       };
     });
-    const currentLineId = currentLine?.id ?? 0;
-
     return render(
       reply,
       'detail',
@@ -513,7 +505,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         line_tabs: lineTabs,
         current_line_id: currentLineId,
         current_line: currentLine
-          ? { id: currentLine.id, name: currentLine.source_name, episode_count: allEpisodes.length }
+          ? { id: currentLine.id, name: currentLine.source_name, episode_count: currentLine.episode_count }
           : null,
         nav_path: parent?.alias ?? '',
       },
@@ -522,13 +514,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
   /* ------------------------------- 播放 ------------------------------- */
 
-  async function renderPlay(
-    reply: FastifyReply,
-    id: number,
-    playId: number,
-    ep: number,
-    page: number,
-  ): Promise<FastifyReply> {
+  async function renderPlay(reply: FastifyReply, id: number, playId: number, ep: number): Promise<FastifyReply> {
     const config = await loadSiteConfig(db);
     const rows = await db
       .select({
@@ -556,7 +542,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const line = playId > 0 ? lines.find((item) => item.id === playId) : lines[0];
     if (!line) return notFound(reply);
 
-    const all = parsePlayUrl(line.playUrl);
+    const playUrls = await loadPlayUrls([line.id]);
+    const all = parsePlayUrl(playUrls.get(line.id) ?? '');
     if (all.length === 0) return notFound(reply);
 
     const currentEp = ep > 0 ? ep : 1;
@@ -576,12 +563,28 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         : [];
     const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
 
-    const episodes: EpisodeView[] = all.map((item, index) => ({
-      index: index + 1,
-      name: item.name,
-      url: item.url,
-      width: episodeSpan(item.name || `第 ${index + 1} 集`),
-    }));
+    // 剧集按 50 集一页渲染：超长番（2000+ 集）一次全量输出会让 HTML 到 350KB 以上、渲染几百毫秒
+    const epPageCount = Math.ceil(all.length / EP_PAGE_SIZE);
+    const epPage = Math.floor((currentEp - 1) / EP_PAGE_SIZE) + 1;
+    const epStart = (epPage - 1) * EP_PAGE_SIZE;
+    const episodes: EpisodeView[] = all
+      .slice(epStart, epStart + EP_PAGE_SIZE)
+      .map((item, index) => ({
+        index: epStart + index + 1,
+        name: item.name,
+        url: item.url,
+        width: episodeSpan(item.name || `第 ${epStart + index + 1} 集`),
+      }));
+
+    const epPageLink = (no: number) => `/play/${row.id}/${line.id}/${(no - 1) * EP_PAGE_SIZE + 1}`;
+    const epPages: Array<{ no: number; url: string; active?: boolean; gap?: boolean }> = [];
+    for (let no = 1; no <= epPageCount; no += 1) {
+      if (no === 1 || no === epPageCount || Math.abs(no - epPage) <= 2) {
+        epPages.push({ no, url: epPageLink(no), active: no === epPage });
+      } else if (epPages[epPages.length - 1]?.gap !== true) {
+        epPages.push({ no: 0, url: '', gap: true });
+      }
+    }
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
@@ -616,6 +619,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           ep: Math.max(1, Math.min(currentEp, item.episode_count)),
         })),
         episodes,
+        ep_pages: epPageCount > 1 ? epPages : [],
         current_ep: currentEp,
         current_ep_name: episodeName,
         play_url: proxyPlayUrl || current.url,
@@ -637,14 +641,14 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   app.get('/play/:id', async (req, reply) => {
     const id = toInt((req.params as { id: string }).id);
     if (id <= 0) return notFound(reply);
-    return renderPlay(reply, id, 0, 0, 1);
+    return renderPlay(reply, id, 0, 1);
   });
 
   app.get('/play/:id/:playId', async (req, reply) => {
     const { id, playId } = req.params as { id: string; playId: string };
     const vodId = toInt(id);
     if (vodId <= 0) return notFound(reply);
-    return renderPlay(reply, vodId, toInt(playId), 0, 1);
+    return renderPlay(reply, vodId, toInt(playId), 1);
   });
 
   app.get('/play/ad/:id/:playId/:ep', async (req, reply) => {
@@ -658,7 +662,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const line = lines.find((item) => item.id === lineId);
     if (!line) return notFound(reply);
 
-    const current = parsePlayUrl(line.playUrl)[epIndex - 1];
+    const playUrls = await loadPlayUrls([line.id]);
+    const current = parsePlayUrl(playUrls.get(line.id) ?? '')[epIndex - 1];
     if (!current) return notFound(reply);
 
     try {
@@ -675,10 +680,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
   app.get('/play/:id/:playId/:ep', async (req, reply) => {
     const { id, playId, ep } = req.params as { id: string; playId: string; ep: string };
-    const query = req.query as Record<string, string | undefined>;
     const vodId = toInt(id);
     if (vodId <= 0) return notFound(reply);
-    return renderPlay(reply, vodId, toInt(playId), toInt(ep), parsePage(query.page));
+    return renderPlay(reply, vodId, toInt(playId), toInt(ep));
   });
 
   /* ------------------------------- 搜索 ------------------------------- */
@@ -706,26 +710,45 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       );
     }
 
-    const conditions: SQL[] = [eq(vod.status, 1), like(vod.name, `%${keyword}%`)];
+    // 关键字匹配走覆盖索引 idx_search：一次索引扫描就拿到全部命中的 id、年份和两个时间，
+    // 总数、可选年份、排序都在内存里算，不再为同一个词扫三遍表。
+    const pattern = `%${keyword.replace(/[\%_]/g, (ch) => `\${ch}`)}%`;
+    const conditions: SQL[] = [eq(vod.status, 1), like(vod.name, pattern)];
     if (year > 0) conditions.push(eq(vod.year, year));
-    const where = and(...conditions);
-    const countRows = await db.select({ total: sql<number>`count(*)` }).from(vod).where(where);
-    const total = Number(countRows[0]?.total ?? 0);
+    const hits = await db
+      .select({ id: vod.id, year: vod.year, collectedAt: vod.collectedAt, createdAt: vod.createdAt })
+      .from(vod)
+      .where(and(...conditions));
+
+    const total = hits.length;
     const pagination = buildPagination(page, config.listPageSize, total);
     if (page > pagination.total_pages) return notFound(reply);
 
-    const order = sort === 'new' ? [desc(vod.createdAt), desc(vod.id)] : [desc(vod.collectedAt), desc(vod.id)];
-    const [rows, years] = await Promise.all([
-      db
-        .select(vodColumns())
-        .from(vod)
-        .leftJoin(category, eq(category.id, vod.categoryId))
-        .where(where)
-        .orderBy(...order)
-        .limit(config.listPageSize)
-        .offset((page - 1) * config.listPageSize),
-      loadSearchYears(db, keyword),
-    ]);
+    const maxYear = new Date().getFullYear();
+    const years = [...new Set(hits.map((hit) => Number(hit.year)).filter((value) => value > 0 && value <= maxYear))]
+      .sort((a, b) => b - a)
+      .slice(0, 15);
+
+    const timeOf = (value: Date | null): number => (value ? new Date(value).getTime() : 0);
+    hits.sort((a, b) =>
+      sort === 'new'
+        ? timeOf(b.createdAt) - timeOf(a.createdAt) || b.id - a.id
+        : timeOf(b.collectedAt) - timeOf(a.collectedAt) || b.id - a.id,
+    );
+
+    const pageIds = hits.slice((page - 1) * config.listPageSize, page * config.listPageSize).map((hit) => hit.id);
+    const pageRows =
+      pageIds.length === 0
+        ? []
+        : await db
+            .select(vodColumns())
+            .from(vod)
+            .leftJoin(category, eq(category.id, vod.categoryId))
+            .where(inArray(vod.id, pageIds));
+    const byId = new Map(pageRows.map((row) => [row.id, row]));
+    const rows = pageIds
+      .map((id) => byId.get(id))
+      .filter((row): row is (typeof pageRows)[number] => row !== undefined);
 
     return render(
       reply,

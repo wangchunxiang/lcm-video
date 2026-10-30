@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   KEY `idx_letter` (`letter`),
   KEY `idx_name_hash` (`name_hash`),
   KEY `idx_name_hash_loose` (`name_hash_loose`),
-  KEY `idx_status_collected` (`status`,`collected_at`)
+  KEY `idx_status_collected` (`status`,`collected_at`),
+  KEY `idx_search` (`status`,`name`,`year`,`collected_at`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_vod_play` (

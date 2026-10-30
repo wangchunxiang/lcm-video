@@ -83,6 +83,9 @@
         {% endfor %}
       </div>
     </div>
+    {% if line.limited %}
+    <a class="ep-more" href="{{ line.play_base }}/1">共 {{ line.total }} 集，查看全部</a>
+    {% endif %}
     {% else %}
     <p class="empty-tip">该线路暂无剧集</p>
     {% endif %}
