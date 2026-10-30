@@ -317,7 +317,30 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     return years.size <= 1;
   };
 
-  /** 演员名单拆成集合，去重、去空白、转小写 */
+  /**
+   * 宽松键组按年份拆簇：同名但年份不同视为不同作品。
+   * 只有一个非 0 年份时原样返回；多个年份时按年份切开，键加 `#年份` 后缀。
+   * 年份为 0 的记录只在单一年份时跟着走，多簇时不参与（无法判定归属）。
+   */
+  const splitByYear = (group: MergeGroup): MergeGroup[] => {
+    const years = [...new Set(group.members.map((item) => item.year).filter((year) => year > 0))].sort(
+      (a, b) => a - b,
+    );
+    if (years.length <= 1) return [group];
+    return years.map((year) => {
+      const members = group.members.filter((item) => item.year === year);
+      return {
+        ...group,
+        key: `${group.key}#${year}`,
+        name: members[0]?.name ?? group.name,
+        year,
+        members,
+        playTotal: members.reduce((sum, item) => sum + item.playCount, 0),
+      };
+    });
+  };
+
+
   const actorSet = (text?: string): Set<string> =>
     new Set(
       String(text ?? '')
@@ -510,7 +533,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     });
   };
 
-  const isHashKey = (key: string): boolean => /^[0-9a-f]{32}$/.test(key);
+  /** 分组键：32 位哈希，宽松键分组可能带 `#年份` 后缀 */
+  const isHashKey = (key: string): boolean => /^[0-9a-f]{32}(#\d{1,4})?$/.test(key);
   const isSameKey = (key: string): boolean => /^\d+-[^\s-][^\s]*$/.test(key);
 
   /** 取一组重复影片，含线路来源，用于右侧对比 */
@@ -529,8 +553,11 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       ids = (rawRows as unknown as Array<{ vod_id: number }>).map((row) => Number(row.vod_id));
     } else {
       const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
+      const [hash, yearText] = key.split('#');
+      const year = Number(yearText);
+      const yearFilter = year > 0 ? sql` AND year = ${year}` : sql``;
       const [rawRows] = await db.execute(
-        sql`SELECT id FROM lcm_vod WHERE ${sql.raw(column)} = ${key}`,
+        sql`SELECT id FROM lcm_vod WHERE ${sql.raw(column)} = ${String(hash)}${yearFilter}`,
       );
       ids = (rawRows as unknown as Array<{ id: number }>).map((row) => Number(row.id));
     }
@@ -571,6 +598,8 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
     // 疑似：去掉标点后同名，但严格键不止一种（标点差异，不是空格差异）
     const looseSuspects = looseGroups
+      .flatMap(splitByYear)
+      .filter((group) => group.members.length > 1)
       .filter((group) => new Set(group.members.map((item) => item.strictKey)).size > 1)
       .filter((group) => !ignored.has(ignoreKey('suspect', group.key)));
 
