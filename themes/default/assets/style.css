@@ -102,9 +102,9 @@ img { border: 0; vertical-align: middle; }
 
 /* 主题自带的小图标：比自定义 LOGO 稍矮，和站名并排时不抢视觉 */
 .logo img.logo-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
 }
 
 .logo-text { white-space: nowrap; }
