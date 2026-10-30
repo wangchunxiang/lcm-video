@@ -7,9 +7,16 @@
         alt="{{ site.name }}"
         onerror="this.style.display='none';this.nextElementSibling.style.display='inline'"
       >
-      <span style="display:none">{{ site.name }}</span>
+      <span class="logo-text" style="display:none">{{ site.name }}</span>
       {% else %}
-      <span>{{ site.name }}</span>
+      <img
+        class="logo-icon"
+        src="{{ 'img/logo.png' | asset }}"
+        alt=""
+        width="128" height="128"
+        onerror="this.style.display='none'"
+      >
+      <span class="logo-text">{{ site.name }}</span>
       {% endif %}
     </a>
     <nav class="main-nav">
