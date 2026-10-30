@@ -252,21 +252,20 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   /** 按指定哈希列取重复分组 */
-  const loadGroups = async (column: Column, kind: 'auto' | 'suspect'): Promise<MergeGroup[]> => {
+  const loadGroups = async (column: Column, kind: 'auto' | 'suspect', withActor = false): Promise<MergeGroup[]> => {
     const [hashRows] = await db.execute(
       sql`SELECT ${sql.raw(column)} AS k FROM lcm_vod WHERE ${sql.raw(column)} <> '' GROUP BY ${sql.raw(column)} HAVING COUNT(*) > 1`,
     );
     const keys = (hashRows as unknown as Array<{ k: string }>).map((row) => row.k);
     if (keys.length === 0) return [];
 
+    // 只取窄列：cover 是 varchar(500)、actor 是 varchar(1000)，随行读会触发溢出页随机读，
+    // 2600 行能慢到 1~2 秒；actor 只有宽松键（演员判定）需要。时间在 JS 里格式化，
+    // 交给 MySQL 的 DATE_FORMAT 反而多花 0.7 秒。
     const [rawRows] = await db.execute(
-      sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash, v.${sql.raw(column)} AS k,
-            v.actor,
-            DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
-            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count,
-          (SELECT COALESCE(SUM(CASE WHEN p.play_url = '' THEN 0
-              ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END), 0)
-            FROM lcm_vod_play p WHERE p.vod_id = v.id) AS ep_total
+      sql`SELECT v.id, v.name, v.year, v.status, v.name_hash, v.${sql.raw(column)} AS k,
+            ${withActor ? sql`v.actor,` : sql``}
+            v.collected_at
           FROM lcm_vod v WHERE v.${sql.raw(column)} IN (${sql.join(keys.map((key) => sql`${key}`), sql`, `)})`,
     );
     const rows = rawRows as unknown as Array<{
@@ -274,14 +273,31 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       name: string;
       year: number;
       status: number;
-      cover: string;
       k: string;
       name_hash: string;
-      actor: string | null;
-      collected_at: string;
-      play_count: number;
-      ep_total: number;
+      actor?: string | null;
+      collected_at: Date | string | null;
     }>;
+
+    // 线路数与总集数一次性聚合，避免逐行相关子查询
+    const ids = rows.map((row) => Number(row.id));
+    const playStats = new Map<number, { count: number; episodes: number }>();
+    if (ids.length > 0) {
+      const [statRows] = await db.execute(
+        sql`SELECT p.vod_id,
+              COUNT(*) AS play_count,
+              COALESCE(SUM(CASE WHEN p.play_url = '' THEN 0
+                ELSE CHAR_LENGTH(p.play_url) - CHAR_LENGTH(REPLACE(p.play_url, '#', '')) + 1 END), 0) AS ep_total
+            FROM lcm_vod_play p WHERE p.vod_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+            GROUP BY p.vod_id`,
+      );
+      for (const row of statRows as unknown as Array<Record<string, unknown>>) {
+        playStats.set(Number(row.vod_id), {
+          count: Number(row.play_count) || 0,
+          episodes: Number(row.ep_total) || 0,
+        });
+      }
+    }
 
     const byKey = new Map<string, MergeMember[]>();
     for (const row of rows) {
@@ -291,10 +307,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         name: row.name,
         year: Number(row.year) || 0,
         status: Number(row.status) || 0,
-        cover: row.cover ?? '',
-        playCount: Number(row.play_count) || 0,
-        episodeTotal: Number(row.ep_total) || 0,
-        collectedAt: row.collected_at,
+        cover: '',
+        playCount: playStats.get(Number(row.id))?.count ?? 0,
+        episodeTotal: playStats.get(Number(row.id))?.episodes ?? 0,
+        collectedAt: formatStamp(row.collected_at),
         strictKey: row.name_hash,
         lines: [],
         actor: row.actor ?? '',
@@ -557,6 +573,14 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     });
   };
 
+  /** DATETIME → `YYYY-MM-DD HH:mm:ss`（进程时区），避免在 SQL 里 DATE_FORMAT 拖慢全表扫描 */
+  const formatStamp = (value: Date | string | null): string => {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 19).replace('T', ' ');
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+  };
+
   /** 分组键：32 位哈希，宽松键分组可能带 `~年份` 后缀（不能用 #，会被浏览器当锚点截断） */
   const isHashKey = (key: string): boolean => /^[0-9a-f]{32}(~\d{1,4})?$/.test(key);
   const isSameKey = (key: string): boolean => /^\d+-[^\s-][^\s]*$/.test(key);
@@ -633,6 +657,28 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       .filter((group) => new Set(group.members.map((item) => item.strictKey)).size > 1)
       .filter((group) => !ignored.has(ignoreKey('suspect', group.key)));
 
+    // actor 是 varchar(1000)，全量取会让查询慢近 1 秒；只给「可能升级」的分组补（通常一两百组、三四百行）
+    const actorTargets = looseSuspects
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
+      .filter((group) => yearCompatible(group.members));
+    const needActorIds = actorTargets
+      .flatMap((group) => group.members.map((item) => item.id))
+      .filter((id, index, list) => list.indexOf(id) === index);
+    if (needActorIds.length > 0) {
+      const [actorRows] = await db.execute(
+        sql`SELECT id, actor FROM lcm_vod WHERE id IN (${sql.join(needActorIds.map((id) => sql`${id}`), sql`, `)})`,
+      );
+      const actorById = new Map<number, string>();
+      for (const row of actorRows as unknown as Array<{ id: number; actor: string | null }>) {
+        actorById.set(Number(row.id), row.actor ?? '');
+      }
+      for (const group of actorTargets) {
+        for (const member of group.members) {
+          member.actor = actorById.get(member.id) ?? '';
+        }
+      }
+    }
+
     const upgraded = looseSuspects
       .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
       .filter((group) => actorMatched(group))
@@ -652,8 +698,35 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   /** 预览：分组的轻量列表（不含线路明细） */
-  app.get('/merge-vods/preview', async (_req, reply) => {
-    const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
+  // 分组扫描要全表读 8.2 万影片与 15 万线路，结果缓存 60 秒；合并、忽略、采集写库后立即失效
+  let previewCache: { at: number; data: unknown } | null = null;
+  let previewPending = false;
+  const PREVIEW_TTL = 60_000;
+  const PREVIEW_REFRESH_AFTER = 45_000;
+  const invalidatePreview = (): void => {
+    previewCache = null;
+  };
+
+  /** 后台重算缓存，不阻塞请求；并发只允许一个 */
+  const refreshPreviewInBackground = (): void => {
+    if (previewPending) return;
+    previewPending = true;
+    void (async () => {
+      try {
+        const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
+        previewCache = { at: Date.now(), data: buildPreviewPayload(candidates, sameSource) };
+      } catch {
+        // 后台刷新失败就沿用旧缓存，下次请求再试
+      } finally {
+        previewPending = false;
+      }
+    })();
+  };
+
+  const buildPreviewPayload = (
+    candidates: { auto: MergeGroup[]; conflict: MergeGroup[]; suspects: MergeGroup[]; ignored: Set<string> },
+    sameSource: SameSourceGroup[],
+  ): unknown => {
     const { auto, conflict, suspects, ignored } = candidates;
 
     const light = (group: MergeGroup) => ({
@@ -669,7 +742,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
     const same = sameSource.filter((group) => !ignored.has(ignoreKey('same', group.key)));
 
-    return ok(reply, {
+    return {
       auto: auto.map(light),
       suspects: suspects.map(light),
       same: same.map((group) => ({
@@ -688,7 +761,18 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
         conflictGroups: conflict.length,
         ignored: ignored.size,
       },
-    });
+    };
+  };
+
+  app.get('/merge-vods/preview', async (_req, reply) => {
+    if (previewCache && Date.now() - previewCache.at < PREVIEW_TTL) {
+      if (Date.now() - previewCache.at > PREVIEW_REFRESH_AFTER) refreshPreviewInBackground();
+      return ok(reply, previewCache.data);
+    }
+    const [candidates, sameSource] = await Promise.all([loadMergeCandidates(), loadSameSourceGroups()]);
+    const payload = buildPreviewPayload(candidates, sameSource);
+    previewCache = { at: Date.now(), data: payload };
+    return ok(reply, payload);
   });
 
   /** 单组详情：成员与线路来源 */
@@ -733,6 +817,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     }));
 
     const merged = await mergeGroup(members, Number(body.keep_id ?? 0) || undefined);
+    invalidatePreview();
     return ok(reply, { merged });
   });
 
@@ -753,6 +838,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
             ON DUPLICATE KEY UPDATE kind = ${kind}`,
       );
     }
+    invalidatePreview();
     return ok(reply, { ignored: body.ignored !== false });
   });
 
@@ -773,6 +859,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     for (const group of auto) {
       merged += await mergeGroup(group.members);
     }
+    invalidatePreview();
     return ok(reply, { groups: auto.length, merged });
   });
 
@@ -818,6 +905,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
               ON DUPLICATE KEY UPDATE kind = ${group.kind}`,
         );
       }
+      invalidatePreview();
       return ok(reply, { groups: groups.length, merged: 0, skipped: 0, ignored: groups.length });
     }
 
@@ -825,6 +913,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
     for (const group of mergeable) {
       merged += await mergeGroup(group.members);
     }
+    invalidatePreview();
     return ok(reply, { groups: mergeable.length, merged, skipped, ignored: 0 });
   });
 };

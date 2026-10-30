@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod_play` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_vod_source_from` (`vod_id`,`source_id`,`source_from`),
   KEY `idx_source` (`source_id`),
-  KEY `idx_source_vod` (`source_id`,`source_vod_id`)
+  KEY `idx_source_vod_vod` (`source_id`,`source_vod_id`,`vod_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_collect_source` (
