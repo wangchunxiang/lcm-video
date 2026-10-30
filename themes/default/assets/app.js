@@ -197,11 +197,24 @@
         setting: !!flags.setting,
         customType: {
           m3u8: function (element, target) {
+            /* iOS Safari 早期版本没有 MediaSource，hls.js 无法工作；
+               这类浏览器本身原生支持 HLS，直接交给 video 元素播放 */
+            if (!window.Hls.isSupported()) {
+              if (element.canPlayType('application/vnd.apple.mpegurl')) {
+                element.src = target;
+                if (auto) element.play().catch(function () {});
+              } else {
+                showTip(container, '该线路暂不支持在线播放');
+              }
+              return;
+            }
             var instance = new window.Hls(hlsConfig());
             instance.loadSource(target);
             instance.attachMedia(element);
             instance.on(window.Hls.Events.ERROR, function (_event, data) {
-              if (data && data.fatal) showTip(container, '该线路暂不支持在线播放');
+              if (!data || !data.fatal) return;
+              var isNetwork = data.type === window.Hls.ErrorTypes.NETWORK_ERROR;
+              showTip(container, isNetwork ? '该线路加载失败，请切换线路' : '该线路暂不支持在线播放');
             });
           },
         },
