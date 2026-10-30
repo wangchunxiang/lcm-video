@@ -152,6 +152,34 @@ async function loadYears(db: Db, categoryId: number, scope: 'parent' | 'type'): 
   return years;
 }
 
+const searchYearCache = new Map<string, { at: number; years: number[] }>();
+
+/** 搜索结果里出现过的年份，供搜索页年份筛选 */
+async function loadSearchYears(db: Db, keyword: string): Promise<number[]> {
+  const hit = searchYearCache.get(keyword);
+  if (hit && Date.now() - hit.at < 60_000) return hit.years;
+
+  const rows = await db
+    .select({ year: vod.year })
+    .from(vod)
+    .where(
+      and(
+        eq(vod.status, 1),
+        like(vod.name, `%${keyword}%`),
+        sql`${vod.year} > 0`,
+        lte(vod.year, sql`YEAR(NOW())`),
+      ),
+    )
+    .groupBy(vod.year)
+    .orderBy(desc(vod.year))
+    .limit(15);
+
+  const years = rows.map((row) => row.year);
+  if (searchYearCache.size > 500) searchYearCache.clear();
+  searchYearCache.set(keyword, { at: Date.now(), years });
+  return years;
+}
+
 export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
@@ -695,36 +723,56 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const config = await loadSiteConfig(db);
     const keyword = (query.wd ?? '').trim().slice(0, 50);
     const page = parsePage(query.page);
+    const year = toInt(query.year);
+    const sort = query.sort === 'new' ? 'new' : 'time';
 
     if (!keyword) {
       return render(
         reply,
         'search',
         { title: `搜索： - ${config.name}`, description: config.description, noindex: true },
-        { keyword: '', vods: [], pagination: buildPagination(1, config.listPageSize, 0) },
+        {
+          keyword: '',
+          vods: [],
+          pagination: buildPagination(1, config.listPageSize, 0),
+          years: [],
+          filter: { wd: '', year: '', sort },
+        },
       );
     }
 
-    const where = and(eq(vod.status, 1), like(vod.name, `%${keyword}%`));
+    const conditions: SQL[] = [eq(vod.status, 1), like(vod.name, `%${keyword}%`)];
+    if (year > 0) conditions.push(eq(vod.year, year));
+    const where = and(...conditions);
     const countRows = await db.select({ total: sql<number>`count(*)` }).from(vod).where(where);
     const total = Number(countRows[0]?.total ?? 0);
     const pagination = buildPagination(page, config.listPageSize, total);
     if (page > pagination.total_pages) return notFound(reply);
 
-    const rows = await db
-      .select(vodColumns())
-      .from(vod)
-      .leftJoin(category, eq(category.id, vod.categoryId))
-      .where(where)
-      .orderBy(desc(vod.collectedAt), desc(vod.id))
-      .limit(config.listPageSize)
-      .offset((page - 1) * config.listPageSize);
+    const order = sort === 'new' ? [desc(vod.createdAt), desc(vod.id)] : [desc(vod.collectedAt), desc(vod.id)];
+    const [rows, years] = await Promise.all([
+      db
+        .select(vodColumns())
+        .from(vod)
+        .leftJoin(category, eq(category.id, vod.categoryId))
+        .where(where)
+        .orderBy(...order)
+        .limit(config.listPageSize)
+        .offset((page - 1) * config.listPageSize),
+      loadSearchYears(db, keyword),
+    ]);
 
     return render(
       reply,
       'search',
       { title: `搜索：${keyword} - ${config.name}`, description: config.description, noindex: true },
-      { keyword, vods: rows.map(toCard), pagination, filter: { wd: keyword } },
+      {
+        keyword,
+        vods: rows.map(toCard),
+        pagination,
+        years,
+        filter: { wd: keyword, year: year > 0 ? year : '', sort },
+      },
     );
   });
 };

@@ -2,6 +2,7 @@
 {% block content %}
 {% assign base = '/search' %}
 
+<div class="list-page">
 <nav class="breadcrumb">
   <a href="/">首页</a>
   <span>/</span>
@@ -14,6 +15,28 @@
 {% if keyword == '' %}
 <p class="empty-tip">请在顶部搜索框输入片名。</p>
 {% else %}
+{% if years.size > 0 %}
+<div class="filter-block">
+  <div class="filter-row">
+    <span class="filter-label">年份</span>
+    {% assign fy_all = filter | with_year: '' %}
+    <a class="filter-item{% if filter.year == '' %} active{% endif %}" href="{{ base | page_url: fy_all, 1 }}">全部</a>
+    {% for y in years %}
+    {% assign fy = filter | with_year: y %}
+    <a class="filter-item{% if filter.year == y %} active{% endif %}" href="{{ base | page_url: fy, 1 }}">{{ y }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="filter-row">
+    <span class="filter-label">排序</span>
+    {% assign fs_time = filter | with_sort: 'time' %}
+    {% assign fs_new = filter | with_sort: 'new' %}
+    <a class="filter-item{% if filter.sort == 'time' %} active{% endif %}" href="{{ base | page_url: fs_time, 1 }}">最近更新</a>
+    <a class="filter-item{% if filter.sort == 'new' %} active{% endif %}" href="{{ base | page_url: fs_new, 1 }}">最新入库</a>
+  </div>
+</div>
+{% endif %}
+
 <div class="vod-grid">
   {% for v in vods %}
   {% render 'partials/vod-card', card: v %}
@@ -24,4 +47,5 @@
 
 {% render 'partials/pagination', pagination: pagination, base: base, filter: filter %}
 {% endif %}
+</div>
 {% endblock %}
