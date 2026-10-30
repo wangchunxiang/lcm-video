@@ -5,7 +5,7 @@ import { api } from '../../api/client.ts';
 
 interface LightGroup {
   key: string;
-  kind: 'auto' | 'suspect';
+  kind: 'auto' | 'suspect' | 'same';
   name: string;
   year: number;
   count: number;
@@ -31,7 +31,7 @@ interface Member {
 
 interface GroupDetail {
   key: string;
-  kind: 'auto' | 'suspect';
+  kind: 'auto' | 'suspect' | 'same';
   name: string;
   year: number;
   members: Member[];
@@ -41,10 +41,12 @@ interface GroupDetail {
 interface Preview {
   auto: LightGroup[];
   suspects: LightGroup[];
+  same: LightGroup[];
   summary: {
     autoGroups: number;
     autoVods: number;
     suspectGroups: number;
+    sameGroups: number;
     conflictGroups: number;
     ignored: number;
   };
@@ -53,7 +55,7 @@ interface Preview {
 const loading = ref(false);
 const busy = ref(false);
 const preview = ref<Preview | null>(null);
-const tab = ref<'auto' | 'suspect'>('auto');
+const tab = ref<'auto' | 'suspect' | 'same'>('auto');
 const keyword = ref('');
 const activeGroup = ref<LightGroup | null>(null);
 const detail = ref<GroupDetail | null>(null);
@@ -61,10 +63,22 @@ const detailLoading = ref(false);
 const keepId = ref(0);
 
 const summary = computed(
-  () => preview.value?.summary ?? { autoGroups: 0, autoVods: 0, suspectGroups: 0, conflictGroups: 0, ignored: 0 },
+  () =>
+    preview.value?.summary ?? {
+      autoGroups: 0,
+      autoVods: 0,
+      suspectGroups: 0,
+      sameGroups: 0,
+      conflictGroups: 0,
+      ignored: 0,
+    },
 );
 
-const groups = computed(() => (tab.value === 'auto' ? (preview.value?.auto ?? []) : (preview.value?.suspects ?? [])));
+const groups = computed(() => {
+  if (tab.value === 'auto') return preview.value?.auto ?? [];
+  if (tab.value === 'suspect') return preview.value?.suspects ?? [];
+  return preview.value?.same ?? [];
+});
 
 const filtered = computed(() => {
   const word = keyword.value.trim();
@@ -86,6 +100,18 @@ function marks(name: string): Array<{ ch: string; cls: string }> {
     ch,
     cls: /\s/.test(ch) ? 'ws' : PUNCT.test(ch) ? 'punct' : '',
   }));
+}
+
+function kindText(kind: 'auto' | 'suspect' | 'same'): string {
+  if (kind === 'auto') return '可合并';
+  if (kind === 'suspect') return '疑似重复';
+  return '同源重复';
+}
+
+function kindTagType(kind: 'auto' | 'suspect' | 'same'): 'success' | 'warning' | 'danger' {
+  if (kind === 'auto') return 'success';
+  if (kind === 'suspect') return 'warning';
+  return 'danger';
 }
 
 function statusText(status: number): string {
@@ -234,6 +260,7 @@ onMounted(load);
         <div class="summary">
           <span>可自动合并 <b>{{ summary.autoGroups }}</b> 组（减少 {{ summary.autoVods }} 条）</span>
           <span>疑似重复 <b>{{ summary.suspectGroups }}</b> 组</span>
+          <span>同源同 ID <b>{{ summary.sameGroups }}</b> 组</span>
           <span class="muted">年份冲突 {{ summary.conflictGroups }} 组已排除<span v-if="summary.ignored"> · 已忽略 {{ summary.ignored }} 组</span></span>
         </div>
         <div class="head-actions">
@@ -249,6 +276,7 @@ onMounted(load);
           <el-radio-group v-model="tab" size="small" class="tabs">
             <el-radio-button value="auto">可合并 {{ summary.autoGroups }}</el-radio-button>
             <el-radio-button value="suspect">疑似 {{ summary.suspectGroups }}</el-radio-button>
+            <el-radio-button value="same">同源同 ID {{ summary.sameGroups }}</el-radio-button>
           </el-radio-group>
           <el-input v-model="keyword" size="small" placeholder="搜索片名" clearable />
 
@@ -272,14 +300,15 @@ onMounted(load);
           <div v-if="!detail" class="empty">
             <p>从左侧选一组影片，这里会列出它名下的每一条记录，勾选要保留的那条，其余并入后删除。</p>
             <p class="empty-note">判重只按「名称 + 年份」，名称里的空格会被忽略，标点则算作差异。</p>
+            <p class="empty-note">「同源同 ID」是同一采集源的同一个条目挂在两部影片上，属于必定的重复。</p>
           </div>
 
           <template v-else>
             <div class="detail-head">
               <div class="detail-title">
                 <span class="detail-name">{{ detail.name }}</span>
-                <el-tag :type="detail.kind === 'auto' ? 'success' : 'warning'" size="small" effect="plain">
-                  {{ detail.kind === 'auto' ? '可合并' : '疑似重复' }}
+                <el-tag :type="kindTagType(detail.kind)" size="small" effect="plain">
+                  {{ kindText(detail.kind) }}
                 </el-tag>
               </div>
               <div class="detail-actions">

@@ -221,7 +221,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
   interface MergeGroup {
     key: string;
-    kind: 'auto' | 'suspect';
+    kind: 'auto' | 'suspect' | 'same';
     name: string;
     year: number;
     members: MergeMember[];
@@ -348,22 +348,23 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   };
 
   /** 取一组重复影片，含线路来源，用于右侧对比 */
-  const loadGroupDetail = async (kind: 'auto' | 'suspect', key: string): Promise<MergeGroup | null> => {
-    const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
+  /** 按 id 列表取成员（含线路来源） */
+  const loadMembersByIds = async (ids: number[]): Promise<MergeMember[]> => {
+    if (ids.length === 0) return [];
+    const idList = sql.join(ids.map((id) => sql`${id}`), sql`, `);
     const [rawRows] = await db.execute(
       sql`SELECT v.id, v.name, v.year, v.status, v.cover, v.name_hash,
             DATE_FORMAT(v.collected_at, '%Y-%m-%d %H:%i:%s') AS collected_at,
             (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = v.id) AS play_count
-          FROM lcm_vod v WHERE v.${sql.raw(column)} = ${key} ORDER BY v.id`,
+          FROM lcm_vod v WHERE v.id IN (${idList}) ORDER BY v.id`,
     );
     const rows = rawRows as unknown as Array<Record<string, unknown>>;
-    if (rows.length < 2) return null;
+    if (rows.length === 0) return [];
 
-    const ids = rows.map((row) => Number(row.id));
     const [lineRows] = await db.execute(
       sql`SELECT p.vod_id, p.source_id, p.source_from, s.name AS source_name
           FROM lcm_vod_play p LEFT JOIN lcm_collect_source s ON s.id = p.source_id
-          WHERE p.vod_id IN (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+          WHERE p.vod_id IN (${idList})
           ORDER BY p.source_id, p.id`,
     );
     const linesByVod = new Map<number, MergeLine[]>();
@@ -378,7 +379,7 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       linesByVod.set(vodId, list);
     }
 
-    const members: MergeMember[] = rows.map((row) => ({
+    return rows.map((row) => ({
       id: Number(row.id),
       name: String(row.name),
       year: Number(row.year) || 0,
@@ -389,6 +390,90 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       strictKey: String(row.name_hash),
       lines: linesByVod.get(Number(row.id)) ?? [],
     }));
+  };
+
+  interface SameSourceGroup {
+    key: string;
+    name: string;
+    year: number;
+    count: number;
+    playTotal: number;
+    vodIds: number[];
+  }
+
+  /** 同源同 source_vod_id 却挂在多部影片上的分组：这是铁证重复，不需要人工判断 */
+  const loadSameSourceGroups = async (): Promise<SameSourceGroup[]> => {
+    const [rawRows] = await db.execute(
+      sql`SELECT source_id, source_vod_id, COUNT(DISTINCT vod_id) AS c,
+            GROUP_CONCAT(DISTINCT vod_id ORDER BY vod_id) AS ids
+          FROM lcm_vod_play
+          WHERE source_vod_id IS NOT NULL AND source_vod_id <> ''
+          GROUP BY source_id, source_vod_id
+          HAVING c > 1`,
+    );
+    const rows = rawRows as unknown as Array<Record<string, unknown>>;
+    if (rows.length === 0) return [];
+
+    const allIds = rows.flatMap((row) => String(row.ids).split(',').map((id) => Number(id)));
+    const [vodRows] = await db.execute(
+      sql`SELECT id, name, year,
+            (SELECT COUNT(*) FROM lcm_vod_play p WHERE p.vod_id = lcm_vod.id) AS play_count
+          FROM lcm_vod WHERE id IN (${sql.join(allIds.map((id) => sql`${id}`), sql`, `)})`,
+    );
+    const vodMap = new Map<number, { name: string; year: number; playCount: number }>();
+    for (const row of vodRows as unknown as Array<Record<string, unknown>>) {
+      vodMap.set(Number(row.id), {
+        name: String(row.name),
+        year: Number(row.year) || 0,
+        playCount: Number(row.play_count) || 0,
+      });
+    }
+
+    return rows.map((row) => {
+      const vodIds = String(row.ids)
+        .split(',')
+        .map((id) => Number(id))
+        .filter((id) => vodMap.has(id))
+        .sort((a, b) => a - b);
+      const first = vodMap.get(vodIds[0]!);
+      return {
+        key: `${Number(row.source_id)}-${String(row.source_vod_id)}`,
+        name: first?.name ?? '',
+        year: first?.year ?? 0,
+        count: vodIds.length,
+        playTotal: vodIds.reduce((sum, id) => sum + (vodMap.get(id)?.playCount ?? 0), 0),
+        vodIds,
+      };
+    });
+  };
+
+  const isHashKey = (key: string): boolean => /^[0-9a-f]{32}$/.test(key);
+  const isSameKey = (key: string): boolean => /^\d+-[^\s-][^\s]*$/.test(key);
+
+  /** 取一组重复影片，含线路来源，用于右侧对比 */
+  const loadGroupDetail = async (
+    kind: 'auto' | 'suspect' | 'same',
+    key: string,
+  ): Promise<MergeGroup | null> => {
+    let ids: number[] = [];
+
+    if (kind === 'same') {
+      const [sourceId, sourceVodId] = key.split('-');
+      const [rawRows] = await db.execute(
+        sql`SELECT DISTINCT vod_id FROM lcm_vod_play
+            WHERE source_id = ${Number(sourceId)} AND source_vod_id = ${String(sourceVodId)}`,
+      );
+      ids = (rawRows as unknown as Array<{ vod_id: number }>).map((row) => Number(row.vod_id));
+    } else {
+      const column: Column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
+      const [rawRows] = await db.execute(
+        sql`SELECT id FROM lcm_vod WHERE v.${sql.raw(column)} = ${key}`,
+      );
+      ids = (rawRows as unknown as Array<{ id: number }>).map((row) => Number(row.id));
+    }
+
+    const members = await loadMembersByIds(ids);
+    if (members.length < 2) return null;
 
     return {
       key,
@@ -402,9 +487,10 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
 
   /** 预览：分组的轻量列表（不含线路明细） */
   app.get('/merge-vods/preview', async (_req, reply) => {
-    const [strictGroups, looseGroups, ignored] = await Promise.all([
+    const [strictGroups, looseGroups, sameSource, ignored] = await Promise.all([
       loadGroups('name_hash', 'auto'),
       loadGroups('name_hash_loose', 'suspect'),
+      loadSameSourceGroups(),
       loadIgnored(),
     ]);
 
@@ -426,13 +512,24 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
       playTotal: group.playTotal,
     });
 
+    const same = sameSource.filter((group) => !ignored.has(ignoreKey('same', group.key)));
+
     return ok(reply, {
       auto: auto.map(light),
       suspects: suspects.map(light),
+      same: same.map((group) => ({
+        key: group.key,
+        kind: 'same' as const,
+        name: group.name,
+        year: group.year,
+        count: group.count,
+        playTotal: group.playTotal,
+      })),
       summary: {
         autoGroups: auto.length,
         autoVods: auto.reduce((sum, group) => sum + group.members.length - 1, 0),
         suspectGroups: suspects.length,
+        sameGroups: same.length,
         conflictGroups: conflict.length,
         ignored: ignored.size,
       },
@@ -443,8 +540,9 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   app.get('/merge-vods/group', async (req, reply) => {
     const query = req.query as { key?: string; kind?: string };
     const key = (query.key ?? '').trim();
-    const kind = query.kind === 'suspect' ? 'suspect' : 'auto';
-    if (!/^[0-9a-f]{32}$/.test(key)) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
+    const kind = query.kind === 'same' ? 'same' : query.kind === 'suspect' ? 'suspect' : 'auto';
+    const valid = kind === 'same' ? isSameKey(key) : isHashKey(key);
+    if (!valid) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
 
     const group = await loadGroupDetail(kind, key);
     if (!group) return fail(reply, 404, ErrorCode.NOT_FOUND, '这组影片已经不存在了');
@@ -483,8 +581,9 @@ export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   app.post('/merge-vods/ignore', async (req, reply) => {
     const body = (req.body ?? {}) as { key?: string; kind?: string; ignored?: boolean };
     const key = (body.key ?? '').trim();
-    const kind = body.kind === 'suspect' ? 'suspect' : 'auto';
-    if (!/^[0-9a-f]{32}$/.test(key)) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
+    const kind = body.kind === 'same' ? 'same' : body.kind === 'suspect' ? 'suspect' : 'auto';
+    const valid = kind === 'same' ? isSameKey(key) : isHashKey(key);
+    if (!valid) return fail(reply, 400, ErrorCode.BAD_REQUEST, '分组标识不正确');
 
     const mergeKey = ignoreKey(kind, key);
     if (body.ignored === false) {
