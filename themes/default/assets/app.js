@@ -188,6 +188,7 @@
         lang: flags.lang,
         autoplay: auto,
         hotkey: true,
+        theme: '#2563eb',
         autoSize: false,
         airplay: true,
         screenshot: !!flags.screenshot,

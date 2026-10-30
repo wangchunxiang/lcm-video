@@ -72,7 +72,7 @@
     <div class="ep-panel m-ep-panel is-active">
       <div class="episode-grid m-ep-grid">
         {% for item in episodes %}
-        <a class="m-ep{% if item.index == current_ep %} is-on{% endif %}" href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
+        <a class="m-ep ep-w{{ item.width }}{% if item.index == current_ep %} is-on{% endif %}" href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
         {% endfor %}
       </div>
     </div>
