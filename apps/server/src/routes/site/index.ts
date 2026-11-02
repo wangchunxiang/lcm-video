@@ -385,7 +385,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
   }
 
   app.get('/detail/:id', async (req, reply) => {
-    const DETAIL_PAGE_SIZE = 50;
     const id = toInt((req.params as { id: string }).id);
     if (id <= 0) return notFound(reply);
 
@@ -431,39 +430,21 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const parent = parentRows[0];
 
     const lines = await loadLines(id);
-    const query = req.query as { line?: string; page?: string; order?: string };
+    const query = req.query as { line?: string };
     const wantedLineId = toInt(query.line);
     const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
-    const parsedEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
-    const desc = query.order === 'desc';
-    const numbered = parsedEpisodes.map((ep, idx) => ({ ep, idx: idx + 1 }));
-    const allEpisodes = desc ? numbered.slice().reverse() : numbered;
+    const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
     const totalEpisodes = allEpisodes.length;
-    const pageCount = Math.max(1, Math.ceil(totalEpisodes / DETAIL_PAGE_SIZE));
-    const askedPage = toInt(query.page);
-    const currentPage = Math.min(Math.max(1, askedPage || 1), pageCount);
-    const offset = (currentPage - 1) * DETAIL_PAGE_SIZE;
-    const episodes = allEpisodes.slice(offset, offset + DETAIL_PAGE_SIZE).map(({ ep, idx }) => {
-      const label = episodeLabel(ep, idx - 1);
-      return { index: idx, name: ep.name, url: ep.url, width: episodeSpan(label) };
+    const episodes = allEpisodes.map((ep, index) => {
+      const label = episodeLabel(ep, index);
+      return { index: index + 1, name: ep.name, url: ep.url, width: episodeSpan(label) };
     });
     const currentLineId = currentLine?.id ?? 0;
-    const orderParam = desc ? '&order=desc' : '';
-    const pageHref = (pageNo: number) =>
-      `/detail/${row.id}?line=${currentLineId}${orderParam}&page=${pageNo}`;
-    const pageLinks: Array<{ no: number; label: string; href: string; current: boolean }> = [];
-    if (pageCount > 1) {
-      for (let i = 1; i <= pageCount; i += 1) {
-        const start = (i - 1) * DETAIL_PAGE_SIZE + 1;
-        const end = Math.min(i * DETAIL_PAGE_SIZE, totalEpisodes);
-        pageLinks.push({ no: i, label: `${start}-${end}`, href: pageHref(i), current: i === currentPage });
-      }
-    }
     const lineTabs = lines.map((item) => ({
       id: item.id,
       name: item.source_name,
       total: parsePlayUrl(item.playUrl).length,
-      href: `/detail/${row.id}?line=${item.id}${orderParam}&page=1`,
+      href: `/detail/${row.id}?line=${item.id}`,
     }));
     return render(
       reply,
@@ -510,15 +491,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           ? { id: currentLine.id, name: currentLine.source_name, episode_count: totalEpisodes }
           : null,
         episodes,
-        page: currentPage,
-        page_count: pageCount,
-        page_links: pageLinks,
-        page_total: totalEpisodes,
-        prev_href: currentPage > 1 ? pageHref(currentPage - 1) : '',
-        next_href: currentPage < pageCount ? pageHref(currentPage + 1) : '',
-        detail_url: `/detail/${row.id}`,
-        sort_href: `/detail/${row.id}?line=${currentLineId}${desc ? '' : '&order=desc'}&page=1`,
-        sort_label: desc ? '倒序' : '正序',
         nav_path: parent?.alias ?? '',
       },
     );

@@ -503,33 +503,11 @@ button { font: inherit; color: inherit; }
 .m-footer p { margin: 0; }
 .m-footer-note { margin-top: 6px !important; line-height: 1.6; }
 
-/* 详情页剧集分页（每页 50 集） */
+/* 详情页剧集：5 行高度内滚动 */
 a.m-pill { text-decoration: none; }
 
-.m-pager {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
+.m-ep-scroll {
+  max-height: 182px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
-
-.m-pg-segs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
-.m-pg-segs::-webkit-scrollbar { display: none; }
-
-.m-pager .m-pg {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 11px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text-2);
-  font-size: 12px;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.m-pager .m-pg.is-cur { background: var(--primary); border-color: var(--primary); color: #fff; }

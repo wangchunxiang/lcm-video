@@ -71,7 +71,7 @@
     {% for line in line_tabs %}
     <a class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" href="{{ line.href }}">{{ line.name }} <span class="count">{{ line.total }}</span></a>
     {% endfor %}
-    <a class="ep-sort" href="{{ sort_href }}" data-ep-sort rel="nofollow">{{ sort_label }}</a>
+    <button type="button" class="ep-sort" data-ep-sort>正序</button>
   </div>
   <div class="ep-panel is-active">
     {% if episodes.size > 0 %}
@@ -86,17 +86,6 @@
     <p class="empty-tip">该线路暂无剧集</p>
     {% endif %}
   </div>
-  {% if page_count > 1 %}
-  <div class="ep-pager">
-    {% if prev_href != '' %}<a class="pg pg-arrow" href="{{ prev_href }}" rel="prev" aria-label="上一段">‹</a>{% else %}<span class="pg pg-arrow is-off">‹</span>{% endif %}
-    <div class="pg-segs">
-      {% for item in page_links %}
-      <a class="pg seg{% if item.current %} is-cur{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
-      {% endfor %}
-    </div>
-    {% if next_href != '' %}<a class="pg pg-arrow" href="{{ next_href }}" rel="next" aria-label="下一段">›</a>{% else %}<span class="pg pg-arrow is-off">›</span>{% endif %}
-  </div>
-  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

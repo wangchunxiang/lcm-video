@@ -40,7 +40,7 @@
 <section class="m-sec">
   <div class="m-ep-head">
     <h2>播放列表</h2>
-    <a class="m-sort" href="{{ sort_href }}" data-ep-sort rel="nofollow">{{ sort_label }}</a>
+    <button type="button" class="m-sort" data-ep-sort>正序</button>
   </div>
   <div class="m-lines m-lines-tabs">
     {% for line in line_tabs %}
@@ -49,24 +49,17 @@
   </div>
   <div class="ep-panel m-ep-panel is-active">
     {% if episodes.size > 0 %}
-    <div class="episode-grid m-ep-grid">
-      {% for ep in episodes %}
-      <a class="m-ep" href="/play/{{ vod.id }}/{{ current_line_id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
-      {% endfor %}
+    <div class="m-ep-scroll">
+      <div class="episode-grid m-ep-grid">
+        {% for ep in episodes %}
+        <a class="m-ep" href="/play/{{ vod.id }}/{{ current_line_id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
+        {% endfor %}
+      </div>
     </div>
     {% else %}
     <p class="m-empty">该线路暂无剧集</p>
     {% endif %}
   </div>
-  {% if page_count > 1 %}
-  <div class="m-pager">
-    <div class="m-pg-segs">
-      {% for item in page_links %}
-      <a class="m-pg{% if item.current %} is-cur{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
 </section>
 {% endif %}
 {% endblock %}
