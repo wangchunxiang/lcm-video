@@ -71,7 +71,7 @@
     {% for line in line_tabs %}
     <a class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" href="{{ line.href }}">{{ line.name }} <span class="count">{{ line.total }}</span></a>
     {% endfor %}
-    <a class="ep-sort" href="{{ sort_href }}">{{ sort_label }}</a>
+    <a class="ep-sort" href="{{ sort_href }}" data-ep-sort rel="nofollow">{{ sort_label }}</a>
   </div>
   <div class="ep-panel is-active">
     {% if episodes.size > 0 %}
@@ -88,23 +88,9 @@
   </div>
   {% if page_count > 1 %}
   <div class="ep-pager">
-    {% if prev_href != '' %}<a class="pg" href="{{ prev_href }}" rel="prev">‹</a>{% else %}<span class="pg is-off">‹</span>{% endif %}
-    {% for item in page_links %}
-      {% if item.gap %}
-      <span class="gap">…</span>
-      {% elsif item.current %}
-      <span class="pg is-cur">{{ item.no }}</span>
-      {% else %}
-      <a class="pg" href="{{ item.href }}">{{ item.no }}</a>
-      {% endif %}
-    {% endfor %}
-    {% if next_href != '' %}<a class="pg" href="{{ next_href }}" rel="next">›</a>{% else %}<span class="pg is-off">›</span>{% endif %}
+    {% if prev_href != '' %}<a class="pg" href="{{ prev_href }}" rel="prev">‹ 上一页</a>{% else %}<span class="pg is-off">‹ 上一页</span>{% endif %}
     <span class="pg-info">第 {{ page }} / {{ page_count }} 页 · 共 {{ page_total }} 集</span>
-    <form class="pg-jump" method="get" action="{{ detail_url }}">
-      <input type="hidden" name="line" value="{{ current_line_id }}">
-      <input type="number" name="page" min="1" max="{{ page_count }}" placeholder="页码" aria-label="跳转到页码">
-      <button type="submit">跳转</button>
-    </form>
+    {% if next_href != '' %}<a class="pg" href="{{ next_href }}" rel="next">下一页 ›</a>{% else %}<span class="pg is-off">下一页 ›</span>{% endif %}
   </div>
   {% endif %}
 </section>

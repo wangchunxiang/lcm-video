@@ -451,19 +451,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const orderParam = desc ? '&order=desc' : '';
     const pageHref = (pageNo: number) =>
       `/detail/${row.id}?line=${currentLineId}${orderParam}&page=${pageNo}`;
-    const pageLinks: Array<{ no?: number; href?: string; current?: boolean; gap?: boolean }> = [];
-    if (pageCount > 1) {
-      const last = pageCount;
-      const start = Math.min(Math.max(1, currentPage - 2), Math.max(1, last - 4));
-      const end = Math.min(last, start + 4);
-      if (start > 1) pageLinks.push({ no: 1, href: pageHref(1), current: false });
-      if (start > 2) pageLinks.push({ gap: true });
-      for (let i = start; i <= end; i += 1) {
-        pageLinks.push({ no: i, href: pageHref(i), current: i === currentPage });
-      }
-      if (end < last - 1) pageLinks.push({ gap: true });
-      if (end < last) pageLinks.push({ no: last, href: pageHref(last), current: false });
-    }
     const lineTabs = lines.map((item) => ({
       id: item.id,
       name: item.source_name,
@@ -518,7 +505,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         page: currentPage,
         page_count: pageCount,
         page_total: totalEpisodes,
-        page_links: pageLinks,
         prev_href: currentPage > 1 ? pageHref(currentPage - 1) : '',
         next_href: currentPage < pageCount ? pageHref(currentPage + 1) : '',
         detail_url: `/detail/${row.id}`,

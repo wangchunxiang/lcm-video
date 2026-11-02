@@ -1,20 +1,50 @@
 (function () {
   var btn = document.querySelector('[data-ep-sort]');
   if (!btn) return;
+  if (!window.fetch || !window.DOMParser) return;
 
-  var desc = false;
+  btn.addEventListener('click', function (event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    var href = btn.getAttribute('href');
+    if (!href) return;
 
-  btn.addEventListener('click', function () {
-    desc = !desc;
-    btn.textContent = desc ? '倒序' : '正序';
+    event.preventDefault();
+    btn.classList.add('is-loading');
 
-    Array.prototype.forEach.call(document.querySelectorAll('.ep-panel .episode-grid'), function (grid) {
-      var nodes = Array.prototype.slice.call(grid.children);
-      nodes.reverse();
-      Array.prototype.forEach.call(nodes, function (node) {
-        grid.appendChild(node);
+    fetch(href, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        ['.ep-panel', '.ep-pager', '.m-ep-panel', '.m-pager'].forEach(function (sel) {
+          var next = doc.querySelector(sel);
+          var cur = document.querySelector(sel);
+          if (next && cur) cur.replaceWith(next);
+          else if (!next && cur) cur.remove();
+        });
+
+        var nextSort = doc.querySelector('[data-ep-sort]');
+        if (nextSort) {
+          btn.setAttribute('href', nextSort.getAttribute('href'));
+          btn.textContent = nextSort.textContent;
+        }
+
+        var tabs = document.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
+        var nextTabs = doc.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
+        Array.prototype.forEach.call(tabs, function (tab, i) {
+          if (nextTabs[i]) tab.setAttribute('href', nextTabs[i].getAttribute('href'));
+        });
+
+        if (window.history && history.replaceState) history.replaceState(null, '', href);
+      })
+      .catch(function () {
+        window.location.href = href;
+      })
+      .finally(function () {
+        btn.classList.remove('is-loading');
       });
-    });
   });
 })();
 
