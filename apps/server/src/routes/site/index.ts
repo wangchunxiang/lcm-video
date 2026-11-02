@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
-import { category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
+import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
 import { episodeLabel, episodeSpan, parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
@@ -539,9 +539,15 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     if (!current) return notFound(reply);
 
     const isHls = /\.m3u8(\?|$)/i.test(current.url);
-    /* HLS 线路一律走 /play/ad：桌面端在无广告特征时会被 302 回源站，
-       手机端则由服务端代取播放列表与分片 */
-    const proxyPlayUrl = isHls && !line.parse_url ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
+    const adRows =
+      line.source_id > 0 && !line.parse_url && isHls
+        ? await db
+            .select({ id: adFeature.id })
+            .from(adFeature)
+            .where(eq(adFeature.sourceId, line.source_id))
+            .limit(1)
+        : [];
+    const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
 
     const episodes: EpisodeView[] = all.map((item, index) => ({
       index: index + 1,
