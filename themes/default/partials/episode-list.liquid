@@ -2,7 +2,7 @@
 <div class="episode-grid">
   {% for ep in episodes %}
   <a
-    class="episode-btn ep-w{{ ep.width }}{% if ep.index == current_ep %} current{% endif %}"
+    class="episode-btn{% if ep.index == current_ep %} current{% endif %}"
     href="{{ play_base }}/{{ ep.index }}"
     title="{{ ep.name }}"
   >{{ ep.name }}</a>

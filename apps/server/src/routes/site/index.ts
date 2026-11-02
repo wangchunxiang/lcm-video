@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from 'drizzle-or
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
-import { episodeLabel, episodeSpan, parsePlayUrl } from '@lcm/shared';
+import { episodeLabel, parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
@@ -54,7 +54,6 @@ interface EpisodeView {
   name: string;
   url: string;
   /** 标签占格：1 一格、2 两格、3 整行 */
-  width: 1 | 2 | 3;
 }
 
 /** 分页页码列表：页数多时用省略号收敛，形如 [1,'gap',8,9,10,'gap',62] */
@@ -437,7 +436,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const totalEpisodes = allEpisodes.length;
     const episodes = allEpisodes.map((ep, index) => {
       const label = episodeLabel(ep, index);
-      return { index: index + 1, name: ep.name, url: ep.url, width: episodeSpan(label) };
+      return { index: index + 1, name: ep.name, url: ep.url };
     });
     const currentLineId = currentLine?.id ?? 0;
     const lineTabs = lines.map((item) => ({
@@ -550,7 +549,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       index: index + 1,
       name: item.name,
       url: item.url,
-      width: episodeSpan(item.name || `第 ${index + 1} 集`),
     }));
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
