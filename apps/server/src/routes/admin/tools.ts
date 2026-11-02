@@ -3,6 +3,7 @@ import { and, eq, inArray, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { auditIntegrity, cleanOrphans } from '../../lib/integrity.ts';
 
 export interface ToolOpts {
   db: Db;
@@ -10,6 +11,12 @@ export interface ToolOpts {
 
 export const toolRoutes: FastifyPluginAsync<ToolOpts> = async (app, opts) => {
   const { db } = opts;
+
+  /** 数据一致性巡检：不用外键，孤儿行靠逻辑层与这个巡检兜底 */
+  app.get('/integrity', async (_req, reply) => ok(reply, await auditIntegrity(db)));
+
+  /** 清理孤儿行（线路、映射、任务、广告特征、封面体检） */
+  app.post('/integrity/clean', async (_req, reply) => ok(reply, await cleanOrphans(db)));
 
   /** 播放地址替换的范围条件：指定源只动该源的线路，0 表示全部 */
   const playScope = (from: string, sourceId: number) =>

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, like, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
-import { collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
+import { adFeature, collectSource, collectSourceCategory, collectTask, vodPlay } from '@lcm/db';
 import { CollectClient } from '../../lib/collect/client.ts';
 import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
 import { fetchClassList } from '../../lib/collect/classes.ts';
@@ -195,6 +195,7 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       await tx.delete(vodPlay).where(eq(vodPlay.sourceId, id));
       await tx.delete(collectSourceCategory).where(eq(collectSourceCategory.sourceId, id));
       await tx.delete(collectTask).where(eq(collectTask.sourceId, id));
+      await tx.delete(adFeature).where(eq(adFeature.sourceId, id));
       await tx.delete(collectSource).where(eq(collectSource.id, id));
       await tx.execute(sql`
         UPDATE lcm_vod SET status = 0
@@ -242,6 +243,7 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       await tx.delete(vodPlay).where(inArray(vodPlay.sourceId, ids));
       await tx.delete(collectSourceCategory).where(inArray(collectSourceCategory.sourceId, ids));
       await tx.delete(collectTask).where(inArray(collectTask.sourceId, ids));
+      await tx.delete(adFeature).where(inArray(adFeature.sourceId, ids));
       await tx.delete(collectSource).where(inArray(collectSource.id, ids));
       await tx.execute(sql`
         UPDATE lcm_vod SET status = 0
