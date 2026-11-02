@@ -1,3 +1,4 @@
+import { isMobileRequest } from './mobile.ts';
 import { existsSync, statSync } from 'node:fs';
 import type { FastifyReply } from 'fastify';
 import { Liquid } from 'liquidjs';
@@ -184,22 +185,6 @@ export function safeThemeName(name: string): string {
   return /^[a-zA-Z0-9_-]+$/.test(name) ? name : 'default';
 }
 
-/**
- * 是否手机浏览器访问。
- * 优先看 Client Hints（Chrome/Edge/安卓浏览器会发 Sec-CH-UA-Mobile，比 UA 可靠）；
- * 没有该头时用 UA 兜底，并排除 iPad 与不带 Mobile 的安卓平板。
- */
-export function isMobileRequest(headers: Record<string, unknown>): boolean {
-  const hint = headers['sec-ch-ua-mobile'];
-  if (hint === '?1') return true;
-
-  const ua = typeof headers['user-agent'] === 'string' ? headers['user-agent'] : '';
-  if (!ua) return false;
-  if (/iPad|Tablet|PlayBook|Silk|Kindle/i.test(ua)) return false;
-  if (/Android/i.test(ua) && !/Mobile/i.test(ua)) return false;
-  return /iPhone|iPod|Android|Windows Phone|HarmonyOS|Mobile Safari/i.test(ua);
-}
-
 /** 手机访问且主题里有 mobile/<模板>.liquid 时优先用它，否则用桌面模板兜底 */
 export function pickTemplate(theme: string, template: string, mobile: boolean): string {
   if (!mobile) return template;
@@ -290,3 +275,5 @@ export function createEngine(theme: string): Liquid {
 
   return engine;
 }
+
+export { isMobileRequest };

@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from 'drizzle-or
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
-import { episodeLabel, parsePlayUrl } from '@lcm/shared';
+import { parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import {
   buildPagination,
@@ -16,7 +16,6 @@ import {
   loadSiteConfig,
   parsePage,
   type NavItem,
-  type Pagination,
   type SiteConfig,
 } from '../../lib/theme.ts';
 
@@ -434,10 +433,11 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
     const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
     const totalEpisodes = allEpisodes.length;
-    const episodes = allEpisodes.map((ep, index) => {
-      const label = episodeLabel(ep, index);
-      return { index: index + 1, name: ep.name, url: ep.url };
-    });
+    const episodes = allEpisodes.map((ep, index) => ({
+      index: index + 1,
+      name: ep.name,
+      url: ep.url,
+    }));
     const currentLineId = currentLine?.id ?? 0;
     const lineTabs = lines.map((item) => ({
       id: item.id,
@@ -675,7 +675,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
     // 关键字匹配走覆盖索引 idx_search：一次索引扫描就拿到全部命中的 id、年份和两个时间，
     // 总数、可选年份、排序都在内存里算，不再为同一个词扫三遍表。
-    const pattern = `%${keyword.replace(/[\%_]/g, (ch) => `\${ch}`)}%`;
+    // LIKE 通配符转义：把 % _ \ 转成字面量，避免用户输入的 % 变成「匹配任意」
+    const escaped = keyword.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    const pattern = `%${escaped}%`;
     const conditions: SQL[] = [eq(vod.status, 1), like(vod.name, pattern)];
     if (year > 0) conditions.push(eq(vod.year, year));
     const hits = await db

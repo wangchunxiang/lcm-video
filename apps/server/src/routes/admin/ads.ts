@@ -14,12 +14,6 @@ function toInt(value: unknown): number {
   return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
-function nowClock(): string {
-  const now = new Date();
-  return [now.getHours(), now.getMinutes(), now.getSeconds()]
-    .map((n) => String(n).padStart(2, '0'))
-    .join(':');
-}
 
 export const adsRoutes: FastifyPluginAsync<AdsRouteOpts> = async (app, opts) => {
   const { db } = opts;

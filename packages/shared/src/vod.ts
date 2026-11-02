@@ -20,14 +20,14 @@ export function normalizeName(input: string): string {
  */
 export function matchKey(input: string): string {
   return normalizeName(input)
-    .replace(/[\s ]+/g, '')
+    .replace(/[\s\u00a0]+/g, '')
     .toLowerCase();
 }
 
 /** 宽松键：在严格键基础上去掉标点，只用于后台「疑似重复」提示，不参与自动判重。 */
 export function looseKey(input: string): string {
   return matchKey(input).replace(
-    /[\u00b7\u2022\u30fb:\uff1a,\uff0c\u3001\u3002.;\uff1b!\uff01?\uff1f\u300a\u300b<>\uff08\uff09\u3010\u3011{}\u2014\u2013\-_~\uff5e+\uff0b&\uff06\/]/g,
+    /[\u00b7\u2022\u30fb:\uff1a,\uff0c\u3001\u3002.;\uff1b!\uff01?\uff1f\u300a\u300b<>\uff08\uff09\u3010\u3011{}\u2014\u2013\-_~\uff5e+\uff0b&\uff06/]/g,
     '',
   );
 }
