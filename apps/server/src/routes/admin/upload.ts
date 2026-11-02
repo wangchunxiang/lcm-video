@@ -7,7 +7,8 @@ import type { Env } from '../../env.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { getSettingNumber } from '../../lib/settings.ts';
 
-const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico', '.svg']);
+// 不收 SVG：SVG 可内嵌脚本，上传后同源打开就是存储型 XSS
+const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.ico']);
 
 export interface UploadRouteOpts {
   db: Db;

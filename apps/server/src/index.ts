@@ -55,6 +55,19 @@ await app.register(compress, {
   encodings: ['br', 'gzip', 'deflate'],
 });
 
+// 基础安全响应头：禁止类型嗅探、禁止被第三方页面嵌套、限制 Referrer 与设备权限。
+// CSP 暂不收紧：主题模板里还有内联事件处理器，直接上 script-src 'self' 会拦掉占位图兜底。
+app.addHook('onSend', async (req, reply, payload) => {
+  reply.header('x-content-type-options', 'nosniff');
+  reply.header('x-frame-options', 'SAMEORIGIN');
+  reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+  reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=()');
+  if (req.protocol === 'https') {
+    reply.header('strict-transport-security', 'max-age=15552000; includeSubDomains');
+  }
+  return payload;
+});
+
 await app.register(cookie);
 await app.register(multipart, {
   limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 10 },
@@ -64,6 +77,9 @@ await app.register(fastifyStatic, {
   prefix: '/uploads/',
   maxAge: '30d',
   decorateReply: false,
+  setHeaders(res) {
+    res.setHeader('x-content-type-options', 'nosniff');
+  },
 });
 
 app.get('/healthz', async () => ({

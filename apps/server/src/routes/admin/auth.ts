@@ -61,7 +61,7 @@ export const adminAuthRoutes: FastifyPluginAsync<AuthRouteOpts> = async (app, op
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: req.protocol === 'https',
       maxAge: days * 86400,
     });
 
