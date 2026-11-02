@@ -197,12 +197,7 @@
         setting: !!flags.setting,
         customType: {
           m3u8: function (element, target) {
-            var instance = new window.Hls(hlsConfig());
-            instance.loadSource(target);
-            instance.attachMedia(element);
-            instance.on(window.Hls.Events.ERROR, function (_event, data) {
-              if (data && data.fatal) showTip(container, '该线路暂不支持在线播放');
-            });
+            startPlayback(element, target, container);
           },
         },
       });
@@ -211,6 +206,57 @@
     }
 
     return art.video || null;
+  }
+
+  /* 播放内核：能原生播 HLS 就用原生，否则用 hls.js；任一方失败换另一方再试一次。
+     苹果全系（含 Alook、微信）原生更稳，桌面 Chrome 等只能走 hls.js。 */
+  function startPlayback(element, target, container) {
+    var nativeType = element.canPlayType('application/vnd.apple.mpegurl');
+    var canHls = !!(window.Hls && window.Hls.isSupported());
+    var switched = false;
+
+    function fail() {
+      showTip(container, '该线路暂不支持在线播放');
+    }
+
+    function useNative() {
+      var onError = function () {
+        element.removeEventListener('error', onError);
+        if (!switched && canHls) {
+          switched = true;
+          useHls();
+          return;
+        }
+        fail();
+      };
+      element.addEventListener('error', onError);
+      element.src = target;
+      if (element.autoplay) element.play().catch(function () {});
+    }
+
+    function useHls() {
+      if (!canHls) {
+        if (nativeType) return useNative();
+        return fail();
+      }
+      var instance = new window.Hls(hlsConfig());
+      instance.on(window.Hls.Events.ERROR, function (_event, data) {
+        if (!data || !data.fatal) return;
+        instance.destroy();
+        if (!switched && nativeType) {
+          switched = true;
+          useNative();
+          return;
+        }
+        fail();
+      });
+      instance.loadSource(target);
+      instance.attachMedia(element);
+    }
+
+    if (nativeType) return useNative();
+    if (canHls) return useHls();
+    return useNative();
   }
 
   function initNative(container, url, hls, auto, flags) {
@@ -233,18 +279,7 @@
       return element;
     }
 
-    if (window.Hls && window.Hls.isSupported()) {
-      var instance = new window.Hls(hlsConfig());
-      instance.loadSource(url);
-      instance.attachMedia(element);
-      instance.on(window.Hls.Events.ERROR, function (_event, data) {
-        if (data && data.fatal) showTip(container, '该线路暂不支持在线播放');
-      });
-    } else if (element.canPlayType('application/vnd.apple.mpegurl')) {
-      element.src = url;
-    } else {
-      showTip(container, '您的浏览器不支持在线播放');
-    }
+    startPlayback(element, url, container);
 
     return element;
   }
