@@ -1,6 +1,5 @@
 import { mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import './lib/net.ts';
 import Fastify from 'fastify';
 import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import compress from '@fastify/compress';
