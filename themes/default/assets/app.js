@@ -1,50 +1,58 @@
 (function () {
-  var btn = document.querySelector('[data-ep-sort]');
-  if (!btn) return;
   if (!window.fetch || !window.DOMParser) return;
 
-  btn.addEventListener('click', function (event) {
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
-    var href = btn.getAttribute('href');
-    if (!href) return;
+  var sortLink = document.querySelector('[data-ep-sort]');
 
-    event.preventDefault();
-    btn.classList.add('is-loading');
+  function applyDoc(doc) {
+    ['.ep-panel', '.ep-pager', '.m-ep-panel', '.m-pager'].forEach(function (sel) {
+      var next = doc.querySelector(sel);
+      var cur = document.querySelector(sel);
+      if (next && cur) cur.replaceWith(next);
+      else if (!next && cur) cur.remove();
+    });
 
+    var nextSort = doc.querySelector('[data-ep-sort]');
+    if (nextSort && sortLink) {
+      sortLink.setAttribute('href', nextSort.getAttribute('href'));
+      sortLink.textContent = nextSort.textContent;
+    }
+
+    var tabs = document.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
+    var nextTabs = doc.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
+    Array.prototype.forEach.call(tabs, function (tab, i) {
+      if (nextTabs[i]) tab.setAttribute('href', nextTabs[i].getAttribute('href'));
+    });
+  }
+
+  function load(href, trigger) {
+    if (trigger) trigger.classList.add('is-loading');
     fetch(href, { credentials: 'same-origin' })
       .then(function (res) {
         if (!res.ok) throw new Error(String(res.status));
         return res.text();
       })
       .then(function (html) {
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        ['.ep-panel', '.ep-pager', '.m-ep-panel', '.m-pager'].forEach(function (sel) {
-          var next = doc.querySelector(sel);
-          var cur = document.querySelector(sel);
-          if (next && cur) cur.replaceWith(next);
-          else if (!next && cur) cur.remove();
-        });
-
-        var nextSort = doc.querySelector('[data-ep-sort]');
-        if (nextSort) {
-          btn.setAttribute('href', nextSort.getAttribute('href'));
-          btn.textContent = nextSort.textContent;
-        }
-
-        var tabs = document.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
-        var nextTabs = doc.querySelectorAll('.ep-tabs a.ep-tab, .m-lines a.m-pill');
-        Array.prototype.forEach.call(tabs, function (tab, i) {
-          if (nextTabs[i]) tab.setAttribute('href', nextTabs[i].getAttribute('href'));
-        });
-
+        applyDoc(new DOMParser().parseFromString(html, 'text/html'));
         if (window.history && history.replaceState) history.replaceState(null, '', href);
       })
       .catch(function () {
         window.location.href = href;
       })
       .finally(function () {
-        btn.classList.remove('is-loading');
+        if (trigger) trigger.classList.remove('is-loading');
       });
+  }
+
+  document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target || !target.closest) return;
+    var link = target.closest('.ep-pager a, .m-pager a, [data-ep-sort]');
+    if (!link) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+    var href = link.getAttribute('href');
+    if (!href) return;
+    event.preventDefault();
+    load(href, link);
   });
 })();
 

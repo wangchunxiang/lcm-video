@@ -514,19 +514,22 @@ a.m-pill { text-decoration: none; }
   margin-top: 12px;
 }
 
+.m-pg-segs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.m-pg-segs::-webkit-scrollbar { display: none; }
+
 .m-pager .m-pg {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  padding: 0 14px;
+  height: 30px;
+  padding: 0 11px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--text-2);
   font-size: 12px;
+  white-space: nowrap;
   text-decoration: none;
 }
 
-.m-pager .m-pg.is-off { opacity: .45; }
-.m-pager .m-pager-info, .m-pager .m-pg-info { font-size: 12px; color: var(--text-3); }
+.m-pager .m-pg.is-cur { background: var(--primary); border-color: var(--primary); color: #fff; }

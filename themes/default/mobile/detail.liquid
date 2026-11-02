@@ -60,9 +60,11 @@
   </div>
   {% if page_count > 1 %}
   <div class="m-pager">
-    {% if prev_href != '' %}<a class="m-pg" href="{{ prev_href }}">‹ 上一页</a>{% else %}<span class="m-pg is-off">‹ 上一页</span>{% endif %}
-    <span class="m-pg-info">第 {{ page }} / {{ page_count }} 页</span>
-    {% if next_href != '' %}<a class="m-pg" href="{{ next_href }}">下一页 ›</a>{% else %}<span class="m-pg is-off">下一页 ›</span>{% endif %}
+    <div class="m-pg-segs">
+      {% for item in page_links %}
+      <a class="m-pg{% if item.current %} is-cur{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
 </section>

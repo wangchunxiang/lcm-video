@@ -679,7 +679,7 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
   margin-top: 14px;
   padding-top: 12px;
@@ -701,11 +701,17 @@ img { border: 0; vertical-align: middle; }
   font: inherit;
   font-size: var(--fs-small);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .ep-pager .pg:hover { border-color: var(--primary); color: var(--primary); }
 .ep-pager .pg.is-off { opacity: .4; }
-.ep-pager .pg-info { color: var(--text-3); font-size: var(--fs-caption); }
+.ep-pager .pg-arrow { width: 28px; padding: 0; font-size: 15px; line-height: 1; }
+.ep-pager .pg-segs { display: flex; flex: 1 1 auto; min-width: 0; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 2px 0; }
+.ep-pager .seg { padding: 0 10px; font-size: var(--fs-caption); }
+.ep-pager .seg.is-cur { background: var(--primary); border-color: var(--primary); color: #fff; }
+.ep-pager .seg.is-cur:hover { color: #fff; }
+.ep-pager a.is-loading { opacity: .5; pointer-events: none; }
 
 a.ep-tab { text-decoration: none; }
 
