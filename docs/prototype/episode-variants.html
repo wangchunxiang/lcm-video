@@ -86,6 +86,17 @@
   .v4 .pager button { height: 26px; min-width: 26px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; color: var(--text-2); cursor: pointer; font-size: 12px; }
   .v4 .pager button.on { border-color: var(--primary); color: var(--primary); }
 
+  .v4 .bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--text-2); }
+  .v4 .total b { color: var(--text); font-size: 13px; }
+  .v4 .sizes { display: flex; gap: 6px; }
+  .v4 .size { height: 26px; padding: 0 10px; border: 1px solid var(--border); background: var(--card); border-radius: 4px; font-size: 12px; color: var(--text-2); cursor: pointer; }
+  .v4 .size.on { border-color: var(--primary); color: var(--primary); background: #f5f8ff; }
+  .v4 .pager .info { margin-left: 6px; }
+  .v4 .pager .dots { padding: 0 2px; color: var(--muted); }
+  .v4 .pager .jump { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .v4 .pager .jump input { width: 52px; height: 26px; border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; font-size: 12px; outline: none; }
+  .v4 .pager button:disabled { opacity: .4; cursor: default; }
+
   /* V5 */
   .v5 .grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .v5 .col { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 42px; padding: 0 10px; border-radius: 4px; background: var(--soft); text-decoration: none; }
@@ -160,14 +171,17 @@
   </section>
 
   <section class="v v4">
-    <header><h2>V4 · 分段 + 分页</h2><span class="tag">超长番</span></header>
-    <p class="desc">先按 100 集切段，段内再按每页 20 集翻，像「1–100 / 101–200」。<b>定位最快</b>，适合上千集的综艺。</p>
+    <header><h2>V4 · 纯分页（不分段）</h2><span class="tag">按你的方向改</span></header>
+    <p class="desc">去掉 100 集分段，直接按每页条数翻页：上方显示总集数与每页条数切换，下方是页码 + 跳转。<b>结构最简单</b>，规则统一；集数越多翻页次数越多。</p>
     <div class="demo">
-      <div class="segs" data-segs></div>
+      <div class="bar">
+        <span class="total">共 <b>829</b> 集</span>
+        <div class="sizes" data-sizes></div>
+      </div>
       <div class="grid" data-page-grid></div>
       <div class="pager" data-pager></div>
     </div>
-    <p class="demo-note">同上，829 集数据。</p>
+    <p class="demo-note">每页条数可切换（30 / 60 / 100），观察翻页次数与单页密度。</p>
   </section>
 
   <section class="v v5">
@@ -312,23 +326,29 @@ document.querySelectorAll('[data-fill="year-groups"]').forEach(function (wrap) {
   });
 });
 
-(function initSegs() {
+(function initPager() {
   const grid = document.querySelector("[data-page-grid]");
-  const segs = document.querySelector("[data-segs]");
   const pager = document.querySelector("[data-pager]");
+  const sizes = document.querySelector("[data-sizes]");
   if (!grid) return;
-  const PER_SEG = 100;
-  const PER_PAGE = 20;
-  const segCount = Math.ceil(dytt.length / PER_SEG);
-  let seg = 0;
+  const total = dytt.length;
+  const SIZES = [30, 60, 100];
+  let size = 60;
   let page = 0;
 
+  function pageCount() { return Math.ceil(total / size); }
+
+  function pageList() {
+    const last = pageCount() - 1;
+    const set = new Set([0, last, page, page - 1, page + 1, page - 2, page + 2]);
+    return Array.from(set).filter(function (i) { return i >= 0 && i <= last; }).sort(function (a, b) { return a - b; });
+  }
+
   function render() {
-    const start = seg * PER_SEG;
-    const end = Math.min(start + PER_SEG, dytt.length);
-    const totalPages = Math.ceil((end - start) / PER_PAGE);
-    const from = start + page * PER_PAGE;
-    const to = Math.min(from + PER_PAGE, end);
+    const pages = pageCount();
+    if (page > pages - 1) page = pages - 1;
+    const from = page * size;
+    const to = Math.min(from + size, total);
 
     grid.replaceChildren();
     dytt.slice(from, to).forEach(function (name) {
@@ -337,25 +357,46 @@ document.querySelectorAll('[data-fill="year-groups"]').forEach(function (wrap) {
       grid.appendChild(a);
     });
 
-    segs.replaceChildren();
-    for (let i = 0; i < segCount; i++) {
-      const b = el("button", "seg" + (i === seg ? " on" : ""), (i * PER_SEG + 1) + "–" + Math.min((i + 1) * PER_SEG, dytt.length));
-      b.addEventListener("click", function () { seg = i; page = 0; render(); });
-      segs.appendChild(b);
-    }
+    sizes.replaceChildren();
+    SIZES.forEach(function (n) {
+      const b = el("button", "size" + (n === size ? " on" : ""), "每页 " + n);
+      b.addEventListener("click", function () { size = n; page = 0; render(); });
+      sizes.appendChild(b);
+    });
 
     pager.replaceChildren();
     const prev = el("button", null, "‹");
+    prev.disabled = page === 0;
     prev.addEventListener("click", function () { if (page > 0) { page--; render(); } });
     pager.appendChild(prev);
-    for (let i = 0; i < totalPages; i++) {
+
+    let lastShown = -1;
+    pageList().forEach(function (i) {
+      if (lastShown >= 0 && i - lastShown > 1) pager.appendChild(el("span", "dots", "…"));
       const b = el("button", i === page ? "on" : null, String(i + 1));
       b.addEventListener("click", function () { page = i; render(); });
       pager.appendChild(b);
-    }
+      lastShown = i;
+    });
+
     const next = el("button", null, "›");
-    next.addEventListener("click", function () { if (page < totalPages - 1) { page++; render(); } });
+    next.disabled = page === pages - 1;
+    next.addEventListener("click", function () { if (page < pages - 1) { page++; render(); } });
     pager.appendChild(next);
+
+    pager.appendChild(el("span", "info", "第 " + (page + 1) + " / " + pages + " 页，共 " + total + " 集"));
+
+    const jump = el("span", "jump");
+    const input = document.createElement("input");
+    input.placeholder = "页码";
+    input.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      const n = parseInt(input.value, 10);
+      if (n >= 1 && n <= pages) { page = n - 1; render(); }
+    });
+    jump.appendChild(input);
+    jump.appendChild(el("span", null, "回车跳转"));
+    pager.appendChild(jump);
   }
 
   render();
