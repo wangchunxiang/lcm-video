@@ -15,7 +15,7 @@
   {% else %}
   <div
     id="player"
-    class="player-box"
+    class="m-player-box"
     data-src="{{ play_url }}"
     data-hls="{% if is_hls %}1{% else %}0{% endif %}"
     data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
@@ -69,8 +69,8 @@
       <span class="m-sheet-count">{{ line.name }} · 共 {{ episodes.size }} 集</span>
       <button type="button" class="m-sheet-close" data-close-eps>关闭</button>
     </div>
-    <div class="ep-panel m-ep-panel is-active">
-      <div class="episode-grid m-ep-grid">
+    <div class="m-ep-panel is-active">
+      <div class="m-ep-grid">
         {% for item in episodes %}
         <a class="m-ep{% if item.index == current_ep %} is-on{% endif %}" href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
         {% endfor %}

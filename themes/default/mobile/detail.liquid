@@ -47,10 +47,10 @@
     <a class="m-pill{% if line.id == current_line_id %} is-on{% endif %}" href="{{ line.href }}">{{ line.name }} <i>{{ line.total }}</i></a>
     {% endfor %}
   </div>
-  <div class="ep-panel m-ep-panel is-active">
+  <div class="m-ep-panel is-active">
     {% if episodes.size > 0 %}
     <div class="m-ep-scroll">
-      <div class="episode-grid m-ep-grid">
+      <div class="m-ep-grid">
         {% for ep in episodes %}
         <a class="m-ep" href="/play/{{ vod.id }}/{{ current_line_id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
         {% endfor %}
