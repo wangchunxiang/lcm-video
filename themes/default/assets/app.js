@@ -75,11 +75,11 @@
   var box = document.getElementById('player');
   if (!box) return;
 
-  var src = box.getAttribute('data-src') || '';
+  var baseSrc = box.getAttribute('data-src') || '';
   var isHls = box.getAttribute('data-hls') === '1';
   var autoplay = box.getAttribute('data-autoplay') === '1';
 
-  if (!src) {
+  if (!baseSrc) {
     showTip(box, '该线路暂不支持在线播放');
     return;
   }
@@ -94,16 +94,44 @@
     poster: box.getAttribute('data-poster') || '',
   };
 
-  var video = null;
-  if (window.Artplayer) {
-    video = initArtPlayer(box, src, isHls, autoplay, flags);
-  } else {
-    video = initNative(box, src, isHls, autoplay, flags);
+  var artRef = null;
+  var hlsRef = null;
+  var usingProxy = false;
+
+  /* 默认直连源站；只有直连失败（网络错误）才重试一次，改走本站代理，
+     避免把所有手机流量都压到服务器出口 */
+  function retryWithProxy() {
+    if (usingProxy) return false;
+    usingProxy = true;
+    boot(baseSrc + (baseSrc.indexOf('?') >= 0 ? '&' : '?') + 'proxy=1');
+    return true;
   }
 
-  if (video) {
-    attachBehaviors(video, box);
+  function boot(url) {
+    if (artRef) {
+      try {
+        artRef.destroy();
+      } catch (error) {
+        /* 忽略：实例可能已销毁 */
+      }
+      artRef = null;
+    }
+    if (hlsRef) {
+      try {
+        hlsRef.destroy();
+      } catch (error) {
+        /* 忽略 */
+      }
+      hlsRef = null;
+    }
+    box.replaceChildren();
+    var video = window.Artplayer
+      ? initArtPlayer(box, url, isHls, autoplay, flags)
+      : initNative(box, url, isHls, autoplay, flags);
+    if (video) attachBehaviors(video, box);
   }
+
+  boot(baseSrc);
 
 
   /* 播放结束后自动跳下一集、本地记录播放进度 */
@@ -171,7 +199,16 @@
   function hlsConfig() {
     /* maxAudioFramesDrift：源站每 20 秒一个 discontinuity，音频帧时间戳会跳，
        默认容差 1 帧容易丢帧/补帧，表现为持续呲啦声，放宽到 5 帧后消失 */
-    return { enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 };
+    return {
+      enableWorker: true,
+      lowLatencyMode: false,
+      maxAudioFramesDrift: 5,
+      /* 直连失败要尽快交给代理重试：默认退避实测要 30 秒才会给出致命错误 */
+      manifestLoadingMaxRetry: 1,
+      levelLoadingMaxRetry: 1,
+      fragLoadingMaxRetry: 2,
+      fragLoadingMaxRetryTimeout: 4000,
+    };
   }
 
   function initArtPlayer(container, url, hls, auto, flags) {
@@ -202,6 +239,9 @@
             if (!window.Hls.isSupported()) {
               if (element.canPlayType('application/vnd.apple.mpegurl')) {
                 element.src = target;
+                element.addEventListener('error', function () {
+                  if (!retryWithProxy()) showTip(container, '该线路暂不支持在线播放');
+                });
                 if (auto) element.play().catch(function () {});
               } else {
                 showTip(container, '该线路暂不支持在线播放');
@@ -209,12 +249,16 @@
               return;
             }
             var instance = new window.Hls(hlsConfig());
+            hlsRef = instance;
             instance.loadSource(target);
             instance.attachMedia(element);
             instance.on(window.Hls.Events.ERROR, function (_event, data) {
               if (!data || !data.fatal) return;
-              var isNetwork = data.type === window.Hls.ErrorTypes.NETWORK_ERROR;
-              showTip(container, isNetwork ? '该线路加载失败，请切换线路' : '该线路暂不支持在线播放');
+              if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+                if (!retryWithProxy()) showTip(container, '该线路加载失败，请切换线路');
+                return;
+              }
+              showTip(container, '该线路暂不支持在线播放');
             });
           },
         },
@@ -223,6 +267,7 @@
       return initNative(container, url, hls, auto);
     }
 
+    artRef = art;
     return art.video || null;
   }
 
@@ -241,20 +286,29 @@
     if (!hls) {
       element.src = url;
       element.addEventListener('error', function () {
-        showTip(container, '该线路暂不支持在线播放');
+        if (!retryWithProxy()) showTip(container, '该线路暂不支持在线播放');
       });
       return element;
     }
 
     if (window.Hls && window.Hls.isSupported()) {
       var instance = new window.Hls(hlsConfig());
+      hlsRef = instance;
       instance.loadSource(url);
       instance.attachMedia(element);
       instance.on(window.Hls.Events.ERROR, function (_event, data) {
-        if (data && data.fatal) showTip(container, '该线路暂不支持在线播放');
+        if (!data || !data.fatal) return;
+        if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+          if (!retryWithProxy()) showTip(container, '该线路加载失败，请切换线路');
+          return;
+        }
+        showTip(container, '该线路暂不支持在线播放');
       });
     } else if (element.canPlayType('application/vnd.apple.mpegurl')) {
       element.src = url;
+      element.addEventListener('error', function () {
+        if (!retryWithProxy()) showTip(container, '您的浏览器不支持在线播放');
+      });
     } else {
       showTip(container, '您的浏览器不支持在线播放');
     }

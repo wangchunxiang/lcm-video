@@ -628,9 +628,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const current = parsePlayUrl(line.playUrl)[epIndex - 1];
     if (!current) return notFound(reply);
 
-    /* 手机浏览器（尤其 iOS 的 WKWebView）直接拉源站分片常被 403，
-       这类终端改由本站转发播放列表与分片 */
-    if (isMobileRequest(req.headers)) {
+    /* 默认直连源站；只有播放器带 ?proxy=1 回退（直连失败后由前端自动重试）时才由本站转发。
+       带宽优先留在 CDN，避免所有手机流量压到服务器出口 */
+    if (String((req.query as { proxy?: string })?.proxy ?? '') === '1') {
       try {
         const proxied = await buildProxiedPlaylist(db, line.source_id, current.url, env.jwtSecret);
         if (proxied) {
