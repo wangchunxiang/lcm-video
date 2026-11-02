@@ -75,6 +75,9 @@
   var box = document.getElementById('player');
   if (!box) return;
 
+  /* 自己给 video 赋 src 时，Artplayer 的 src 代理会再次回调 customType，这里用来打断重入 */
+  var assigning = false;
+
   var src = box.getAttribute('data-src') || '';
   var isHls = box.getAttribute('data-hls') === '1';
   var autoplay = box.getAttribute('data-autoplay') === '1';
@@ -197,6 +200,7 @@
         setting: !!flags.setting,
         customType: {
           m3u8: function (element, target) {
+            if (assigning) return;
             startPlayback(element, target, container);
           },
         },
@@ -208,11 +212,12 @@
     return art.video || null;
   }
 
-  /* 播放内核：能原生播 HLS 就用原生，否则用 hls.js；任一方失败换另一方再试一次。
-     苹果全系（含 Alook、微信）原生更稳，桌面 Chrome 等只能走 hls.js。 */
+  /* 播放内核：苹果系（含 Alook、微信）优先原生，其它有 MSE 的走 hls.js；任一方失败换另一方再试一次。
+     注意：Chrome 对 application/vnd.apple.mpegurl 会返回 "maybe"，不能只看 canPlayType 就选原生。 */
   function startPlayback(element, target, container) {
     var nativeType = element.canPlayType('application/vnd.apple.mpegurl');
     var canHls = !!(window.Hls && window.Hls.isSupported());
+    var ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
     var switched = false;
 
     function fail() {
@@ -230,7 +235,12 @@
         fail();
       };
       element.addEventListener('error', onError);
-      element.src = target;
+      assigning = true;
+      try {
+        element.src = target;
+      } finally {
+        assigning = false;
+      }
       if (element.autoplay) element.play().catch(function () {});
     }
 
@@ -254,7 +264,7 @@
       instance.attachMedia(element);
     }
 
-    if (nativeType) return useNative();
+    if (nativeType && (ios || !canHls)) return useNative();
     if (canHls) return useHls();
     return useNative();
   }

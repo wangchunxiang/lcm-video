@@ -641,6 +641,9 @@ img { border: 0; vertical-align: middle; }
 .ep-scroll::-webkit-scrollbar { width: 6px; }
 .ep-scroll::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
 
+/* 播放页侧栏很窄，单独 3 列，避免套用详情页的 10 列；8 位日期在 4 列下会被截断 */
+.play-side .episode-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
 /* 剧集区固定 10 列 × 5 行 = 每页 50 集，行列都可预期 */
 .episode-grid {
   display: grid;
