@@ -502,3 +502,32 @@ button { font: inherit; color: inherit; }
 }
 .m-footer p { margin: 0; }
 .m-footer-note { margin-top: 6px !important; line-height: 1.6; }
+
+/* 详情页剧集分页（每页 50 集） */
+a.m-pill { text-decoration: none; }
+
+.m-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.m-pager .m-pg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-2);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.m-pager .m-pg.is-off { opacity: .45; }
+.m-pager .m-pg-info { font-size: 12px; color: var(--muted); }
