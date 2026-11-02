@@ -24,7 +24,7 @@ import { sourceRuleRoutes } from './routes/admin/source-rules.ts';
 import { coverCheckRoutes } from './routes/admin/cover-check.ts';
 import { taskRoutes } from './routes/admin/tasks.ts';
 import { dashboardRoutes } from './routes/admin/dashboard.ts';
-import { toolRoutes } from './routes/admin/tools.ts';
+import { toolRoutes } from './routes/admin/tools/index.ts';
 import { uploadRoutes } from './routes/admin/upload.ts';
 import { playRoutes, vodRoutes } from './routes/admin/vods.ts';
 import { adsRoutes } from './routes/admin/ads.ts';
