@@ -518,16 +518,15 @@ a.m-pill { text-decoration: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 88px;
-  height: 34px;
+  height: 32px;
   padding: 0 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  border-radius: 999px;
+  border: 1px solid var(--line);
   background: var(--card);
   color: var(--text-2);
-  font-size: 13px;
+  font-size: 12px;
   text-decoration: none;
 }
 
 .m-pager .m-pg.is-off { opacity: .45; }
-.m-pager .m-pg-info { font-size: 12px; color: var(--muted); }
+.m-pager .m-pager-info, .m-pager .m-pg-info { font-size: 12px; color: var(--text-3); }

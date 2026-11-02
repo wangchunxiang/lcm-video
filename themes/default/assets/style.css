@@ -680,7 +680,7 @@ img { border: 0; vertical-align: middle; }
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 10px;
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -692,19 +692,20 @@ img { border: 0; vertical-align: middle; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 78px;
   height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--card);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
   color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-small);
   text-decoration: none;
 }
 
 .ep-pager .pg:hover { border-color: var(--primary); color: var(--primary); }
 .ep-pager .pg.is-off { opacity: .4; }
-.ep-pager .pg-info { color: var(--muted); }
+.ep-pager .pg-info { color: var(--text-3); font-size: var(--fs-caption); }
 
 a.ep-tab { text-decoration: none; }
 
