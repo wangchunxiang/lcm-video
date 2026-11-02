@@ -640,26 +640,22 @@ img { border: 0; vertical-align: middle; }
 .ep-scroll::-webkit-scrollbar { width: 6px; }
 .ep-scroll::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
 
+/* 剧集标签按内容宽度排列，一行放满为止；固定列数会让短名字左右空出一大片 */
 .episode-grid {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  grid-auto-flow: dense;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-/* 剧集标签按名称长度占格：长名多占几列，避免被省略号截断 */
-.ep-w2 { grid-column: span 2; }
-.ep-w3 { grid-column: span 3; }
-/* 详情页是 10 列，长名占 2 列就够放下；播放页侧栏只有 4 列，长名占满一行 */
-.detail-eps .ep-w3 { grid-column: span 2; }
-.play-side .ep-w3 { grid-column: 1 / -1; }
-
 .episode-btn {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   height: 28px;
-  padding: 0 var(--space-2);
+  min-width: 72px;
+  max-width: 100%;
+  padding: 0 var(--space-3);
   text-align: center;
   border-radius: 4px;
   background: #f2f3f5;
@@ -799,9 +795,7 @@ img { border: 0; vertical-align: middle; }
   padding: var(--space-3);
 }
 
-.play-side .episode-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
+
 
 
 
@@ -991,7 +985,7 @@ img { border: 0; vertical-align: middle; }
 
 @media (max-width: 1400px) {
   .vod-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .episode-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+
 }
 
 @media (max-width: 1100px) {
@@ -1002,7 +996,7 @@ img { border: 0; vertical-align: middle; }
 
 @media (max-width: 900px) {
   .vod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .episode-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
 
   /* 导航不隐藏，折行显示，移动端也能点到全部分类 */
   .header-inner {
