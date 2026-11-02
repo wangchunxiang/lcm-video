@@ -69,17 +69,16 @@
 <section class="section detail-eps">
   <div class="ep-tabs" role="tablist">
     {% for line in line_tabs %}
-    <button type="button" class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" data-ep-tab="{{ line.id }}">{{ line.name }} <span class="count">{{ line.total }}</span></button>
+    <a class="ep-tab{% if line.id == current_line_id %} is-active{% endif %}" href="{{ line.href }}">{{ line.name }} <span class="count">{{ line.total }}</span></a>
     {% endfor %}
     <button type="button" class="ep-sort" data-ep-sort>正序</button>
   </div>
-  {% for line in line_tabs %}
-  <div class="ep-panel{% if line.id == current_line_id %} is-active{% endif %}" data-ep-panel="{{ line.id }}">
-    {% if line.total > 0 %}
+  <div class="ep-panel is-active">
+    {% if episodes.size > 0 %}
     <div class="ep-scroll">
       <div class="episode-grid">
-        {% for ep in line.episodes %}
-        <a class="episode-btn ep-w{{ ep.width }}" href="/play/{{ vod.id }}/{{ line.id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
+        {% for ep in episodes %}
+        <a class="episode-btn" href="/play/{{ vod.id }}/{{ current_line_id }}/{{ ep.index }}" title="{{ ep.name }}">{{ ep.name }}</a>
         {% endfor %}
       </div>
     </div>
@@ -87,7 +86,27 @@
     <p class="empty-tip">该线路暂无剧集</p>
     {% endif %}
   </div>
-  {% endfor %}
+  {% if page_count > 1 %}
+  <div class="ep-pager">
+    {% if prev_href != '' %}<a class="pg" href="{{ prev_href }}" rel="prev">‹</a>{% else %}<span class="pg is-off">‹</span>{% endif %}
+    {% for item in page_links %}
+      {% if item.gap %}
+      <span class="gap">…</span>
+      {% elsif item.current %}
+      <span class="pg is-cur">{{ item.no }}</span>
+      {% else %}
+      <a class="pg" href="{{ item.href }}">{{ item.no }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if next_href != '' %}<a class="pg" href="{{ next_href }}" rel="next">›</a>{% else %}<span class="pg is-off">›</span>{% endif %}
+    <span class="pg-info">第 {{ page }} / {{ page_count }} 页 · 共 {{ page_total }} 集</span>
+    <form class="pg-jump" method="get" action="{{ detail_url }}">
+      <input type="hidden" name="line" value="{{ current_line_id }}">
+      <input type="number" name="page" min="1" max="{{ page_count }}" placeholder="页码" aria-label="跳转到页码">
+      <button type="submit">跳转</button>
+    </form>
+  </div>
+  {% endif %}
 </section>
 {% endif %}
 {% endblock %}

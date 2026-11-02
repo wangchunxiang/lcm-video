@@ -171,7 +171,7 @@
   </section>
 
   <section class="v v4">
-    <header><h2>V4 · 纯分页（不分段）</h2><span class="tag">按你的方向改</span></header>
+    <header><h2>V4 · 纯分页（每页 50）</h2><span class="tag">按你的方向改</span></header>
     <p class="desc">去掉 100 集分段，直接按每页条数翻页：上方显示总集数与每页条数切换，下方是页码 + 跳转。<b>结构最简单</b>，规则统一；集数越多翻页次数越多。</p>
     <div class="demo">
       <div class="bar">
@@ -181,7 +181,7 @@
       <div class="grid" data-page-grid></div>
       <div class="pager" data-pager></div>
     </div>
-    <p class="demo-note">每页条数可切换（30 / 60 / 100），观察翻页次数与单页密度。</p>
+    <p class="demo-note">每页条数可切换（30 / 50 / 100），默认 50。</p>
   </section>
 
   <section class="v v5">
@@ -332,8 +332,8 @@ document.querySelectorAll('[data-fill="year-groups"]').forEach(function (wrap) {
   const sizes = document.querySelector("[data-sizes]");
   if (!grid) return;
   const total = dytt.length;
-  const SIZES = [30, 60, 100];
-  let size = 60;
+  const SIZES = [30, 50, 100];
+  let size = 50;
   let page = 0;
 
   function pageCount() { return Math.ceil(total / size); }
