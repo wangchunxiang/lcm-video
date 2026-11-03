@@ -87,7 +87,6 @@ img { border: 0; vertical-align: middle; }
 
 .site-header.is-scrolled {
   background: var(--bg);
-  box-shadow: 0 1px 0 var(--line);
 }
 
 .header-inner {
