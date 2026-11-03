@@ -826,20 +826,17 @@ a.ep-tab { text-decoration: none; }
 .detail-hero {
   position: relative;
   overflow: hidden;
-  /* 放在 main 之外，天然占满整行；上移一个页头高度让海报从页面最顶部开始 */
   width: 100%;
-  margin-top: -64px;
-  padding-top: 64px;
-  border-radius: 0;
+  border-radius: var(--radius);
   background: #0A0C0F;
-  min-height: 540px;
+  min-height: 480px;
+  margin-bottom: var(--gap-block);
 }
 
 .hero-inner {
   position: relative;
   z-index: 1;
-  width: min(var(--container), 100% - 120px);
-  margin: 0 auto;
+  width: 100%;
 }
 
 .hero-bg { position: absolute; inset: 0; overflow: hidden; }
@@ -847,8 +844,7 @@ a.ep-tab { text-decoration: none; }
    左侧留给文字，四周由渐变淡出到页面底色 */
 .hero-bg img {
   position: absolute;
-  /* 右侧留出与内容区相同的 60px 边距 */
-  right: max(60px, calc((100vw - var(--container)) / 2));
+  right: 0;
   /* 比横幅略高、面积收小：源站海报普遍只有几百像素，铺太大必然糊 */
   top: -12%;
   width: 44%;
@@ -980,7 +976,6 @@ a.ep-tab { text-decoration: none; }
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 1100px) {
-  .hero-inner { width: calc(100% - 48px); }
   .hero-info { width: 100%; padding: 28px 24px; }
   .hero-title { font-size: 24px; }
   .detail-hero { min-height: 380px; }
