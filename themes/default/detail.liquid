@@ -37,7 +37,7 @@
     {% if lines.size > 0 %}
     <div class="banner-actions">
       <a class="btn-primary banner-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
-      <button type="button" class="btn-ghost" data-share>分享</button>
+      <button type="button" class="btn-ghost" data-qr>手机观看</button>
     </div>
     {% endif %}
   </div>
@@ -69,4 +69,13 @@
   </div>
 </section>
 {% endif %}
+<div class="qr-modal" data-qr-modal hidden>
+  <div class="qr-card" role="dialog" aria-modal="true" aria-label="手机观看">
+    <div class="qr-title">手机扫码观看</div>
+    <div class="qr-code" data-qr-code></div>
+    <p class="qr-hint">用手机相机或扫码工具扫描二维码</p>
+    <button type="button" class="btn-ghost qr-close" data-qr-close>关闭</button>
+  </div>
+</div>
 {% endblock %}
+{% block scripts %}<script src="{{ 'vendor/qrcode.min.js' | asset }}"></script>{% endblock %}

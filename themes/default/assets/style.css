@@ -744,6 +744,53 @@ a.ep-tab { text-decoration: none; }
   pointer-events: none;
 }
 
+/* ---------- 二维码弹层 ---------- */
+
+.qr-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.qr-modal[hidden] { display: none; }
+
+.qr-card {
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.qr-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--fs-emphasis);
+  font-weight: 600;
+}
+
+.qr-code {
+  display: inline-block;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  line-height: 0;
+}
+
+.qr-code svg { display: block; width: 200px; height: 200px; }
+
+.qr-hint {
+  margin: var(--space-3) 0 var(--space-4);
+  color: var(--text-3);
+  font-size: var(--fs-small);
+}
+
+.qr-close { height: var(--control-h-sm); padding: 0 var(--space-5); }
+
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 1100px) {

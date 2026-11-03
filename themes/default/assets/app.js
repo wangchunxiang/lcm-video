@@ -365,17 +365,35 @@
     }, 1800);
   }
 
-  var share = document.querySelector('[data-share]');
-  if (!share) return;
-  share.addEventListener('click', function () {
-    var url = window.location.href;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(
-        function () { toast('链接已复制'); },
-        function () { window.prompt('复制链接', url); },
-      );
-    } else {
-      window.prompt('复制链接', url);
+  var qrTrigger = document.querySelector('[data-qr]');
+  var qrModal = document.querySelector('[data-qr-modal]');
+  if (!qrTrigger || !qrModal) return;
+
+  var qrBox = qrModal.querySelector('[data-qr-code]');
+  var qrBuilt = false;
+
+  function openQr() {
+    if (!qrBuilt && typeof window.qrcode === 'function' && qrBox) {
+      var qr = window.qrcode(0, 'M');
+      qr.addData(window.location.href);
+      qr.make();
+      qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+      qrBuilt = true;
     }
+    qrModal.hidden = false;
+  }
+
+  function closeQr() {
+    qrModal.hidden = true;
+  }
+
+  qrTrigger.addEventListener('click', openQr);
+  qrModal.addEventListener('click', function (event) {
+    if (event.target === qrModal) closeQr();
+  });
+  var qrClose = qrModal.querySelector('[data-qr-close]');
+  if (qrClose) qrClose.addEventListener('click', closeQr);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !qrModal.hidden) closeQr();
   });
 })();
