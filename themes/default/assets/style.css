@@ -826,9 +826,9 @@ a.ep-tab { text-decoration: none; }
 .detail-banner {
   /* 一个区域里的左右两部分：左海报、右信息，普通 flex 排布 */
   display: flex;
-  align-items: flex-start;
-  gap: 36px;
-  padding: 28px 32px;
+  align-items: center;
+  gap: 32px;
+  padding: 28px;
   border-radius: var(--radius);
   background: #0A0C0F;
   margin-bottom: var(--gap-block);
