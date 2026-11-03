@@ -804,8 +804,20 @@ a.ep-tab { text-decoration: none; }
   scrollbar-width: thin;
 }
 
-.line-tabs::-webkit-scrollbar { height: 4px; }
-.line-tabs::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 2px; }
+/* 滚动条隐藏：靠右边缘渐隐 + 滚轮/触屏滑动提示可滚动，避免一条灰带压在标签下面 */
+.line-tabs { scrollbar-width: none; }
+.line-tabs::-webkit-scrollbar { display: none; }
+
+/* 线路多到一行放不下：右边缘渐隐，滚到末尾后取消，提示还能继续滑 */
+.line-tabs.is-overflow {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+}
+
+.line-tabs.is-overflow.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
 
 .line-tab {
   flex: none;

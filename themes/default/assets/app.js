@@ -330,3 +330,32 @@
   var panelRect = panel.getBoundingClientRect();
   panel.scrollTop += rect.top - panelRect.top - panel.clientHeight / 2 + rect.height / 2;
 })();
+
+/* 播放页线路标签：线路多到一行放不下时，支持滚轮横向滚动，并在右边缘做渐隐提示 */
+(function () {
+  var tabs = document.querySelector('.play-side .line-tabs');
+  if (!tabs) return;
+
+  function sync() {
+    var overflow = tabs.scrollWidth > tabs.clientWidth + 1;
+    tabs.classList.toggle('is-overflow', overflow);
+    tabs.classList.toggle('at-end', tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 1);
+    tabs.classList.toggle('at-start', tabs.scrollLeft <= 1);
+  }
+
+  tabs.addEventListener('scroll', sync, { passive: true });
+  window.addEventListener('resize', sync);
+
+  tabs.addEventListener(
+    'wheel',
+    function (event) {
+      if (tabs.scrollWidth <= tabs.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      tabs.scrollLeft += event.deltaY;
+    },
+    { passive: false },
+  );
+
+  sync();
+})();
