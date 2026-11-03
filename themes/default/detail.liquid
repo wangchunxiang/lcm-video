@@ -1,19 +1,5 @@
 {% layout 'layout' %}
 {% block content %}
-<nav class="breadcrumb">
-  <a href="/">首页</a>
-  <span>/</span>
-  {% if vod.parent_alias != blank %}
-  <a href="/list/{{ vod.parent_alias }}">{{ vod.parent_name }}</a>
-  <span>/</span>
-  {% endif %}
-  {% if vod.parent_alias and vod.category_alias and vod.category_name %}
-  <a href="/list/{{ vod.parent_alias }}?type={{ vod.category_alias }}">{{ vod.category_name }}</a>
-  {% elsif vod.category_name %}
-  <span>{{ vod.category_name }}</span>
-  {% endif %}
-  <span>{{ vod.name }}</span>
-</nav>
 
 <section class="detail-hero">
   <div class="hero-bg" aria-hidden="true">
