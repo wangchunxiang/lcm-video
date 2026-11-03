@@ -826,15 +826,13 @@ a.ep-tab { text-decoration: none; }
 .detail-hero {
   position: relative;
   overflow: hidden;
-  /* 左右通栏，并上移一个页头的高度，让海报从页面最顶部开始（页头透明悬浮其上） */
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
+  /* 放在 main 之外，天然占满整行；上移一个页头高度让海报从页面最顶部开始 */
+  width: 100%;
   margin-top: -64px;
   padding-top: 64px;
   border-radius: 0;
   background: #0A0C0F;
   min-height: 540px;
-  margin-bottom: var(--gap-block);
 }
 
 .hero-inner {
@@ -850,18 +848,30 @@ a.ep-tab { text-decoration: none; }
 .hero-bg img {
   position: absolute;
   right: 0;
-  top: 0;
+  /* 比横幅更高：上下边缘跑到可视区之外，只让左右两侧由圆形蒙版淡出 */
+  top: -25%;
   width: 62%;
-  height: 100%;
+  height: 150%;
   object-fit: cover;
   object-position: 50% 42%;
   filter: blur(2px) brightness(0.82) saturate(0.98);
   /* 椭圆形蒙版：中间清晰，四周在到达图片边缘前就淡到全透明 */
-  -webkit-mask-image: radial-gradient(ellipse 80% 82% at 58% 46%, #000 30%, rgba(0, 0, 0, 0.8) 48%, rgba(0, 0, 0, 0) 62%);
-  mask-image: radial-gradient(ellipse 80% 82% at 58% 46%, #000 30%, rgba(0, 0, 0, 0.8) 48%, rgba(0, 0, 0, 0) 62%);
+  -webkit-mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
+  mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
 }
 
 /* 左侧压暗保证文字可读，右侧保留海报，四边向底色淡出 */
+.hero-bg::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 200px;
+  background: linear-gradient(180deg, rgba(10, 12, 15, 0) 0%, #0A0C0F 82%);
+  z-index: 2;
+}
+
 .hero-bg::after {
   content: "";
   position: absolute;

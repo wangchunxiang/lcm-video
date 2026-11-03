@@ -1,6 +1,5 @@
 {% layout 'layout' %}
-{% block content %}
-
+{% block hero %}
 <section class="detail-hero">
   <div class="hero-bg" aria-hidden="true">
     <img
@@ -43,6 +42,11 @@
   </div>
   </div>
 </section>
+{% endblock %}
+
+{% block content %}
+
+
 
 {% if line_tabs.size > 0 %}
 <section class="section detail-eps">
