@@ -754,7 +754,7 @@ a.ep-tab { text-decoration: none; }
 .qr-pop-panel {
   position: absolute;
   bottom: calc(100% + 8px);
-  left: 0;
+  left: 50%;
   z-index: 60;
   width: 210px;
   padding: var(--space-3);
@@ -765,7 +765,7 @@ a.ep-tab { text-decoration: none; }
   text-align: center;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(4px);
+  transform: translateX(-50%) translateY(4px);
   transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
 }
 
@@ -773,7 +773,7 @@ a.ep-tab { text-decoration: none; }
 .qr-pop-panel.is-open {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .qr-code {
