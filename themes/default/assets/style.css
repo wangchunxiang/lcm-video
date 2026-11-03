@@ -845,13 +845,13 @@ a.ep-tab { text-decoration: none; }
 .banner-bg img {
   position: absolute;
   right: 0;
-  /* 比横幅略高、面积收小：源站海报普遍只有几百像素，铺太大必然糊 */
-  top: -12%;
+  top: 0;
   width: 44%;
-  height: 124%;
-  object-fit: cover;
-  object-position: 50% 42%;
-  filter: blur(1px) brightness(0.84) saturate(0.98);
+  height: 100%;
+  /* 完整显示整张海报，不裁切也不放大 */
+  object-fit: contain;
+  object-position: right center;
+  filter: brightness(0.92);
 }
 
 .banner-info {
