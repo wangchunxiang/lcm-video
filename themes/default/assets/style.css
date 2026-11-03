@@ -60,7 +60,8 @@ body {
 
 main.container {
   flex: 1 0 auto;
-  padding-bottom: var(--space-6);
+  /* 框架统一的上下留白：各页面内容从这里开始，不再各自设置顶部间距 */
+  padding: var(--space-4) 0 var(--space-6);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -243,7 +244,7 @@ img { border: 0; vertical-align: middle; }
 
 /* 首页不套卡片，直接铺在页面上 */
 .home {
-  padding-top: var(--space-4);
+  padding-top: 0;
 }
 
 .home .section {
@@ -366,7 +367,7 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-4) 0 0;
+  padding: 0;
   margin: 0 0 var(--gap-block);
   color: var(--text-3);
   font-size: var(--fs-small);
@@ -623,8 +624,7 @@ a.ep-tab { text-decoration: none; }
   display: flex;
   align-items: center;
   gap: var(--space-7);
-  /* 顶部与首页、列表页同为首屏 16px，底部用 24px 与剧集卡片留出呼吸 */
-  padding: var(--space-4) 0 var(--space-6);
+  padding: 0 0 var(--space-6);
   margin-bottom: var(--gap-block);
 }
 
@@ -809,7 +809,12 @@ a.ep-tab { text-decoration: none; }
 
 .error-page {
   text-align: center;
-  padding: calc(var(--space-7) * 2) 0;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 var(--space-7);
 }
 
 .error-page h1 { font-size: var(--fs-display); margin: 0 0 var(--space-2); color: var(--primary); line-height: 1.1; }
