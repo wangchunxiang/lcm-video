@@ -824,14 +824,11 @@ a.ep-tab { text-decoration: none; }
 /* ---------- 详情页顶部横幅：左侧信息 + 右侧海报 ---------- */
 
 .detail-banner {
-  /* 一个区域里的左右两部分：左海报、右信息，普通 flex 排布 */
+  /* 普通区块而非卡片：背景与页面同色，不需要内边距，内容直接对齐容器 */
   display: flex;
   align-items: center;
   gap: 32px;
-  /* 左右不留内边距，内容与页面正文对齐；只保留上下 28px */
   padding: 28px 0;
-  border-radius: var(--radius);
-  background: #0A0C0F;
   margin-bottom: var(--gap-block);
 }
 
