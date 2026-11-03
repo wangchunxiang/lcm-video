@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
-import { api, ApiError } from '../../api/client.ts';
+import { api } from '../../api/client.ts';
 
 interface SourceRow {
   id: number;
@@ -195,27 +195,14 @@ async function batchStatus(action: 'enable' | 'disable') {
   }
 }
 
-async function batchDelete(force = false) {
+async function batchDelete() {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
   try {
-    await api.post('/sources/batch', { action: 'delete', ids, force });
+    await api.post('/sources/batch', { action: 'delete', ids });
     ElMessage.success(`已删除 ${ids.length} 个采集源`);
     await load();
   } catch (error) {
-    if (!force && error instanceof ApiError && error.code === 409) {
-      try {
-        await ElMessageBox.confirm(`${error.message}，确定继续吗？`, '确认删除', {
-          type: 'warning',
-          confirmButtonText: '继续删除',
-          cancelButtonText: '取消',
-        });
-      } catch {
-        return;
-      }
-      await batchDelete(true);
-      return;
-    }
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
   }
 }
@@ -321,29 +308,10 @@ async function remove(row: SourceRow) {
   }
 
   try {
-    const data = await api.del<{ id: number; plays: number }>(`/sources/${row.id}`);
-    ElMessage.success(`已删除，同时清理了 ${data.plays} 条线路`);
+    await api.del(`/sources/${row.id}`);
+    ElMessage.success('已删除');
     await load();
   } catch (error) {
-    if (error instanceof ApiError && error.code === 409) {
-      try {
-        await ElMessageBox.confirm(
-          `${error.message}，删除后将同时清理这些线路，确定继续吗？`,
-          '确认删除',
-          { type: 'warning', confirmButtonText: '继续删除', cancelButtonText: '取消' },
-        );
-      } catch {
-        return;
-      }
-      try {
-        const data = await api.del<{ id: number; plays: number }>(`/sources/${row.id}?force=1`);
-        ElMessage.success(`已删除，同时清理了 ${data.plays} 条线路`);
-        await load();
-      } catch (inner) {
-        ElMessage.error(inner instanceof Error ? inner.message : '删除失败');
-      }
-      return;
-    }
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
   }
 }

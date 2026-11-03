@@ -173,7 +173,6 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
 
   app.delete('/:id', async (req, reply) => {
     const id = toInt((req.params as { id: string }).id);
-    const query = req.query as { force?: string };
     const exists = await loadSource(db, id);
     if (!exists) return fail(reply, 404, ErrorCode.NOT_FOUND, '采集源不存在');
 
@@ -183,31 +182,26 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       .where(eq(vodPlay.sourceId, id));
     const plays = Number(playRows[0]?.count ?? 0);
 
-    if (plays > 0 && query.force !== '1') {
+    if (plays > 0) {
       return reply.code(409).send({
         code: 40901,
-        msg: `该源下有 ${plays} 条播放线路，删除后这些线路会被一并清除，相关影片若无其它线路将自动下架`,
+        msg: `该源下还有 ${plays} 条播放线路，不能删除。请先在「工具 → 批量删除某源线路」里清理这些线路`,
         data: { plays },
       });
     }
 
     await db.transaction(async (tx) => {
-      await tx.delete(vodPlay).where(eq(vodPlay.sourceId, id));
       await tx.delete(collectSourceCategory).where(eq(collectSourceCategory.sourceId, id));
       await tx.delete(collectTask).where(eq(collectTask.sourceId, id));
       await tx.delete(adFeature).where(eq(adFeature.sourceId, id));
       await tx.delete(collectSource).where(eq(collectSource.id, id));
-      await tx.execute(sql`
-        UPDATE lcm_vod SET status = 0
-        WHERE status = 1 AND id NOT IN (SELECT vod_id FROM lcm_vod_play)
-      `);
     });
 
-    return ok(reply, { id, plays });
+    return ok(reply, { id });
   });
 
   app.post('/batch', async (req, reply) => {
-    const body = (req.body ?? {}) as { action?: string; ids?: unknown[]; force?: boolean };
+    const body = (req.body ?? {}) as { action?: string; ids?: unknown[] };
     const ids = Array.isArray(body.ids)
       ? body.ids.map((value) => toInt(value)).filter((value) => value > 0)
       : [];
@@ -231,27 +225,22 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       .where(inArray(vodPlay.sourceId, ids));
     const plays = Number(playRows[0]?.count ?? 0);
 
-    if (plays > 0 && body.force !== true) {
+    if (plays > 0) {
       return reply.code(409).send({
         code: 40901,
-        msg: `选中的 ${ids.length} 个源下有 ${plays} 条播放线路，删除后这些线路会被一并清除，相关影片若无其它线路将自动下架`,
+        msg: `选中的 ${ids.length} 个源下还有 ${plays} 条播放线路，不能删除。请先在「工具 → 批量删除某源线路」里清理这些线路`,
         data: { plays, sources: ids.length },
       });
     }
 
     await db.transaction(async (tx) => {
-      await tx.delete(vodPlay).where(inArray(vodPlay.sourceId, ids));
       await tx.delete(collectSourceCategory).where(inArray(collectSourceCategory.sourceId, ids));
       await tx.delete(collectTask).where(inArray(collectTask.sourceId, ids));
       await tx.delete(adFeature).where(inArray(adFeature.sourceId, ids));
       await tx.delete(collectSource).where(inArray(collectSource.id, ids));
-      await tx.execute(sql`
-        UPDATE lcm_vod SET status = 0
-        WHERE status = 1 AND id NOT IN (SELECT vod_id FROM lcm_vod_play)
-      `);
     });
 
-    return ok(reply, { affected: ids.length, plays });
+    return ok(reply, { affected: ids.length });
   });
 
   app.post('/:id/test', async (req, reply) => {

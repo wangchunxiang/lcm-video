@@ -11,29 +11,7 @@ interface SourceOption {
 type NeedConfirm = { needConfirm: true; total: number; mode?: string };
 type Done = { affected: number; offline?: number; mode?: string };
 
-/** 数据一致性巡检结果，字段为 0 表示该表没有孤儿行 */
-interface IntegrityReport {
-  playsWithoutVod: number;
-  playsWithoutSource: number;
-  mappingsWithoutSource: number;
-  mappingsWithoutCategory: number;
-  tasksWithoutSource: number;
-  adFeaturesWithoutSource: number;
-  emptyVods: number;
-}
-
-const INTEGRITY_LABELS: Array<{ key: keyof IntegrityReport; label: string }> = [
-  { key: 'playsWithoutVod', label: '线路指向的影片不存在' },
-  { key: 'playsWithoutSource', label: '线路指向的采集源不存在' },
-  { key: 'mappingsWithoutSource', label: '分类映射指向的采集源不存在' },
-  { key: 'mappingsWithoutCategory', label: '分类映射指向的分类不存在' },
-  { key: 'tasksWithoutSource', label: '采集任务指向的采集源不存在' },
-  { key: 'adFeaturesWithoutSource', label: '广告特征指向的采集源不存在' },
-  { key: 'emptyVods', label: '在架但没有任何线路的影片' },
-];
-
 const sources = ref<SourceOption[]>([]);
-const integrity = ref<IntegrityReport | null>(null);
 
 const replaceForm = reactive<{ source_id: number; from: string; to: string }>({
   source_id: 0,
@@ -47,50 +25,7 @@ const coverForm = reactive<{ from: string; to: string }>({
 const deleteForm = reactive<{ source_id: number | null }>({ source_id: null });
 const cleanForm = reactive({ mode: 'offline' });
 
-const busy = reactive({ replace: false, cover: false, removeSource: false, clean: false, integrity: false });
-
-/** 只读巡检，不清数据 */
-async function loadIntegrity(): Promise<void> {
-  busy.integrity = true;
-  try {
-    integrity.value = await api.get<IntegrityReport>('/tools/integrity');
-  } catch (error) {
-    ElMessage.error((error as Error).message);
-  } finally {
-    busy.integrity = false;
-  }
-}
-
-/** 清理孤儿行：线路、映射、任务、广告特征、封面体检结果 */
-async function cleanIntegrity(): Promise<void> {
-  const report = integrity.value;
-  const total = report
-    ? INTEGRITY_LABELS.filter((item) => item.key !== 'emptyVods').reduce((sum, item) => sum + report[item.key], 0)
-    : 0;
-  if (total === 0) {
-    ElMessage.info('没有需要清理的孤儿数据');
-    return;
-  }
-  try {
-    await ElMessageBox.confirm(`将删除 ${total} 条孤儿数据，删除后不可恢复。`, '清理孤儿数据', {
-      type: 'warning',
-      confirmButtonText: '确认清理',
-    });
-  } catch {
-    return;
-  }
-  busy.integrity = true;
-  try {
-    const result = await api.post<Record<string, number>>('/tools/integrity/clean');
-    const affected = Object.values(result).reduce((sum, value) => sum + Number(value || 0), 0);
-    ElMessage.success(`已清理 ${affected} 条孤儿数据`);
-    await loadIntegrity();
-  } catch (error) {
-    ElMessage.error((error as Error).message);
-  } finally {
-    busy.integrity = false;
-  }
-}
+const busy = reactive({ replace: false, cover: false, removeSource: false, clean: false });
 
 async function loadSources(): Promise<void> {
   try {
@@ -212,10 +147,7 @@ async function runClean(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void loadSources();
-  void loadIntegrity();
-});
+onMounted(loadSources);
 </script>
 
 <template>
@@ -306,25 +238,6 @@ onMounted(() => {
         </el-form-item>
       </el-form>
     </el-card>
-
-    <el-card shadow="never">
-      <template #header><span>数据一致性</span></template>
-      <p class="tip">
-        项目不使用数据库外键，删除源站、分类、影片时的级联都在代码里做。这里兜底检查残留的孤儿数据：指向已删除对象的线路、映射、任务、广告特征与封面体检结果。
-      </p>
-      <el-table v-if="integrity" :data="INTEGRITY_LABELS" size="small" style="margin-bottom: 12px">
-        <el-table-column prop="label" label="检查项" min-width="260" />
-        <el-table-column label="数量" width="120" align="right">
-          <template #default="{ row }">
-            <span :class="{ danger: integrity[row.key] > 0 }">{{ integrity[row.key] }}</span>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-space>
-        <el-button :loading="busy.integrity" @click="loadIntegrity">重新检查</el-button>
-        <el-button type="danger" :loading="busy.integrity" @click="cleanIntegrity">清理孤儿数据</el-button>
-      </el-space>
-    </el-card>
   </div>
 </template>
 
@@ -350,8 +263,5 @@ onMounted(() => {
 }
 .tools :deep(.el-form--inline .el-form-item:last-child) {
   margin-right: 0;
-}
-.danger {
-  color: var(--el-color-danger);
 }
 </style>
