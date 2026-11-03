@@ -104,6 +104,8 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* 站名比导航字大，按基线对齐再往上带 2px，字底才与右侧导航齐平 */
+  transform: translateY(-2px);
 }
 
 .logo img { height: 28px; }
