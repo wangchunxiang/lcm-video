@@ -756,8 +756,7 @@ a.ep-tab { text-decoration: none; }
   bottom: calc(100% + 8px);
   left: 50%;
   z-index: 60;
-  width: 210px;
-  padding: var(--space-3);
+  padding: var(--space-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--card);
@@ -786,11 +785,6 @@ a.ep-tab { text-decoration: none; }
 
 .qr-code svg { display: block; width: 160px; height: 160px; }
 
-.qr-hint {
-  margin: var(--space-2) 0 0;
-  color: var(--text-3);
-  font-size: var(--fs-caption);
-}
 
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
