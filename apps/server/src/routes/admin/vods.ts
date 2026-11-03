@@ -584,10 +584,26 @@ export const playRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) =>
     const id = parsePlayId(reply, (req.params as { id: string }).id);
     if (id === 0) return reply;
 
-    const rows = await db.select({ id: vodPlay.id }).from(vodPlay).where(eq(vodPlay.id, id)).limit(1);
-    if (rows.length === 0) return fail(reply, 404, ErrorCode.NOT_FOUND, '线路不存在');
+    const rows = await db
+      .select({ id: vodPlay.id, vodId: vodPlay.vodId })
+      .from(vodPlay)
+      .where(eq(vodPlay.id, id))
+      .limit(1);
+    const [line] = rows;
+    if (!line) return fail(reply, 404, ErrorCode.NOT_FOUND, '线路不存在');
+
+    const countRows = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(vodPlay)
+      .where(eq(vodPlay.vodId, line.vodId));
+    const total = Number(countRows[0]?.count ?? 0);
 
     await db.delete(vodPlay).where(eq(vodPlay.id, id));
-    return ok(reply, { id });
+
+    // 不拦截删除，只提示：删掉最后一条线路后影片就没有可播放线路了
+    return ok(reply, {
+      id,
+      warning: total <= 1 ? '这是该影片的最后一条播放线路，删除后影片将没有可播放线路' : undefined,
+    });
   });
 };

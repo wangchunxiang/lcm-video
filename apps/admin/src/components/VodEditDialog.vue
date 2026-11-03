@@ -232,8 +232,9 @@ async function removeLine(line: PlayLine) {
     return;
   }
   try {
-    await api.del(`/plays/${line.id}`);
-    ElMessage.success('已删除线路');
+    const result = await api.del<{ warning?: string }>(`/plays/${line.id}`);
+    if (result.warning) ElMessage.warning(result.warning);
+    else ElMessage.success('已删除线路');
     await load();
     activeTab.value = 'lines';
   } catch (error) {
