@@ -306,4 +306,13 @@
   }
 })();
 
-
+/* 页头：页面顶部的透明，往下滚一点再浮出底色（避免顶部出现分割线） */
+(function () {
+  var header = document.querySelector('.site-header');
+  if (!header) return;
+  function sync() {
+    header.classList.toggle('is-scrolled', window.scrollY > 8);
+  }
+  window.addEventListener('scroll', sync, { passive: true });
+  sync();
+})();

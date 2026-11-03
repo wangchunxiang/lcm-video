@@ -77,11 +77,17 @@ img { border: 0; vertical-align: middle; }
 /* ---------- header ---------- */
 
 .site-header {
-  background: var(--bg);
-  border-bottom: 1px solid var(--line);
+  /* 停在页面顶部时完全透明，滚动后才浮出底色，避免顶部出现一条突兀的分割线 */
+  background: transparent;
   position: sticky;
   top: 0;
   z-index: 50;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.site-header.is-scrolled {
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line);
 }
 
 .header-inner {

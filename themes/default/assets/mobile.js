@@ -105,3 +105,13 @@
   }
 })();
 
+/* 移动端页头：顶部透明，滚动后浮出半透明底色 */
+(function () {
+  var header = document.querySelector('.m-header');
+  if (!header) return;
+  function sync() {
+    header.classList.toggle('is-scrolled', window.scrollY > 8);
+  }
+  window.addEventListener('scroll', sync, { passive: true });
+  sync();
+})();
