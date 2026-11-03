@@ -847,7 +847,8 @@ a.ep-tab { text-decoration: none; }
    左侧留给文字，四周由渐变淡出到页面底色 */
 .hero-bg img {
   position: absolute;
-  right: 0;
+  /* 右侧留出与内容区相同的 60px 边距 */
+  right: max(60px, calc((100vw - var(--container)) / 2));
   /* 比横幅更高：上下边缘跑到可视区之外，只让左右两侧由圆形蒙版淡出 */
   top: -25%;
   width: 62%;
