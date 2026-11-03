@@ -849,13 +849,13 @@ a.ep-tab { text-decoration: none; }
   position: absolute;
   /* 右侧留出与内容区相同的 60px 边距 */
   right: max(60px, calc((100vw - var(--container)) / 2));
-  /* 比横幅更高：上下边缘跑到可视区之外，只让左右两侧由圆形蒙版淡出 */
-  top: -25%;
-  width: 62%;
-  height: 150%;
+  /* 比横幅略高、面积收小：源站海报普遍只有几百像素，铺太大必然糊 */
+  top: -12%;
+  width: 44%;
+  height: 124%;
   object-fit: cover;
   object-position: 50% 42%;
-  filter: blur(2px) brightness(0.82) saturate(0.98);
+  filter: blur(1px) brightness(0.84) saturate(0.98);
   /* 椭圆形蒙版：中间清晰，四周在到达图片边缘前就淡到全透明 */
   -webkit-mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
   mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
