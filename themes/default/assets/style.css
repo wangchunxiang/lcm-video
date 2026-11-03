@@ -833,12 +833,6 @@ a.ep-tab { text-decoration: none; }
   margin-bottom: var(--gap-block);
 }
 
-.banner-inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-}
-
 .banner-bg { position: absolute; inset: 0; overflow: hidden; }
 /* 竖版海报只铺右半边：放大倍数约为半屏时的三分之一，画面仍能看清，
    左侧留给文字，四周由渐变淡出到页面底色 */
