@@ -256,17 +256,16 @@ img { border: 0; vertical-align: middle; }
 
 .today-count { margin-left: auto; color: var(--text-3); font-size: var(--fs-small); }
 
-/* 首页分类右侧：默认显示「电影 >」，悬停把「查看更多」展开出来 */
-.more {
+/* 首页分类标题本身是链接：默认「电影 >」，悬停把「查看更多」展开在标题后面 */
+.section-more {
   display: inline-flex;
   align-items: center;
-  color: var(--text-2);
-  font-size: var(--fs-body);
+  color: inherit;
   white-space: nowrap;
   transition: color 0.18s ease;
 }
 
-.more:hover { color: var(--primary); }
+.section-more:hover { color: var(--primary); }
 
 .more-expand {
   max-width: 0;
@@ -278,9 +277,9 @@ img { border: 0; vertical-align: middle; }
   transition: max-width 0.18s ease, opacity 0.18s ease, margin-left 0.18s ease;
 }
 
-.more:hover .more-expand {
+.section-more:hover .more-expand {
   max-width: 5em;
-  margin-left: 6px;
+  margin-left: 8px;
   opacity: 1;
 }
 
