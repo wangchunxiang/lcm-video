@@ -277,6 +277,54 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
   /* ------------------------------- 分类列表 ------------------------------- */
 
+  /* 今日更新：首页「今日更新」标题点进来，按采集时间列出今天入库的影片 */
+  app.get('/today', async (req, reply) => {
+    const query = req.query as Record<string, string | undefined>;
+    const config = await loadSiteConfig(db);
+    const sort = query.sort === 'new' ? 'new' : 'time';
+    const page = parsePage(query.page);
+
+    const where = and(eq(vod.status, 1), sql`${vod.collectedAt} >= CURDATE()`);
+    const order = sort === 'new'
+      ? [desc(vod.createdAt), desc(vod.id)]
+      : [desc(vod.collectedAt), desc(vod.id)];
+
+    const [total, rows] = await Promise.all([
+      countWhere(db, where),
+      db
+        .select(vodColumns())
+        .from(vod)
+        .leftJoin(category, eq(category.id, vod.categoryId))
+        .where(where)
+        .orderBy(...order)
+        .limit(config.listPageSize)
+        .offset((page - 1) * config.listPageSize),
+    ]);
+
+    const pagination = buildPagination(page, config.listPageSize, total);
+    if (page > pagination.total_pages) return notFound(reply);
+
+    return render(
+      reply,
+      'list',
+      {
+        title: `今日更新 - ${config.name}`,
+        description: config.description,
+        canonical: '/today',
+      },
+      {
+        category: { id: 0, name: '今日更新', alias: 'today' },
+        types: [],
+        years: [],
+        vods: rows.map(toCard),
+        pagination,
+        filter: { type: '', type_name: '', year: '', sort },
+        base_url: '/today',
+        nav_path: '',
+      },
+    );
+  });
+
   app.get('/list/:alias', async (req, reply) => {
     const { alias } = req.params as { alias: string };
     const query = req.query as Record<string, string | undefined>;

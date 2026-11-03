@@ -1,6 +1,7 @@
 {% layout 'layout' %}
 {% block content %}
-{% assign base = '/list/' | append: category.alias %}
+{% assign base = base_url | default: '' %}
+{% if base == '' %}{% assign base = '/list/' | append: category.alias %}{% endif %}
 {% assign clear = filter | with_type: '' | with_year: '' %}
 
 <div class="list-page">
