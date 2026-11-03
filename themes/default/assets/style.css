@@ -115,7 +115,11 @@ img { border: 0; vertical-align: middle; }
   border-radius: 6px;
 }
 
-.logo-text { white-space: nowrap; }
+.logo-text {
+  white-space: nowrap;
+  /* 行高收成 1，让站名与右侧导航文字以同一中心线对齐 */
+  line-height: 1;
+}
 
 .main-nav {
   display: flex;
