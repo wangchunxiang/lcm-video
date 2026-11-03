@@ -742,14 +742,8 @@ a.ep-tab { text-decoration: none; }
 
 .play-stack .player { width: 100%; }
 
-.play-eps {
-  padding: var(--pad);
-  margin-bottom: 0;
-}
-
-.play-eps .ep-tabs { margin-bottom: var(--space-3); }
-
-.play-eps .ep-scroll { max-height: 212px; overflow-y: auto; }
+/* 与详情页的剧集卡片完全一致：卡片内边距、tab 间距、滚动高度都沿用 .section 与 .detail-eps 的默认值 */
+.play-eps { margin-bottom: 0; }
 
 
 
