@@ -338,3 +338,44 @@
   });
   sync();
 })();
+
+/* 详情页：简介展开/收起 + 分享复制链接 */
+(function () {
+  var intro = document.querySelector('[data-intro]');
+  var toggle = document.querySelector('[data-intro-toggle]');
+  if (intro && toggle) {
+    toggle.addEventListener('click', function () {
+      var open = intro.classList.toggle('is-open');
+      toggle.textContent = open ? '收起' : '展开';
+    });
+  }
+
+  function toast(text) {
+    var box = document.querySelector('.site-toast');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'site-toast';
+      document.body.appendChild(box);
+    }
+    box.textContent = text;
+    box.classList.add('is-show');
+    clearTimeout(box._timer);
+    box._timer = setTimeout(function () {
+      box.classList.remove('is-show');
+    }, 1800);
+  }
+
+  var share = document.querySelector('[data-share]');
+  if (!share) return;
+  share.addEventListener('click', function () {
+    var url = window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        function () { toast('链接已复制'); },
+        function () { window.prompt('复制链接', url); },
+      );
+    } else {
+      window.prompt('复制链接', url);
+    }
+  });
+})();
