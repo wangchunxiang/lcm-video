@@ -130,7 +130,7 @@ img { border: 0; vertical-align: middle; }
   display: inline-block;
   padding: 0 var(--space-3);
   line-height: 64px;
-  font-size: var(--fs-emphasis);
+  font-size: 20px;
   color: var(--text);
   white-space: nowrap;
 }
