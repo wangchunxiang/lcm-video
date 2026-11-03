@@ -57,7 +57,7 @@
     <div class="line-panel">
       <div class="episode-grid">
         {% for item in episodes %}
-        <a class="episode-btn{% if item.index == current_ep %} current{% endif %}"
+        <a class="episode-btn{% if item.name.size > 10 %} is-long{% endif %}{% if item.index == current_ep %} current{% endif %}"
            href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
         {% endfor %}
       </div>
