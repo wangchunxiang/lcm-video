@@ -366,34 +366,35 @@
   }
 
   var qrTrigger = document.querySelector('[data-qr]');
-  var qrModal = document.querySelector('[data-qr-modal]');
-  if (!qrTrigger || !qrModal) return;
+  var qrPanel = document.querySelector('[data-qr-panel]');
+  if (!qrTrigger || !qrPanel) return;
 
-  var qrBox = qrModal.querySelector('[data-qr-code]');
+  var qrBox = qrPanel.querySelector('[data-qr-code]');
   var qrBuilt = false;
 
-  function openQr() {
-    if (!qrBuilt && typeof window.qrcode === 'function' && qrBox) {
-      var qr = window.qrcode(0, 'M');
-      qr.addData(window.location.href);
-      qr.make();
-      qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
-      qrBuilt = true;
-    }
-    qrModal.hidden = false;
+  function buildQr() {
+    if (qrBuilt || typeof window.qrcode !== 'function' || !qrBox) return;
+    var qr = window.qrcode(0, 'M');
+    qr.addData(window.location.href);
+    qr.make();
+    qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+    qrBuilt = true;
   }
 
-  function closeQr() {
-    qrModal.hidden = true;
-  }
-
-  qrTrigger.addEventListener('click', openQr);
-  qrModal.addEventListener('click', function (event) {
-    if (event.target === qrModal) closeQr();
+  // 悬停即生成并展示，点击用于键盘/触屏
+  qrTrigger.addEventListener('mouseenter', buildQr);
+  qrTrigger.addEventListener('focus', buildQr);
+  qrTrigger.addEventListener('click', function (event) {
+    event.preventDefault();
+    buildQr();
+    qrPanel.classList.toggle('is-open');
   });
-  var qrClose = qrModal.querySelector('[data-qr-close]');
-  if (qrClose) qrClose.addEventListener('click', closeQr);
+  document.addEventListener('click', function (event) {
+    if (!qrPanel.classList.contains('is-open')) return;
+    if (qrTrigger.contains(event.target) || qrPanel.contains(event.target)) return;
+    qrPanel.classList.remove('is-open');
+  });
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && !qrModal.hidden) closeQr();
+    if (event.key === 'Escape') qrPanel.classList.remove('is-open');
   });
 })();

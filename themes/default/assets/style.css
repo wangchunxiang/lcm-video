@@ -744,33 +744,36 @@ a.ep-tab { text-decoration: none; }
   pointer-events: none;
 }
 
-/* ---------- 二维码弹层 ---------- */
+/* ---------- 二维码浮层（悬停展开） ---------- */
 
-.qr-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  background: rgba(0, 0, 0, 0.6);
+.qr-pop {
+  position: relative;
+  display: inline-block;
 }
 
-.qr-modal[hidden] { display: none; }
-
-.qr-card {
-  padding: var(--space-6);
+.qr-pop-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: 210px;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--card);
   box-shadow: var(--shadow);
   text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
 }
 
-.qr-title {
-  margin: 0 0 var(--space-4);
-  font-size: var(--fs-emphasis);
-  font-weight: 600;
+.qr-pop:hover .qr-pop-panel,
+.qr-pop-panel.is-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .qr-code {
@@ -781,15 +784,13 @@ a.ep-tab { text-decoration: none; }
   line-height: 0;
 }
 
-.qr-code svg { display: block; width: 200px; height: 200px; }
+.qr-code svg { display: block; width: 160px; height: 160px; }
 
 .qr-hint {
-  margin: var(--space-3) 0 var(--space-4);
+  margin: var(--space-2) 0 0;
   color: var(--text-3);
-  font-size: var(--fs-small);
+  font-size: var(--fs-caption);
 }
-
-.qr-close { height: var(--control-h-sm); padding: 0 var(--space-5); }
 
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
