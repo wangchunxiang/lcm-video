@@ -481,10 +481,14 @@ button { font: inherit; color: inherit; }
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card);
+  color: var(--text);
   font-size: 13px;
+  font-family: inherit;
   outline: none;
 }
 .m-searchbar input:focus { border-color: var(--primary); }
+
+.m-searchbar input::placeholder { color: var(--text-3); }
 .m-searchbar button {
   flex: none;
   height: 36px;
