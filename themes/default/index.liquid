@@ -19,7 +19,11 @@
 <section class="section">
   <div class="section-head">
     <h2>{{ block.name }}</h2>
-    <a class="more" href="/list/{{ block.alias }}">更多 &gt;</a>
+    <a class="more" href="/list/{{ block.alias }}">
+      <span class="more-name">{{ block.name }}</span>
+      <span class="more-expand">查看更多</span>
+      <span class="more-arrow">&gt;</span>
+    </a>
   </div>
   <div class="vod-grid">
     {% for v in block.vods %}
