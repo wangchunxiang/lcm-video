@@ -10,59 +10,62 @@
   <span>{{ current_ep_name }}</span>
 </nav>
 
-<div class="play-row">
-  <div class="play-left">
-    <div class="player">
-      {% if iframe_url != blank %}
-      <iframe
-        src="{{ iframe_url }}"
-        allowfullscreen
-        allow="autoplay; fullscreen; encrypted-media"
-        frameborder="0"
-        scrolling="no"
-      ></iframe>
-      {% else %}
-      <div
-        id="player"
-        class="player-box"
-        data-src="{{ play_url }}"
-        data-hls="{% if is_hls %}1{% else %}0{% endif %}"
-        data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
-        data-autonext="{% if autonext %}1{% else %}0{% endif %}"
-        data-resume="{% if resume %}1{% else %}0{% endif %}"
-        data-screenshot="{% if screenshot %}1{% else %}0{% endif %}"
-        data-webfullscreen="{% if webfullscreen %}1{% else %}0{% endif %}"
-        data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
-        data-setting="{% if setting %}1{% else %}0{% endif %}"
-        data-lang="zh-cn"
-        data-poster="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
-        data-vod-id="{{ vod.id }}"
-        data-ep="{{ current_ep }}"
-        data-next="{{ next_url }}"
-      ></div>
-      {% endif %}
-    </div>
-
+<div class="play-stack">
+  <div class="player">
+    {% if iframe_url != blank %}
+    <iframe
+      src="{{ iframe_url }}"
+      allowfullscreen
+      allow="autoplay; fullscreen; encrypted-media"
+      frameborder="0"
+      scrolling="no"
+    ></iframe>
+    {% else %}
+    <div
+      id="player"
+      class="player-box"
+      data-src="{{ play_url }}"
+      data-hls="{% if is_hls %}1{% else %}0{% endif %}"
+      data-autoplay="{% if autoplay %}1{% else %}0{% endif %}"
+      data-autonext="{% if autonext %}1{% else %}0{% endif %}"
+      data-resume="{% if resume %}1{% else %}0{% endif %}"
+      data-screenshot="{% if screenshot %}1{% else %}0{% endif %}"
+      data-webfullscreen="{% if webfullscreen %}1{% else %}0{% endif %}"
+      data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
+      data-setting="{% if setting %}1{% else %}0{% endif %}"
+      data-lang="zh-cn"
+      data-poster="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
+      data-vod-id="{{ vod.id }}"
+      data-ep="{{ current_ep }}"
+      data-next="{{ next_url }}"
+    ></div>
+    {% endif %}
   </div>
 
-  <aside class="card play-side">
-    <nav class="line-tabs">
+  <section class="section play-eps">
+    <div class="ep-tabs" role="tablist">
       {% for l in lines %}
-      <a class="line-tab{% if l.id == line.id %} is-active{% endif %}"
+      <a class="ep-tab{% if l.id == line.id %} is-active{% endif %}"
          href="/play/{{ vod.id }}/{{ l.id }}/{{ l.ep }}"
-         title="{{ l.name }}">{{ l.name }}</a>
+         title="{{ l.name }}">{{ l.name }} <span class="count">{{ l.episode_count }}</span></a>
       {% endfor %}
-    </nav>
-
-    <div class="line-panel">
-      <div class="episode-grid">
-        {% for item in episodes %}
-        <a class="episode-btn{% if item.name.size > 10 %} is-long{% endif %}{% if item.index == current_ep %} current{% endif %}"
-           href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
-        {% endfor %}
-      </div>
+      <button type="button" class="ep-sort" data-ep-sort>正序</button>
     </div>
-  </aside>
+    <div class="ep-panel is-active">
+      {% if episodes.size > 0 %}
+      <div class="ep-scroll">
+        <div class="episode-grid">
+          {% for item in episodes %}
+          <a class="episode-btn{% if item.index == current_ep %} current{% endif %}"
+             href="{{ play_base }}/{{ item.index }}" title="{{ item.name }}">{{ item.name }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-tip">该线路暂无剧集</p>
+      {% endif %}
+    </div>
+  </section>
 </div>
 {% endblock %}
 {% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}
