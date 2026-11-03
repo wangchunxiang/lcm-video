@@ -1,13 +1,14 @@
 /* 移动端主题：所有规则只作用于 mobile/ 模板，桌面页面不加载本文件 */
 :root {
-  --primary: #2563eb;
-  --primary-weak: #eff4ff;
-  --text: #1f2937;
-  --text-2: #6b7280;
-  --text-3: #98a2b3;
-  --line: #edf0f4;
-  --bg: #f4f5f7;
-  --card: #fff;
+  /* 暗色主题 */
+  --primary: #3b82f6;
+  --primary-weak: rgba(59, 130, 246, 0.16);
+  --text: #e6e8eb;
+  --text-2: #a9b0ba;
+  --text-3: #7f8792;
+  --line: #2a303a;
+  --bg: #0f1115;
+  --card: #171a20;
   --radius: 10px;
   --pad: 12px;
   --header-h: 48px;
@@ -99,7 +100,7 @@ button { font: inherit; color: inherit; }
   flex: none;
   padding: 5px 12px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   font-size: 13px;
   white-space: nowrap;
@@ -123,7 +124,7 @@ button { font: inherit; color: inherit; }
   height: 88px;
   border-radius: 6px;
   overflow: hidden;
-  background: #e9edf3;
+  background: #232830;
 }
 .m-row-cover img { width: 100%; height: 100%; object-fit: cover; }
 .m-row-body { flex: 1; min-width: 0; }
@@ -160,7 +161,7 @@ button { font: inherit; color: inherit; }
   aspect-ratio: 2 / 3;
   border-radius: 8px;
   overflow: hidden;
-  background: #e9edf3;
+  background: #232830;
 }
 .m-card-cover img { width: 100%; height: 100%; object-fit: cover; }
 .m-badge {
@@ -208,7 +209,7 @@ button { font: inherit; color: inherit; }
   padding: 5px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   font-size: 12px;
 }
@@ -231,7 +232,7 @@ button { font: inherit; color: inherit; }
   flex: none;
   padding: 4px 11px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   font-size: 12px;
   white-space: nowrap;
@@ -245,7 +246,7 @@ button { font: inherit; color: inherit; }
 .m-more-btn {
   padding: 8px 26px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   font-size: 13px;
 }
@@ -263,7 +264,7 @@ button { font: inherit; color: inherit; }
   height: 132px;
   border-radius: 8px;
   overflow: hidden;
-  background: #e9edf3;
+  background: #232830;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
 }
 .m-hero-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -310,7 +311,7 @@ button { font: inherit; color: inherit; }
   padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   font-size: 12px;
 }
@@ -400,7 +401,7 @@ button { font: inherit; color: inherit; }
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   color: var(--text);
   font-size: 13px;
 }
@@ -475,7 +476,7 @@ button { font: inherit; color: inherit; }
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   font-size: 13px;
   outline: none;
 }

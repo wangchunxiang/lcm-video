@@ -1,15 +1,18 @@
 :root {
-  --bg: #f5f6f8;
-  --card: #ffffff;
-  --text: #1f2329;
-  --text-2: #646a73;
-  --text-3: #8f959e;
-  --line: #e8eaed;
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
+  /* 暗色主题 */
+  --bg: #0f1115;
+  --card: #171a20;
+  --surface: #1c2027;      /* 次级面：tab、输入框、占位 */
+  --surface-2: #232830;    /* 更亮一档：格子、按钮底 */
+  --text: #e6e8eb;
+  --text-2: #a9b0ba;
+  --text-3: #7f8792;
+  --line: #2a303a;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
   --radius: 8px;
-  --container: 1760px;
-  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --container: 1800px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 
   /* 间距刻度（4 的倍数） */
   --space-1: 4px;
@@ -64,17 +67,17 @@ a { color: inherit; text-decoration: none; }
 img { border: 0; vertical-align: middle; }
 
 .container {
-  /* 左偏移只由视口宽度决定：滚动条出现/消失都不会让内容左右跳动 */
-  width: min(var(--container), 100% - 48px);
-  margin-left: max(var(--space-6), calc((100vw - var(--container)) / 2));
+  /* 两侧各留 60px：宽屏由 max-width 收敛，窄屏由 100% - 120px 收敛 */
+  width: min(var(--container), 100% - 120px);
+  margin-left: max(60px, calc((100vw - var(--container)) / 2));
   margin-right: auto;
-  padding: 0 var(--space-6);
+  padding: 0;
 }
 
 /* ---------- header ---------- */
 
 .site-header {
-  background: #fff;
+  background: var(--card);
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
@@ -138,7 +141,7 @@ img { border: 0; vertical-align: middle; }
   border: 1px solid var(--line);
   border-radius: 20px;
   overflow: hidden;
-  background: #f7f8fa;
+  background: var(--surface);
 }
 
 .search-box input {
@@ -165,7 +168,7 @@ img { border: 0; vertical-align: middle; }
 /* ---------- section ---------- */
 
 .section {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius);
   padding: var(--pad-card);
   margin: 0 0 var(--gap-block);
@@ -216,17 +219,18 @@ img { border: 0; vertical-align: middle; }
 .vod-card .cover {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  /* 8 列时每列约 210px，按 210×285 的比例裁切 */
+  aspect-ratio: 210 / 285;
   border-radius: 6px;
   overflow: hidden;
-  background: linear-gradient(135deg, #eceff3, #dfe3e9);
+  background: linear-gradient(135deg, #1f2733, #171d26);
 }
 
 .vod-card .cover img {
   width: 100%;
   height: 100%;
   object-fit: fill;
-  background: #2b3a4a;
+  background: #1f2733;
   transition: transform 0.25s ease;
 }
 
@@ -330,7 +334,7 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   gap: var(--space-5);
   align-items: flex-start;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: var(--pad-card);
@@ -352,7 +356,7 @@ img { border: 0; vertical-align: middle; }
   width: 100%;
   height: 100%;
   object-fit: fill;
-  background: #2b3a4a;
+  background: #1f2733;
   border-radius: 6px;
 }
 
@@ -390,7 +394,7 @@ img { border: 0; vertical-align: middle; }
   white-space: nowrap;
   padding: 2px var(--space-2);
   border-radius: 4px;
-  background: #eaf1fe;
+  background: rgba(59, 130, 246, 0.16);
   color: var(--primary);
   font-size: var(--fs-caption);
   line-height: 20px;
@@ -509,7 +513,7 @@ img { border: 0; vertical-align: middle; }
   visibility: hidden;
   transform: translateY(6px) scale(0.99);
   transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
-  background: #fff;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
@@ -541,7 +545,7 @@ img { border: 0; vertical-align: middle; }
 }
 
 .intro-float-bd::-webkit-scrollbar { width: 6px; }
-.intro-float-bd::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
+.intro-float-bd::-webkit-scrollbar-thumb { background: #3a414c; border-radius: 3px; }
 
 .btn-play-inline {
   padding: var(--space-2) var(--space-7);
@@ -576,7 +580,7 @@ img { border: 0; vertical-align: middle; }
   margin-bottom: -1px;
   border: 1px solid var(--line);
   border-bottom: 0;
-  background: #f7f8fa;
+  background: var(--surface);
   color: var(--text-2);
   padding: var(--space-2) var(--space-4);
   font: inherit;
@@ -591,10 +595,10 @@ img { border: 0; vertical-align: middle; }
   font-size: var(--fs-caption);
 }
 
-.ep-tab:hover { background: #f2f3f5; color: var(--primary); }
+.ep-tab:hover { background: var(--surface-2); color: var(--primary); }
 
 .ep-tab.is-active {
-  background: #fff;
+  background: var(--card);
   color: var(--primary);
   border-color: var(--line);
   z-index: 1;
@@ -609,7 +613,7 @@ img { border: 0; vertical-align: middle; }
   right: -1px;
   bottom: -1px;
   height: 2px;
-  background: #fff;
+  background: var(--card);
 }
 
 .ep-sort {
@@ -617,7 +621,7 @@ img { border: 0; vertical-align: middle; }
   margin-bottom: var(--space-1);
   align-self: center;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
   color: var(--text-2);
   border-radius: 6px;
   padding: var(--space-1) var(--space-3);
@@ -638,7 +642,7 @@ img { border: 0; vertical-align: middle; }
 }
 
 .ep-scroll::-webkit-scrollbar { width: 6px; }
-.ep-scroll::-webkit-scrollbar-thumb { background: #d0d3d9; border-radius: 3px; }
+.ep-scroll::-webkit-scrollbar-thumb { background: #3a414c; border-radius: 3px; }
 
 /* 剧集区固定 10 列 × 5 行 = 每页 50 集，行列都可预期 */
 .episode-grid {
@@ -656,7 +660,7 @@ img { border: 0; vertical-align: middle; }
   padding: 0 6px;
   text-align: center;
   border-radius: 4px;
-  background: #f2f3f5;
+  background: var(--surface-2);
   font-size: var(--fs-caption);
   color: var(--text-2);
   overflow: hidden;
@@ -664,7 +668,7 @@ img { border: 0; vertical-align: middle; }
   white-space: nowrap;
 }
 
-.episode-btn:hover { background: #e8edff; color: var(--primary); }
+.episode-btn:hover { background: rgba(59, 130, 246, 0.18); color: var(--primary); }
 
 .episode-btn.current {
   background: var(--primary);
@@ -698,7 +702,7 @@ a.ep-tab { text-decoration: none; }
 /* ---------- player ---------- */
 
 .card {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
@@ -846,7 +850,7 @@ a.ep-tab { text-decoration: none; }
   justify-content: center;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--card);
   font-size: var(--fs-small);
   color: var(--text-2);
 }
@@ -888,7 +892,7 @@ a.ep-tab { text-decoration: none; }
   border-radius: 22px;
   color: var(--text-2);
   font-size: var(--fs-emphasis);
-  background: #fff;
+  background: var(--card);
 }
 
 .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
@@ -911,7 +915,7 @@ a.ep-tab { text-decoration: none; }
   margin-top: auto;
   padding: var(--space-3) 0 var(--space-4);
   border-top: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
 }
 .disclaimer {
   margin: 0 0 var(--space-1);
