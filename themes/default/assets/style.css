@@ -117,8 +117,10 @@ img { border: 0; vertical-align: middle; }
 
 .logo-text {
   white-space: nowrap;
-  /* 行高收成 1，让站名与右侧导航文字以同一中心线对齐 */
   line-height: 1;
+  /* 中文字形在 line-height:1 的行框里上下留白不对称，会偏低 1px，这里补正 */
+  position: relative;
+  top: -1px;
 }
 
 .main-nav {
