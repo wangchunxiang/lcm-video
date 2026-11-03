@@ -856,9 +856,6 @@ a.ep-tab { text-decoration: none; }
   object-fit: cover;
   object-position: 50% 42%;
   filter: blur(1px) brightness(0.84) saturate(0.98);
-  /* 椭圆形蒙版：中间清晰，四周在到达图片边缘前就淡到全透明 */
-  -webkit-mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
-  mask-image: radial-gradient(circle at 52% 46%, #000 40%, rgba(0, 0, 0, 0.8) 56%, rgba(0, 0, 0, 0) 72%);
 }
 
 /* 左侧压暗保证文字可读，右侧保留海报，四边向底色淡出 */
