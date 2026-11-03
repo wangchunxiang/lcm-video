@@ -104,6 +104,8 @@ img { border: 0; vertical-align: middle; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* 与 .main-nav > a 用同一行高，字形的垂直位置由同一个行框决定 */
+  line-height: 64px;
 }
 
 .logo img { height: 28px; }
@@ -117,10 +119,8 @@ img { border: 0; vertical-align: middle; }
 
 .logo-text {
   white-space: nowrap;
-  line-height: 1;
-  /* 中文字形在 line-height:1 的行框里上下留白不对称，会偏低 1px，这里补正 */
-  position: relative;
-  top: -1px;
+  /* 行高与导航项一致（同为 header 高度），字形在行框内按同一基线居中，不靠位移修正 */
+  line-height: inherit;
 }
 
 .main-nav {
