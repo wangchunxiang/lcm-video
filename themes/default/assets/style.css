@@ -361,27 +361,10 @@ img { border: 0; vertical-align: middle; }
   white-space: nowrap;
 }
 
-/* ---------- breadcrumb ---------- */
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0;
-  margin: 0 0 var(--gap-block);
-  color: var(--text-3);
-  font-size: var(--fs-small);
-  flex-wrap: wrap;
-}
-
-.breadcrumb a:hover { color: var(--primary); }
-
-.breadcrumb .bc-extra { margin-left: var(--space-1); }
 
 /* ---------- filter ---------- */
 
 /* 分类页：面包屑与筛选区同属一个整体，间距与筛选行之间一致 */
-.list-page .breadcrumb { margin-bottom: var(--space-2); }
 
 .filter-row {
   display: flex;
@@ -389,7 +372,6 @@ img { border: 0; vertical-align: middle; }
   gap: var(--space-1);
   flex-wrap: wrap;
 }
-
 
 .filter-block {
   display: flex;

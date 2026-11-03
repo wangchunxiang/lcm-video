@@ -3,14 +3,6 @@
 {% assign base = '/search' %}
 
 <div class="list-page">
-<nav class="breadcrumb">
-  <a href="/">首页</a>
-  <span>/</span>
-  <span>搜索</span>
-  {% if keyword != '' %}
-  <span class="bc-extra">「{{ keyword }}」共找到 {{ pagination.total }} 部影片</span>
-  {% endif %}
-</nav>
 
 {% if keyword == '' %}
 <p class="empty-tip">输入片名开始搜索。</p>
