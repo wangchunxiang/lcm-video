@@ -185,8 +185,8 @@ img { border: 0; vertical-align: middle; }
   flex: none;
   /* 固定总宽：显示/隐藏清除按钮时输入区自动让位，整个搜索框不会被撑大 */
   width: 380px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border: 0;
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: #3B3D3F;
 }
