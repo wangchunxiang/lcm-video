@@ -821,9 +821,9 @@ a.ep-tab { text-decoration: none; }
   height: 100%;
 }
 
-/* ---------- 详情页 hero：海报放大做背景，四周淡出 ---------- */
+/* ---------- 详情页顶部横幅：左侧信息 + 右侧海报 ---------- */
 
-.detail-hero {
+.detail-banner {
   position: relative;
   overflow: hidden;
   width: 100%;
@@ -833,16 +833,16 @@ a.ep-tab { text-decoration: none; }
   margin-bottom: var(--gap-block);
 }
 
-.hero-inner {
+.banner-inner {
   position: relative;
   z-index: 1;
   width: 100%;
 }
 
-.hero-bg { position: absolute; inset: 0; overflow: hidden; }
+.banner-bg { position: absolute; inset: 0; overflow: hidden; }
 /* 竖版海报只铺右半边：放大倍数约为半屏时的三分之一，画面仍能看清，
    左侧留给文字，四周由渐变淡出到页面底色 */
-.hero-bg img {
+.banner-bg img {
   position: absolute;
   right: 0;
   /* 比横幅略高、面积收小：源站海报普遍只有几百像素，铺太大必然糊 */
@@ -854,33 +854,13 @@ a.ep-tab { text-decoration: none; }
   filter: blur(1px) brightness(0.84) saturate(0.98);
 }
 
-/* 左侧压暗保证文字可读，右侧保留海报，四边向底色淡出 */
-.hero-bg::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 200px;
-  background: linear-gradient(180deg, rgba(10, 12, 15, 0) 0%, #0A0C0F 82%);
-  z-index: 2;
-}
-
-.hero-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, #0A0C0F 0%, #0A0C0F 24%, rgba(10, 12, 15, 0.86) 40%, rgba(10, 12, 15, 0.5) 52%, rgba(10, 12, 15, 0) 64%);
-}
-
-.hero-info {
+.banner-info {
   position: relative;
   width: min(54%, 860px);
   padding: 40px 0 36px;
 }
 
-.hero-title {
+.banner-title {
   margin: 0;
   font-size: 32px;
   line-height: 1.25;
@@ -888,11 +868,11 @@ a.ep-tab { text-decoration: none; }
   color: #fff;
 }
 
-.hero-sub { margin: 8px 0 0; color: var(--text-2); font-size: 14px; }
+.banner-sub { margin: 8px 0 0; color: var(--text-2); font-size: 14px; }
 
-.hero-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.banner-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 
-.hero-tags .tag {
+.banner-tags .tag {
   font-size: 12px;
   line-height: 1;
   padding: 5px 8px;
@@ -901,24 +881,24 @@ a.ep-tab { text-decoration: none; }
   color: var(--text);
 }
 
-.hero-tags .tag-year { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }
+.banner-tags .tag-year { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }
 
-.hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; color: var(--text-3); font-size: 13px; }
-.hero-meta span + span { border-left: 1px solid var(--line); padding-left: 12px; }
+.banner-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; color: var(--text-3); font-size: 13px; }
+.banner-meta span + span { border-left: 1px solid var(--line); padding-left: 12px; }
 
-.hero-fields { margin: 18px 0 0; display: grid; gap: 8px; }
-.hero-fields > div { display: flex; gap: 12px; font-size: 14px; line-height: 1.7; }
-.hero-fields dt { flex: none; width: 42px; color: var(--text-3); }
-.hero-fields dd { margin: 0; color: var(--text-2); min-width: 0; }
+.banner-fields { margin: 18px 0 0; display: grid; gap: 8px; }
+.banner-fields > div { display: flex; gap: 12px; font-size: 14px; line-height: 1.7; }
+.banner-fields dt { flex: none; width: 42px; color: var(--text-3); }
+.banner-fields dd { margin: 0; color: var(--text-2); min-width: 0; }
 
-.hero-intro {
+.banner-intro {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.hero-intro.is-open { display: block; -webkit-line-clamp: unset; }
+.banner-intro.is-open { display: block; -webkit-line-clamp: unset; }
 
 .intro-toggle {
   margin-top: 4px;
@@ -930,9 +910,9 @@ a.ep-tab { text-decoration: none; }
   cursor: pointer;
 }
 
-.hero-actions { display: flex; gap: 10px; margin-top: 24px; }
+.banner-actions { display: flex; gap: 10px; margin-top: 24px; }
 
-.hero-play {
+.banner-play {
   height: 38px;
   line-height: 38px;
   padding: 0 22px;
@@ -976,10 +956,10 @@ a.ep-tab { text-decoration: none; }
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 1100px) {
-  .hero-info { width: 100%; padding: 28px 24px; }
-  .hero-title { font-size: 24px; }
-  .detail-hero { min-height: 380px; }
-  .hero-bg::after {
+  .banner-info { width: 100%; padding: 28px 24px; }
+  .banner-title { font-size: 24px; }
+  .detail-banner { min-height: 380px; }
+  .banner-bg::after {
     background:
       linear-gradient(180deg, rgba(10, 12, 15, 0.5) 0%, rgba(10, 12, 15, 0.86) 45%, rgba(10, 12, 15, 0.95) 100%);
   }

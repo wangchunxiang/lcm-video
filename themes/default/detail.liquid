@@ -2,8 +2,8 @@
 
 
 {% block content %}
-<section class="detail-hero">
-  <div class="hero-bg" aria-hidden="true">
+<section class="detail-banner">
+  <div class="banner-bg" aria-hidden="true">
     <img
       src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
       alt=""
@@ -11,33 +11,33 @@
     >
   </div>
 
-  <div class="hero-inner">
-  <div class="hero-info">
-    <h1 class="hero-title">{{ vod.name }}</h1>
-    {% if vod.sub_name != blank %}<p class="hero-sub">{{ vod.sub_name }}</p>{% endif %}
+  <div class="banner-inner">
+  <div class="banner-info">
+    <h1 class="banner-title">{{ vod.name }}</h1>
+    {% if vod.sub_name != blank %}<p class="banner-sub">{{ vod.sub_name }}</p>{% endif %}
 
-    <div class="hero-tags">
+    <div class="banner-tags">
       {% if vod.year > 0 %}<span class="tag tag-year">{{ vod.year }}</span>{% endif %}
       {% if vod.category_name != blank %}<span class="tag">{{ vod.category_name }}</span>{% endif %}
       {% if vod.remarks != blank %}<span class="tag">{{ vod.remarks }}</span>{% endif %}
     </div>
 
-    <div class="hero-meta">
+    <div class="banner-meta">
       {% if vod.area != blank %}<span>{{ vod.area }}</span>{% endif %}
       {% if vod.lang != blank %}<span>{{ vod.lang }}</span>{% endif %}
       {% if vod.release_date != blank %}<span>{{ vod.release_date }}</span>{% endif %}
     </div>
 
-    <dl class="hero-fields">
+    <dl class="banner-fields">
       <div><dt>导演</dt><dd>{% if vod.director != blank %}{{ vod.director }}{% else %}—{% endif %}</dd></div>
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
-      <div><dt>简介</dt><dd class="hero-intro" data-intro>{% if vod.content != blank %}{{ vod.content | escape }}{% else %}{{ vod.intro | escape }}{% endif %}</dd></div>
+      <div><dt>简介</dt><dd class="banner-intro" data-intro>{% if vod.content != blank %}{{ vod.content | escape }}{% else %}{{ vod.intro | escape }}{% endif %}</dd></div>
     </dl>
     <button type="button" class="intro-toggle" data-intro-toggle>展开</button>
 
     {% if lines.size > 0 %}
-    <div class="hero-actions">
-      <a class="btn-primary hero-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
+    <div class="banner-actions">
+      <a class="btn-primary banner-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
       <button type="button" class="btn-ghost" data-share>分享</button>
     </div>
     {% endif %}
