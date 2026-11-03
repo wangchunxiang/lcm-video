@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>播放页长剧集名称 · 方案对比</title>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;padding:20px;background:#f5f6f8;color:#1a1a1a;font:13px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}
+  h1{font-size:15px;margin:0 0 4px;}
+  .sub{font-size:12px;color:#9aa0a6;margin-bottom:16px;}
+  .row{display:flex;gap:16px;align-items:flex-start;}
+  .panel{background:#fff;border-radius:10px;box-shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);padding:14px;flex:0 0 auto;display:flex;flex-direction:column;gap:10px;}
+  .panel.a,.panel.b,.panel.c{width:380px;}
+  .panel.d{width:480px;}
+  .panel h3{margin:0;font-size:13px;font-weight:600;}
+  .panel .note{margin:0;font-size:11px;color:#9aa0a6;line-height:1.5;}
+  .line{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f1f3;padding:6px 0 2px;font-size:12px;color:#5c5f66;}
+  .tab{color:#2563eb;font-weight:500;border-bottom:2px solid #2563eb;padding-bottom:4px;}
+  .box{max-height:330px;overflow-y:auto;padding-right:4px;}
+  .box::-webkit-scrollbar{width:6px;}
+  .box::-webkit-scrollbar-thumb{background:#d0d3d9;border-radius:3px;}
+
+  /* A：现状 3 列单行 */
+  .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+  /* B：2 列两行 */
+  .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+  /* D：加宽 2 列 */
+  .g2w{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+
+  .ep{display:flex;align-items:center;justify-content:center;height:28px;min-width:0;padding:0 4px;border-radius:4px;
+      background:#f2f3f5;font-size:12px;color:#5c5f66;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ep.on{background:#2563eb;color:#fff;}
+  .ep2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:16px;
+       height:auto;min-height:34px;text-align:center;padding:2px 4px;align-items:center;}
+  /* C：单列列表 */
+  .lst{display:flex;flex-direction:column;gap:4px;}
+  .rowitem{display:flex;align-items:center;gap:8px;height:30px;padding:0 8px;border-radius:4px;background:#f2f3f5;font-size:12px;color:#5c5f66;min-width:0;}
+  .rowitem .no{flex:0 0 28px;color:#9aa0a6;font-variant-numeric:tabular-nums;text-align:right;}
+  .rowitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rowitem.on{background:#2563eb;color:#fff;}
+  .rowitem.on .no{color:#c7dbff;}
+  /* C2：纯编号 */
+  .nums{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+  .num{display:flex;align-items:center;justify-content:center;height:28px;border-radius:4px;background:#f2f3f5;font-size:12px;color:#5c5f66;font-variant-numeric:tabular-nums;}
+  .num.on{background:#2563eb;color:#fff;}
+</style>
+</head>
+<body>
+  <h1>播放页右侧剧集 · 长名称方案对比</h1>
+  <div class="sub">同一批数据（你好，星期六 加更版 · 如意资源），四块面板宽度按真实侧栏渲染，蓝底为当前集</div>
+
+  <div class="row">
+    <!-- A -->
+    <section class="panel a">
+      <h3>A · 现状：3 列单行省略</h3>
+      <div class="line"><span class="tab">如意资源</span><span>正序</span></div>
+      <div class="box"><div class="g3" id="a"></div></div>
+      <p class="note">每格约 72px，只能放 5 个汉字，名称基本都被截成「240128特…」。一屏 3 列 × 11 行 ≈ 33 条。</p>
+    </section>
+
+    <!-- B -->
+    <section class="panel b">
+      <h3>B · 两列 + 两行</h3>
+      <div class="line"><span class="tab">如意资源</span><span>正序</span></div>
+      <div class="box"><div class="g2" id="b"></div></div>
+      <p class="note">每格约 180px、两行，可显示 20 字以上，长名基本完整。一屏 2 列 × 9 行 ≈ 18 条，滚动次数增加。</p>
+    </section>
+
+    <!-- C -->
+    <section class="panel c">
+      <h3>C · 单列一行（序号 + 名称）</h3>
+      <div class="line"><span class="tab">如意资源</span><span>正序</span></div>
+      <div class="box"><div class="lst" id="c"></div></div>
+      <p class="note">每行一条，名称可用约 26 个汉字，几乎不会截断。一屏约 10 条，适合「每集名字都不一样」的综艺。</p>
+    </section>
+
+    <!-- D -->
+    <section class="panel d">
+      <h3>D · 侧栏加宽到 480 + 两列两行</h3>
+      <div class="line"><span class="tab">如意资源</span><span>正序</span></div>
+      <div class="box"><div class="g2w" id="d"></div></div>
+      <p class="note">播放器相应变窄约 100px。每格 232px 两行，可显示 30 字以上，一屏 2 列 × 9 行 ≈ 18 条。</p>
+    </section>
+  </div>
+
+<script>
+  var names = [
+    '240128特别企划','240203加更','40211特别企划','40310特别企划','240317加更','240324加更',
+    '240331加更','40408特别企划','40421特别企划','10505特别企划','240519加更','40526特别企划',
+    '240606','240623加更','40628好六看','240630加更','40708特别企划','40712好六看','40716特别企划',
+    '240721加更','40728好六看','40718特别企划','40901特别企划','240922特别企划','40922特别企划'
+  ];
+  function fill(el, cls, text) {
+    var a = document.createElement('a');
+    a.className = cls + (text === names[0] ? ' on' : '');
+    a.textContent = text;
+    a.href = 'javascript:void(0)';
+    el.appendChild(a);
+  }
+  names.forEach(function (n) { fill(document.getElementById('a'), 'ep', n); });
+  names.forEach(function (n) { fill(document.getElementById('b'), 'ep ep2', n); });
+  names.forEach(function (n) { fill(document.getElementById('d'), 'ep ep2', n); });
+
+  var lst = document.getElementById('c');
+  names.forEach(function (n, i) {
+    var row = document.createElement('a');
+    row.className = 'rowitem' + (i === 0 ? ' on' : '');
+    row.href = 'javascript:void(0)';
+    row.innerHTML = '<span class="no">' + String(i + 1).padStart(2, '0') + '</span><span class="nm">' + n + '</span>';
+    lst.appendChild(row);
+  });
+</script>
+</body>
+</html>
