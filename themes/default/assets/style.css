@@ -302,11 +302,9 @@ img { border: 0; vertical-align: middle; }
   text-align: center;
 }
 
-.home .vod-card .title { font-size: 16px; }
-
 .vod-card .title {
   margin-top: var(--space-2);
-  font-size: var(--fs-body);
+  font-size: 16px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
