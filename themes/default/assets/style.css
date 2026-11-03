@@ -261,6 +261,7 @@ img { border: 0; vertical-align: middle; }
   /* 与 22px 的分类标题按基线对齐，底部齐平 */
   align-items: baseline;
   color: inherit;
+  font-weight: 700;
   white-space: nowrap;
   transition: color 0.18s ease;
 }
