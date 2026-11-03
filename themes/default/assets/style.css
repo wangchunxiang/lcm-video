@@ -833,19 +833,17 @@ a.ep-tab { text-decoration: none; }
   margin-bottom: var(--gap-block);
 }
 
-.banner-bg { position: absolute; inset: 0; overflow: hidden; }
-/* 竖版海报只铺右半边：放大倍数约为半屏时的三分之一，画面仍能看清，
-   左侧留给文字，四周由渐变淡出到页面底色 */
-.banner-bg img {
+/* 横幅右侧的海报：完整显示，不裁切不放大 */
+.banner-pic {
   position: absolute;
   right: 0;
   top: 0;
   width: 44%;
   height: 100%;
-  /* 完整显示整张海报，不裁切也不放大 */
   object-fit: contain;
   object-position: right center;
   filter: brightness(0.92);
+  pointer-events: none;
 }
 
 .banner-info {
@@ -953,10 +951,6 @@ a.ep-tab { text-decoration: none; }
   .banner-info { width: 100%; padding: 28px 24px; }
   .banner-title { font-size: 24px; }
   .detail-banner { min-height: 380px; }
-  .banner-bg::after {
-    background:
-      linear-gradient(180deg, rgba(10, 12, 15, 0.5) 0%, rgba(10, 12, 15, 0.86) 45%, rgba(10, 12, 15, 0.95) 100%);
-  }
 }
 
 /* 播放页：上播放器，下线路 + 剧集卡片（与详情页同一套面板样式） */

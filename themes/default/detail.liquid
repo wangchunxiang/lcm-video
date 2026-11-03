@@ -3,13 +3,13 @@
 
 {% block content %}
 <section class="detail-banner">
-  <div class="banner-bg" aria-hidden="true">
-    <img
-      src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
-      alt=""
-      onerror="this.style.display='none'"
-    >
-  </div>
+  <img
+    class="banner-pic"
+    src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
+    alt=""
+    aria-hidden="true"
+    onerror="this.style.display='none'"
+  >
 
   <div class="banner-info">
     <h1 class="banner-title">{{ vod.name }}</h1>
