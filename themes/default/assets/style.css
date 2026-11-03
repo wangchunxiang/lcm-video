@@ -159,6 +159,8 @@ img { border: 0; vertical-align: middle; }
 .search-box {
   display: flex;
   flex: none;
+  /* 固定总宽：显示/隐藏清除按钮时输入区自动让位，整个搜索框不会被撑大 */
+  width: 380px;
   border: 1px solid var(--line);
   border-radius: 20px;
   overflow: hidden;
@@ -171,9 +173,11 @@ img { border: 0; vertical-align: middle; }
   background: transparent;
   /* 表单元素默认不继承文字颜色，暗色下会变成黑色 */
   color: var(--text);
+  flex: 1;
+  min-width: 0;
   padding: 0 var(--space-3);
   height: 34px;
-  width: 320px;
+  width: auto;
   font-size: var(--fs-small);
   font-family: inherit;
 }
@@ -1009,7 +1013,7 @@ a.ep-tab { text-decoration: none; }
   }
   .main-nav > a { height: 36px; padding: 0 var(--space-2); }
   .search-box { margin-left: auto; }
-  .search-box input { width: 132px; }
+  .search-box { width: 250px; }
 
   .detail-card { flex-direction: column; }
   .detail-info { min-height: 0; }
