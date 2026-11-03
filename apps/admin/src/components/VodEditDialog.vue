@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { api } from '../api/client.ts';
+import { api, ApiError } from '../api/client.ts';
 
 interface VodDetail {
   id: number;
@@ -232,12 +232,31 @@ async function removeLine(line: PlayLine) {
     return;
   }
   try {
-    const result = await api.del<{ warning?: string }>(`/plays/${line.id}`);
-    if (result.warning) ElMessage.warning(result.warning);
-    else ElMessage.success('已删除线路');
+    await api.del(`/plays/${line.id}`);
+    ElMessage.success('已删除线路');
     await load();
     activeTab.value = 'lines';
   } catch (error) {
+    if (error instanceof ApiError && error.code === 409) {
+      try {
+        await ElMessageBox.confirm(error.message, '删除最后一条线路', {
+          type: 'warning',
+          confirmButtonText: '仍要删除',
+          cancelButtonText: '取消',
+        });
+      } catch {
+        return;
+      }
+      try {
+        await api.del(`/plays/${line.id}?force=1`);
+        ElMessage.success('已删除线路');
+        await load();
+        activeTab.value = 'lines';
+      } catch (inner) {
+        ElMessage.error(inner instanceof Error ? inner.message : '删除失败');
+      }
+      return;
+    }
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
   }
 }

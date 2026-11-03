@@ -598,12 +598,17 @@ export const playRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) =>
       .where(eq(vodPlay.vodId, line.vodId));
     const total = Number(countRows[0]?.count ?? 0);
 
-    await db.delete(vodPlay).where(eq(vodPlay.id, id));
+    // 最后一条线路需要二次确认：前端带 force=1 才真正删除
+    const force = (req.query as { force?: string }).force === '1';
+    if (total <= 1 && !force) {
+      return reply.code(409).send({
+        code: 40902,
+        msg: '这是该影片的最后一条播放线路，删除后影片将没有可播放线路',
+        data: { plays: total },
+      });
+    }
 
-    // 不拦截删除，只提示：删掉最后一条线路后影片就没有可播放线路了
-    return ok(reply, {
-      id,
-      warning: total <= 1 ? '这是该影片的最后一条播放线路，删除后影片将没有可播放线路' : undefined,
-    });
+    await db.delete(vodPlay).where(eq(vodPlay.id, id));
+    return ok(reply, { id });
   });
 };
