@@ -753,7 +753,7 @@ a.ep-tab { text-decoration: none; }
 
 .qr-pop-panel {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
   left: 0;
   z-index: 60;
   width: 210px;
@@ -765,7 +765,7 @@ a.ep-tab { text-decoration: none; }
   text-align: center;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
+  transform: translateY(4px);
   transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
 }
 
