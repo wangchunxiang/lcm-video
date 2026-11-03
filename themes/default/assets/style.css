@@ -133,12 +133,22 @@ img { border: 0; vertical-align: middle; }
 }
 
 .main-nav > a {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 64px;
   padding: 0 var(--space-3);
-  line-height: 64px;
   font-size: 18px;
   color: var(--text);
   white-space: nowrap;
+}
+
+/* 图标统一规格：线性、跟随文字颜色、与文字居中对齐 */
+.icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  opacity: .9;
 }
 
 .main-nav > a:hover,
@@ -976,7 +986,7 @@ a.ep-tab { text-decoration: none; }
     flex-wrap: wrap;
     gap: 0;
   }
-  .main-nav > a { line-height: 36px; padding: 0 var(--space-2); }
+  .main-nav > a { height: 36px; padding: 0 var(--space-2); }
   .search-box { margin-left: auto; }
   .search-box input { width: 132px; }
 

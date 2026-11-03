@@ -20,9 +20,25 @@
       {% endif %}
     </a>
     <nav class="main-nav">
-      <a href="/" class="{% if current == '' %}active{% endif %}">首页</a>
+      <a href="/" class="{% if current == '' %}active{% endif %}">
+        {% render 'partials/icon', name: 'home' %}
+        <span>首页</span>
+      </a>
       {% for item in nav %}
-      <a href="/list/{{ item.alias }}" class="{% if current == item.alias %}active{% endif %}">{{ item.name }}</a>
+      {% assign nav_icon = '' %}
+      {% if item.alias == 'dianying' %}{% assign nav_icon = 'film' %}
+      {% elsif item.alias == 'juji' %}{% assign nav_icon = 'tv' %}
+      {% elsif item.alias == 'zongyi' %}{% assign nav_icon = 'clapper' %}
+      {% elsif item.alias == 'dongman' %}{% assign nav_icon = 'anime' %}
+      {% elsif item.name contains '电影' %}{% assign nav_icon = 'film' %}
+      {% elsif item.name contains '动漫' %}{% assign nav_icon = 'anime' %}
+      {% elsif item.name contains '综艺' %}{% assign nav_icon = 'clapper' %}
+      {% elsif item.name contains '剧' %}{% assign nav_icon = 'tv' %}
+      {% endif %}
+      <a href="/list/{{ item.alias }}" class="{% if current == item.alias %}active{% endif %}">
+        {% if nav_icon != '' %}{% render 'partials/icon', name: nav_icon %}{% endif %}
+        <span>{{ item.name }}</span>
+      </a>
       {% endfor %}
     </nav>
     <form class="search-box" action="/search" method="get">
