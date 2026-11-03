@@ -824,32 +824,33 @@ a.ep-tab { text-decoration: none; }
 /* ---------- 详情页顶部横幅：左侧信息 + 右侧海报 ---------- */
 
 .detail-banner {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
+  /* 一个区域里的左右两部分：左海报、右信息，普通 flex 排布 */
+  display: flex;
+  align-items: flex-start;
+  gap: 36px;
+  padding: 28px 32px;
   border-radius: var(--radius);
   background: #0A0C0F;
-  min-height: 480px;
   margin-bottom: var(--gap-block);
 }
 
-/* 横幅右侧的海报：完整显示，不裁切不放大 */
+/* 左侧海报：固定列宽，完整显示（contain），不裁切 */
 .banner-pic {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 44%;
-  height: 100%;
-  object-fit: contain;
-  object-position: right center;
-  filter: brightness(0.92);
-  pointer-events: none;
+  flex: none;
+  width: auto;
+  height: auto;
+  /* 只限制最大尺寸，不主动放大：小图按原始像素显示，大图等比缩小 */
+  max-width: 320px;
+  max-height: 480px;
+  border-radius: 6px;
+  filter: brightness(0.96);
 }
 
 .banner-info {
-  position: relative;
-  width: min(54%, 860px);
-  padding: 40px 0 36px;
+  flex: 1;
+  min-width: 0;
+  max-width: 900px;
+  padding: 8px 0;
 }
 
 .banner-title {
@@ -948,9 +949,10 @@ a.ep-tab { text-decoration: none; }
 .site-toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 1100px) {
-  .banner-info { width: 100%; padding: 28px 24px; }
+  .detail-banner { flex-direction: column; gap: 20px; padding: 20px; min-height: 0; }
+  .banner-pic { max-width: 200px; max-height: 300px; }
+  .banner-info { width: 100%; padding: 0; }
   .banner-title { font-size: 24px; }
-  .detail-banner { min-height: 380px; }
 }
 
 /* 播放页：上播放器，下线路 + 剧集卡片（与详情页同一套面板样式） */
