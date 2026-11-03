@@ -180,6 +180,27 @@ img { border: 0; vertical-align: middle; }
 
 .search-box input::placeholder { color: var(--text-3); }
 
+/* 去掉浏览器原生的清除按钮，统一用主题里的 × 图标 */
+.search-box input::-webkit-search-cancel-button,
+.search-box input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
+.search-box .search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.search-box .search-clear:hover { color: var(--text); }
+
+.search-box .search-clear[hidden] { display: none; }
+
+.search-box .search-clear .icon { width: 15px; height: 15px; }
+
 .search-box button {
   border: 0;
   background: transparent;

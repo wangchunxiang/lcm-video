@@ -316,3 +316,25 @@
   window.addEventListener('scroll', sync, { passive: true });
   sync();
 })();
+
+/* 搜索框：有内容时显示自定义清除按钮，点击清空并保持焦点 */
+(function () {
+  var box = document.querySelector('.search-box');
+  if (!box) return;
+  var input = box.querySelector('input[type="search"]');
+  var clear = box.querySelector('[data-search-clear]');
+  if (!input || !clear) return;
+
+  function sync() {
+    clear.hidden = input.value.length === 0;
+  }
+
+  input.addEventListener('input', sync);
+  clear.addEventListener('click', function () {
+    input.value = '';
+    input.focus();
+    sync();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  sync();
+})();

@@ -43,6 +43,9 @@
     </nav>
     <form class="search-box" action="/search" method="get">
       <input type="search" name="wd" placeholder="搜索影片" maxlength="50" value="{{ keyword }}" autocomplete="off" spellcheck="false" aria-label="搜索影片">
+      <button type="button" class="search-clear" data-search-clear aria-label="清空搜索" hidden>
+        {% render 'partials/icon', name: 'close' %}
+      </button>
       <button type="submit" aria-label="搜索">搜索</button>
     </form>
   </div>
