@@ -653,7 +653,24 @@ img { border: 0; vertical-align: middle; }
   line-height: 16px;
   white-space: normal;
   text-align: center;
+  background: #fff;
+  border: 1px solid var(--line);
 }
+
+.play-side .episode-btn:hover { background: #eff4ff; border-color: var(--primary); }
+
+.play-side .episode-btn.current { border-color: var(--primary); }
+
+/* 名称里的日期前缀：小一号、浅色，主标题保持正常字号 */
+.ep-date {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-3);
+  margin-right: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-side .episode-btn.current .ep-date { color: #c7dbff; }
 
 /* 剧集区固定 10 列 × 5 行 = 每页 50 集，行列都可预期 */
 .episode-grid {

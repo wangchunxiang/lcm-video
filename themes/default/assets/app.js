@@ -306,4 +306,27 @@
   }
 })();
 
+/* 播放页剧集：名称前缀是 6/8 位日期时拆成小字，方便一眼扫到日期；并滚动到当前集 */
+(function () {
+  var grid = document.querySelector('.play-side .episode-grid');
+  if (!grid) return;
 
+  Array.prototype.forEach.call(grid.querySelectorAll('.episode-btn'), function (btn) {
+    var text = btn.textContent.trim();
+    var match = text.match(/^(\d{6}|\d{8})(.+)$/);
+    if (!match) return;
+    var date = document.createElement('i');
+    date.className = 'ep-date';
+    date.textContent = match[1];
+    btn.textContent = '';
+    btn.appendChild(date);
+    btn.appendChild(document.createTextNode(match[2]));
+  });
+
+  var current = grid.querySelector('.episode-btn.current');
+  var panel = grid.closest('.line-panel');
+  if (!current || !panel) return;
+  var rect = current.getBoundingClientRect();
+  var panelRect = panel.getBoundingClientRect();
+  panel.scrollTop += rect.top - panelRect.top - panel.clientHeight / 2 + rect.height / 2;
+})();
