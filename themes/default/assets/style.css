@@ -51,6 +51,8 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
+  max-width: 100%;
+  overflow-x: hidden;
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
@@ -824,21 +826,28 @@ a.ep-tab { text-decoration: none; }
 .detail-hero {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius);
+  /* 脱离内容容器：横幅从页头下方开始、左右通栏 */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  border-radius: 0;
   background: #0A0C0F;
-  min-height: 430px;
+  min-height: 480px;
   margin-bottom: var(--gap-block);
+  margin-top: 0;
 }
 
-.hero-bg { position: absolute; inset: 0; }
+.hero-bg { position: absolute; inset: 0; overflow: hidden; }
+/* 竖版海报只铺右半边：放大倍数约为半屏时的三分之一，画面仍能看清，
+   左侧留给文字，四周由渐变淡出到页面底色 */
 .hero-bg img {
-  width: 100%;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 58%;
   height: 100%;
   object-fit: cover;
-  object-position: 68% 30%;
-  /* 竖版海报铺满横幅会被放大很多，轻度模糊 + 压暗，避免糊成色块又抢文字 */
-  filter: blur(3px) brightness(0.62) saturate(0.95);
-  transform: scale(1.06);
+  object-position: 50% 42%;
+  filter: blur(2px) brightness(0.8) saturate(0.98);
 }
 
 /* 左侧压暗保证文字可读，右侧保留海报，四边向底色淡出 */
@@ -847,16 +856,17 @@ a.ep-tab { text-decoration: none; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(130% 130% at 80% 30%, rgba(10, 12, 15, 0) 0%, rgba(10, 12, 15, 0.22) 40%, rgba(10, 12, 15, 0.8) 66%, #0A0C0F 84%),
-    linear-gradient(90deg, #0A0C0F 0%, #0A0C0F 32%, rgba(10, 12, 15, 0.72) 52%, rgba(10, 12, 15, 0.15) 74%, rgba(10, 12, 15, 0) 88%),
-    linear-gradient(180deg, rgba(10, 12, 15, 0.5) 0%, rgba(10, 12, 15, 0) 26%, rgba(10, 12, 15, 0) 74%, rgba(10, 12, 15, 0.62) 100%);
+    linear-gradient(90deg, #0A0C0F 0%, #0A0C0F 30%, rgba(10, 12, 15, 0.88) 44%, rgba(10, 12, 15, 0.4) 56%, rgba(10, 12, 15, 0) 68%),
+    linear-gradient(270deg, #0A0C0F 0%, rgba(10, 12, 15, 0.55) 8%, rgba(10, 12, 15, 0) 20%),
+    linear-gradient(180deg, rgba(10, 12, 15, 0.55) 0%, rgba(10, 12, 15, 0) 20%, rgba(10, 12, 15, 0) 66%, #0A0C0F 100%);
 }
 
 .hero-info {
   position: relative;
   z-index: 1;
-  width: min(58%, 860px);
-  padding: 40px var(--space-7) 36px 40px;
+  width: min(54%, 860px);
+  /* 左边缘与页面内容对齐（容器两侧 60px 留白） */
+  padding: 40px var(--space-7) 36px max(60px, calc((100vw - var(--container)) / 2));
 }
 
 .hero-title {
@@ -957,7 +967,7 @@ a.ep-tab { text-decoration: none; }
 @media (max-width: 1100px) {
   .hero-info { width: 100%; padding: 28px 24px; }
   .hero-title { font-size: 24px; }
-  .detail-hero { min-height: 340px; }
+  .detail-hero { min-height: 380px; }
   .hero-bg::after {
     background:
       linear-gradient(180deg, rgba(10, 12, 15, 0.5) 0%, rgba(10, 12, 15, 0.86) 45%, rgba(10, 12, 15, 0.95) 100%);
