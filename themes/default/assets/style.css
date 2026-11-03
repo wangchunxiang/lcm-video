@@ -96,7 +96,7 @@ img { border: 0; vertical-align: middle; }
 }
 
 .logo {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--primary);
   flex: none;
