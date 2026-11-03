@@ -828,7 +828,8 @@ a.ep-tab { text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 32px;
-  padding: 28px;
+  /* 左右不留内边距，内容与页面正文对齐；只保留上下 28px */
+  padding: 28px 0;
   border-radius: var(--radius);
   background: #0A0C0F;
   margin-bottom: var(--gap-block);
