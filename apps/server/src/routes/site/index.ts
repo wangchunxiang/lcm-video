@@ -610,6 +610,9 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
+    const episodeJson = JSON.stringify([
+      { id: line.id, name: line.source_name, items: episodes.map((item) => ({ i: item.index, n: item.name })) },
+    ]).split('<').join(String.fromCharCode(92) + 'u003c');
 
     return render(
       reply,
@@ -641,6 +644,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           ep: Math.max(1, Math.min(currentEp, item.episode_count)),
         })),
         episodes,
+        episode_json: episodeJson,
         current_ep: currentEp,
         current_ep_name: episodeName,
         play_url: proxyPlayUrl || current.url,

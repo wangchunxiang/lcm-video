@@ -43,7 +43,6 @@
     <div class="play-side-lines">
       <div class="line-dd" data-line-dd>
         <button type="button" class="line-dd-btn" data-line-dd-btn aria-haspopup="listbox" aria-expanded="false">
-          <span class="line-dd-label">线路：</span>
           <span class="line-dd-name" data-line-dd-name>{{ line.name }}</span>
           <span class="n" data-line-dd-count>{{ line.episode_count }} 集</span>
           <span class="chev">▾</span>
@@ -93,5 +92,6 @@
     </div>
   </aside>
 </div>
+<script type="application/json" id="ep-groups" data-vod="{{ vod.id }}" data-line="{{ line.id }}" data-ep="{{ current_ep }}">{{ episode_json }}</script>
 {% endblock %}
 {% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}

@@ -8,8 +8,14 @@
   }
   var epVodId = epBox ? Number(epBox.dataset.vod) : 0;
   var epLineId = epBox ? Number(epBox.dataset.line) : 0;
-  /* 正序/倒序是跨线路的状态，切换线路后保持不变 */
+  var epCurrent = epBox ? Number(epBox.dataset.ep) : 0;
+  /* 正序/倒序是跨线路、跨页面的状态，存本地，换线路整页跳转后仍保持 */
   var epDesc = false;
+  try {
+    epDesc = window.localStorage.getItem('lcm:ep-desc') === '1';
+  } catch (err) {
+    epDesc = false;
+  }
 
   /* 排序不再翻转现有 DOM，而是按数据顺序重画，正反向都能回到正确顺序 */
   function renderLine(group) {
@@ -37,6 +43,9 @@
       link.href = '/play/' + epVodId + '/' + group.id + '/' + ep.i;
       link.title = ep.n;
       link.textContent = ep.n;
+      if (epCurrent && group.id === epLineId && ep.i === epCurrent) {
+        link.className = 'episode-btn current';
+      }
       grid.appendChild(link);
     });
   }
@@ -50,6 +59,11 @@
     btn.addEventListener('click', function () {
       epDesc = !epDesc;
       btn.textContent = epDesc ? '倒序' : '正序';
+      try {
+        window.localStorage.setItem('lcm:ep-desc', epDesc ? '1' : '0');
+      } catch (err) {
+        /* 隐私模式下写不进去，忽略 */
+      }
       var group = epGroups
         ? epGroups.filter(function (item) { return item.id === epLineId; })[0]
         : null;
@@ -148,6 +162,12 @@
 
   bindSort();
   bindLineDD();
+
+  /* 上次是倒序时，首屏按数据重画一次，避免按钮显示倒序但列表还是正序 */
+  if (epDesc && epGroups) {
+    var initGroup = epGroups.filter(function (g) { return g.id === epLineId; })[0] || epGroups[0];
+    if (initGroup) renderLine(initGroup);
+  }
 })();
 
 (function () {
