@@ -9,6 +9,19 @@
   var epVodId = epBox ? Number(epBox.dataset.vod) : 0;
   var epLineId = epBox ? Number(epBox.dataset.line) : 0;
   var epCurrent = epBox ? Number(epBox.dataset.ep) : 0;
+  /* 每条线路在当前集的播放参数，换线路时用它就地重建播放器 */
+  var lineData = [];
+  /* 站名与片名用于就地换线路后同步浏览器标题 */
+  var siteMeta = {};
+  try {
+    var lineBox = document.getElementById('line-data');
+    lineData = lineBox ? JSON.parse(lineBox.textContent) : [];
+    var metaBox = document.getElementById('play-conf');
+    siteMeta = metaBox ? JSON.parse(metaBox.textContent) : {};
+  } catch (err) {
+    lineData = [];
+    siteMeta = {};
+  }
   /* 正序/倒序是跨线路、跨页面的状态，存本地，换线路整页跳转后仍保持 */
   var epDesc = false;
   try {
@@ -137,6 +150,58 @@
       if (event.key === 'Escape') close();
     });
 
+    /* 上/下一集在首末集要能在链接和不可点之间互相切换 */
+    function setNav(kind, href, text, off) {
+      var node = document.querySelector('[data-ep-' + kind + ']');
+      if (!node) return;
+      var tag = off ? 'span' : 'a';
+      if (node.tagName.toLowerCase() === tag) {
+        if (!off) node.href = href;
+        return;
+      }
+      var fresh = document.createElement(tag);
+      fresh.setAttribute('data-ep-' + kind, '');
+      fresh.textContent = text;
+      if (off) {
+        fresh.className = 'is-off';
+      } else {
+        fresh.href = href;
+      }
+      node.replaceWith(fresh);
+    }
+
+    /* 就地换线路后，把右栏的线路名、集名、上下集和地址一起对齐 */
+    function syncSide(group, playItem, id) {
+      renderLine(group);
+      Array.prototype.forEach.call(root.querySelectorAll('[data-ep-line]'), function (other) {
+        var on = Number(other.getAttribute('data-ep-line')) === id;
+        other.classList.toggle('is-active', on);
+        other.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      if (nameEl) nameEl.textContent = group.name;
+      if (countEl) countEl.textContent = group.items.length + ' 集';
+
+      var ep = Math.max(1, Math.min(Number(playItem.ep) || 1, group.items.length));
+      var epName = '';
+      group.items.forEach(function (entry) {
+        if (entry.i === ep) epName = entry.n;
+      });
+      var title = document.querySelector('[data-ep-title]');
+      if (title) title.textContent = epName;
+
+      var base = '/play/' + epVodId + '/' + id + '/';
+      setNav('prev', base + (ep - 1), '‹ 上一集', ep <= 1);
+      setNav('next', base + (ep + 1), '下一集 ›', ep >= group.items.length);
+      history.replaceState(null, '', base + ep);
+      document.title =
+        (siteMeta.vod_name ? siteMeta.vod_name + ' ' : '') +
+        epName +
+        ' - ' +
+        group.name +
+        (siteMeta.site_name ? ' - ' + siteMeta.site_name : '');
+      close();
+    }
+
     Array.prototype.forEach.call(root.querySelectorAll('[data-ep-line]'), function (item) {
       item.addEventListener('click', function (event) {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -144,8 +209,18 @@
         var group = epGroups
           ? epGroups.filter(function (g) { return g.id === id; })[0]
           : null;
+        var playItem = lineData.filter(function (line) { return line.id === id; })[0];
         if (!group) { close(); return; }
         event.preventDefault();
+
+        /* 有播放参数就就地换线路，不再整页刷新 */
+        if (playItem && window.__lcmMountLine) {
+          epCurrent = Math.max(1, Math.min(Number(playItem.ep) || 1, group.items.length));
+          window.__lcmMountLine(playItem);
+          syncSide(group, playItem, id);
+          return;
+        }
+
         renderLine(group);
         Array.prototype.forEach.call(root.querySelectorAll('[data-ep-line]'), function (other) {
           var on = other === item;
@@ -224,40 +299,55 @@
 })();
 
 (function () {
-  var box = document.getElementById('player');
-  if (!box) return;
+  var mount = document.querySelector('.play-wrap .player') || document.querySelector('.m-player-wrap');
+  if (!mount) return;
 
   /* 自己给 video 赋 src 时，Artplayer 的 src 代理会再次回调 customType，这里用来打断重入 */
   var assigning = false;
+  /* 换线路先销毁旧实例，避免新旧播放器同时挂在页面上 */
+  var artInstance = null;
+  var hlsList = [];
+  var restored = false;
 
-  var src = box.getAttribute('data-src') || '';
-  var isHls = box.getAttribute('data-hls') === '1';
-  var autoplay = box.getAttribute('data-autoplay') === '1';
+  /* 后台「播放设置」的开关随页面下发一次，换线路重建播放器时继续沿用 */
+  var conf = {};
+  (function () {
+    var confBox = document.getElementById('play-conf');
+    if (!confBox) return;
+    try {
+      conf = JSON.parse(confBox.textContent) || {};
+    } catch (err) {
+      conf = {};
+    }
+  })();
 
-  if (!src) {
-    showTip(box, '该线路暂不支持在线播放');
-    return;
-  }
+  /* 按 #player 上的 data-* 挂载播放器；iframe 线路没有 #player，直接跳过 */
+  function mountPlayer() {
+    var box = mount.querySelector('#player');
+    if (!box) return;
+    var src = box.getAttribute('data-src') || '';
+    if (!src) {
+      showTip(box, '该线路暂不支持在线播放');
+      return;
+    }
+    var isHls = box.getAttribute('data-hls') === '1';
+    var autoplay = box.getAttribute('data-autoplay') === '1';
 
-  /* 界面控件开关，见后台「播放设置」 */
-  var flags = {
-    screenshot: box.getAttribute('data-screenshot') === '1',
-    fullscreen: box.getAttribute('data-fullscreen') === '1',
-    webfullscreen: box.getAttribute('data-webfullscreen') === '1',
-    setting: box.getAttribute('data-setting') === '1',
-    lang: box.getAttribute('data-lang') || 'zh-cn',
-    poster: box.getAttribute('data-poster') || '',
-  };
+    /* 界面控件开关，见后台「播放设置」 */
+    var flags = {
+      screenshot: box.getAttribute('data-screenshot') === '1',
+      fullscreen: box.getAttribute('data-fullscreen') === '1',
+      webfullscreen: box.getAttribute('data-webfullscreen') === '1',
+      setting: box.getAttribute('data-setting') === '1',
+      lang: box.getAttribute('data-lang') || 'zh-cn',
+      poster: box.getAttribute('data-poster') || '',
+    };
 
-  var video = null;
-  if (window.Artplayer) {
-    video = initArtPlayer(box, src, isHls, autoplay, flags);
-  } else {
-    video = initNative(box, src, isHls, autoplay, flags);
-  }
+    var video = window.Artplayer
+      ? initArtPlayer(box, src, isHls, autoplay, flags)
+      : initNative(box, src, isHls, autoplay, flags);
 
-  if (video) {
-    attachBehaviors(video, box);
+    if (video) attachBehaviors(video, box);
   }
 
 
@@ -333,9 +423,8 @@
     flags = flags || {};
     if (hls && !window.Hls) return initNative(container, url, hls, auto, flags);
 
-    var art;
     try {
-      art = new window.Artplayer({
+      artInstance = new window.Artplayer({
         container: container,
         url: url,
         type: hls ? 'm3u8' : 'auto',
@@ -361,7 +450,7 @@
       return initNative(container, url, hls, auto);
     }
 
-    return art.video || null;
+    return artInstance.video || null;
   }
 
   /* 播放内核：苹果系（含 Alook、微信）优先原生，其它有 MSE 的走 hls.js；任一方失败换另一方再试一次。
@@ -414,6 +503,7 @@
       });
       instance.loadSource(target);
       instance.attachMedia(element);
+      hlsList.push(instance);
     }
 
     if (nativeType && (ios || !canHls)) return useNative();
@@ -456,6 +546,74 @@
       'color:#fff;font-size:14px;background:rgba(0,0,0,.7);z-index:20';
     container.appendChild(tip);
   }
+
+  function destroyPlayer() {
+    if (artInstance) {
+      try {
+        artInstance.destroy();
+      } catch (err) {
+        /* 实例可能已随 DOM 移除 */
+      }
+      artInstance = null;
+    }
+    hlsList.forEach(function (instance) {
+      try {
+        instance.destroy();
+      } catch (err) {
+        /* 已销毁 */
+      }
+    });
+    hlsList = [];
+  }
+
+  /* 换线路：只重建播放器区域，页面其它部分保持不动 */
+  function mountLine(item) {
+    if (!item) return;
+    destroyPlayer();
+
+    var vodId = conf.vod_id || '';
+    var ep = Number(item.ep) || 1;
+    var next = item.count && ep < Number(item.count) ? '/play/' + vodId + '/' + item.id + '/' + (ep + 1) : '';
+
+    if (item.iframe_url) {
+      var frame = document.createElement('iframe');
+      frame.src = item.iframe_url;
+      frame.setAttribute('allowfullscreen', '');
+      frame.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
+      frame.setAttribute('frameborder', '0');
+      frame.setAttribute('scrolling', 'no');
+      mount.replaceChildren(frame);
+      return;
+    }
+
+    var box = document.createElement('div');
+    box.id = 'player';
+    box.className = 'player-box';
+    var attrs = {
+      'data-src': item.play_url || '',
+      'data-hls': item.is_hls === '1' ? '1' : '0',
+      'data-autoplay': '1',
+      'data-autonext': conf.autonext || '0',
+      'data-resume': conf.resume || '0',
+      'data-screenshot': conf.screenshot || '0',
+      'data-webfullscreen': conf.webfullscreen || '0',
+      'data-fullscreen': conf.fullscreen || '0',
+      'data-setting': conf.setting || '0',
+      'data-lang': conf.lang || 'zh-cn',
+      'data-poster': conf.poster || '',
+      'data-vod-id': vodId,
+      'data-ep': String(ep),
+      'data-next': next,
+    };
+    Object.keys(attrs).forEach(function (key) {
+      box.setAttribute(key, attrs[key]);
+    });
+    mount.replaceChildren(box);
+    mountPlayer();
+  }
+
+  window.__lcmMountLine = mountLine;
+  mountPlayer();
 })();
 
 /* 页头：页面顶部的透明，往下滚一点再浮出底色（避免顶部出现分割线） */

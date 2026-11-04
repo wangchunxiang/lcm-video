@@ -37,7 +37,7 @@
   <aside class="play-side">
     <div class="play-side-head">
       <a class="play-side-title" href="/detail/{{ vod.id }}" title="{{ vod.name }}">{{ vod.name }}</a>
-      <span class="play-side-ep">{{ current_ep_name }}</span>
+      <span class="play-side-ep" data-ep-title>{{ current_ep_name }}</span>
     </div>
 
     <div class="play-side-lines">
@@ -80,18 +80,20 @@
 
     <div class="play-side-nav">
       {% if prev_url != blank %}
-      <a href="{{ prev_url }}">‹ 上一集</a>
+      <a href="{{ prev_url }}" data-ep-prev>‹ 上一集</a>
       {% else %}
-      <span class="is-off">‹ 上一集</span>
+      <span class="is-off" data-ep-prev>‹ 上一集</span>
       {% endif %}
       {% if next_url != blank %}
-      <a href="{{ next_url }}">下一集 ›</a>
+      <a href="{{ next_url }}" data-ep-next>下一集 ›</a>
       {% else %}
-      <span class="is-off">下一集 ›</span>
+      <span class="is-off" data-ep-next>下一集 ›</span>
       {% endif %}
     </div>
   </aside>
 </div>
 <script type="application/json" id="ep-groups" data-vod="{{ vod.id }}" data-line="{{ line.id }}" data-ep="{{ current_ep }}">{{ episode_json }}</script>
+<script type="application/json" id="line-data">{{ line_data }}</script>
+<script type="application/json" id="play-conf">{"autoplay":"{% if autoplay %}1{% else %}0{% endif %}","autonext":"{% if autonext %}1{% else %}0{% endif %}","resume":"{% if resume %}1{% else %}0{% endif %}","screenshot":"{% if screenshot %}1{% else %}0{% endif %}","webfullscreen":"{% if webfullscreen %}1{% else %}0{% endif %}","fullscreen":"{% if fullscreen %}1{% else %}0{% endif %}","setting":"{% if setting %}1{% else %}0{% endif %}","lang":"zh-cn","poster":"{{ vod.cover | escape }}","vod_id":"{{ vod.id }}","vod_name":"{{ vod.name | escape }}","site_name":"{{ site.name | escape }}"}</script>
 {% endblock %}
-{% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}
+{% block scripts %}{% if need_player %}{% if need_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}

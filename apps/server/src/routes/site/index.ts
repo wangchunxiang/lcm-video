@@ -592,15 +592,19 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     if (!current) return notFound(reply);
 
     const isHls = /\.m3u8(\?|$)/i.test(current.url);
-    const adRows =
-      line.source_id > 0 && !line.parse_url && isHls
-        ? await db
-            .select({ id: adFeature.id })
-            .from(adFeature)
-            .where(eq(adFeature.sourceId, line.source_id))
-            .limit(1)
-        : [];
-    const proxyPlayUrl = adRows.length > 0 ? `/play/ad/${row.id}/${line.id}/${currentEp}` : '';
+    /* 一次查出所有线路的广告特征，切线路时前端据此决定是否走代理地址 */
+    const adSourceIds = lines.filter((item) => item.source_id > 0).map((item) => item.source_id);
+    const adRows = adSourceIds.length
+      ? await db
+          .select({ sourceId: adFeature.sourceId })
+          .from(adFeature)
+          .where(inArray(adFeature.sourceId, adSourceIds))
+      : [];
+    const adSourceSet = new Set(adRows.map((item) => item.sourceId));
+    const proxyPlayUrl =
+      adSourceSet.has(line.source_id) && !line.parse_url && isHls
+        ? `/play/ad/${row.id}/${line.id}/${currentEp}`
+        : '';
 
     const episodes: EpisodeView[] = all.map((item, index) => ({
       index: index + 1,
@@ -610,9 +614,42 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
 
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
-    const episodeJson = JSON.stringify([
-      { id: line.id, name: line.source_name, items: episodes.map((item) => ({ i: item.index, n: item.name })) },
-    ]).split('<').join(String.fromCharCode(92) + 'u003c');
+    /* 每条线路的剧集与当前集播放参数：剧集给右侧列表，播放参数给换线路时重建播放器 */
+    const lineGroups = lines.map((item) => {
+      const eps = parsePlayUrl(item.playUrl);
+      const at = Math.max(1, Math.min(currentEp, eps.length));
+      const one = eps[at - 1];
+      const url = one ? one.url : '';
+      const hls = /\.m3u8(\?|$)/i.test(url);
+      const proxied = adSourceSet.has(item.source_id) && !item.parse_url && hls;
+      return {
+        id: item.id,
+        name: item.source_name,
+        items: eps.map((ep, index) => ({ i: index + 1, n: ep.name })),
+        ep: at,
+        count: eps.length,
+        play_url: proxied ? `/play/ad/${row.id}/${item.id}/${at}` : url,
+        is_hls: hls ? '1' : '0',
+        iframe_url: item.parse_url ? buildIframeUrl(item.parse_url, url) : '',
+      };
+    });
+    /* 内嵌 JSON 里转义 `<`，避免剧集名里的 `</script>` 提前闭合标签 */
+    const escapeJson = (value: unknown) =>
+      JSON.stringify(value).split('<').join(String.fromCharCode(92) + 'u003c');
+    const episodeJson = escapeJson(
+      lineGroups.map((item) => ({ id: item.id, name: item.name, items: item.items })),
+    );
+    const lineData = escapeJson(
+      lineGroups.map((item) => ({
+        id: item.id,
+        name: item.name,
+        ep: item.ep,
+        count: item.count,
+        play_url: item.play_url,
+        is_hls: item.is_hls,
+        iframe_url: item.iframe_url,
+      })),
+    );
 
     return render(
       reply,
@@ -640,11 +677,19 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           id: item.id,
           name: item.source_name,
           episode_count: item.episode_count,
+          parse_url: item.parse_url ?? '',
           // 换线路时保持当前集数，超出该线路集数则退到最后一集
           ep: Math.max(1, Math.min(currentEp, item.episode_count)),
         })),
         episodes,
         episode_json: episodeJson,
+        line_data: lineData,
+        /* 只要有一条直连线路就需要播放器脚本；任何线路出现 m3u8 就带上 hls.js */
+        need_player: lines.some((item) => !item.parse_url),
+        need_hls: lines.some(
+          (item) =>
+            !item.parse_url && parsePlayUrl(item.playUrl).some((ep) => /\.m3u8(\?|$)/i.test(ep.url)),
+        ),
         current_ep: currentEp,
         current_ep_name: episodeName,
         play_url: proxyPlayUrl || current.url,
