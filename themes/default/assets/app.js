@@ -342,24 +342,35 @@
 /* 详情页：简介展开/收起 + 分享复制链接 */
 (function () {
   var intro = document.querySelector('[data-intro]');
-  var toggle = document.querySelector('[data-intro-toggle]');
-  if (intro && toggle) {
+  var introOpen = document.querySelector('[data-intro-open]');
+  var introModal = document.querySelector('[data-intro-modal]');
+
+  if (intro && introOpen) {
     function syncClamp() {
-      if (intro.classList.contains('is-open')) {
-        intro.classList.remove('is-clamped');
-        return;
-      }
       intro.classList.toggle('is-clamped', intro.scrollHeight > intro.clientHeight + 1);
     }
-
-    toggle.addEventListener('click', function () {
-      var open = intro.classList.toggle('is-open');
-      toggle.textContent = open ? '收起' : '展开';
-      syncClamp();
-    });
-
     syncClamp();
     window.addEventListener('resize', syncClamp);
+  }
+
+  if (introOpen && introModal) {
+    function openIntro() {
+      introModal.hidden = false;
+      var body = introModal.querySelector('.intro-modal-bd');
+      if (body) body.scrollTop = 0;
+    }
+    function closeIntro() {
+      introModal.hidden = true;
+    }
+    introOpen.addEventListener('click', openIntro);
+    introModal.addEventListener('click', function (event) {
+      if (event.target === introModal) closeIntro();
+    });
+    var introClose = introModal.querySelector('[data-intro-close]');
+    if (introClose) introClose.addEventListener('click', closeIntro);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !introModal.hidden) closeIntro();
+    });
   }
 
   function toast(text) {

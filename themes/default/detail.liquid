@@ -26,7 +26,7 @@
       <div><dt>编剧</dt><dd>{% if vod.writer != blank %}{{ vod.writer }}{% else %}—{% endif %}</dd></div>
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
       <div><dt>简介</dt>{% assign intro_text = vod.content | default: vod.intro %}
-        <dd class="banner-intro" data-intro>{{ intro_text | escape }}{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-toggle>展开</button>{% endif %}</dd></div>
+        <dd class="banner-intro" data-intro>{{ intro_text | escape }}{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-open>… 详情</button>{% endif %}</dd></div>
     </dl>
 
     {% if lines.size > 0 %}
@@ -66,6 +66,16 @@
     {% else %}
     <p class="empty-tip">该线路暂无剧集</p>
     {% endif %}
+  </div>
+
+  <div class="intro-modal" data-intro-modal hidden>
+    <div class="intro-modal-card" role="dialog" aria-modal="true" aria-label="剧情简介">
+      <div class="intro-modal-hd">
+        <h3>{{ vod.name }}</h3>
+        <button type="button" class="btn-ghost intro-modal-close" data-intro-close>关闭</button>
+      </div>
+      <div class="intro-modal-bd">{{ intro_text | escape }}</div>
+    </div>
   </div>
 </section>
 {% endif %}
