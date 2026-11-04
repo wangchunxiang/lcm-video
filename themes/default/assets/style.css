@@ -625,6 +625,12 @@ a.ep-tab { text-decoration: none; }
   display: none !important;
 }
 
+/* Artplayer 给 .art-bottom 写了 transition: all，元素插入时 background-position 还是默认的 0% 0%，
+   过渡到 center bottom 会让底部那条渐变遮罩从上往下滑一遍；这里只保留透明度过渡 */
+.play-wrap .art-video-player .art-bottom {
+  transition-property: opacity;
+}
+
 .player-spin {
   width: 44px;
   height: 44px;
