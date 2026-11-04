@@ -1023,8 +1023,7 @@ a.ep-tab { text-decoration: none; }
 .line-dd-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: 7px var(--space-2);
   border-radius: var(--radius-sm);
   color: var(--text-2);
@@ -1042,6 +1041,7 @@ a.ep-tab { text-decoration: none; }
 }
 
 .line-dd-item > span:first-child {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1050,8 +1050,9 @@ a.ep-tab { text-decoration: none; }
 .line-dd-item .n { color: var(--text-3); font-size: var(--fs-caption); }
 
 .line-dd-item .ms {
+  flex: none;
   margin-left: auto;
-  padding-left: var(--space-3);
+  padding-left: var(--space-2);
   color: var(--text-3);
   font-size: var(--fs-caption);
   font-variant-numeric: tabular-nums;
