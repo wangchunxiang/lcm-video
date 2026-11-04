@@ -679,6 +679,7 @@ a.ep-tab { text-decoration: none; }
 .banner-fields dd { margin: 0; color: var(--text-2); min-width: 0; }
 
 .banner-intro {
+  position: relative;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -688,14 +689,23 @@ a.ep-tab { text-decoration: none; }
 .banner-intro.is-open { display: block; -webkit-line-clamp: unset; }
 
 .intro-toggle {
-  align-self: flex-start;
-  margin-top: calc(var(--space-1) * -1);
+  display: inline;
+  margin-left: var(--space-1);
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--primary);
   font-size: var(--fs-small);
   cursor: pointer;
+}
+
+/* 三行截断时「展开」固定在末行右下角，并用底色盖住被截断的文字 */
+.banner-intro.is-clamped .intro-toggle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding-left: var(--space-2);
+  background: var(--bg);
 }
 
 .banner-actions { display: flex; gap: var(--space-2); margin: 0; }

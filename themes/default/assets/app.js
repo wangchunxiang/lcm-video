@@ -344,10 +344,22 @@
   var intro = document.querySelector('[data-intro]');
   var toggle = document.querySelector('[data-intro-toggle]');
   if (intro && toggle) {
+    function syncClamp() {
+      if (intro.classList.contains('is-open')) {
+        intro.classList.remove('is-clamped');
+        return;
+      }
+      intro.classList.toggle('is-clamped', intro.scrollHeight > intro.clientHeight + 1);
+    }
+
     toggle.addEventListener('click', function () {
       var open = intro.classList.toggle('is-open');
       toggle.textContent = open ? '收起' : '展开';
+      syncClamp();
     });
+
+    syncClamp();
+    window.addEventListener('resize', syncClamp);
   }
 
   function toast(text) {
