@@ -645,6 +645,9 @@ a.ep-tab { text-decoration: none; }
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  /* 与左侧封面同高，操作按钮贴底对齐封面下沿 */
+  min-height: 320px;
+  justify-content: space-between;
 }
 
 .banner-title {
@@ -670,8 +673,6 @@ a.ep-tab { text-decoration: none; }
 
 .banner-tags .tag-year { background: rgba(59, 130, 246, 0.22); color: #93c5fd; }
 
-.banner-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin: 0; color: var(--text-3); font-size: var(--fs-small); }
-.banner-meta span + span { border-left: 1px solid var(--line); padding-left: var(--space-3); }
 
 .banner-fields { margin: 0; display: grid; gap: var(--space-2); }
 .banner-fields > div { display: flex; gap: var(--space-3); font-size: var(--fs-body); line-height: 1.7; }
@@ -689,7 +690,7 @@ a.ep-tab { text-decoration: none; }
 .banner-intro.is-open { display: block; -webkit-line-clamp: unset; }
 
 .intro-toggle {
-  display: inline;
+  display: none;
   margin-left: var(--space-1);
   padding: 0;
   border: 0;
@@ -701,11 +702,20 @@ a.ep-tab { text-decoration: none; }
 
 /* 三行截断时「展开」固定在末行右下角，并用底色盖住被截断的文字 */
 .banner-intro.is-clamped .intro-toggle {
+  display: inline;
   position: absolute;
   right: 0;
   bottom: 0;
   padding-left: var(--space-2);
   background: var(--bg);
+}
+
+/* 展开后按钮回到文字末尾 */
+.banner-intro.is-open .intro-toggle {
+  display: inline;
+  position: static;
+  padding-left: 0;
+  background: transparent;
 }
 
 .banner-actions { display: flex; gap: var(--space-2); margin: 0; }

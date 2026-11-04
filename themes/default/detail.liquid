@@ -21,16 +21,11 @@
       {% if vod.remarks != blank %}<span class="tag">{{ vod.remarks }}</span>{% endif %}
     </div>
 
-    <div class="banner-meta">
-      {% if vod.area != blank %}<span>{{ vod.area }}</span>{% endif %}
-      {% if vod.lang != blank %}<span>{{ vod.lang }}</span>{% endif %}
-      {% if vod.release_date != blank %}<span>{{ vod.release_date }}</span>{% endif %}
-    </div>
-
     <dl class="banner-fields">
       <div><dt>导演</dt><dd>{% if vod.director != blank %}{{ vod.director }}{% else %}—{% endif %}</dd></div>
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
-      <div><dt>简介</dt><dd class="banner-intro" data-intro>{% if vod.content != blank %}{{ vod.content | escape }}{% else %}{{ vod.intro | escape }}{% endif %}<button type="button" class="intro-toggle" data-intro-toggle>展开</button></dd></div>
+      <div><dt>简介</dt>{% assign intro_text = vod.content | default: vod.intro %}
+        <dd class="banner-intro" data-intro>{{ intro_text | escape }}{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-toggle>展开</button>{% endif %}</dd></div>
     </dl>
 
     {% if lines.size > 0 %}
