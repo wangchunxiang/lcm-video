@@ -3,7 +3,8 @@
 {% assign play_base = '/play/' | append: vod.id | append: '/' | append: line.id %}
 
 <div class="play-wrap">
-  <div class="player">
+  <div class="player-shell">
+    <div class="player">
     {% if iframe_url != blank %}
     <iframe
       src="{{ iframe_url }}"
@@ -26,12 +27,17 @@
       data-fullscreen="{% if fullscreen %}1{% else %}0{% endif %}"
       data-setting="{% if setting %}1{% else %}0{% endif %}"
       data-lang="zh-cn"
-      data-poster="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
+      data-poster=""
       data-vod-id="{{ vod.id }}"
       data-ep="{{ current_ep }}"
       data-next="{{ next_url }}"
     ></div>
     {% endif %}
+    </div>
+    <div class="player-loading" data-player-loading>
+      <span class="player-spin"></span>
+      <span>影片加载中…</span>
+    </div>
   </div>
 
   <aside class="play-side">

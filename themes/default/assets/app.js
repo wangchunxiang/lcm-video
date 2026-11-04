@@ -300,6 +300,15 @@
 
 (function () {
   var mount = document.querySelector('.play-wrap .player') || document.querySelector('.m-player-wrap');
+  var loadingEl = document.querySelector('[data-player-loading]');
+
+  function showLoading() {
+    if (loadingEl) loadingEl.classList.remove('is-hidden');
+  }
+
+  function hideLoading() {
+    if (loadingEl) loadingEl.classList.add('is-hidden');
+  }
   if (!mount) return;
 
   /* 自己给 video 赋 src 时，Artplayer 的 src 代理会再次回调 customType，这里用来打断重入 */
@@ -325,8 +334,10 @@
   function mountPlayer() {
     var box = mount.querySelector('#player');
     if (!box) return;
+    showLoading();
     var src = box.getAttribute('data-src') || '';
     if (!src) {
+      hideLoading();
       showTip(box, '该线路暂不支持在线播放');
       return;
     }
@@ -353,6 +364,12 @@
 
   /* 播放结束后自动跳下一集、本地记录播放进度 */
   function attachBehaviors(element, container) {
+    if (loadingEl) {
+      element.addEventListener('loadeddata', hideLoading);
+      element.addEventListener('playing', hideLoading);
+      element.addEventListener('waiting', showLoading);
+      element.addEventListener('error', hideLoading);
+    }
     var autonext = container.getAttribute('data-autonext') === '1';
     var resume = container.getAttribute('data-resume') === '1';
     var nextUrl = container.getAttribute('data-next') || '';
@@ -576,12 +593,14 @@
     var next = item.count && ep < Number(item.count) ? '/play/' + vodId + '/' + item.id + '/' + (ep + 1) : '';
 
     if (item.iframe_url) {
+      showLoading();
       var frame = document.createElement('iframe');
       frame.src = item.iframe_url;
       frame.setAttribute('allowfullscreen', '');
       frame.setAttribute('allow', 'autoplay; fullscreen; encrypted-media');
       frame.setAttribute('frameborder', '0');
       frame.setAttribute('scrolling', 'no');
+      frame.addEventListener('load', hideLoading);
       mount.replaceChildren(frame);
       return;
     }
@@ -614,6 +633,15 @@
 
   window.__lcmMountLine = mountLine;
   mountPlayer();
+
+  /* 首屏就是 iframe 线路时，等它加载完再收起占位 */
+  (function () {
+    var frame = mount.querySelector('iframe');
+    if (!frame) return;
+    showLoading();
+    frame.addEventListener('load', hideLoading);
+    setTimeout(hideLoading, 1500);
+  })();
 })();
 
 /* 页头：页面顶部的透明，往下滚一点再浮出底色（避免顶部出现分割线） */

@@ -581,6 +581,51 @@ a.ep-tab { text-decoration: none; }
   overflow: hidden;
 }
 
+.player-shell {
+  position: relative;
+  width: 100%;
+}
+
+.player-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background: #000;
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.player-loading.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* 统一用自建的加载占位，隐藏 Artplayer 自带的 loading 图标避免叠加 */
+.play-wrap .art-loading {
+  display: none !important;
+}
+
+.player-spin {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(59, 130, 246, 0.25);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: player-spin 0.8s linear infinite;
+}
+
+@keyframes player-spin {
+  to { transform: rotate(360deg); }
+}
+
 .player-box,
 .player video,
 .player iframe {
