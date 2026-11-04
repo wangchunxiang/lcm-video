@@ -27,7 +27,7 @@
       <div><dt>演员</dt><dd>{% if vod.actor != blank %}{{ vod.actor }}{% else %}—{% endif %}</dd></div>
       <div><dt>简介</dt>{% assign intro_text = vod.content | default: vod.intro %}
         <dd class="intro-cell">
-          <div class="banner-intro" data-intro>{{ intro_text | escape }}{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-open>详情</button>{% endif %}</div>
+          <div class="banner-intro" data-intro><span data-intro-text>{{ intro_text | escape }}</span>{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-open>详情</button>{% endif %}</div>
           <div class="intro-modal" data-intro-modal hidden>
             <div class="intro-modal-hd">
               <h3>{{ vod.name }}</h3>

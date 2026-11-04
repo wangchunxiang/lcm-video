@@ -681,34 +681,25 @@ a.ep-tab { text-decoration: none; }
 
 .intro-cell { position: relative; }
 
+/* 两行高度由 JS 截断时按行高换算，未截断的短简介自然显示 */
 .banner-intro {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.9;
+  max-height: 3.8em;
   overflow: hidden;
 }
 
 
 .intro-toggle {
-  display: none;
+  display: inline;
   margin-left: var(--space-1);
+  white-space: nowrap;
+  vertical-align: baseline;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--primary);
   font-size: var(--fs-small);
   cursor: pointer;
-}
-
-/* 截断时右侧让出按钮位置，文字末尾的省略号由 line-clamp 生成，「详情」紧随其后 */
-.banner-intro.is-clamped { padding-right: 3.2em; }
-
-.banner-intro.is-clamped .intro-toggle {
-  display: inline;
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  background: transparent;
 }
 
 /* ---------- 简介浮层卡片：锚定在简介下方 ---------- */

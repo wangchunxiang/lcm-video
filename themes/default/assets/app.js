@@ -345,12 +345,35 @@
   var introOpen = document.querySelector('[data-intro-open]');
   var introModal = document.querySelector('[data-intro-modal]');
 
-  if (intro && introOpen) {
-    function syncClamp() {
-      intro.classList.toggle('is-clamped', intro.scrollHeight > intro.clientHeight + 1);
+  var introText = document.querySelector('[data-intro-text]');
+
+  if (intro && introText) {
+    var fullText = introText.textContent;
+    function fitIntro() {
+      introText.textContent = fullText;
+      if (introOpen) introOpen.style.display = '';
+      /* 两行内能放下就完整显示，不再出现「详情」 */
+      var maxH = Math.round(parseFloat(getComputedStyle(intro).lineHeight) * 2);
+      if (intro.scrollHeight <= maxH + 1) {
+        if (introOpen) introOpen.style.display = 'none';
+        return;
+      }
+      /* 二分找出行尾刚好塞得下「… + 详情」的最大字数 */
+      var lo = 0;
+      var hi = fullText.length;
+      while (lo < hi) {
+        var mid = Math.ceil((lo + hi) / 2);
+        introText.textContent = fullText.slice(0, mid) + '…';
+        if (intro.scrollHeight <= maxH + 1) lo = mid; else hi = mid - 1;
+      }
+      introText.textContent = fullText.slice(0, lo) + '…';
     }
-    syncClamp();
-    window.addEventListener('resize', syncClamp);
+    fitIntro();
+    var fitTimer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitIntro, 120);
+    });
   }
 
   if (introOpen && introModal) {
