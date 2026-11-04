@@ -2,7 +2,7 @@
 {% block content %}
 {% assign play_base = '/play/' | append: vod.id | append: '/' | append: line.id %}
 
-<div class="play-stack">
+<div class="play-wrap">
   <div class="player">
     {% if iframe_url != blank %}
     <iframe
@@ -34,7 +34,12 @@
     {% endif %}
   </div>
 
-  <section class="section play-eps">
+  <aside class="play-side">
+    <div class="play-side-head">
+      <a class="play-side-title" href="/detail/{{ vod.id }}" title="{{ vod.name }}">{{ vod.name }}</a>
+      <span class="play-side-ep">{{ current_ep_name }}</span>
+    </div>
+
     <div class="ep-tabs" role="tablist">
       {% for l in lines %}
       <a class="ep-tab{% if l.id == line.id %} is-active{% endif %}"
@@ -43,6 +48,7 @@
       {% endfor %}
       <button type="button" class="ep-sort" data-ep-sort>正序</button>
     </div>
+
     <div class="ep-panel is-active">
       {% if episodes.size > 0 %}
       <div class="ep-scroll">
@@ -57,7 +63,20 @@
       <p class="empty-tip">该线路暂无剧集</p>
       {% endif %}
     </div>
-  </section>
+
+    <div class="play-side-nav">
+      {% if prev_url != blank %}
+      <a href="{{ prev_url }}">‹ 上一集</a>
+      {% else %}
+      <span class="is-off">‹ 上一集</span>
+      {% endif %}
+      {% if next_url != blank %}
+      <a href="{{ next_url }}">下一集 ›</a>
+      {% else %}
+      <span class="is-off">下一集 ›</span>
+      {% endif %}
+    </div>
+  </aside>
 </div>
 {% endblock %}
 {% block scripts %}{% if iframe_url == blank %}{% if is_hls %}<script src="{{ 'vendor/hls.min.js' | asset }}"></script>{% endif %}<script src="{{ 'vendor/artplayer.min.js' | asset }}"></script>{% endif %}{% endblock %}

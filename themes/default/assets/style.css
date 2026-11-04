@@ -836,16 +836,81 @@ a.ep-tab { text-decoration: none; }
 
 /* 播放页：上播放器，下线路 + 剧集卡片（与详情页同一套面板样式） */
 
-.play-stack {
+/* 播放页：左侧播放器 + 右侧 380px 选集栏，右栏高度与播放器齐平、内部滚动 */
+
+.play-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.play-wrap .player { width: 100%; }
+
+.play-side {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  min-height: 0;
 }
 
-.play-stack .player { width: 100%; }
+.play-side-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 22px;
+}
 
-/* 与详情页的剧集卡片完全一致：卡片内边距、tab 间距、滚动高度都沿用 .section 与 .detail-eps 的默认值 */
-.play-eps { margin-bottom: 0; }
+.play-side-title {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.play-side-title:hover { color: var(--primary); }
+
+.play-side-ep {
+  color: var(--text-3);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+
+.play-side .ep-tabs { gap: var(--space-1); margin-bottom: 0; }
+
+.play-side .ep-panel.is-active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.play-side .ep-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+}
+
+.play-side .episode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.play-side-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-small);
+}
+
+.play-side-nav a { color: var(--text-3); text-decoration: none; }
+
+.play-side-nav a:hover { color: var(--primary); }
+
+.play-side-nav .is-off { color: var(--line); }
 
 /* ---------- category nav ---------- */
 
