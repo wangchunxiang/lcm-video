@@ -389,6 +389,8 @@
       if (introModal.contains(event.target) || introOpen.contains(event.target)) return;
       closeIntro();
     });
+    var introClose = introModal.querySelector('[data-intro-close]');
+    if (introClose) introClose.addEventListener('click', closeIntro);
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && !introModal.hidden) closeIntro();
     });
