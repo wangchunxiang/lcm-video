@@ -1,21 +1,52 @@
 (function () {
-  var btn = document.querySelector('[data-ep-sort]');
-  if (!btn) return;
+  function bindSort() {
+    var btn = document.querySelector('[data-ep-sort]');
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    var desc = false;
 
-  var desc = false;
+    btn.addEventListener('click', function () {
+      desc = !desc;
+      btn.textContent = desc ? '倒序' : '正序';
 
-  btn.addEventListener('click', function () {
-    desc = !desc;
-    btn.textContent = desc ? '倒序' : '正序';
-
-    Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
-      var nodes = Array.prototype.slice.call(grid.children);
-      nodes.reverse();
-      Array.prototype.forEach.call(nodes, function (node) {
-        grid.appendChild(node);
+      Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
+        var nodes = Array.prototype.slice.call(grid.children);
+        nodes.reverse();
+        Array.prototype.forEach.call(nodes, function (node) {
+          grid.appendChild(node);
+        });
       });
     });
-  });
+  }
+
+  /* 切换线路：只替换剧集区，不整页刷新 */
+  function bindTabs() {
+    Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function (tab) {
+      if (tab.dataset.bound) return;
+      tab.dataset.bound = '1';
+      tab.addEventListener('click', function (event) {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        var href = tab.href;
+        fetch(href, { headers: { 'X-Requested-With': 'fetch' } })
+          .then(function (res) { return res.text(); })
+          .then(function (html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var next = doc.querySelector('.detail-eps');
+            var cur = document.querySelector('.detail-eps');
+            if (!next || !cur) { location.href = href; return; }
+            cur.replaceWith(document.importNode(next, true));
+            history.replaceState(null, '', href);
+            bindSort();
+            bindTabs();
+          })
+          .catch(function () { location.href = href; });
+      });
+    });
+  }
+
+  bindSort();
+  bindTabs();
 })();
 
 (function () {
