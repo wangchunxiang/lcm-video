@@ -621,8 +621,7 @@ a.ep-tab { text-decoration: none; }
 .detail-banner {
   /* 普通区块而非卡片：背景与页面同色，不需要内边距，内容直接对齐容器 */
   display: flex;
-  /* 封面与右侧信息上下齐平：两侧拉伸到同一高度 */
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-7);
   padding: 0 0 var(--space-6);
   margin-bottom: var(--gap-block);
@@ -631,9 +630,9 @@ a.ep-tab { text-decoration: none; }
 /* 左侧海报：固定列宽，完整显示（contain），不裁切 */
 .banner-pic {
   flex: none;
-  /* 宽度固定，高度跟随右侧信息区；图片 fill 拉伸填满，加载前露底色占位 */
+  /* 固定 240×320，图片 fill 拉伸填满，加载前露底色占位 */
   width: 240px;
-  min-height: 320px;
+  height: 320px;
   object-fit: fill;
   border-radius: var(--radius-md);
   background: var(--surface-2);
