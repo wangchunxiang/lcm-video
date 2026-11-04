@@ -350,23 +350,24 @@
   if (intro && introText) {
     var fullText = introText.textContent;
     function fitIntro() {
-      introText.textContent = fullText;
       if (introOpen) introOpen.style.display = '';
-      /* 两行内能放下就完整显示，不再出现「详情」 */
-      var maxH = Math.round(parseFloat(getComputedStyle(intro).lineHeight) * 2);
-      if (intro.scrollHeight <= maxH + 1) {
+      var fontSize = parseFloat(getComputedStyle(intro).fontSize) || 15;
+      /* 中文按字号估宽，标点数字更窄，所以打 94 折 */
+      var charW = fontSize * 0.94;
+      var perLine = Math.max(8, Math.floor(intro.clientWidth / charW));
+      var maxChars = perLine * 2 - 5;
+      if (fullText.length <= maxChars) {
+        introText.textContent = fullText;
         if (introOpen) introOpen.style.display = 'none';
         return;
       }
-      /* 二分找出行尾刚好塞得下「… + 详情」的最大字数 */
-      var lo = 0;
-      var hi = fullText.length;
-      while (lo < hi) {
-        var mid = Math.ceil((lo + hi) / 2);
-        introText.textContent = fullText.slice(0, mid) + '…';
-        if (intro.scrollHeight <= maxH + 1) lo = mid; else hi = mid - 1;
+      /* 按字数截断，超出两行再按比例收一点，保证「详情」不会被裁掉 */
+      var maxH = Math.round(parseFloat(getComputedStyle(intro).lineHeight) * 2);
+      introText.textContent = fullText.slice(0, maxChars) + '…';
+      while (intro.scrollHeight > maxH + 1 && maxChars > 20) {
+        maxChars = Math.floor(maxChars * 0.95);
+        introText.textContent = fullText.slice(0, maxChars) + '…';
       }
-      introText.textContent = fullText.slice(0, lo) + '…';
     }
     fitIntro();
     var fitTimer = null;
