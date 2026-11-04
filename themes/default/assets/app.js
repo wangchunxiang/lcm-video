@@ -277,7 +277,7 @@
         var box = item.querySelector('[data-ms]');
         if (box) box.textContent = '…';
         var lineId = item.getAttribute('data-ep-line');
-        fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep)
+        fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep + '&r=1')
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (!box) return;

@@ -107,7 +107,10 @@ export const speedRoutes: FastifyPluginAsync<SpeedRouteOpts> = async (app, opts)
     const params = req.params as { vodId: string; lineId: string };
     const vodId = Number(params.vodId);
     const lineId = Number(params.lineId);
-    const ep = Math.max(1, Number((req.query as { ep?: string }).ep) || 1);
+    const query = req.query as { ep?: string; r?: string };
+    const ep = Math.max(1, Number(query.ep) || 1);
+    /* 用户手动点测速时带 r=1：跳过缓存重新测，只保留写缓存 */
+    const force = query.r === '1';
     reply.header('cache-control', 'no-store');
 
     if (!Number.isInteger(vodId) || !Number.isInteger(lineId) || vodId <= 0 || lineId <= 0) {
@@ -116,7 +119,7 @@ export const speedRoutes: FastifyPluginAsync<SpeedRouteOpts> = async (app, opts)
 
     const key = `${vodId}:${lineId}:${ep}`;
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.at < CACHE_TTL_MS) return reply.send(hit.result);
+    if (!force && hit && Date.now() - hit.at < CACHE_TTL_MS) return reply.send(hit.result);
 
     const [row] = await db
       .select({
