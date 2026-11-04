@@ -456,23 +456,25 @@ img { border: 0; vertical-align: middle; }
 .ep-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
   margin: 0 0 var(--space-4);
-  border-bottom: 1px solid var(--line);
 }
 
-.ep-tab {
-  position: relative;
-  margin-bottom: -1px;
-  border: 1px solid var(--line);
-  border-bottom: 0;
+.ep-tab,
+.ep-sort {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-2);
-  padding: var(--space-2) var(--space-4);
   font: inherit;
   font-size: var(--fs-small);
   cursor: pointer;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: background var(--transition), color var(--transition);
 }
 
 .ep-tab .count {
@@ -481,44 +483,22 @@ img { border: 0; vertical-align: middle; }
   font-size: var(--fs-caption);
 }
 
-.ep-tab { transition: background var(--transition), color var(--transition); }
-
-.ep-tab:hover { background: var(--surface-2); color: var(--primary); }
+.ep-tab:hover { background: var(--surface-2); color: var(--text); }
 
 .ep-tab.is-active {
-  background: var(--card);
+  background: rgba(59, 130, 246, 0.16);
   color: var(--primary);
-  border-color: var(--line);
-  z-index: 1;
+  font-weight: 500;
 }
 
 .ep-tab.is-active .count { color: var(--primary); }
 
-.ep-tab.is-active::after {
-  content: "";
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  bottom: -1px;
-  height: 2px;
-  background: var(--card);
-}
-
 .ep-sort {
   margin-left: auto;
-  margin-bottom: var(--space-1);
   align-self: center;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--text-2);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-3);
-  font: inherit;
-  font-size: var(--fs-small);
-  cursor: pointer;
 }
 
-.ep-sort:hover { border-color: var(--primary); color: var(--primary); }
+.ep-sort:hover { background: var(--surface-2); color: var(--text); }
 
 .ep-panel { display: none; }
 .ep-panel.is-active { display: block; }
@@ -577,7 +557,12 @@ a.ep-tab { text-decoration: none; }
   text-align: center;
 }
 
-.detail-eps { margin-bottom: 0; }
+.detail-eps {
+  margin-bottom: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
 
 /* ---------- player ---------- */
 

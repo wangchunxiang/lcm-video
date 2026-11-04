@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>线路与剧集布局方案</title>
+<style>
+  :root {
+    --bg: #0A0C0F;
+    --card: #171a20;
+    --surface: #1c2027;
+    --surface-2: #232830;
+    --line: #2a303a;
+    --text: #e6e8eb;
+    --text-2: #a9b0ba;
+    --text-3: #7f8792;
+    --primary: #3b82f6;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .lead { color: var(--text-3); margin: 0 0 28px; }
+  .demo { margin-bottom: 28px; }
+  .demo > h2 { font-size: 16px; margin: 0 0 4px; }
+  .demo > p { color: var(--text-3); font-size: 13px; margin: 0 0 12px; }
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px 16px;
+  }
+
+  /* 线路标签 */
+  .tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 14px;
+    border-radius: 6px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text-2);
+    font-size: 14px; white-space: nowrap;
+  }
+  .tab .count { color: var(--text-3); font-size: 12px; }
+  .tab.is-on { background: rgba(59, 130, 246, .16); border-color: var(--primary); color: var(--primary); }
+  .tab.is-on .count { color: var(--primary); }
+  .sort {
+    margin-left: auto; height: 34px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: transparent; color: var(--text-2); font-size: 13px;
+  }
+
+  /* 剧集网格 */
+  .eps { margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px; }
+  .ep {
+    height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; background: var(--surface); color: var(--text-2);
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ep.is-cur { background: rgba(59, 130, 246, .18); color: var(--primary); }
+  .mono { color: var(--text-3); font-size: 12px; }
+
+  /* V2 左侧线路栏 */
+  .split { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 16px; }
+  .rail { display: flex; flex-direction: column; gap: 8px; }
+  .rail .tab { justify-content: space-between; width: 100%; }
+  .split .eps { margin-top: 0; }
+
+  /* V3 下拉 */
+  .bar { display: flex; align-items: center; gap: 10px; }
+  .select {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 12px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text-2);
+  }
+  .select b { color: var(--text); font-weight: 500; }
+  .input {
+    flex: 1; height: 34px; padding: 0 12px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text-3);
+    display: flex; align-items: center;
+  }
+
+  /* V4 分段页码 */
+  .segs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .seg {
+    height: 30px; padding: 0 12px; display: inline-flex; align-items: center;
+    border-radius: 6px; background: var(--surface); color: var(--text-3);
+    font-size: 12px; border: 1px solid var(--line);
+  }
+  .seg.is-on { background: rgba(59, 130, 246, .16); border-color: var(--primary); color: var(--primary); }
+
+  /* V5 折叠 */
+  .acc { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .acc > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; background: var(--surface); color: var(--text);
+  }
+  .acc > summary::-webkit-details-marker { display: none; }
+  .acc > summary .arrow { color: var(--text-3); margin-left: auto; font-size: 12px; }
+  .acc[open] > summary { border-bottom: 1px solid var(--line); }
+  .acc .body { padding: 12px 14px; }
+
+  /* V6 双列列表 */
+  .list2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+  .row {
+    display: flex; align-items: center; gap: 10px; height: 34px;
+    padding: 0 10px; border-radius: 4px; background: var(--surface); color: var(--text-2);
+  }
+  .row .n { color: var(--text-3); font-size: 12px; min-width: 44px; }
+  .row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+</head>
+<body>
+<h1>线路与剧集 · 布局方案</h1>
+<p class="lead">同一份数据（3 条线路 × 10 集）在不同排布下的样子，编号 2 起为可替换方案。</p>
+
+<section class="demo">
+  <h2>V1 现状：线路横排 + 10 列网格</h2>
+  <p>线路一行、排序贴右，剧集等宽铺满；集数多时靠"每行固定 10 列"保证整齐。</p>
+  <div class="panel">
+    <div class="tabs">
+      <span class="tab is-on">如意资源 <span class="count">10</span></span>
+      <span class="tab">西瓜资源 <span class="count">10</span></span>
+      <span class="tab">电影天堂 <span class="count">10</span></span>
+      <button class="sort">正序</button>
+    </div>
+    <div class="eps">
+      <div class="grid" id="g1"></div>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <h2>V2 左侧线路栏 + 右侧剧集</h2>
+  <p>线路竖排、带集数右对齐，剧集区变宽；线路多时不用横向滚动，代价是左侧常驻占 168px。</p>
+  <div class="panel">
+    <div class="split">
+      <div class="rail">
+        <span class="tab is-on"><span>如意资源</span><span class="count">10</span></span>
+        <span class="tab"><span>西瓜资源</span><span class="count">10</span></span>
+        <span class="tab"><span>电影天堂</span><span class="count">10</span></span>
+      </div>
+      <div class="eps">
+        <div class="tabs" style="justify-content:flex-end;margin-bottom:10px">
+          <button class="sort">正序</button>
+        </div>
+        <div class="grid" id="g2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <h2>V3 线路下拉 + 搜索框</h2>
+  <p>线路收进下拉，顶部一行放下"线路选择 + 集数搜索 + 排序"，适合线路特别多（5 条以上）的情况。</p>
+  <div class="panel">
+    <div class="bar">
+      <span class="select">如意资源 <span class="count">10 集</span> ▾</span>
+      <span class="input">搜索集数</span>
+      <button class="sort" style="margin-left:0">正序</button>
+    </div>
+    <div class="eps">
+      <div class="grid" id="g3"></div>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <h2>V4 分段页码（每 50 集一段）</h2>
+  <p>线路保持横排，剧集按 1–50 / 51–100 分段，只渲染当前段；集数上千时首屏最轻，但多一次切换。</p>
+  <div class="panel">
+    <div class="tabs">
+      <span class="tab is-on">如意资源 <span class="count">120</span></span>
+      <span class="tab">西瓜资源 <span class="count">120</span></span>
+      <button class="sort">正序</button>
+    </div>
+    <div class="segs" style="margin-top:12px">
+      <span class="seg is-on">1–50</span>
+      <span class="seg">51–100</span>
+      <span class="seg">101–120</span>
+    </div>
+    <div class="eps">
+      <div class="grid" id="g4"></div>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <h2>V5 线路折叠面板</h2>
+  <p>每条线路是一个可折叠区块，当前线路默认展开、其余收起；浏览"这条线路有哪些集"最直观。</p>
+  <div class="panel">
+    <details class="acc" open>
+      <summary>如意资源 <span class="count">10 集</span><span class="arrow">收起 ▴</span></summary>
+      <div class="body"><div class="grid" id="g5a"></div></div>
+    </details>
+    <details class="acc">
+      <summary>西瓜资源 <span class="count">10 集</span><span class="arrow">展开 ▾</span></summary>
+    </details>
+    <details class="acc">
+      <summary>电影天堂 <span class="count">10 集</span><span class="arrow">展开 ▾</span></summary>
+    </details>
+  </div>
+</section>
+
+<section class="demo">
+  <h2>V6 双列列表（名称 + 集数）</h2>
+  <p>还原"名称$地址"原始形态，两列显示集名；日期型剧集（综艺/番剧）比等宽方格更可读。</p>
+  <div class="panel">
+    <div class="tabs">
+      <span class="tab is-on">如意资源 <span class="count">10</span></span>
+      <span class="tab">西瓜资源 <span class="count">10</span></span>
+      <button class="sort">正序</button>
+    </div>
+    <div class="eps">
+      <div class="list2" id="g6"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const names = ['第01集', '第02集', '第03集', '第04集', '第05集', '第06集', '第07集', '第08集', '第09集', '第10集'];
+  const fillGrid = (id, count = 10) => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.innerHTML = Array.from({ length: count }, (_, i) =>
+      `<span class="ep${i === 2 ? ' is-cur' : ''}">${names[i % names.length]}</span>`).join('');
+  };
+  const fillList = (id) => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.innerHTML = names.map((n, i) =>
+      `<span class="row"><span class="n">${String(i + 1).padStart(2, '0')}</span><span class="t">${n}</span></span>`).join('');
+  };
+  ['g1', 'g2', 'g3', 'g5a', 'g6'].forEach((id) => fillGrid(id));
+  fillGrid('g4', 50);
+  fillList('g6');
+</script>
+</body>
+</html>
