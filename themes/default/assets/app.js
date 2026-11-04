@@ -302,6 +302,24 @@
   var mount = document.querySelector('.play-wrap .player') || document.querySelector('.m-player-wrap');
   var loadingEl = document.querySelector('[data-player-loading]');
 
+  /* 底图先解码再挂到占位层上，否则未解码完的图片会从上往下逐行刷出来 */
+  (function preloadLoadingArt() {
+    if (!loadingEl) return;
+    var art = new Image();
+    var markReady = function () {
+      loadingEl.classList.add('is-ready');
+    };
+    art.src = loadingEl.getAttribute('data-loading-src') || '/assets/img/loading.webp';
+    if (art.decode) {
+      art.decode().then(markReady).catch(markReady);
+    } else if (art.complete) {
+      markReady();
+    } else {
+      art.onload = markReady;
+      art.onerror = markReady;
+    }
+  })();
+
   function showLoading() {
     if (loadingEl) loadingEl.classList.remove('is-hidden');
   }
