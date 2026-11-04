@@ -29,10 +29,7 @@
         <dd class="intro-cell">
           <div class="banner-intro" data-intro><span data-intro-text>{{ intro_text | escape }}</span>{% if vod.content != blank and vod.content != vod.intro %}<button type="button" class="intro-toggle" data-intro-open>详情</button>{% endif %}</div>
           <div class="intro-modal" data-intro-modal hidden>
-            <div class="intro-modal-hd">
-              <h3>{{ vod.name }}</h3>
-              <button type="button" class="btn-ghost intro-modal-close" data-intro-close>关闭</button>
-            </div>
+            <div class="intro-modal-hd"><span>详细介绍</span></div>
             <div class="intro-modal-bd">{{ intro_text | escape }}</div>
           </div>
         </dd></div>
