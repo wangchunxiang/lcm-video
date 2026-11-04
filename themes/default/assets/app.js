@@ -90,8 +90,64 @@
     });
   }
 
+  function bindLineDD() {
+    var root = document.querySelector('[data-line-dd]');
+    if (!root || root.dataset.bound) return;
+    root.dataset.bound = '1';
+
+    var btn = root.querySelector('[data-line-dd-btn]');
+    var panel = root.querySelector('[data-line-dd-panel]');
+    var nameEl = root.querySelector('[data-line-dd-name]');
+    var countEl = root.querySelector('[data-line-dd-count]');
+    if (!btn || !panel) return;
+
+    function close() {
+      panel.hidden = true;
+      btn.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    btn.addEventListener('click', function (event) {
+      event.stopPropagation();
+      var open = panel.hidden;
+      panel.hidden = !open;
+      btn.classList.toggle('is-open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!panel.hidden && !root.contains(event.target)) close();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') close();
+    });
+
+    Array.prototype.forEach.call(root.querySelectorAll('[data-ep-line]'), function (item) {
+      item.addEventListener('click', function (event) {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        var id = Number(item.getAttribute('data-ep-line'));
+        var group = epGroups
+          ? epGroups.filter(function (g) { return g.id === id; })[0]
+          : null;
+        if (!group) { close(); return; }
+        event.preventDefault();
+        renderLine(group);
+        Array.prototype.forEach.call(root.querySelectorAll('[data-ep-line]'), function (other) {
+          var on = other === item;
+          other.classList.toggle('is-active', on);
+          other.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        if (nameEl) nameEl.textContent = group.name;
+        if (countEl) countEl.textContent = group.items.length + ' 集';
+        history.replaceState(null, '', item.href);
+        close();
+      });
+    });
+  }
+
   bindSort();
-  bindTabs();
+  bindLineDD();
 })();
 
 (function () {

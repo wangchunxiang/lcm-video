@@ -879,7 +879,103 @@ a.ep-tab { text-decoration: none; }
   white-space: nowrap;
 }
 
-.play-side .ep-tabs { gap: var(--space-1); margin-bottom: 0; }
+.play-side-lines {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.line-dd { position: relative; flex: none; min-width: 0; }
+
+.line-dd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.line-dd-btn:hover { background: var(--surface-2); }
+
+.line-dd-label { color: var(--text-3); }
+
+.line-dd-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-dd-btn .n {
+  color: var(--text-3);
+  font-size: var(--fs-caption);
+  white-space: nowrap;
+}
+
+.line-dd-btn .chev {
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1;
+  transition: transform var(--transition);
+}
+
+.line-dd-btn.is-open .chev { transform: rotate(180deg); }
+
+.line-dd-panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 30;
+  width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.line-dd-panel[hidden] { display: none; }
+
+.line-dd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 7px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.line-dd-item:hover { background: var(--surface-2); color: var(--text); }
+
+.line-dd-item.is-active {
+  background: rgba(59, 130, 246, 0.16);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.line-dd-item > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line-dd-item .n { color: var(--text-3); font-size: var(--fs-caption); }
+.line-dd-item.is-active .n { color: var(--primary); }
 
 .play-side .ep-panel.is-active {
   display: flex;

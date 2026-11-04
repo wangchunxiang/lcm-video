@@ -40,12 +40,27 @@
       <span class="play-side-ep">{{ current_ep_name }}</span>
     </div>
 
-    <div class="ep-tabs" role="tablist">
-      {% for l in lines %}
-      <a class="ep-tab{% if l.id == line.id %} is-active{% endif %}"
-         href="/play/{{ vod.id }}/{{ l.id }}/{{ l.ep }}"
-         title="{{ l.name }}">{{ l.name }} <span class="count">{{ l.episode_count }}</span></a>
-      {% endfor %}
+    <div class="play-side-lines">
+      <div class="line-dd" data-line-dd>
+        <button type="button" class="line-dd-btn" data-line-dd-btn aria-haspopup="listbox" aria-expanded="false">
+          <span class="line-dd-label">线路：</span>
+          <span class="line-dd-name" data-line-dd-name>{{ line.name }}</span>
+          <span class="n" data-line-dd-count>{{ line.episode_count }} 集</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="line-dd-panel" data-line-dd-panel hidden role="listbox">
+          {% for l in lines %}
+          <a class="line-dd-item{% if l.id == line.id %} is-active{% endif %}"
+             href="/play/{{ vod.id }}/{{ l.id }}/{{ l.ep }}"
+             data-ep-line="{{ l.id }}"
+             role="option"
+             aria-selected="{% if l.id == line.id %}true{% else %}false{% endif %}"
+             title="{{ l.name }}">
+            <span>{{ l.name }}</span><span class="n">{{ l.episode_count }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
       <button type="button" class="ep-sort" data-ep-sort>正序</button>
     </div>
 
