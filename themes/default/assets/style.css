@@ -11,7 +11,8 @@
   --primary: #3b82f6;
   --primary-dark: #2563eb;
   --radius: 8px;
-  --container: 1800px;
+  /* 1920 屏两侧各留 64px；8 列 × 210 图 + 7 × 16 间距 = 1792 */
+  --container: 1792px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 
   /* 圆角刻度 */
@@ -92,8 +93,8 @@ img { border: 0; vertical-align: middle; }
 
 .container {
   /* 两侧各留 60px：宽屏由 max-width 收敛，窄屏由 100% - 120px 收敛 */
-  width: min(var(--container), 100% - 120px);
-  margin-left: max(60px, calc((100vw - var(--container)) / 2));
+  width: min(var(--container), 100% - 128px);
+  margin-left: max(64px, calc((100vw - var(--container)) / 2));
   margin-right: auto;
   padding: 0;
 }
@@ -331,8 +332,8 @@ img { border: 0; vertical-align: middle; }
 .vod-card .cover {
   position: relative;
   width: 100%;
-  /* 8 列时每列约 210px，按 210×285 的比例裁切 */
-  aspect-ratio: 210 / 285;
+  /* 8 列时每列 210px，海报严格 3:4（210×280） */
+  aspect-ratio: 210 / 280;
   border-radius: var(--radius-md);
   overflow: hidden;
   background: linear-gradient(135deg, #1f2733, #171d26);
