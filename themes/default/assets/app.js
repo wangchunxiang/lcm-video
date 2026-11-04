@@ -1,21 +1,27 @@
 (function () {
+  /* 正序/倒序是跨线路的状态，切换线路后保持不变 */
+  var epDesc = false;
+
+  function sortGrid() {
+    Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
+      var nodes = Array.prototype.slice.call(grid.children);
+      if (epDesc) nodes.reverse();
+      Array.prototype.forEach.call(nodes, function (node) {
+        grid.appendChild(node);
+      });
+    });
+  }
+
   function bindSort() {
     var btn = document.querySelector('[data-ep-sort]');
     if (!btn || btn.dataset.bound) return;
     btn.dataset.bound = '1';
-    var desc = false;
+    btn.textContent = epDesc ? '倒序' : '正序';
 
     btn.addEventListener('click', function () {
-      desc = !desc;
-      btn.textContent = desc ? '倒序' : '正序';
-
-      Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
-        var nodes = Array.prototype.slice.call(grid.children);
-        nodes.reverse();
-        Array.prototype.forEach.call(nodes, function (node) {
-          grid.appendChild(node);
-        });
-      });
+      epDesc = !epDesc;
+      btn.textContent = epDesc ? '倒序' : '正序';
+      sortGrid();
     });
   }
 
@@ -53,10 +59,8 @@
       link.textContent = ep.n;
       grid.appendChild(link);
     });
-    /* 新生成的格子要重新挂排序 */
-    var sort = document.querySelector('[data-ep-sort]');
-    if (sort) delete sort.dataset.bound;
-    bindSort();
+    /* 按当前排序状态重排新线路的格子 */
+    sortGrid();
   }
 
   function bindTabs() {
