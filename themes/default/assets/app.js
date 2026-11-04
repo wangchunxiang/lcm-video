@@ -361,13 +361,7 @@
         if (introOpen) introOpen.style.display = 'none';
         return;
       }
-      /* 按字数截断，超出两行再按比例收一点，保证「详情」不会被裁掉 */
-      var maxH = Math.round(parseFloat(getComputedStyle(intro).lineHeight) * 2);
       introText.textContent = fullText.slice(0, maxChars) + '…';
-      while (intro.scrollHeight > maxH + 1 && maxChars > 20) {
-        maxChars = Math.floor(maxChars * 0.95);
-        introText.textContent = fullText.slice(0, maxChars) + '…';
-      }
     }
     fitIntro();
     var fitTimer = null;
