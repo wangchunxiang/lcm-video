@@ -1,31 +1,4 @@
 (function () {
-  /* 正序/倒序是跨线路的状态，切换线路后保持不变 */
-  var epDesc = false;
-
-  function sortGrid() {
-    Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
-      var nodes = Array.prototype.slice.call(grid.children);
-      if (epDesc) nodes.reverse();
-      Array.prototype.forEach.call(nodes, function (node) {
-        grid.appendChild(node);
-      });
-    });
-  }
-
-  function bindSort() {
-    var btn = document.querySelector('[data-ep-sort]');
-    if (!btn || btn.dataset.bound) return;
-    btn.dataset.bound = '1';
-    btn.textContent = epDesc ? '倒序' : '正序';
-
-    btn.addEventListener('click', function () {
-      epDesc = !epDesc;
-      btn.textContent = epDesc ? '倒序' : '正序';
-      sortGrid();
-    });
-  }
-
-  /* 切换线路：剧集数据随详情页一次性下发，这里直接渲染，不发请求 */
   var epBox = document.querySelector('#ep-groups');
   var epGroups = null;
   try {
@@ -34,8 +7,14 @@
     epGroups = null;
   }
   var epVodId = epBox ? Number(epBox.dataset.vod) : 0;
+  var epLineId = epBox ? Number(epBox.dataset.line) : 0;
+  /* 正序/倒序是跨线路的状态，切换线路后保持不变 */
+  var epDesc = false;
 
+  /* 排序不再翻转现有 DOM，而是按数据顺序重画，正反向都能回到正确顺序 */
   function renderLine(group) {
+    if (!group) return;
+    epLineId = group.id;
     var panel = document.querySelector('.ep-panel');
     if (!panel) return;
 
@@ -50,8 +29,9 @@
       grid = panel.querySelector('.episode-grid');
     }
 
+    var items = epDesc ? group.items.slice().reverse() : group.items;
     grid.textContent = '';
-    group.items.forEach(function (ep) {
+    items.forEach(function (ep) {
       var link = document.createElement('a');
       link.className = 'episode-btn';
       link.href = '/play/' + epVodId + '/' + group.id + '/' + ep.i;
@@ -59,8 +39,33 @@
       link.textContent = ep.n;
       grid.appendChild(link);
     });
-    /* 按当前排序状态重排新线路的格子 */
-    sortGrid();
+  }
+
+  function bindSort() {
+    var btn = document.querySelector('[data-ep-sort]');
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.textContent = epDesc ? '倒序' : '正序';
+
+    btn.addEventListener('click', function () {
+      epDesc = !epDesc;
+      btn.textContent = epDesc ? '倒序' : '正序';
+      var group = epGroups
+        ? epGroups.filter(function (item) { return item.id === epLineId; })[0]
+        : null;
+      if (group) {
+        renderLine(group);
+        return;
+      }
+      /* 没有随页下发的数据时退回 DOM 翻转 */
+      Array.prototype.forEach.call(document.querySelectorAll('.episode-grid, .m-ep-grid'), function (grid) {
+        var nodes = Array.prototype.slice.call(grid.children);
+        nodes.reverse();
+        Array.prototype.forEach.call(nodes, function (node) {
+          grid.appendChild(node);
+        });
+      });
+    });
   }
 
   function bindTabs() {
@@ -74,7 +79,6 @@
         var group = match && epGroups
           ? epGroups.filter(function (item) { return item.id === Number(match[1]); })[0]
           : null;
-        /* 没有随页下发的数据时退回整页跳转 */
         if (!group) return;
         event.preventDefault();
         renderLine(group);

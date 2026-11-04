@@ -79,4 +79,4 @@
 </section>
 {% endif %}
 {% endblock %}
-{% block scripts %}<script type="application/json" id="ep-groups" data-vod="{{ vod_id }}">{{ episode_json }}</script><script src="{{ 'vendor/qrcode.min.js' | asset }}"></script>{% endblock %}
+{% block scripts %}<script type="application/json" id="ep-groups" data-vod="{{ vod_id }}" data-line="{{ current_line_id }}">{{ episode_json }}</script><script src="{{ 'vendor/qrcode.min.js' | asset }}"></script>{% endblock %}
