@@ -679,8 +679,9 @@ a.ep-tab { text-decoration: none; }
 .banner-fields dt { flex: none; width: 42px; color: var(--text-3); }
 .banner-fields dd { margin: 0; color: var(--text-2); min-width: 0; }
 
+.intro-cell { position: relative; }
+
 .banner-intro {
-  position: relative;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -699,47 +700,42 @@ a.ep-tab { text-decoration: none; }
   cursor: pointer;
 }
 
-/* 三行截断时「展开」固定在末行右下角，并用底色盖住被截断的文字 */
+/* 截断时右侧让出按钮位置，文字末尾的省略号由 line-clamp 生成，「详情」紧随其后 */
+.banner-intro.is-clamped { padding-right: 3.2em; }
+
 .banner-intro.is-clamped .intro-toggle {
   display: inline;
   position: absolute;
   right: 0;
   bottom: 0;
-  padding-left: var(--space-2);
-  background: var(--bg);
+  background: transparent;
 }
 
-/* ---------- 简介弹窗 ---------- */
+/* ---------- 简介浮层卡片：锚定在简介下方 ---------- */
 
 .intro-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 80;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-6);
-  background: rgba(0, 0, 0, 0.6);
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: 46vh;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 .intro-modal[hidden] { display: none; }
-
-.intro-modal-card {
-  display: flex;
-  flex-direction: column;
-  width: min(760px, 100%);
-  max-height: 72vh;
-  border-radius: var(--radius-md);
-  background: var(--card);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
 
 .intro-modal-hd {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--line);
 }
 
@@ -747,17 +743,18 @@ a.ep-tab { text-decoration: none; }
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: var(--fs-emphasis);
+  font-size: var(--fs-small);
   font-weight: 600;
+  color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.intro-modal-close { height: var(--control-h-sm); padding: 0 var(--space-5); }
+.intro-modal-close { height: var(--control-h-sm); padding: 0 var(--space-4); }
 
 .intro-modal-bd {
-  padding: var(--space-5);
+  padding: var(--space-4);
   overflow-y: auto;
   color: var(--text-2);
   line-height: 1.9;

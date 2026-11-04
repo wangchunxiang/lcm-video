@@ -362,9 +362,14 @@
     function closeIntro() {
       introModal.hidden = true;
     }
-    introOpen.addEventListener('click', openIntro);
-    introModal.addEventListener('click', function (event) {
-      if (event.target === introModal) closeIntro();
+    introOpen.addEventListener('click', function (event) {
+      event.stopPropagation();
+      openIntro();
+    });
+    document.addEventListener('click', function (event) {
+      if (introModal.hidden) return;
+      if (introModal.contains(event.target) || introOpen.contains(event.target)) return;
+      closeIntro();
     });
     var introClose = introModal.querySelector('[data-intro-close]');
     if (introClose) introClose.addEventListener('click', closeIntro);
