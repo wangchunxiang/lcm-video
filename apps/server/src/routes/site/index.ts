@@ -493,6 +493,13 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       total: parsePlayUrl(item.playUrl).length,
       href: `/detail/${row.id}?line=${item.id}`,
     }));
+    /* 所有线路的剧集一次性下发，前端切换线路时直接渲染，不再请求 */
+    const episodeGroups = lines.map((item) => ({
+      id: item.id,
+      name: item.source_name,
+      items: parsePlayUrl(item.playUrl).map((ep, index) => ({ i: index + 1, n: ep.name })),
+    }));
+    const episodeJson = JSON.stringify(episodeGroups).split('<').join(String.fromCharCode(92) + 'u003c');
     return render(
       reply,
       'detail',
@@ -538,6 +545,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
           ? { id: currentLine.id, name: currentLine.source_name, episode_count: totalEpisodes }
           : null,
         episodes,
+        episode_json: episodeJson,
+        vod_id: row.id,
         nav_path: parent?.alias ?? '',
       },
     );

@@ -19,28 +19,65 @@
     });
   }
 
-  /* 切换线路：只替换剧集区，不整页刷新 */
+  /* 切换线路：剧集数据随详情页一次性下发，这里直接渲染，不发请求 */
+  var epBox = document.querySelector('#ep-groups');
+  var epGroups = null;
+  try {
+    epGroups = epBox ? JSON.parse(epBox.textContent) : null;
+  } catch (err) {
+    epGroups = null;
+  }
+  var epVodId = epBox ? Number(epBox.dataset.vod) : 0;
+
+  function renderLine(group) {
+    var panel = document.querySelector('.ep-panel');
+    if (!panel) return;
+
+    if (!group.items.length) {
+      panel.innerHTML = '<p class="empty-tip">该线路暂无剧集</p>';
+      return;
+    }
+
+    var grid = panel.querySelector('.episode-grid');
+    if (!grid) {
+      panel.innerHTML = '<div class="ep-scroll"><div class="episode-grid"></div></div>';
+      grid = panel.querySelector('.episode-grid');
+    }
+
+    grid.textContent = '';
+    group.items.forEach(function (ep) {
+      var link = document.createElement('a');
+      link.className = 'episode-btn';
+      link.href = '/play/' + epVodId + '/' + group.id + '/' + ep.i;
+      link.title = ep.n;
+      link.textContent = ep.n;
+      grid.appendChild(link);
+    });
+    /* 新生成的格子要重新挂排序 */
+    var sort = document.querySelector('[data-ep-sort]');
+    if (sort) delete sort.dataset.bound;
+    bindSort();
+  }
+
   function bindTabs() {
     Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function (tab) {
       if (tab.dataset.bound) return;
       tab.dataset.bound = '1';
       tab.addEventListener('click', function (event) {
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        event.preventDefault();
         var href = tab.href;
-        fetch(href, { headers: { 'X-Requested-With': 'fetch' } })
-          .then(function (res) { return res.text(); })
-          .then(function (html) {
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var next = doc.querySelector('.detail-eps');
-            var cur = document.querySelector('.detail-eps');
-            if (!next || !cur) { location.href = href; return; }
-            cur.replaceWith(document.importNode(next, true));
-            history.replaceState(null, '', href);
-            bindSort();
-            bindTabs();
-          })
-          .catch(function () { location.href = href; });
+        var match = href.match(/line=(\d+)/);
+        var group = match && epGroups
+          ? epGroups.filter(function (item) { return item.id === Number(match[1]); })[0]
+          : null;
+        /* 没有随页下发的数据时退回整页跳转 */
+        if (!group) return;
+        event.preventDefault();
+        renderLine(group);
+        Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function (item) {
+          item.classList.toggle('is-active', item === tab);
+        });
+        history.replaceState(null, '', href);
       });
     });
   }
