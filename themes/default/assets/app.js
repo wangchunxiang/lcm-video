@@ -22,12 +22,29 @@
     lineData = [];
     siteMeta = {};
   }
-  /* 正序/倒序是跨线路、跨页面的状态，存本地，换线路整页跳转后仍保持 */
+  /* 正序/倒序按影片分别记忆：同一部片跨线路、跨页面保持，换一部片回到正序 */
+  var epDescKey = 'lcm:ep-desc:' + (epVodId || 0);
   var epDesc = false;
   try {
-    epDesc = window.localStorage.getItem('lcm:ep-desc') === '1';
+    epDesc = window.localStorage.getItem(epDescKey) === '1';
   } catch (err) {
     epDesc = false;
+  }
+
+  /* 当前线路的数据分组 */
+  function currentGroup() {
+    if (!epGroups) return null;
+    return epGroups.filter(function (item) { return item.id === epLineId; })[0] || null;
+  }
+
+  /* 「立即播放」跟着排序走：倒序时播最后一集，正序时播第一集 */
+  function syncPlayBtn() {
+    var btn = document.querySelector('[data-hero-play]');
+    if (!btn) return;
+    var group = currentGroup();
+    if (!group || !group.items.length) return;
+    var target = epDesc ? group.items[group.items.length - 1] : group.items[0];
+    btn.href = '/play/' + epVodId + '/' + group.id + '/' + target.i;
   }
 
   /* 排序不再翻转现有 DOM，而是按数据顺序重画，正反向都能回到正确顺序 */
@@ -61,6 +78,7 @@
       }
       grid.appendChild(link);
     });
+    syncPlayBtn();
   }
 
   function bindSort() {
@@ -73,7 +91,7 @@
       epDesc = !epDesc;
       btn.textContent = epDesc ? '倒序' : '正序';
       try {
-        window.localStorage.setItem('lcm:ep-desc', epDesc ? '1' : '0');
+        window.localStorage.setItem(epDescKey, epDesc ? '1' : '0');
       } catch (err) {
         /* 隐私模式下写不进去，忽略 */
       }
@@ -237,6 +255,7 @@
 
   bindSort();
   bindLineDD();
+  syncPlayBtn();
 
   /* 上次是倒序时，首屏按数据重画一次，避免按钮显示倒序但列表还是正序 */
   if (epDesc && epGroups) {

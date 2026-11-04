@@ -40,7 +40,7 @@
 
     {% if lines.size > 0 %}
     <div class="banner-actions">
-      <a class="btn-primary banner-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1">立即播放</a>
+      <a class="btn-primary banner-play" href="/play/{{ vod.id }}/{{ lines.first.id }}/1" data-hero-play>立即播放</a>
       <div class="qr-pop">
         <button type="button" class="btn-ghost" data-qr aria-describedby="qr-panel">手机观看</button>
         <div class="qr-pop-panel" id="qr-panel" data-qr-panel>
