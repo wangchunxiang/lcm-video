@@ -630,10 +630,10 @@ a.ep-tab { text-decoration: none; }
 /* 左侧海报：固定列宽，完整显示（contain），不裁切 */
 .banner-pic {
   flex: none;
-  /* 固定 3:4 版面，图片按 cover 填充；加载前露出底色作为占位 */
+  /* 固定 3:4 版面，图片拉伸填满（fill）；加载前露出底色作为占位 */
   width: 240px;
   height: 320px;
-  object-fit: cover;
+  object-fit: fill;
   border-radius: var(--radius-md);
   background: var(--surface-2);
 }
