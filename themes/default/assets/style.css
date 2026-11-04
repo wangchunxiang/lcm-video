@@ -1042,6 +1042,39 @@ a.ep-tab { text-decoration: none; }
 }
 
 .line-dd-item .n { color: var(--text-3); font-size: var(--fs-caption); }
+
+.line-dd-item .ms {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  color: var(--text-3);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.line-dd-item.is-active .ms { color: var(--primary); }
+
+/* 线路测速按钮，与「正序」同款 */
+.line-speed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-small);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+
+.line-speed:hover { background: var(--surface-2); color: var(--text); }
+.line-speed:disabled { opacity: 0.6; cursor: default; }
 .line-dd-item.is-active .n { color: var(--primary); }
 
 .play-side .ep-panel.is-active {

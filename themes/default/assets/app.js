@@ -253,8 +253,56 @@
     });
   }
 
+  /* 逐条测速：一次点击把这部片的线路挨个跑一遍，毫秒数写回下拉选项 */
+  function bindSpeed() {
+    var btn = document.querySelector('[data-line-speed]');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      if (btn.disabled) return;
+      var items = Array.prototype.slice.call(document.querySelectorAll('[data-ep-line]'));
+      if (!items.length) return;
+      btn.disabled = true;
+      btn.textContent = '测速中';
+      var ep = epCurrent || 1;
+      var index = 0;
+
+      function next() {
+        if (index >= items.length) {
+          btn.disabled = false;
+          btn.textContent = '测速';
+          return;
+        }
+        var item = items[index];
+        index += 1;
+        var box = item.querySelector('[data-ms]');
+        if (box) box.textContent = '…';
+        var lineId = item.getAttribute('data-ep-line');
+        fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep)
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (!box) return;
+            if (data && data.ok) {
+              box.textContent = data.ms + ' ms';
+            } else if (data && data.reason === 'iframe') {
+              box.textContent = '网页';
+            } else if (data && data.reason === 'timeout') {
+              box.textContent = '超时';
+            } else {
+              box.textContent = '失败';
+            }
+          })
+          .catch(function () {
+            if (box) box.textContent = '失败';
+          })
+          .then(next);
+      }
+      next();
+    });
+  }
+
   bindSort();
   bindLineDD();
+  bindSpeed();
   syncPlayBtn();
 
   /* 上次是倒序时，首屏按数据重画一次，避免按钮显示倒序但列表还是正序 */

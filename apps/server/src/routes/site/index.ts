@@ -5,6 +5,7 @@ import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm
 import type { Liquid } from 'liquidjs';
 import { parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
+import { speedRoutes } from './speed.ts';
 import {
   buildPagination,
   createEngine,
@@ -143,6 +144,8 @@ async function loadYears(db: Db, categoryId: number, scope: 'parent' | 'type'): 
 
 export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) => {
   const { db } = opts;
+
+  await app.register(speedRoutes, { db });
 
   // 主题切换后按新主题重建引擎（字符串比较，开销可忽略）
   let engine: Liquid = createEngine('default');

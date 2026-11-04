@@ -61,11 +61,12 @@
              role="option"
              aria-selected="{% if l.id == line.id %}true{% else %}false{% endif %}"
              title="{{ l.name }}">
-            <span>{{ l.name }}</span><span class="n">{{ l.episode_count }}</span>
+            <span>{{ l.name }}</span><span class="n">{{ l.episode_count }}</span><span class="ms" data-ms></span>
           </a>
           {% endfor %}
         </div>
       </div>
+      <button type="button" class="line-speed" data-line-speed>测速</button>
       <button type="button" class="ep-sort" data-ep-sort>正序</button>
     </div>
 
