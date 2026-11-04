@@ -51,7 +51,7 @@
         <button type="button" class="line-dd-btn" data-line-dd-btn aria-haspopup="listbox" aria-expanded="false">
           <span class="line-dd-name" data-line-dd-name>{{ line.name }}</span>
           <span class="n" data-line-dd-count>{{ line.episode_count }} 集</span>
-          <span class="chev">▾</span>
+          <span class="chev">{% render 'partials/icon', name: 'chevron-down' %}</span>
         </button>
         <div class="line-dd-panel" data-line-dd-panel hidden role="listbox">
           {% for l in lines %}
@@ -61,7 +61,7 @@
              role="option"
              aria-selected="{% if l.id == line.id %}true{% else %}false{% endif %}"
              title="{{ l.name }}">
-            <span>{{ l.name }}</span><span class="n">{{ l.episode_count }}</span><span class="ms" data-ms></span>
+            <span>{{ l.name }}</span><span class="n">{{ l.episode_count }} 集</span><span class="ms" data-ms></span>
           </a>
           {% endfor %}
         </div>

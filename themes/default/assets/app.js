@@ -253,7 +253,27 @@
     });
   }
 
-  /* 逐条测速：一次点击把这部片的线路挨个跑一遍，毫秒数写回下拉选项 */
+  /* 按毫秒数上色：800 以内绿、2000 以内黄、再慢红 */
+  function paintSpeed(box, data) {
+    if (!box) return;
+    if (data && data.ok) {
+      box.textContent = data.ms + ' ms';
+      box.className = 'ms ' + (data.ms < 800 ? 'is-fast' : data.ms <= 2000 ? 'is-mid' : 'is-slow');
+      return;
+    }
+    if (data && data.reason === 'iframe') {
+      box.textContent = '网页';
+      box.className = 'ms';
+    } else if (data && data.reason === 'timeout') {
+      box.textContent = '超时';
+      box.className = 'ms is-slow';
+    } else {
+      box.textContent = '失败';
+      box.className = 'ms is-slow';
+    }
+  }
+
+  /* 线路并发测速：一次点击同时打所有线路，谁的先回来谁先填 */
   function bindSpeed() {
     var btn = document.querySelector('[data-line-speed]');
     if (!btn) return;
@@ -264,39 +284,28 @@
       btn.disabled = true;
       btn.textContent = '测速中';
       var ep = epCurrent || 1;
-      var index = 0;
+      var pending = items.length;
 
-      function next() {
-        if (index >= items.length) {
-          btn.disabled = false;
-          btn.textContent = '测速';
-          return;
-        }
-        var item = items[index];
-        index += 1;
-        var box = item.querySelector('[data-ms]');
-        if (box) box.textContent = '…';
-        var lineId = item.getAttribute('data-ep-line');
-        fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep + '&r=1')
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            if (!box) return;
-            if (data && data.ok) {
-              box.textContent = data.ms + ' ms';
-            } else if (data && data.reason === 'iframe') {
-              box.textContent = '网页';
-            } else if (data && data.reason === 'timeout') {
-              box.textContent = '超时';
-            } else {
-              box.textContent = '失败';
-            }
-          })
-          .catch(function () {
-            if (box) box.textContent = '失败';
-          })
-          .then(next);
+      function done() {
+        pending -= 1;
+        if (pending > 0) return;
+        btn.disabled = false;
+        btn.textContent = '测速';
       }
-      next();
+
+      items.forEach(function (item) {
+        var box = item.querySelector('[data-ms]');
+        if (box) {
+          box.textContent = '…';
+          box.className = 'ms';
+        }
+        var lineId = item.getAttribute('data-ep-line');
+        fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep)
+          .then(function (res) { return res.json(); })
+          .then(function (data) { paintSpeed(box, data); })
+          .catch(function () { paintSpeed(box, null); })
+          .then(done);
+      });
     });
   }
 

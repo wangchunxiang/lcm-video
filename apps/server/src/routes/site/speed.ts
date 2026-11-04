@@ -8,17 +8,12 @@ import { parsePlayUrl } from '@lcm/shared';
 const SAMPLE_BYTES = 256 * 1024;
 /** 单条线路的超时 */
 const TIMEOUT_MS = 5000;
-/** 同一线路同一集的结果缓存 60 秒，避免连点反复打源站 */
-const CACHE_TTL_MS = 60_000;
-const CACHE_MAX = 500;
 
 export interface SpeedResult {
   ok: boolean;
   ms: number;
   reason?: 'iframe' | 'timeout' | 'error';
 }
-
-const cache = new Map<string, { at: number; result: SpeedResult }>();
 
 export interface SpeedRouteOpts {
   db: Db;
@@ -107,19 +102,12 @@ export const speedRoutes: FastifyPluginAsync<SpeedRouteOpts> = async (app, opts)
     const params = req.params as { vodId: string; lineId: string };
     const vodId = Number(params.vodId);
     const lineId = Number(params.lineId);
-    const query = req.query as { ep?: string; r?: string };
-    const ep = Math.max(1, Number(query.ep) || 1);
-    /* 用户手动点测速时带 r=1：跳过缓存重新测，只保留写缓存 */
-    const force = query.r === '1';
+    const ep = Math.max(1, Number((req.query as { ep?: string }).ep) || 1);
     reply.header('cache-control', 'no-store');
 
     if (!Number.isInteger(vodId) || !Number.isInteger(lineId) || vodId <= 0 || lineId <= 0) {
       return reply.code(400).send({ ok: false, ms: 0, reason: 'error' });
     }
-
-    const key = `${vodId}:${lineId}:${ep}`;
-    const hit = cache.get(key);
-    if (!force && hit && Date.now() - hit.at < CACHE_TTL_MS) return reply.send(hit.result);
 
     const [row] = await db
       .select({
@@ -151,8 +139,6 @@ export const speedRoutes: FastifyPluginAsync<SpeedRouteOpts> = async (app, opts)
       }
     }
 
-    if (cache.size >= CACHE_MAX) cache.clear();
-    cache.set(key, { at: Date.now(), result });
     return reply.send(result);
   });
 };
