@@ -352,8 +352,8 @@
     function fitIntro() {
       if (introOpen) introOpen.style.display = '';
       var fontSize = parseFloat(getComputedStyle(intro).fontSize) || 15;
-      /* 中文按字号估宽，标点数字更窄，所以打 94 折 */
-      var charW = fontSize * 0.94;
+      /* 每字按字号估宽（全角中文的最宽情况），宁可早截一点也不溢行 */
+      var charW = fontSize;
       var perLine = Math.max(8, Math.floor(intro.clientWidth / charW));
       var maxChars = perLine * 2 - 5;
       if (fullText.length <= maxChars) {
