@@ -1008,7 +1008,7 @@ a.ep-tab { text-decoration: none; }
   top: calc(100% + var(--space-1));
   left: 0;
   z-index: 30;
-  width: 240px;
+  width: 100%;
   max-height: 320px;
   overflow-y: auto;
   padding: var(--space-1);
