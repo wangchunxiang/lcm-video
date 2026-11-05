@@ -241,6 +241,19 @@ function splitPlayFrom(playFrom: string, urlCount: number): string[] {
   return byComma.length === urlCount ? byComma : byDollar;
 }
 
+/** 只取线路名（不关心地址）：按 $$$ 拆，兼容逗号分隔 */
+export function splitLineNames(playFrom: string): string[] {
+  if (!playFrom) return [];
+  const names: string[] = [];
+  for (const group of playFrom.split('$$$')) {
+    for (const name of group.split(',')) {
+      const value = name.trim();
+      if (value) names.push(value);
+    }
+  }
+  return names;
+}
+
 /** 拆分播放组：`vod_play_from` 与 `vod_play_url` 都按 $$$ 分组 */
 export function splitPlayGroups(playFrom: string, playUrl: string): Array<{ from: string; url: string }> {
   const urls = playUrl ? playUrl.split('$$$') : [];

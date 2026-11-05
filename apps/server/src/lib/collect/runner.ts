@@ -9,7 +9,7 @@ import {
 } from '@lcm/db';
 import { autoMatchCategory, loadCategories } from './match.ts';
 import { CollectClient } from './client.ts';
-import { parseVodPage } from './parser.ts';
+import { parseVodPage, splitLineNames } from './parser.ts';
 import { processPage, type CategoryInfo, type MappingInfo } from './writer.ts';
 
 const RANGE_HOURS: Record<number, number | undefined> = {
@@ -185,10 +185,7 @@ async function executeRun(
       if (parsed.list.length === 0) break;
 
       for (const item of parsed.list) {
-        for (const from of item.playFrom ? item.playFrom.split('$$$') : []) {
-          const value = from.trim();
-          if (value) playFromSet.add(value);
-        }
+        for (const name of splitLineNames(item.playFrom)) playFromSet.add(name);
       }
 
       const result = await processPage(db, {

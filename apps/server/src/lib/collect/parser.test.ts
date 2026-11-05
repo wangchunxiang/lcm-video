@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseVodPage, splitPlayGroups } from './parser.ts';
+import { parseVodPage, splitLineNames, splitPlayGroups } from './parser.ts';
 
 describe('splitPlayGroups', () => {
   it('按 $$$ 拆分线路', () => {
@@ -27,6 +27,20 @@ describe('splitPlayGroups', () => {
   it('跳过没有地址的分组', () => {
     const groups = splitPlayGroups('a$$$b', 'x$http://x/1$$$$$$');
     expect(groups.map((g) => g.from)).toEqual(['a']);
+  });
+});
+
+describe('splitLineNames', () => {
+  it('按 $$$ 拆并逐个 trim', () => {
+    expect(splitLineNames('liangzi$$$ lzm3u8 ')).toEqual(['liangzi', 'lzm3u8']);
+  });
+
+  it('兼容逗号分隔', () => {
+    expect(splitLineNames('liangzi,lzm3u8')).toEqual(['liangzi', 'lzm3u8']);
+  });
+
+  it('空串返回空数组', () => {
+    expect(splitLineNames('')).toEqual([]);
   });
 });
 
