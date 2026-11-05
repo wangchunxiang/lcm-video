@@ -125,6 +125,21 @@ async function loadSource(db: Db, id: number): Promise<typeof collectSource.$inf
   return rows[0] ?? null;
 }
 
+/** 删完线路后，统计这些影片里已经没有播放线路的数量（分批查活着的 vod_id） */
+async function countEmptyVods(db: Db, vodIds: number[]): Promise<number> {
+  if (vodIds.length === 0) return 0;
+  const alive = new Set<number>();
+  for (let index = 0; index < vodIds.length; index += 1000) {
+    const chunk = vodIds.slice(index, index + 1000);
+    const rows = await db
+      .selectDistinct({ vodId: vodPlay.vodId })
+      .from(vodPlay)
+      .where(inArray(vodPlay.vodId, chunk));
+    for (const row of rows) alive.add(row.vodId);
+  }
+  return vodIds.length - alive.size;
+}
+
 export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opts) => {
   const { db } = opts;
 
@@ -186,21 +201,11 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     const exists = await loadSource(db, id);
     if (!exists) return fail(reply, 404, ErrorCode.NOT_FOUND, '采集源不存在');
 
-    const playRows = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(vodPlay)
-      .where(eq(vodPlay.sourceId, id));
-    const plays = Number(playRows[0]?.count ?? 0);
+    const lineRows = await db.select({ vodId: vodPlay.vodId }).from(vodPlay).where(eq(vodPlay.sourceId, id));
+    const vodIds = [...new Set(lineRows.map((row) => row.vodId))];
 
-    if (plays > 0) {
-      return reply.code(409).send({
-        code: 40901,
-        msg: `该源下还有 ${plays} 条播放线路，不能删除。请先在「工具 → 批量删除某源线路」里清理这些线路`,
-        data: { plays },
-      });
-    }
-
-    await db.transaction(async (tx) => {
+    const lines = await db.transaction(async (tx) => {
+      const removed = await tx.delete(vodPlay).where(eq(vodPlay.sourceId, id));
       const logRows = await tx.select({ id: collectLog.id }).from(collectLog).where(eq(collectLog.sourceId, id));
       const logIds = logRows.map((row) => row.id);
       if (logIds.length > 0) {
@@ -212,9 +217,10 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       await tx.delete(collectTask).where(eq(collectTask.sourceId, id));
       await tx.delete(adFeature).where(eq(adFeature.sourceId, id));
       await tx.delete(collectSource).where(eq(collectSource.id, id));
+      return Number(removed[0]?.affectedRows ?? 0);
     });
 
-    return ok(reply, { id });
+    return ok(reply, { id, lines, empty_vods: await countEmptyVods(db, vodIds) });
   });
 
   app.post('/batch', async (req, reply) => {
@@ -236,21 +242,14 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       return fail(reply, 400, ErrorCode.BAD_REQUEST, '不支持的操作');
     }
 
-    const playRows = await db
-      .select({ count: sql<number>`COUNT(*)` })
+    const lineRows = await db
+      .select({ vodId: vodPlay.vodId })
       .from(vodPlay)
       .where(inArray(vodPlay.sourceId, ids));
-    const plays = Number(playRows[0]?.count ?? 0);
+    const vodIds = [...new Set(lineRows.map((row) => row.vodId))];
 
-    if (plays > 0) {
-      return reply.code(409).send({
-        code: 40901,
-        msg: `选中的 ${ids.length} 个源下还有 ${plays} 条播放线路，不能删除。请先在「工具 → 批量删除某源线路」里清理这些线路`,
-        data: { plays, sources: ids.length },
-      });
-    }
-
-    await db.transaction(async (tx) => {
+    const lines = await db.transaction(async (tx) => {
+      const removed = await tx.delete(vodPlay).where(inArray(vodPlay.sourceId, ids));
       const logRows = await tx
         .select({ id: collectLog.id })
         .from(collectLog)
@@ -265,9 +264,10 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       await tx.delete(collectTask).where(inArray(collectTask.sourceId, ids));
       await tx.delete(adFeature).where(inArray(adFeature.sourceId, ids));
       await tx.delete(collectSource).where(inArray(collectSource.id, ids));
+      return Number(removed[0]?.affectedRows ?? 0);
     });
 
-    return ok(reply, { affected: ids.length });
+    return ok(reply, { affected: ids.length, lines, empty_vods: await countEmptyVods(db, vodIds) });
   });
 
   app.post('/:id/test', async (req, reply) => {

@@ -199,8 +199,14 @@ async function batchDelete() {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
   try {
-    await api.post('/sources/batch', { action: 'delete', ids });
-    ElMessage.success(`已删除 ${ids.length} 个采集源`);
+    const result = await api.post<{ affected: number; lines: number; empty_vods: number }>('/sources/batch', {
+      action: 'delete',
+      ids,
+    });
+    ElMessage.success(`已删除 ${result.affected} 个采集源，连带删除 ${result.lines} 条播放线路`);
+    if (result.empty_vods > 0) {
+      ElMessage.warning(`有 ${result.empty_vods} 部影片已没有播放线路，可在「工具 → 清理无线路影片」处理`);
+    }
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
@@ -210,7 +216,7 @@ async function batchDelete() {
 async function confirmBatchDelete() {
   try {
     await ElMessageBox.confirm(
-      `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
+      `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
       '批量删除',
       {
         type: 'warning',
@@ -331,7 +337,7 @@ async function toggleStatus(row: SourceRow) {
 async function remove(row: SourceRow) {
   try {
     await ElMessageBox.confirm(
-      `确定删除采集源「${row.name}」吗？该源的采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
+      `确定删除采集源「${row.name}」吗？该源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
       '删除采集源',
       {
         type: 'warning',
@@ -344,8 +350,11 @@ async function remove(row: SourceRow) {
   }
 
   try {
-    await api.del(`/sources/${row.id}`);
-    ElMessage.success('已删除');
+    const result = await api.del<{ id: number; lines: number; empty_vods: number }>(`/sources/${row.id}`);
+    ElMessage.success(`已删除采集源，连带删除 ${result.lines} 条播放线路`);
+    if (result.empty_vods > 0) {
+      ElMessage.warning(`有 ${result.empty_vods} 部影片已没有播放线路，可在「工具 → 清理无线路影片」处理`);
+    }
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
