@@ -213,20 +213,38 @@ async function batchDelete() {
   }
 }
 
-async function confirmBatchDelete() {
+/**
+ * 删源会连带清掉线路、任务与记录，先提示影响范围，再单独确认一次。
+ * 返回 true 表示两次确认都点了确认。
+ */
+async function confirmRemove(message: string, title: string): Promise<boolean> {
   try {
-    await ElMessageBox.confirm(
-      `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
-      '批量删除',
-      {
-        type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-      },
-    );
+    await ElMessageBox.confirm(message, title, {
+      type: 'warning',
+      confirmButtonText: '继续',
+      cancelButtonText: '取消',
+    });
   } catch {
-    return;
+    return false;
   }
+  try {
+    await ElMessageBox.confirm('此操作不可恢复，确定继续删除吗？', '再次确认', {
+      type: 'error',
+      confirmButtonText: '确认删除',
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+async function confirmBatchDelete() {
+  const confirmed = await confirmRemove(
+    `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除。`,
+    '批量删除',
+  );
+  if (!confirmed) return;
   await batchDelete();
 }
 
@@ -335,19 +353,11 @@ async function toggleStatus(row: SourceRow) {
 }
 
 async function remove(row: SourceRow) {
-  try {
-    await ElMessageBox.confirm(
-      `确定删除采集源「${row.name}」吗？该源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
-      '删除采集源',
-      {
-        type: 'warning',
-        confirmButtonText: '删除',
-        cancelButtonText: '取消',
-      },
-    );
-  } catch {
-    return;
-  }
+  const confirmed = await confirmRemove(
+    `确定删除采集源「${row.name}」吗？该源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除。`,
+    '删除采集源',
+  );
+  if (!confirmed) return;
 
   try {
     const result = await api.del<{ id: number; lines: number; empty_vods: number }>(`/sources/${row.id}`);

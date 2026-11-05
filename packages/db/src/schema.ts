@@ -181,6 +181,8 @@ export const collectLog = mysqlTable(
     id: pk(),
     taskId: fk('task_id'),
     sourceId: fk('source_id'),
+    /** 采集范围 1=本日 2=本周 3=本月 4=全部，手动采集续采时用它重建临时任务 */
+    rangeType: tinyint('range_type', { unsigned: true }).notNull().default(1),
     status: tinyint('status', { unsigned: true }).notNull().default(0),
     totalPages: int('total_pages', { unsigned: true }).notNull().default(0),
     /** 已完成到第几页，断点续采用 */

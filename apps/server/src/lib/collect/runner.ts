@@ -290,7 +290,7 @@ export async function startSourceRun(
 
   const inserted = await db
     .insert(collectLog)
-    .values({ taskId: 0, sourceId: source.id, status: 0 })
+    .values({ taskId: 0, sourceId: source.id, rangeType, status: 0 })
     .$returningId();
   const logId = inserted[0]?.id;
   if (!logId) return { started: false, message: '创建采集记录失败' };
@@ -336,7 +336,7 @@ export async function startTask(
 
   const inserted = await db
     .insert(collectLog)
-    .values({ taskId: task.id, sourceId: source.id, status: 0 })
+    .values({ taskId: task.id, sourceId: source.id, rangeType: task.rangeType, status: 0 })
     .$returningId();
   const logId = inserted[0]?.id;
   if (!logId) return { started: false, message: '创建采集记录失败' };
@@ -354,7 +354,7 @@ export async function startTask(
     })
     .finally(() => {
       runningBySource.delete(source.id);
-      runningByTask.delete(task.id);
+      if (task.id > 0) runningByTask.delete(task.id);
       cancelFlags.delete(logId);
     });
 
@@ -394,14 +394,28 @@ export async function startResume(
   }
 
   const taskRows = await db.select().from(collectTask).where(eq(collectTask.id, log.taskId)).limit(1);
-  const task = taskRows[0];
-  if (!task) return { started: false, message: '原任务已被删除，无法续采' };
+  const savedTask = taskRows[0];
+  // 手动采集的记录 task_id 为 0，没有任务行，用记录里的采集范围重建临时任务
+  if (!savedTask && log.taskId !== 0) return { started: false, message: '原任务已被删除，无法续采' };
 
-  const sourceRows = await db.select().from(collectSource).where(eq(collectSource.id, task.sourceId)).limit(1);
+  const sourceRows = await db
+    .select()
+    .from(collectSource)
+    .where(eq(collectSource.id, savedTask?.sourceId ?? log.sourceId))
+    .limit(1);
   const source = sourceRows[0];
   if (!source) return { started: false, message: '采集源不存在' };
   if (source.isEnabled !== 1) return { started: false, message: '采集源已停用' };
   if (runningBySource.has(source.id)) return { started: false, message: '同一采集源的另一个任务正在执行' };
+
+  const task: typeof collectTask.$inferSelect =
+    savedTask ??
+    ({
+      id: 0,
+      name: `手动采集·${source.name}`,
+      sourceId: source.id,
+      rangeType: log.rangeType,
+    } as typeof collectTask.$inferSelect);
 
   // 续写原记录：状态回到执行中，累计中断时长，计数接着往下加
   await db
@@ -426,7 +440,8 @@ export async function startResume(
   };
 
   runningBySource.set(source.id, logId);
-  runningByTask.set(task.id, logId);
+  // 任务 id 为 0 表示手动采集，没有任务行可登记
+  if (task.id > 0) runningByTask.set(task.id, logId);
 
   void executeRun(db, task, source, logId, startPage, base)
     .catch(async (error: unknown) => {
@@ -438,7 +453,7 @@ export async function startResume(
     })
     .finally(() => {
       runningBySource.delete(source.id);
-      runningByTask.delete(task.id);
+      if (task.id > 0) runningByTask.delete(task.id);
       cancelFlags.delete(logId);
     });
 
