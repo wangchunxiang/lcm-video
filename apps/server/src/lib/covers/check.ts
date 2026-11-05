@@ -6,6 +6,8 @@ import { parseVodPage } from '../collect/parser.ts';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
+/** 体检图片时使用的 Referer：与浏览器从本站加载图片的行为一致 */
+const PAGE_REFERER = 'https://www.lcm-video.com/';
 
 /** 每个域名抽 2 张 */
 const SAMPLE_COUNT = 2;
@@ -95,7 +97,8 @@ async function requestOnce(
   try {
     const response = await fetch(url, {
       method,
-      headers: { 'user-agent': UA, accept: 'image/*,*/*;q=0.8', ...extra },
+      // 带上 Referer：模拟浏览器从本站页面加载图片，否则图床的防盗链会误判为失效
+      headers: { 'user-agent': UA, accept: 'image/*,*/*;q=0.8', referer: PAGE_REFERER, ...extra },
       signal: AbortSignal.timeout(timeoutMs),
       redirect: 'follow',
     });
