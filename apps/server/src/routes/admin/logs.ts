@@ -78,6 +78,8 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
     // 否则前端 lastPage + 1 会变成字符串拼接（198 → "1981"）。
     const items = rows.map((row) => ({
       ...row,
+      // task_id = 0 是手动采集（不建任务行），不是「任务被删」
+      manual: row.taskId === 0,
       lastPage: Number(row.lastPage ?? 0),
       resumeCount: Number(row.resumeCount ?? 0),
       interruptedMs: Number(row.interruptedMs ?? 0),
@@ -145,7 +147,7 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
       .where(eq(collectLogDetail.logId, id));
 
     return ok(reply, {
-      log,
+      log: { ...log, manual: log.taskId === 0 },
       items: details,
       total: Number(counted[0]?.count ?? 0),
       page,

@@ -8,6 +8,7 @@ interface LogRow {
   id: number;
   taskId: number;
   taskName: string | null;
+  manual: boolean;
   sourceId: number;
   sourceName: string | null;
   status: number;
@@ -348,8 +349,9 @@ onBeforeUnmount(() => {
           <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
           <el-table-column prop="taskName" label="任务" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
-              <span v-if="row.taskName">{{ row.taskName }}</span>
-              <span v-else class="muted">已删除的任务</span>
+              <span v-if="row.manual" class="muted">手动采集</span>
+              <span v-else-if="row.taskName">{{ row.taskName }}</span>
+              <span v-else class="muted">任务已删除</span>
             </template>
           </el-table-column>
           <el-table-column prop="sourceName" label="采集源" width="130" show-overflow-tooltip />
@@ -437,7 +439,7 @@ onBeforeUnmount(() => {
       </div>
 
       <el-descriptions v-if="currentLog" :column="3" border class="log-summary">
-        <el-descriptions-item label="任务">{{ currentLog.taskName || '已删除的任务' }}</el-descriptions-item>
+        <el-descriptions-item label="任务">{{ currentLog.manual ? '手动采集' : currentLog.taskName || '任务已删除' }}</el-descriptions-item>
         <el-descriptions-item label="采集源">{{ currentLog.sourceName || '—' }}</el-descriptions-item>
         <el-descriptions-item label="采集数">{{ currentLog.total }}</el-descriptions-item>
         <el-descriptions-item label="新增">{{ currentLog.inserted }}</el-descriptions-item>
