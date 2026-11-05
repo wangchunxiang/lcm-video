@@ -1009,7 +1009,7 @@ a.ep-tab { text-decoration: none; }
   left: 0;
   z-index: 30;
   width: 100%;
-  min-width: 184px;
+  min-width: 200px;
   max-height: 320px;
   overflow-y: auto;
   padding: var(--space-1);
@@ -1042,7 +1042,7 @@ a.ep-tab { text-decoration: none; }
 }
 
 .line-dd-item > span:first-child {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
