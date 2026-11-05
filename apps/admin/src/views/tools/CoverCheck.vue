@@ -218,14 +218,13 @@ async function loadVods(): Promise<void> {
 }
 
 async function repair(row: HostRow): Promise<void> {
-  const preview = await api.post<{ needConfirm: boolean; total: number }>('/cover-check/repair', { host: row.host });
-  if (!preview.total) {
+  if (row.vodCount === 0) {
     ElMessage.info('这个域名下已经没有影片了');
     return;
   }
   try {
     await ElMessageBox.confirm(
-      `「${row.host}」下有 ${preview.total} 部影片的封面失效，将逐个去其他线路或源站重新找封面，可访问的才写回。继续吗？`,
+      `「${row.host}」下有 ${row.vodCount} 部影片的封面失效，将逐个去其他线路或源站重新找封面，可访问的才写回。继续吗？`,
       '修复封面',
       { type: 'warning', confirmButtonText: '开始修复', cancelButtonText: '取消' },
     );
@@ -251,27 +250,27 @@ async function repair(row: HostRow): Promise<void> {
       else idle = 0;
       if (idle >= 2) break;
     }
-    await load();
     ElNotification({
       title: fixed > 0 ? '修复完成' : '没有可用的替代封面',
       type: fixed > 0 ? 'success' : 'warning',
       message: fixed > 0 ? `已替换 ${fixed} 部，${failed} 部没找到可用封面` : `这 ${failed} 部在其他线路和源站都没有可用封面，可以试试「清空」`,
       duration: 8000,
     });
+    // 换过封面的影片会落到别的域名下，行数据得重算；放到后台做，别挡提示
+    void load();
   } finally {
     repairing.value = '';
   }
 }
 
 async function clearCovers(row: HostRow): Promise<void> {
-  const preview = await api.post<{ needConfirm: boolean; total: number }>('/cover-check/clear', { host: row.host });
-  if (!preview.total) {
+  if (row.vodCount === 0) {
     ElMessage.info('这个域名下已经没有影片了');
     return;
   }
   try {
     await ElMessageBox.confirm(
-      `「${row.host}」下的 ${preview.total} 部影片会清空封面地址，前台统一显示占位图。继续吗？`,
+      `「${row.host}」下的 ${row.vodCount} 部影片会清空封面地址，前台统一显示占位图。继续吗？`,
       '清空封面',
       { type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消' },
     );
@@ -281,8 +280,8 @@ async function clearCovers(row: HostRow): Promise<void> {
   webfix.value = row.host;
   try {
     await api.post('/cover-check/clear', { host: row.host, confirm: true });
-    await load();
-    ElNotification.success({ title: '已清空', message: `共 ${preview.total} 部影片改用占位图` });
+    ElNotification.success({ title: '已清空', message: `共 ${row.vodCount} 部影片改用占位图` });
+    void load();
   } finally {
     webfix.value = '';
   }
