@@ -354,7 +354,12 @@ onBeforeUnmount(() => {
               <span v-else class="muted">任务已删除</span>
             </template>
           </el-table-column>
-          <el-table-column prop="sourceName" label="采集源" width="130" show-overflow-tooltip />
+          <el-table-column prop="sourceName" label="采集源" width="130" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span v-if="row.sourceName">{{ row.sourceName }}</span>
+              <span v-else class="muted">源已删除</span>
+            </template>
+          </el-table-column>
           <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-tag :type="statusOf(row).type" size="small">{{ statusOf(row).text }}</el-tag>
@@ -440,7 +445,7 @@ onBeforeUnmount(() => {
 
       <el-descriptions v-if="currentLog" :column="3" border class="log-summary">
         <el-descriptions-item label="任务">{{ currentLog.manual ? '手动采集' : currentLog.taskName || '任务已删除' }}</el-descriptions-item>
-        <el-descriptions-item label="采集源">{{ currentLog.sourceName || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="采集源">{{ currentLog.sourceName || '源已删除' }}</el-descriptions-item>
         <el-descriptions-item label="采集数">{{ currentLog.total }}</el-descriptions-item>
         <el-descriptions-item label="新增">{{ currentLog.inserted }}</el-descriptions-item>
         <el-descriptions-item label="更新">{{ currentLog.updated }}</el-descriptions-item>
