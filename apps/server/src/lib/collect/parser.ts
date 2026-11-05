@@ -226,10 +226,25 @@ export function parseClassList(raw: unknown, format: string): SourceClass[] {
     .filter((item) => item.typeId !== '' && item.typeName !== '');
 }
 
+/**
+ * 拆分线路名：正常按 `$$$`；
+ * 少数源把多条线路名写成逗号分隔（地址仍是 $$$），数量能对上时按逗号拆。
+ */
+function splitPlayFrom(playFrom: string, urlCount: number): string[] {
+  if (!playFrom) return [];
+  const byDollar = playFrom.split('$$$');
+  if (byDollar.length > 1 || urlCount <= 1) return byDollar;
+  const byComma = playFrom
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
+  return byComma.length === urlCount ? byComma : byDollar;
+}
+
 /** 拆分播放组：`vod_play_from` 与 `vod_play_url` 都按 $$$ 分组 */
 export function splitPlayGroups(playFrom: string, playUrl: string): Array<{ from: string; url: string }> {
-  const froms = playFrom ? playFrom.split('$$$') : [];
   const urls = playUrl ? playUrl.split('$$$') : [];
+  const froms = splitPlayFrom(playFrom, urls.length);
   const groups: Array<{ from: string; url: string }> = [];
   const size = Math.max(froms.length, urls.length);
   for (let i = 0; i < size; i++) {
