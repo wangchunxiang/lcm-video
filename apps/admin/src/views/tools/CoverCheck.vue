@@ -90,8 +90,8 @@
               <el-button link type="primary" @click="openVods(row)">影片</el-button>
               <el-button
                 link
-                :type="row.status === 2 ? 'danger' : 'primary'"
-                :disabled="row.status !== 2 || row.vodCount === 0"
+                :type="row.status === 2 ? 'danger' : row.status === 3 ? 'warning' : 'primary'"
+                :disabled="(row.status !== 2 && row.status !== 3) || row.vodCount === 0"
                 :loading="repairing === row.host"
                 @click="repair(row)"
               >
@@ -270,7 +270,7 @@ async function runRepair(
 }
 
 function canSelect(row: HostRow): boolean {
-  return row.status === 2 && row.vodCount > 0;
+  return (row.status === 2 || row.status === 3) && row.vodCount > 0;
 }
 
 function onSelectionChange(picked: HostRow[]): void {
@@ -284,9 +284,15 @@ async function repairSelected(): Promise<void> {
     return;
   }
   const totalVods = targets.reduce((sum, row) => sum + row.vodCount, 0);
+  const unverified = targets.filter((row) => row.status === 3);
+  const unverifiedNote =
+    unverified.length > 0
+      ? `
+其中 ${unverified.length} 个域名（${unverified.map((row) => row.host).join('、')}）只是服务器这边测不到，可能实际正常，修了会换成别的封面。`
+      : '';
   try {
     await ElMessageBox.confirm(
-      `已勾选 ${targets.length} 个域名、共 ${totalVods} 部影片的封面失效，将逐个去其他线路或源站重新找封面，可访问的才写回。继续吗？`,
+      `已勾选 ${targets.length} 个域名、共 ${totalVods} 部影片的封面失效，将逐个去其他线路或源站重新找封面，可访问的才写回。${unverifiedNote}继续吗？`,
       '批量修复封面',
       { type: 'warning', confirmButtonText: '开始修复', cancelButtonText: '取消' },
     );
