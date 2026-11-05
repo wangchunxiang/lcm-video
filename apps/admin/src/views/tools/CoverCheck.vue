@@ -15,6 +15,10 @@
           <span class="label">失效</span>
         </div>
         <div class="stat">
+          <span class="num warn">{{ summary.unverified }}</span>
+          <span class="label">无法验证</span>
+        </div>
+        <div class="stat">
           <span class="num">{{ summary.unchecked }}</span>
           <span class="label">未检查</span>
         </div>
@@ -34,6 +38,7 @@
             <el-radio-button value="0">未检查</el-radio-button>
             <el-radio-button value="1">正常</el-radio-button>
             <el-radio-button value="2">失效</el-radio-button>
+            <el-radio-button value="3">无法验证</el-radio-button>
           </el-radio-group>
         </div>
       </template>
@@ -52,6 +57,7 @@
             <template #default="{ row }">
               <el-tag v-if="row.status === 1" type="success" effect="plain">正常</el-tag>
               <el-tag v-else-if="row.status === 2" type="danger" effect="plain">失效</el-tag>
+              <el-tag v-else-if="row.status === 3" type="warning" effect="plain">无法验证</el-tag>
               <el-tag v-else type="info" effect="plain">未检查</el-tag>
             </template>
           </el-table-column>
@@ -139,8 +145,8 @@ const scanning = ref(false);
 const checking = ref('');
 const repairing = ref('');
 const webfix = ref('');
-const statusFilter = ref<'all' | '0' | '1' | '2'>('all');
-const summary = ref({ hosts: 0, ok: 0, bad: 0, unchecked: 0 });
+const statusFilter = ref<'all' | '0' | '1' | '2' | '3'>('all');
+const summary = ref({ hosts: 0, ok: 0, bad: 0, unverified: 0, unchecked: 0 });
 
 const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
@@ -354,6 +360,10 @@ onBeforeUnmount(() => {
 
 .stat .num.bad {
   color: var(--el-color-danger);
+}
+
+.stat .num.warn {
+  color: var(--el-color-warning);
 }
 
 .stat .label {

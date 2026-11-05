@@ -21,10 +21,14 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 export type CheckResult = {
   host: string;
   ok: boolean;
+  /** 1 正常 2 失效 3 无法验证（服务器网络访问不到，不代表源码不可用） */
+  status: 1 | 2 | 3;
   okCount: number;
   failCount: number;
   message: string;
 };
+
+export type ProbeResult = { ok: boolean; message: string; /** 失败原因是网络不通而非图床拒绝 */ network: boolean };
 
 /** 取 URL 的域名，取不到返回空串 */
 export function hostOf(url: string): string {
@@ -67,8 +71,8 @@ async function withHostThrottle<T>(host: string, run: () => Promise<T>): Promise
 }
 
 /** 探测一张图片是否可访问：先 HEAD，失败再退回 GET 取首字节 */
-export async function probeImage(url: string, timeoutMs = 5000): Promise<{ ok: boolean; message: string }> {
-  if (!url) return { ok: false, message: '地址为空' };
+export async function probeImage(url: string, timeoutMs = 5000): Promise<ProbeResult> {
+  if (!url) return { ok: false, message: '地址为空', network: false };
   const head = await request(url, 'HEAD', timeoutMs);
   if (head.ok) return head;
   // 有的图床不支持 HEAD（405），退回带 Range 的 GET，只读前 1KB
@@ -82,7 +86,7 @@ async function request(
   method: 'HEAD' | 'GET',
   timeoutMs: number,
   extra: Record<string, string> = {},
-): Promise<{ ok: boolean; message: string }> {
+): Promise<ProbeResult> {
   const host = hostOf(url);
   if (!host) return requestOnce(url, method, timeoutMs, extra);
   return withHostThrottle(host, () => requestOnce(url, method, timeoutMs, extra));
@@ -93,7 +97,7 @@ async function requestOnce(
   method: 'HEAD' | 'GET',
   timeoutMs: number,
   extra: Record<string, string>,
-): Promise<{ ok: boolean; message: string }> {
+): Promise<ProbeResult> {
   try {
     const response = await fetch(url, {
       method,
@@ -103,16 +107,17 @@ async function requestOnce(
       redirect: 'follow',
     });
     const type = (response.headers.get('content-type') ?? '').toLowerCase();
-    if (!response.ok) return { ok: false, message: `HTTP ${response.status}` };
-    if (!type.startsWith('image/')) return { ok: false, message: `返回 ${type || '未知类型'}，不是图片` };
+    if (!response.ok) return { ok: false, message: `HTTP ${response.status}`, network: false };
+    if (!type.startsWith('image/'))
+      return { ok: false, message: `返回 ${type || '未知类型'}，不是图片`, network: false };
     if (method === 'GET') await response.body?.cancel();
-    return { ok: true, message: '正常' };
+    return { ok: true, message: '正常', network: false };
   } catch (error) {
     const name = error instanceof Error ? error.name : '';
-    if (name === 'TimeoutError' || name === 'AbortError') return { ok: false, message: '连接超时' };
+    if (name === 'TimeoutError' || name === 'AbortError') return { ok: false, message: '连接超时', network: true };
     const reason = error instanceof Error ? error.message : String(error);
-    if (/ENOTFOUND|getaddrinfo/.test(reason)) return { ok: false, message: 'DNS 解析失败' };
-    return { ok: false, message: `连接失败：${reason.slice(0, 80)}` };
+    if (/ENOTFOUND|getaddrinfo/.test(reason)) return { ok: false, message: 'DNS 解析失败', network: true };
+    return { ok: false, message: `连接失败：${reason.slice(0, 80)}`, network: true };
   }
 }
 
@@ -146,22 +151,28 @@ async function sampleUrls(db: Db, host: string, limit: number): Promise<string[]
 export async function checkHost(db: Db, host: string): Promise<CheckResult> {
   const urls = await sampleUrls(db, host, SAMPLE_COUNT);
   if (urls.length === 0) {
-    return { host, ok: false, okCount: 0, failCount: 0, message: '库里没有该域名的图片' };
+    return { host, ok: false, status: 1, okCount: 0, failCount: 0, message: '库里没有该域名的图片' };
   }
 
-  const results: Array<{ ok: boolean; message: string }> = [];
+  const results: ProbeResult[] = [];
   for (const url of urls) results.push(await probeImage(url));
-  const failFirst = results.filter((result) => !result.ok);
-  const okCount = results.length - failFirst.length;
-  if (failFirst.length === 0) {
-    return { host, ok: true, okCount, failCount: 0, message: `${okCount}/${results.length} 正常` };
+  const fails = results.filter((result) => !result.ok);
+  const okCount = results.length - fails.length;
+  if (fails.length === 0) {
+    return { host, ok: true, status: 1, okCount, failCount: 0, message: `${okCount}/${results.length} 正常` };
   }
+  // 全是网络不通（服务器这边访问不到）：不下「失效」的结论，只标记无法验证
+  const unverifiable = fails.every((result) => result.network);
+  const first = fails[0]?.message ?? '未知原因';
   return {
     host,
     ok: false,
+    status: unverifiable ? 3 : 2,
     okCount,
-    failCount: failFirst.length,
-    message: `${okCount}/${results.length} 正常，失败：${failFirst[0]?.message ?? '未知原因'}`,
+    failCount: fails.length,
+    message: unverifiable
+      ? `${okCount}/${results.length} 正常，服务器网络无法访问（${first}），未能验证`
+      : `${okCount}/${results.length} 正常，失败：${first}`,
   };
 }
 
@@ -171,7 +182,7 @@ export async function scanHost(db: Db, host: string, vodCount: number): Promise<
   const values = {
     host,
     vodCount,
-    status: result.ok ? 1 : 2,
+    status: result.status,
     sampleOk: result.okCount,
     sampleFail: result.failCount,
     message: result.message.slice(0, 255),

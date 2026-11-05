@@ -310,7 +310,7 @@ export const coverCheck = mysqlTable(
     host: varchar('host', { length: 100 }).notNull().default(''),
     /** 引用该域名的影片数，检查时统计的快照 */
     vodCount: int('vod_count', { unsigned: true }).notNull().default(0),
-    /** 0 未检查 1 正常 2 失效 */
+    /** 0 未检查 1 正常 2 失效 3 无法验证（服务器网络访问不到） */
     status: tinyint('status', { unsigned: true }).notNull().default(0),
     sampleOk: int('sample_ok', { unsigned: true }).notNull().default(0),
     sampleFail: int('sample_fail', { unsigned: true }).notNull().default(0),

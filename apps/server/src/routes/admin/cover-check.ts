@@ -35,6 +35,7 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
       hosts: items.length,
       ok: items.filter((item) => item.status === 1).length,
       bad: items.filter((item) => item.status === 2).length,
+      unverified: items.filter((item) => item.status === 3).length,
       unchecked: items.filter((item) => item.status === 0).length,
     };
     return ok(reply, { items, summary });
