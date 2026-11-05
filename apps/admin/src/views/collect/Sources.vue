@@ -403,7 +403,7 @@ onBeforeUnmount(() => {
       <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
       <el-table-column prop="apiUrl" label="接口地址" min-width="240" show-overflow-tooltip />
       <el-table-column prop="apiFormat" label="格式" width="70" align="center" />
-      <el-table-column label="解析接口" min-width="160" show-overflow-tooltip>
+      <el-table-column label="解析接口" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.parseUrl">{{ row.parseUrl }}</span>
           <span v-else class="muted">未配置（直连播放）</span>
@@ -428,22 +428,27 @@ onBeforeUnmount(() => {
           <span v-else class="muted">未同步</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="232" align="center" fixed="right">
+      <el-table-column label="操作" width="196" align="center" fixed="right">
         <template #default="{ row }">
-          <el-dropdown trigger="click" @command="(cmd: number) => runSource(row, cmd)">
-            <el-button link type="primary">采集 ▾</el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item :command="1">本日更新</el-dropdown-item>
-                <el-dropdown-item :command="2">本周更新</el-dropdown-item>
-                <el-dropdown-item :command="3">本月更新</el-dropdown-item>
-                <el-dropdown-item :command="4" divided>全部影片</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row)">删除</el-button>
+          <div class="row-actions">
+            <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
+            <el-dropdown trigger="click" @command="(cmd: number) => runSource(row, cmd)">
+              <el-button link type="primary">
+                采集
+                <el-icon class="caret"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item :command="1">本日更新</el-dropdown-item>
+                  <el-dropdown-item :command="2">本周更新</el-dropdown-item>
+                  <el-dropdown-item :command="3">本月更新</el-dropdown-item>
+                  <el-dropdown-item :command="4" divided>全部影片</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -575,6 +580,18 @@ onBeforeUnmount(() => {
 }
 .hint.inline {
   margin-left: 8px;
+}
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+.caret {
+  margin-left: 2px;
+  font-size: 12px;
 }
 .muted {
   color: var(--el-text-color-secondary);
