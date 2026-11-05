@@ -988,6 +988,12 @@ a.ep-tab { text-decoration: none; }
   white-space: nowrap;
 }
 
+.line-dd-btn .ms {
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .line-dd-btn .n {
   color: var(--text-3);
   font-size: var(--fs-caption);
@@ -1067,9 +1073,14 @@ a.ep-tab { text-decoration: none; }
 }
 
 /* 毫秒数按快慢上色：<800 绿、800–2000 黄、>2000 红 */
-.line-dd-item .ms.is-fast { color: #22c55e; }
-.line-dd-item .ms.is-mid { color: #eab308; }
-.line-dd-item .ms.is-slow { color: #ef4444; }
+.line-dd-item .ms.is-fast,
+.line-dd-btn .ms.is-fast { color: #22c55e; }
+
+.line-dd-item .ms.is-mid,
+.line-dd-btn .ms.is-mid { color: #eab308; }
+
+.line-dd-item .ms.is-slow,
+.line-dd-btn .ms.is-slow { color: #ef4444; }
 
 /* 线路测速按钮，与「正序」同款 */
 .line-speed {

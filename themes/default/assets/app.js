@@ -199,6 +199,10 @@
       if (nameEl) nameEl.textContent = group.name;
       if (countEl) countEl.textContent = group.items.length + ' 集';
 
+      /* 换了线路，按钮上的速度是旧线路的，先清掉 */
+      var btnMs = document.querySelector('[data-line-ms]');
+      if (btnMs) { btnMs.hidden = true; btnMs.textContent = ''; }
+
       var ep = Math.max(1, Math.min(Number(playItem.ep) || 1, group.items.length));
       var epName = '';
       group.items.forEach(function (entry) {
@@ -293,6 +297,9 @@
         btn.textContent = '测速';
       }
 
+      var btnMs = document.querySelector('[data-line-ms]');
+      if (btnMs) { btnMs.hidden = true; btnMs.textContent = ''; }
+
       items.forEach(function (item) {
         var box = item.querySelector('[data-ms]');
         if (box) {
@@ -302,7 +309,13 @@
         var lineId = item.getAttribute('data-ep-line');
         fetch('/api/play/speed/' + epVodId + '/' + lineId + '?ep=' + ep)
           .then(function (res) { return res.json(); })
-          .then(function (data) { paintSpeed(box, data); })
+          .then(function (data) {
+            paintSpeed(box, data);
+            if (btnMs && item.classList.contains('is-active')) {
+              paintSpeed(btnMs, data);
+              btnMs.hidden = false;
+            }
+          })
           .catch(function () { paintSpeed(box, null); })
           .then(done);
       });

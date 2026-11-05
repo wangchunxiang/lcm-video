@@ -51,6 +51,7 @@
         <button type="button" class="line-dd-btn" data-line-dd-btn aria-haspopup="listbox" aria-expanded="false">
           <span class="line-dd-name" data-line-dd-name>{{ line.name }}</span>
           <span class="n" data-line-dd-count>{{ line.episode_count }} 集</span>
+          <span class="ms" data-line-ms hidden></span>
           <span class="chev">{% render 'partials/icon', name: 'chevron-down' %}</span>
         </button>
         <div class="line-dd-panel" data-line-dd-panel hidden role="listbox">
