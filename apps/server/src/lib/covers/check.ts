@@ -1,4 +1,4 @@
-import { and, eq, like, ne, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { collectSource, coverCheck, vod, vodPlay } from '@lcm/db';
 import { CollectClient } from '../collect/client.ts';
@@ -115,14 +115,17 @@ async function requestOnce(
 
 /** 库里的图片域名分布 */
 export async function listCoverHosts(db: Db): Promise<Array<{ host: string; vodCount: number }>> {
-  const hostExpr = sql<string>`SUBSTRING_INDEX(SUBSTRING_INDEX(cover, '/', 3), '/', -1)`;
+  const hostExpr = sql<string>`cover_host`;
   const rows = await db
     .select({ host: hostExpr, vodCount: sql<number>`COUNT(*)` })
     .from(vod)
-    .where(and(sql`cover <> ''`, like(vod.cover, 'http%')))
+    .where(sql`cover_host <> ''`)
     .groupBy(hostExpr)
     .orderBy(sql`COUNT(*) DESC`);
-  return rows.map((row) => ({ host: String(row.host), vodCount: Number(row.vodCount) }));
+  return rows
+    .map((row) => ({ host: String(row.host), vodCount: Number(row.vodCount) }))
+    // cover 若被写成 /uploads/xxx.jpg 这类本地路径，生成列会取出文件名，这里按域名形状过滤掉
+    .filter((row) => /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(row.host) && !/\.(jpe?g|png|gif|webp|avif|svg)$/i.test(row.host));
 }
 
 /** 从库里取某域名下的若干条封面地址 */
@@ -130,7 +133,7 @@ async function sampleUrls(db: Db, host: string, limit: number): Promise<string[]
   const rows = await db
     .select({ cover: vod.cover })
     .from(vod)
-    .where(like(vod.cover, `%://${host}/%`))
+    .where(eq(sql`cover_host`, host))
     .limit(limit);
   const urls = rows.map((row) => row.cover).filter((cover) => hostOf(cover) === host);
   return urls;
@@ -192,7 +195,7 @@ export async function repairHostCovers(
   const targets = await db
     .select({ id: vod.id, name: vod.name, cover: vod.cover })
     .from(vod)
-    .where(like(vod.cover, `%://${host}/%`))
+    .where(eq(sql`cover_host`, host))
     .limit(limit);
 
   const sources = await db
@@ -236,7 +239,7 @@ export async function repairHostCovers(
   const [remainRow] = await db
     .select({ c: sql<number>`COUNT(*)` })
     .from(vod)
-    .where(like(vod.cover, `%://${host}/%`));
+    .where(eq(sql`cover_host`, host));
   const remaining = Number(remainRow?.c ?? 0);
 
   // 修完且没有剩余，把域名状态改成正常
@@ -248,12 +251,12 @@ export async function repairHostCovers(
 
 /** 把这些影片的封面清空，前台会退回占位图 */
 export async function clearHostCovers(db: Db, host: string): Promise<number> {
-  await db.update(vod).set({ cover: '' }).where(like(vod.cover, `%://${host}/%`));
+  await db.update(vod).set({ cover: '' }).where(eq(sql`cover_host`, host));
   await db.update(coverCheck).set({ status: 1, message: '已清空，前台使用占位图' }).where(eq(coverCheck.host, host));
   const [row] = await db
     .select({ c: sql<number>`COUNT(*)` })
     .from(vod)
-    .where(like(vod.cover, `%://${host}/%`));
+    .where(eq(sql`cover_host`, host));
   return Number(row?.c ?? 0);
 }
 

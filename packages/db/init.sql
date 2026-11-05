@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   `sub_name`      VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '副标题',
   `letter`        CHAR(1)        NOT NULL DEFAULT ''       COMMENT '首字母，A-Z 或 0-9，其余存空',
   `cover`         VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '封面，源站完整 URL',
+  `cover_host`    VARCHAR(100)   GENERATED ALWAYS AS (SUBSTRING_INDEX(SUBSTRING_INDEX(`cover`, '/', 3), '/', -1)) VIRTUAL
+                                                          COMMENT '封面域名，生成列；图片体检按域名统计时走索引',
   `actor`         VARCHAR(1000)   NOT NULL DEFAULT ''       COMMENT '演员',
   `director`      VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '导演',
   `writer`        VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '编剧',
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   KEY `idx_name_hash` (`name_hash`),
   KEY `idx_name_hash_loose` (`name_hash_loose`),
   KEY `idx_status_collected` (`status`,`collected_at`),
+  KEY `idx_cover_host` (`cover_host`),
   KEY `idx_search` (`status`,`name`,`year`,`collected_at`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

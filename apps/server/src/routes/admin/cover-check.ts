@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { eq, like, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { coverCheck, vod } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
@@ -67,17 +67,16 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
     const query = request.query as { page?: string; page_size?: string };
     const page = Math.max(1, toInt(query.page, 1));
     const pageSize = Math.min(100, Math.max(1, toInt(query.page_size, 20)));
-    const pattern = `%://${host}/%`;
 
     const [rows, countRow] = await Promise.all([
       db
         .select({ id: vod.id, name: vod.name, cover: vod.cover, status: vod.status })
         .from(vod)
-        .where(like(vod.cover, pattern))
+        .where(eq(sql`cover_host`, host))
         .orderBy(vod.id)
         .limit(pageSize)
         .offset((page - 1) * pageSize),
-      db.select({ c: sql<number>`COUNT(*)` }).from(vod).where(like(vod.cover, pattern)),
+      db.select({ c: sql<number>`COUNT(*)` }).from(vod).where(eq(sql`cover_host`, host)),
     ]);
     return ok(reply, {
       items: rows,
@@ -96,7 +95,7 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
       const [row] = await db
         .select({ c: sql<number>`COUNT(*)` })
         .from(vod)
-        .where(like(vod.cover, `%://${host}/%`));
+        .where(eq(sql`cover_host`, host));
       return ok(reply, { needConfirm: true, total: Number(row?.c ?? 0) });
     }
     const before = await countHost(db, host);
@@ -115,7 +114,7 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
       const [row] = await db
         .select({ c: sql<number>`COUNT(*)` })
         .from(vod)
-        .where(like(vod.cover, `%://${host}/%`));
+        .where(eq(sql`cover_host`, host));
       return ok(reply, { needConfirm: true, total: Number(row?.c ?? 0), fixed: 0, failed: 0, remaining: Number(row?.c ?? 0), items: [] });
     }
 
@@ -128,6 +127,6 @@ async function countHost(db: Db, host: string): Promise<number> {
   const [row] = await db
     .select({ c: sql<number>`COUNT(*)` })
     .from(vod)
-    .where(eq(sql`SUBSTRING_INDEX(SUBSTRING_INDEX(cover, '/', 3), '/', -1)`, host));
+    .where(eq(sql`cover_host`, host));
   return Number(row?.c ?? 0);
 }
