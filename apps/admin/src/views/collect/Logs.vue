@@ -210,7 +210,7 @@ async function resume(row: LogRow): Promise<void> {
   const rest = row.totalPages > 0 ? `，剩余 ${row.totalPages - row.lastPage} 页` : '';
   try {
     await ElMessageBox.confirm(
-      `将从第 ${startPage} 页继续采集${rest}。续采用任务当前的配置，重新生成一条采集记录；` +
+      `将从第 ${startPage} 页继续采集${rest}。续采沿用采集源当前的配置，接着写回这条记录；` +
         '源站列表在这期间可能有新增，边界上的少量影片会留给下一轮采集。',
       '断点续采',
       { type: 'warning', confirmButtonText: '开始续采', cancelButtonText: '取消' },
