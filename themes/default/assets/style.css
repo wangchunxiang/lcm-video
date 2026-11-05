@@ -344,10 +344,19 @@ img { border: 0; vertical-align: middle; }
   height: 100%;
   object-fit: fill;
   background: #1f2733;
-  transition: transform var(--transition-slow);
+  transition: transform var(--transition-slow), opacity 0.18s ease;
 }
 
 .vod-card:hover .cover img { transform: scale(1.05); }
+
+/* 封面加载完成前保持透明：坏图不会先闪一下浏览器自带的破图图标 */
+.cover-img {
+  opacity: 0;
+}
+
+.cover-img.is-loaded {
+  opacity: 1;
+}
 
 .badge {
   position: absolute;

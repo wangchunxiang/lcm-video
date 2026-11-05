@@ -1,9 +1,11 @@
 <a class="m-row" href="/detail/{{ card.id }}">
   <div class="m-row-cover">
     <img
+      class="cover-img"
       src="{{ card.cover | default: '/assets/img/poster-placeholder.svg' }}"
       alt="{{ card.name }}"
       loading="lazy"
+      onload="this.classList.add('is-loaded')"
       onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
     >
   </div>

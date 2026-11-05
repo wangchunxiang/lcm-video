@@ -272,6 +272,15 @@ button { font: inherit; color: inherit; }
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
 }
 .m-hero-cover img { width: 100%; height: 100%; object-fit: fill; }
+.m-card-cover img,
+.m-row-cover img,
+.m-hero-cover img {
+  transition: opacity 0.18s ease;
+}
+
+/* 封面加载完成前保持透明：坏图不会先闪一下浏览器自带的破图图标 */
+.cover-img { opacity: 0; }
+.cover-img.is-loaded { opacity: 1; }
 .m-hero-info { min-width: 0; padding-top: 2px; }
 .m-hero-title { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; }
 .m-hero-sub { margin: 4px 0 0; font-size: 12px; color: var(--text-3); }

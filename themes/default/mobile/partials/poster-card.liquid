@@ -1,9 +1,11 @@
 <a class="m-card" href="/detail/{{ card.id }}">
   <div class="m-card-cover">
     <img
+      class="cover-img"
       src="{{ card.cover | default: '/assets/img/poster-placeholder.svg' }}"
       alt="{{ card.name }}"
       loading="lazy"
+      onload="this.classList.add('is-loaded')"
       onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
     >
     {% if card.remarks != blank %}<span class="m-badge">{{ card.remarks }}</span>{% endif %}

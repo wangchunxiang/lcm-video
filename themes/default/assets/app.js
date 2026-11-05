@@ -893,4 +893,9 @@
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') qrPanel.classList.remove('is-open');
   });
+
+  /* 封面兜底：命中缓存或 bfcache 恢复时 load 事件可能已经过去，这里补一次 */
+  document.querySelectorAll('img.cover-img').forEach(function (img) {
+    if (img.complete && img.naturalWidth > 0) img.classList.add('is-loaded');
+  });
 })();

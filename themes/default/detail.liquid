@@ -4,10 +4,11 @@
 {% block content %}
 <section class="detail-banner">
   <img
-    class="banner-pic"
+    class="banner-pic cover-img"
     src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
     alt=""
     aria-hidden="true"
+    onload="this.classList.add('is-loaded')"
     onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
   >
 

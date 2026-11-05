@@ -3,8 +3,10 @@
 <section class="m-hero">
   <div class="m-hero-cover">
     <img
+      class="cover-img"
       src="{{ vod.cover | default: '/assets/img/poster-placeholder.svg' }}"
       alt="{{ vod.name }}"
+      onload="this.classList.add('is-loaded')"
       onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
     >
   </div>
