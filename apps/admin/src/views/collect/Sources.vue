@@ -209,11 +209,15 @@ async function batchDelete() {
 
 async function confirmBatchDelete() {
   try {
-    await ElMessageBox.confirm(`确定删除选中的 ${selection.value.length} 个采集源吗？`, '批量删除', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    });
+    await ElMessageBox.confirm(
+      `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
+      '批量删除',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      },
+    );
   } catch {
     return;
   }
@@ -326,11 +330,15 @@ async function toggleStatus(row: SourceRow) {
 
 async function remove(row: SourceRow) {
   try {
-    await ElMessageBox.confirm(`确定删除采集源「${row.name}」吗？`, '删除采集源', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    });
+    await ElMessageBox.confirm(
+      `确定删除采集源「${row.name}」吗？该源的采集任务、采集记录、地址替换规则与分类映射会一并删除，且不可恢复。`,
+      '删除采集源',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      },
+    );
   } catch {
     return;
   }

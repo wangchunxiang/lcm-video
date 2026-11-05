@@ -1,7 +1,16 @@
 import { and, desc, eq, inArray, like, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
-import { adFeature, collectSource, collectSourceCategory, collectTask, sourceRule, vodPlay } from '@lcm/db';
+import {
+  adFeature,
+  collectLog,
+  collectLogDetail,
+  collectSource,
+  collectSourceCategory,
+  collectTask,
+  sourceRule,
+  vodPlay,
+} from '@lcm/db';
 import { CollectClient } from '../../lib/collect/client.ts';
 import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
 import { fetchClassList } from '../../lib/collect/classes.ts';
@@ -192,6 +201,12 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     }
 
     await db.transaction(async (tx) => {
+      const logRows = await tx.select({ id: collectLog.id }).from(collectLog).where(eq(collectLog.sourceId, id));
+      const logIds = logRows.map((row) => row.id);
+      if (logIds.length > 0) {
+        await tx.delete(collectLogDetail).where(inArray(collectLogDetail.logId, logIds));
+        await tx.delete(collectLog).where(inArray(collectLog.id, logIds));
+      }
       await tx.delete(collectSourceCategory).where(eq(collectSourceCategory.sourceId, id));
       await tx.delete(sourceRule).where(eq(sourceRule.sourceId, id));
       await tx.delete(collectTask).where(eq(collectTask.sourceId, id));
@@ -236,6 +251,15 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
     }
 
     await db.transaction(async (tx) => {
+      const logRows = await tx
+        .select({ id: collectLog.id })
+        .from(collectLog)
+        .where(inArray(collectLog.sourceId, ids));
+      const logIds = logRows.map((row) => row.id);
+      if (logIds.length > 0) {
+        await tx.delete(collectLogDetail).where(inArray(collectLogDetail.logId, logIds));
+        await tx.delete(collectLog).where(inArray(collectLog.id, logIds));
+      }
       await tx.delete(collectSourceCategory).where(inArray(collectSourceCategory.sourceId, ids));
       await tx.delete(sourceRule).where(inArray(sourceRule.sourceId, ids));
       await tx.delete(collectTask).where(inArray(collectTask.sourceId, ids));
