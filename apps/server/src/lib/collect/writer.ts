@@ -49,6 +49,8 @@ export interface PageInput {
   categories: Map<number, CategoryInfo>;
   /** 指定目标影片 ID，忽略按名称年份判重（用于「重新采集单片」） */
   forceVodId?: number;
+  /** 重采等修数据场景：不刷新 collected_at，避免把老片顶到「最新更新」 */
+  keepCollectedAt?: boolean;
 }
 
 export interface PageResult {
@@ -308,7 +310,11 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
         } else {
           await tx
             .update(vod)
-            .set({ ...content, collectedAt: sql`GREATEST(collected_at, NOW())` })
+            .set(
+              input.keepCollectedAt
+                ? { ...content }
+                : { ...content, collectedAt: sql`GREATEST(collected_at, NOW())` },
+            )
             .where(eq(vod.id, vodId));
         }
 

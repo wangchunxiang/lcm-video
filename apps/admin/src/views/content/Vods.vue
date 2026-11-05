@@ -111,14 +111,60 @@ function edit(row: VodRow) {
   editVisible.value = true;
 }
 
-async function recollect(row: VodRow) {
+interface VodSourceOption {
+  id: number;
+  name: string;
+  lines: number;
+}
+
+interface VodPlayLine {
+  sourceId: number;
+  sourceName: string | null;
+  sourceFrom: string;
+}
+
+const vodSources = ref<Record<number, VodSourceOption[]>>({});
+const sourcesLoading = ref(0);
+
+function hasSources(id: number): boolean {
+  return Object.prototype.hasOwnProperty.call(vodSources.value, id);
+}
+
+async function ensureSources(row: VodRow) {
+  if (hasSources(row.id) || sourcesLoading.value === row.id) return;
+  sourcesLoading.value = row.id;
   try {
-    await api.post(`/vods/${row.id}/recollect`, {});
+    const res = await api.get<{ items: VodPlayLine[] }>(`/vods/${row.id}/plays`);
+    const map = new Map<number, VodSourceOption>();
+    for (const line of res.items) {
+      if (line.sourceId <= 0) continue;
+      const found = map.get(line.sourceId);
+      if (found) found.lines += 1;
+      else map.set(line.sourceId, { id: line.sourceId, name: line.sourceName ?? `采集源 ${line.sourceId}`, lines: 1 });
+    }
+    vodSources.value = { ...vodSources.value, [row.id]: [...map.values()] };
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '读取来源失败');
+    vodSources.value = { ...vodSources.value, [row.id]: [] };
+  } finally {
+    if (sourcesLoading.value === row.id) sourcesLoading.value = 0;
+  }
+}
+
+async function recollect(row: VodRow, sourceId: number) {
+  try {
+    await api.post(`/vods/${row.id}/recollect`, { source_id: sourceId });
     ElMessage.success('已重新采集');
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '重新采集失败');
   }
+}
+
+async function onRecollectCommand(command: string) {
+  const [vodId, sourceId] = command.split(':').map((part) => Number(part));
+  const row = items.value.find((item) => item.id === vodId);
+  if (row && sourceId > 0) await recollect(row, sourceId);
 }
 
 async function toggleStatus(row: VodRow) {
@@ -294,10 +340,34 @@ onBeforeUnmount(() => {
         </template>
       </el-table-column>
       <el-table-column prop="collectedAt" label="更新时间" width="165" align="center" />
-      <el-table-column label="操作" width="160" align="center" fixed="right">
+      <el-table-column label="操作" width="186" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" @click="edit(row)">编辑</el-button>
-          <el-button link type="primary" @click="recollect(row)">重采</el-button>
+          <el-dropdown
+            trigger="click"
+            @command="onRecollectCommand"
+            @visible-change="(open) => open && ensureSources(row)"
+          >
+            <el-button link type="primary">
+              重采<el-icon class="caret"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-if="sourcesLoading === row.id" disabled>读取中…</el-dropdown-item>
+                <template v-else-if="(vodSources[row.id] ?? []).length > 0">
+                  <el-dropdown-item
+                    v-for="src in vodSources[row.id]"
+                    :key="src.id"
+                    :command="`${row.id}:${src.id}`"
+                  >
+                    {{ src.name }}
+                    <span class="src-lines">{{ src.lines }} 条</span>
+                  </el-dropdown-item>
+                </template>
+                <el-dropdown-item v-else disabled>没有可回溯的采集来源</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button link type="warning" @click="remove(row)">下架</el-button>
         </template>
       </el-table-column>
@@ -389,5 +459,14 @@ onBeforeUnmount(() => {
 .pager {
   margin-top: 12px;
   justify-content: flex-end;
+}
+.caret {
+  margin-left: 2px;
+  font-size: 12px;
+}
+.src-lines {
+  margin-left: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 </style>

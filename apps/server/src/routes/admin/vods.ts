@@ -400,8 +400,17 @@ export const vodRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) => 
       .from(vodPlay)
       .where(eq(vodPlay.vodId, id));
 
-    const target = plays.find((play) => play.sourceId > 0 && play.sourceVodId !== '');
-    if (!target) return fail(reply, 400, ErrorCode.BAD_REQUEST, '该影片没有可回溯的采集来源，无法重新采集');
+    const asked = Number((req.body as { source_id?: unknown } | undefined)?.source_id ?? 0);
+    const candidates = plays.filter((play) => play.sourceId > 0 && play.sourceVodId !== '');
+    const target = asked > 0 ? candidates.find((play) => play.sourceId === asked) : candidates[0];
+    if (!target) {
+      return fail(
+        reply,
+        400,
+        ErrorCode.BAD_REQUEST,
+        asked > 0 ? '该影片没有来自这个采集源的线路，无法重新采集' : '该影片没有可回溯的采集来源，无法重新采集',
+      );
+    }
 
     const sources = await db
       .select()
@@ -463,6 +472,7 @@ export const vodRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) => 
       mapping,
       categories: categoryMap,
       forceVodId: id,
+      keepCollectedAt: true,
     });
 
     return ok(reply, {
