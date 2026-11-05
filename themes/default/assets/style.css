@@ -1130,6 +1130,15 @@ a.ep-tab { text-decoration: none; }
   font-size: var(--fs-small);
 }
 
+.play-side-nav a,
+.play-side-nav .is-off {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.play-side-nav .icon { width: 14px; height: 14px; }
+
 .play-side-nav a { color: var(--text-3); text-decoration: none; }
 
 .play-side-nav a:hover { color: var(--primary); }

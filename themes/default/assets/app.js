@@ -169,6 +169,11 @@
     });
 
     /* 上/下一集在首末集要能在链接和不可点之间互相切换 */
+    var NAV_ICON = {
+      prev: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+      next: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>'
+    };
+
     function setNav(kind, href, text, off) {
       var node = document.querySelector('[data-ep-' + kind + ']');
       if (!node) return;
@@ -179,7 +184,7 @@
       }
       var fresh = document.createElement(tag);
       fresh.setAttribute('data-ep-' + kind, '');
-      fresh.textContent = text;
+      fresh.innerHTML = text;
       if (off) {
         fresh.className = 'is-off';
       } else {
@@ -212,8 +217,8 @@
       if (title) title.textContent = epName;
 
       var base = '/play/' + epVodId + '/' + id + '/';
-      setNav('prev', base + (ep - 1), '‹ 上一集', ep <= 1);
-      setNav('next', base + (ep + 1), '下一集 ›', ep >= group.items.length);
+      setNav('prev', base + (ep - 1), NAV_ICON.prev + '上一集', ep <= 1);
+      setNav('next', base + (ep + 1), '下一集' + NAV_ICON.next, ep >= group.items.length);
       history.replaceState(null, '', base + ep);
       document.title =
         (siteMeta.vod_name ? siteMeta.vod_name + ' ' : '') +
