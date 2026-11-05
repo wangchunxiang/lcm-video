@@ -342,33 +342,34 @@ onBeforeUnmount(() => {
       <el-table-column prop="collectedAt" label="更新时间" width="165" align="center" />
       <el-table-column label="操作" width="186" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button link type="primary" @click="edit(row)">编辑</el-button>
-          <el-dropdown
-            trigger="click"
-            @command="onRecollectCommand"
-            @visible-change="(open) => open && ensureSources(row)"
-          >
-            <el-button link type="primary">
-              重采<el-icon class="caret"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-if="sourcesLoading === row.id" disabled>读取中…</el-dropdown-item>
-                <template v-else-if="(vodSources[row.id] ?? []).length > 0">
-                  <el-dropdown-item
-                    v-for="src in vodSources[row.id]"
-                    :key="src.id"
-                    :command="`${row.id}:${src.id}`"
-                  >
-                    {{ src.name }}
-                    <span class="src-lines">{{ src.lines }} 条</span>
-                  </el-dropdown-item>
-                </template>
-                <el-dropdown-item v-else disabled>没有可回溯的采集来源</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button link type="warning" @click="remove(row)">下架</el-button>
+          <div class="row-actions">
+            <el-button link type="primary" @click="edit(row)">编辑</el-button>
+            <el-dropdown
+              trigger="click"
+              @command="onRecollectCommand"
+              @visible-change="(open) => open && ensureSources(row)"
+            >
+              <el-button link type="primary">
+                重采<el-icon class="caret"><ArrowDown /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="sourcesLoading === row.id" disabled>读取中…</el-dropdown-item>
+                  <template v-else-if="(vodSources[row.id] ?? []).length > 0">
+                    <el-dropdown-item
+                      v-for="src in vodSources[row.id]"
+                      :key="src.id"
+                      :command="`${row.id}:${src.id}`"
+                    >
+                      {{ src.name }}
+                    </el-dropdown-item>
+                  </template>
+                  <el-dropdown-item v-else disabled>没有可回溯的采集来源</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <el-button link type="warning" @click="remove(row)">下架</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -460,13 +461,20 @@ onBeforeUnmount(() => {
   margin-top: 12px;
   justify-content: flex-end;
 }
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+.row-actions :deep(.el-dropdown) {
+  display: inline-flex;
+  align-items: center;
+}
 .caret {
   margin-left: 2px;
-  font-size: 12px;
-}
-.src-lines {
-  margin-left: 8px;
-  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 </style>
