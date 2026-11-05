@@ -33,18 +33,37 @@
       <template #header>
         <div class="card-header">
           <span>图片域名</span>
-          <el-radio-group v-model="statusFilter" size="default">
-            <el-radio-button value="all">全部</el-radio-button>
-            <el-radio-button value="0">未检查</el-radio-button>
-            <el-radio-button value="1">正常</el-radio-button>
-            <el-radio-button value="2">失效</el-radio-button>
-            <el-radio-button value="3">无法验证</el-radio-button>
-          </el-radio-group>
+          <div class="header-tools">
+            <el-radio-group v-model="statusFilter" size="default">
+              <el-radio-button value="all">全部</el-radio-button>
+              <el-radio-button value="0">未检查</el-radio-button>
+              <el-radio-button value="1">正常</el-radio-button>
+              <el-radio-button value="2">失效</el-radio-button>
+              <el-radio-button value="3">无法验证</el-radio-button>
+            </el-radio-group>
+            <el-button
+              type="danger"
+              plain
+              :disabled="selectedHosts.length === 0"
+              :loading="batchRunning"
+              @click="repairSelected"
+            >
+              批量修复{{ selectedHosts.length ? `（${selectedHosts.length}）` : '' }}
+            </el-button>
+          </div>
         </div>
       </template>
 
       <div ref="wrapRef" class="table-wrap">
-        <el-table v-loading="loading" :data="rows" border stripe :height="tableHeight">
+        <el-table
+          v-loading="loading"
+          :data="visibleRows"
+          border
+          stripe
+          :height="tableHeight"
+          @selection-change="onSelectionChange"
+        >
+          <el-table-column type="selection" width="44" :selectable="canSelect" />
           <el-table-column prop="host" label="域名" min-width="240" show-overflow-tooltip />
           <el-table-column prop="vodCount" label="影片数" width="100" align="center" />
           <el-table-column label="抽样" width="100" align="center">
@@ -119,7 +138,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
+import { ElLoading, ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { api } from '../../api/client';
 
 interface HostRow {
@@ -145,6 +164,8 @@ const scanning = ref(false);
 const checking = ref('');
 const repairing = ref('');
 const webfix = ref('');
+const batchRunning = ref(false);
+const selectedHosts = ref<string[]>([]);
 const statusFilter = ref<'all' | '0' | '1' | '2' | '3'>('all');
 const summary = ref({ hosts: 0, ok: 0, bad: 0, unverified: 0, unchecked: 0 });
 
@@ -223,6 +244,87 @@ async function loadVods(): Promise<void> {
   }
 }
 
+/** 单个域名一轮轮修到没有进展为止，单个与批量共用 */
+async function runRepair(
+  host: string,
+  onRound?: (fixed: number, failed: number) => void,
+): Promise<{ fixed: number; failed: number }> {
+  let fixed = 0;
+  let failed = 0;
+  let idle = 0;
+  for (let round = 0; round < 500; round++) {
+    const result = await api.post<{ fixed: number; failed: number; remaining: number; items: Array<{ ok: boolean }> }>(
+      '/cover-check/repair',
+      { host, confirm: true, limit: 20 },
+    );
+    fixed += result.fixed;
+    failed += result.failed;
+    onRound?.(fixed, failed);
+    if (result.remaining === 0) break;
+    // 这一轮一个都没修好（修不了的会留在原地被反复选中），连续两轮没进展就收工
+    if (result.fixed === 0) idle += 1;
+    else idle = 0;
+    if (idle >= 2) break;
+  }
+  return { fixed, failed };
+}
+
+function canSelect(row: HostRow): boolean {
+  return row.status === 2 && row.vodCount > 0;
+}
+
+function onSelectionChange(picked: HostRow[]): void {
+  selectedHosts.value = picked.map((row) => row.host);
+}
+
+async function repairSelected(): Promise<void> {
+  const targets = rows.value.filter((row) => selectedHosts.value.includes(row.host) && row.vodCount > 0);
+  if (targets.length === 0) {
+    ElMessage.info('请先勾选要修复的失效域名');
+    return;
+  }
+  const totalVods = targets.reduce((sum, row) => sum + row.vodCount, 0);
+  try {
+    await ElMessageBox.confirm(
+      `已勾选 ${targets.length} 个域名、共 ${totalVods} 部影片的封面失效，将逐个去其他线路或源站重新找封面，可访问的才写回。继续吗？`,
+      '批量修复封面',
+      { type: 'warning', confirmButtonText: '开始修复', cancelButtonText: '取消' },
+    );
+  } catch {
+    return;
+  }
+
+  batchRunning.value = true;
+  const loading = ElLoading.service({ lock: true, text: `正在修复 1/${targets.length}…`, background: 'rgba(0, 0, 0, 0.6)' });
+  let fixed = 0;
+  let failed = 0;
+  try {
+    for (let i = 0; i < targets.length; i++) {
+      const row = targets[i];
+      loading.setText(`正在修复 ${i + 1}/${targets.length}：${row.host}（已替换 ${fixed} 部）`);
+      const result = await runRepair(row.host, (hostFixed) => {
+        loading.setText(`正在修复 ${i + 1}/${targets.length}：${row.host}（本域名已替换 ${hostFixed} 部）`);
+      });
+      fixed += result.fixed;
+      failed += result.failed;
+    }
+    ElNotification({
+      title: fixed > 0 ? '批量修复完成' : '没有可用的替代封面',
+      type: fixed > 0 ? 'success' : 'warning',
+      message:
+        fixed > 0
+          ? `${targets.length} 个域名：已替换 ${fixed} 部，${failed} 部没找到可用封面`
+          : `这 ${failed} 部在其他线路和源站都没有可用封面，可以试试「清空」`,
+      duration: 8000,
+    });
+  } finally {
+    loading.close();
+    batchRunning.value = false;
+    selectedHosts.value = [];
+    void load();
+  }
+}
+
 async function repair(row: HostRow): Promise<void> {
   if (row.vodCount === 0) {
     ElMessage.info('这个域名下已经没有影片了');
@@ -239,23 +341,8 @@ async function repair(row: HostRow): Promise<void> {
   }
 
   repairing.value = row.host;
-  let fixed = 0;
-  let failed = 0;
-  let idle = 0;
   try {
-    for (let round = 0; round < 500; round++) {
-      const result = await api.post<{ fixed: number; failed: number; remaining: number; items: Array<{ ok: boolean }> }>(
-        '/cover-check/repair',
-        { host: row.host, confirm: true, limit: 20 },
-      );
-      fixed += result.fixed;
-      failed += result.failed;
-      if (result.remaining === 0) break;
-      // 这一轮一个都没修好（修不了的会留在原地被反复选中），连续两轮没进展就收工
-      if (result.fixed === 0) idle += 1;
-      else idle = 0;
-      if (idle >= 2) break;
-    }
+    const { fixed, failed } = await runRepair(row.host);
     ElNotification({
       title: fixed > 0 ? '修复完成' : '没有可用的替代封面',
       type: fixed > 0 ? 'success' : 'warning',
@@ -333,6 +420,12 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   height: 100%;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .summary {
