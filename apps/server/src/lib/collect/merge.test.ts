@@ -42,6 +42,11 @@ const config = (fields: Record<string, MergeStrategy> = {}): MergeConfig => ({
   fields: { ...DEFAULT_MERGE_CONFIG.fields, ...fields },
 });
 
+it('完全没有变化时返回空对象，写库层据此跳过 update', () => {
+  const old = base({ intro: '一样的简介', actor: 'A,B', remarks: '已完结', episodeCount: 10, cover: 'https://x/a.jpg' });
+  expect(mergeVodContent(old, { ...old }, DEFAULT_MERGE_CONFIG, ctx())).toEqual({});
+});
+
 describe('mergeVodContent', () => {
   it('不会用新源的空值覆盖旧值', () => {
     const old = base({ actor: '甲,乙', intro: '一段简介', area: '美国' });

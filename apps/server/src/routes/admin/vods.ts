@@ -5,6 +5,7 @@ import { category, collectSource, collectSourceCategory, vod, vodPlay } from '@l
 import { countEpisodes, nameHash, normalizeName, parsePlayUrl } from '@lcm/shared';
 import { CollectClient } from '../../lib/collect/client.ts';
 import { loadCategories } from '../../lib/collect/match.ts';
+import { loadBrokenCoverHosts, loadMergeConfig } from '../../lib/collect/merge.ts';
 import { parseVodPage } from '../../lib/collect/parser.ts';
 import type { CategoryInfo, MappingInfo } from '../../lib/collect/writer.ts';
 import { processPage } from '../../lib/collect/writer.ts';
@@ -473,6 +474,8 @@ export const vodRoutes: FastifyPluginAsync<VodRouteOpts> = async (app, opts) => 
       categories: categoryMap,
       forceVodId: id,
       keepCollectedAt: true,
+      merge: await loadMergeConfig(db),
+      brokenCoverHosts: await loadBrokenCoverHosts(db),
     });
 
     return ok(reply, {

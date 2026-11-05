@@ -242,8 +242,8 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
     const playsByKey = new Map<string, PlayRow>();
     for (const row of plays) playsByKey.set(playKey(row.vodId, row.sourceId, row.sourceFrom), row);
 
-    // 入库规则：命中已有影片时取旧值做字段级合并；关闭时整行覆盖（保持原来的行为）
-    const mergeOn = input.merge?.mode === 'merge' && forced === 0;
+    // 入库规则：命中已有影片时（含「重新采集单片」）取旧值做字段级合并；关闭时整行覆盖
+    const mergeOn = input.merge?.mode === 'merge';
     const brokenCoverHosts = input.brokenCoverHosts ?? new Set<string>();
     const oldRows =
       mergeOn && uniqueVodIds.length > 0
@@ -330,14 +330,17 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
                 brokenCoverHosts,
               })
             : { ...content };
-          await tx
-            .update(vod)
-            .set(
-              input.keepCollectedAt
-                ? patch
-                : { ...patch, collectedAt: sql`GREATEST(collected_at, NOW())` },
-            )
-            .where(eq(vod.id, vodId));
+          // 合并结果为空表示这条数据没有任何变化；此时保留 collected_at 的路径不需要写库
+          if (Object.keys(patch).length > 0 || !input.keepCollectedAt) {
+            await tx
+              .update(vod)
+              .set(
+                input.keepCollectedAt
+                  ? patch
+                  : { ...patch, collectedAt: sql`GREATEST(collected_at, NOW())` },
+              )
+              .where(eq(vod.id, vodId));
+          }
         } else {
           await tx
             .update(vod)
