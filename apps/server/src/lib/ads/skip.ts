@@ -22,6 +22,16 @@ function absolutize(base: string, uri: string): string {
   }
 }
 
+/**
+ * 标签里的 URI 也要转绝对地址。
+ * AES-128 的 #EXT-X-KEY 常写成相对路径，原样返回给播放器时会被解析成
+ * 本站域名下的路径（/play/ad/... 的兄弟路径），请求 404，解密失败就整条不给播。
+ */
+function absolutizeTags(tag: string, base: string): string {
+  if (!tag.includes('URI="')) return tag;
+  return tag.replace(/URI="([^"]*)"/g, (_match, uri: string) => `URI="${absolutize(base, uri)}"`);
+}
+
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -136,7 +146,7 @@ export async function cleanPlaylist(db: Db, sourceId: number, url: string): Prom
   const removed = isAd.filter(Boolean).length;
   if (removed === 0) return null;
 
-  const output: string[] = [...parsed.head];
+  const output: string[] = parsed.head.map((tag) => absolutizeTags(tag, base));
   // 删掉一段分片后，时间轴会往前跳，必须在接缝处补一个 discontinuity，
   // 否则播放器会把这个跳变当成连续数据，声音在接缝处会爆音。
   let removedRun = false;
@@ -148,7 +158,7 @@ export async function cleanPlaylist(db: Db, sourceId: number, url: string): Prom
     const hasDiscontinuity = segment.tags.some((tag) => tag.startsWith('#EXT-X-DISCONTINUITY'));
     for (const tag of segment.tags) {
       if (tag.startsWith('#EXT-X-DISCONTINUITY')) continue;
-      output.push(tag);
+      output.push(absolutizeTags(tag, base));
     }
     if (hasDiscontinuity || removedRun) output.push('#EXT-X-DISCONTINUITY');
     removedRun = false;
