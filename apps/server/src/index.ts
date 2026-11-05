@@ -21,6 +21,7 @@ import { settingRoutes } from './routes/admin/settings.ts';
 import { sourceCategoryRoutes } from './routes/admin/source-categories.ts';
 import { sourceRoutes } from './routes/admin/sources.ts';
 import { sourceRuleRoutes } from './routes/admin/source-rules.ts';
+import { mergeRuleRoutes } from './routes/admin/merge-rules.ts';
 import { coverCheckRoutes } from './routes/admin/cover-check.ts';
 import { taskRoutes } from './routes/admin/tasks.ts';
 import { dashboardRoutes } from './routes/admin/dashboard.ts';
@@ -118,6 +119,7 @@ await app.register(
     await admin.register(uploadRoutes, { prefix: '/upload', db, env });
     await admin.register(sourceRoutes, { prefix: '/sources', db });
     await admin.register(sourceRuleRoutes, { prefix: '/source-rules', db });
+    await admin.register(mergeRuleRoutes, { prefix: '/merge-rules', db });
     await admin.register(coverCheckRoutes, { prefix: '/cover-check', db });
     await admin.register(sourceCategoryRoutes, { prefix: '/sources', db });
     await admin.register(adsRoutes, { prefix: '/sources', db });

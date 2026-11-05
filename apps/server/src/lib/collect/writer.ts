@@ -14,6 +14,7 @@ import {
 } from '@lcm/shared';
 import type { SourceVod } from './parser.ts';
 import { splitPlayGroups } from './parser.ts';
+import { mergeVodContent, type MergeConfig } from './merge.ts';
 
 export interface CategoryInfo {
   id: number;
@@ -51,6 +52,10 @@ export interface PageInput {
   forceVodId?: number;
   /** 重采等修数据场景：不刷新 collected_at，避免把老片顶到「最新更新」 */
   keepCollectedAt?: boolean;
+  /** 入库规则：跨源命中同一条影片时按字段合并；不传或 mode=off 时整行覆盖 */
+  merge?: MergeConfig;
+  /** 图片体检判定为失效的封面域名，合并时优先换掉 */
+  brokenCoverHosts?: Set<string>;
 }
 
 export interface PageResult {
@@ -237,6 +242,15 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
     const playsByKey = new Map<string, PlayRow>();
     for (const row of plays) playsByKey.set(playKey(row.vodId, row.sourceId, row.sourceFrom), row);
 
+    // 入库规则：命中已有影片时取旧值做字段级合并；关闭时整行覆盖（保持原来的行为）
+    const mergeOn = input.merge?.mode === 'merge' && forced === 0;
+    const brokenCoverHosts = input.brokenCoverHosts ?? new Set<string>();
+    const oldRows =
+      mergeOn && uniqueVodIds.length > 0
+        ? await tx.select().from(vod).where(inArray(vod.id, uniqueVodIds))
+        : [];
+    const oldById = new Map(oldRows.map((row) => [row.id, row]));
+
     // 5. 逐条写库
     for (const { candidate, vodId: matchedId } of decisions) {
       const { item, name, hash, looseHash: loose, categoryId, categoryPid, year } = candidate;
@@ -307,6 +321,23 @@ export async function processPage(db: Db, input: PageInput): Promise<PageResult>
           const row = { id: vodId, year };
           if (list) list.push(row);
           else index.set(hash, [row]);
+        } else if (mergeOn) {
+          const old = oldById.get(vodId);
+          const patch = old
+            ? mergeVodContent(old, content, input.merge!, {
+                // 这部片已经挂着本采集源的线路：这次是源站自己更新，静态字段允许非空覆盖
+                trusted: bySourceVodId.get(item.vodId) === vodId,
+                brokenCoverHosts,
+              })
+            : { ...content };
+          await tx
+            .update(vod)
+            .set(
+              input.keepCollectedAt
+                ? patch
+                : { ...patch, collectedAt: sql`GREATEST(collected_at, NOW())` },
+            )
+            .where(eq(vod.id, vodId));
         } else {
           await tx
             .update(vod)

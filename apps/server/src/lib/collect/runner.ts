@@ -10,6 +10,7 @@ import {
 import { autoMatchCategory, loadCategories } from './match.ts';
 import { CollectClient } from './client.ts';
 import { parseVodPage, splitLineNames } from './parser.ts';
+import { loadBrokenCoverHosts, loadMergeConfig } from './merge.ts';
 import { processPage, type CategoryInfo, type MappingInfo } from './writer.ts';
 
 const RANGE_HOURS: Record<number, number | undefined> = {
@@ -150,6 +151,9 @@ async function executeRun(
     const categoryMap = new Map(categories.map((item) => [item.id, item]));
     const mapping = await loadMapping(db, source.id, categories);
     const hours = RANGE_HOURS[task.rangeType];
+    // 入库规则整轮读一次，避免每页都查库；中途改了配置下一轮才生效
+    const mergeConfig = await loadMergeConfig(db);
+    const brokenCoverHosts = await loadBrokenCoverHosts(db);
 
     for (let page = startPage; page <= 100000; page++) {
       if (cancelFlags.get(logId)) {
@@ -201,6 +205,8 @@ async function executeRun(
         items: parsed.list,
         mapping,
         categories: categoryMap,
+        merge: mergeConfig,
+        brokenCoverHosts,
       });
 
       counters.total += result.counters.total;
