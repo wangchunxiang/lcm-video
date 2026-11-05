@@ -52,6 +52,14 @@ export function cancelRun(taskId: number): number | undefined {
   return logId;
 }
 
+/** 按采集记录取消（手动采集没有任务行） */
+export function cancelByLog(logId: number): boolean {
+  const running = [...runningBySource.values()].includes(logId);
+  if (!running) return false;
+  cancelFlags.set(logId, true);
+  return true;
+}
+
 async function loadMapping(
   db: Db,
   sourceId: number,
@@ -261,6 +269,51 @@ async function executeRun(
       playFrom: [...playFromSet].sort().join(',').slice(0, 500),
     })
     .where(eq(collectSource.id, source.id));
+}
+
+/**
+ * 手动采集：不建任务，用当前源的配置跑一次指定范围。
+ * 这类记录的 task_id 记 0，任务页看不到，采集记录页里可见、也可停止。
+ */
+export async function startSourceRun(
+  db: Db,
+  sourceId: number,
+  rangeType: number,
+): Promise<{ started: boolean; message: string; logId?: number }> {
+  if (![1, 2, 3, 4].includes(rangeType)) return { started: false, message: '采集范围不合法' };
+
+  const sourceRows = await db.select().from(collectSource).where(eq(collectSource.id, sourceId)).limit(1);
+  const source = sourceRows[0];
+  if (!source) return { started: false, message: '采集源不存在' };
+  if (source.isEnabled !== 1) return { started: false, message: '采集源已停用' };
+  if (runningBySource.has(source.id)) return { started: false, message: '该采集源正在执行采集，请稍后再试' };
+
+  const inserted = await db
+    .insert(collectLog)
+    .values({ taskId: 0, sourceId: source.id, status: 0 })
+    .$returningId();
+  const logId = inserted[0]?.id;
+  if (!logId) return { started: false, message: '创建采集记录失败' };
+
+  // 手动采集没有任务行，构造一个只用于本次执行的临时任务
+  const task = { id: 0, name: `手动采集·${source.name}`, sourceId: source.id, rangeType } as typeof collectTask.$inferSelect;
+
+  runningBySource.set(source.id, logId);
+
+  void executeRun(db, task, source, logId)
+    .catch(async (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      await db
+        .update(collectLog)
+        .set({ status: 2, message: message.slice(0, 500), finishedAt: sql`NOW()` })
+        .where(eq(collectLog.id, logId));
+    })
+    .finally(() => {
+      runningBySource.delete(source.id);
+      cancelFlags.delete(logId);
+    });
+
+  return { started: true, message: '已开始采集', logId };
 }
 
 /**

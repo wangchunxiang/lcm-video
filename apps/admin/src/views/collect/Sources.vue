@@ -284,6 +284,34 @@ function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
   };
 }
 
+const RANGE_LABELS: Record<number, string> = {
+  1: '本日更新',
+  2: '本周更新',
+  3: '本月更新',
+  4: '全部影片',
+};
+
+async function runSource(row: SourceRow, rangeType: number) {
+  if (rangeType === 4) {
+    try {
+      await ElMessageBox.confirm(
+        `将按「全部影片」范围采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`,
+        '开始采集',
+        { type: 'warning', confirmButtonText: '开始采集', cancelButtonText: '取消' },
+      );
+    } catch {
+      return;
+    }
+  }
+
+  try {
+    await api.post(`/sources/${row.id}/run`, { range_type: rangeType });
+    ElMessage.success(`已开始采集「${row.name}」（${RANGE_LABELS[rangeType]}），可在采集记录查看进度`);
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '开始采集失败');
+  }
+}
+
 async function toggleStatus(row: SourceRow) {
   const next = row.isEnabled === 1 ? 0 : 1;
   try {
@@ -400,8 +428,19 @@ onBeforeUnmount(() => {
           <span v-else class="muted">未同步</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="180" align="center" fixed="right">
+      <el-table-column label="操作" width="232" align="center" fixed="right">
         <template #default="{ row }">
+          <el-dropdown trigger="click" @command="(cmd: number) => runSource(row, cmd)">
+            <el-button link type="primary">采集 ▾</el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :command="1">本日更新</el-dropdown-item>
+                <el-dropdown-item :command="2">本周更新</el-dropdown-item>
+                <el-dropdown-item :command="3">本月更新</el-dropdown-item>
+                <el-dropdown-item :command="4" divided>全部影片</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
           <el-button link type="danger" @click="remove(row)">删除</el-button>

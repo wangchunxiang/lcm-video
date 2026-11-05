@@ -229,6 +229,30 @@ async function resume(row: LogRow): Promise<void> {
   }
 }
 
+const stopping = ref(0);
+
+async function stop(row: LogRow): Promise<void> {
+  try {
+    await ElMessageBox.confirm(`停止「${row.sourceName ?? '该源'}」这次采集？已入库的影片会保留。`, '停止采集', {
+      type: 'warning',
+      confirmButtonText: '停止',
+      cancelButtonText: '继续采集',
+    });
+  } catch {
+    return;
+  }
+  stopping.value = row.id;
+  try {
+    await api.post(`/logs/${row.id}/cancel`);
+    ElMessage.success('已通知停止，正在收尾');
+    await load(true);
+  } catch (error) {
+    ElMessage.error((error as Error).message);
+  } finally {
+    stopping.value = 0;
+  }
+}
+
 async function openDetail(row: LogRow) {
   drawerVisible.value = true;
   currentLog.value = row;
@@ -357,7 +381,7 @@ onBeforeUnmount(() => {
             <template #default="{ row }">{{ liveDuration(row) }}</template>
           </el-table-column>
           <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
-          <el-table-column label="操作" width="130" align="center" fixed="right">
+          <el-table-column label="操作" width="170" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDetail(row)">明细</el-button>
               <el-button
@@ -368,6 +392,15 @@ onBeforeUnmount(() => {
                 @click="resume(row)"
               >
                 续采
+              </el-button>
+              <el-button
+                v-if="row.status === 0"
+                link
+                type="danger"
+                :loading="stopping === row.id"
+                @click="stop(row)"
+              >
+                停止
               </el-button>
             </template>
           </el-table-column>

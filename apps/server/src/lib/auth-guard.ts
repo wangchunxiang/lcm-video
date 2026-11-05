@@ -8,17 +8,15 @@ import { ErrorCode, fail } from './http.ts';
 export const AUTH_COOKIE = 'lcm_token';
 
 export function createRequireAdmin(db: Db, secret: string) {
-  return async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  return async function requireAdmin(req: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> {
     const token = req.cookies[AUTH_COOKIE];
     if (!token) {
-      fail(reply, 401, ErrorCode.UNAUTHORIZED, '请先登录');
-      return;
+      return fail(reply, 401, ErrorCode.UNAUTHORIZED, '请先登录');
     }
 
     const payload = verifyToken(token, secret);
     if (!payload) {
-      fail(reply, 401, ErrorCode.UNAUTHORIZED, '登录已失效，请重新登录');
-      return;
+      return fail(reply, 401, ErrorCode.UNAUTHORIZED, '登录已失效，请重新登录');
     }
 
     const rows = await db
@@ -35,16 +33,13 @@ export function createRequireAdmin(db: Db, secret: string) {
 
     const user = rows[0];
     if (!user) {
-      fail(reply, 401, ErrorCode.UNAUTHORIZED, '账号不存在');
-      return;
+      return fail(reply, 401, ErrorCode.UNAUTHORIZED, '账号不存在');
     }
     if (user.isEnabled !== 1) {
-      fail(reply, 403, ErrorCode.FORBIDDEN, '账号已被禁用');
-      return;
+      return fail(reply, 403, ErrorCode.FORBIDDEN, '账号已被禁用');
     }
     if (user.passwordVersion !== payload.pv) {
-      fail(reply, 401, ErrorCode.UNAUTHORIZED, '密码已修改，请重新登录');
-      return;
+      return fail(reply, 401, ErrorCode.UNAUTHORIZED, '密码已修改，请重新登录');
     }
 
     req.adminUser = {

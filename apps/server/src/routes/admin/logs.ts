@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectLog, collectLogDetail, collectSource, collectTask } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
-import { startResume } from '../../lib/collect/runner.ts';
+import { cancelByLog, startResume } from '../../lib/collect/runner.ts';
 
 export interface LogRouteOpts {
   db: Db;
@@ -161,5 +161,13 @@ export const logRoutes: FastifyPluginAsync<LogRouteOpts> = async (app, opts) => 
     const result = await startResume(db, id);
     if (!result.started) return fail(reply, 409, ErrorCode.BAD_REQUEST, result.message);
     return ok(reply, { logId: result.logId, message: result.message });
+  });
+
+  /** 停止一条正在执行的采集（手动采集没有任务行，只能按记录停） */
+  app.post('/:id/cancel', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    if (id <= 0) return fail(reply, 400, ErrorCode.BAD_REQUEST, '记录 ID 不正确');
+    if (!cancelByLog(id)) return fail(reply, 409, ErrorCode.BAD_REQUEST, '这条记录不在执行中');
+    return ok(reply, { logId: id });
   });
 };

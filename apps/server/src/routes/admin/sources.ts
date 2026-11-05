@@ -5,6 +5,7 @@ import { adFeature, collectSource, collectSourceCategory, collectTask, vodPlay }
 import { CollectClient } from '../../lib/collect/client.ts';
 import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
 import { fetchClassList } from '../../lib/collect/classes.ts';
+import { startSourceRun } from '../../lib/collect/runner.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
 export interface SourceRouteOpts {
@@ -355,5 +356,14 @@ export const sourceRoutes: FastifyPluginAsync<SourceRouteOpts> = async (app, opt
       fetched: classes.length,
       matched,
     });
+  });
+
+  app.post('/:id/run', async (req, reply) => {
+    const id = toInt((req.params as { id: string }).id);
+    const body = (req.body ?? {}) as { range_type?: unknown };
+    const rangeType = toInt(body.range_type, 0);
+    const result = await startSourceRun(db, id, rangeType);
+    if (!result.started) return fail(reply, 400, ErrorCode.BAD_REQUEST, result.message);
+    return ok(reply, { logId: result.logId ?? 0 });
   });
 };
