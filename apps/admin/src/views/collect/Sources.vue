@@ -285,17 +285,17 @@ function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
 }
 
 const RANGE_LABELS: Record<number, string> = {
-  1: '本日更新',
-  2: '本周更新',
-  3: '本月更新',
-  4: '全部影片',
+  1: '采集本日',
+  2: '采集本周',
+  3: '采集本月',
+  4: '采集全部',
 };
 
 async function runSource(row: SourceRow, rangeType: number) {
   if (rangeType === 4) {
     try {
       await ElMessageBox.confirm(
-        `将按「全部影片」范围采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`,
+        `将按「采集全部」范围采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`,
         '开始采集',
         { type: 'warning', confirmButtonText: '开始采集', cancelButtonText: '取消' },
       );
@@ -439,10 +439,10 @@ onBeforeUnmount(() => {
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item :command="1">本日更新</el-dropdown-item>
-                  <el-dropdown-item :command="2">本周更新</el-dropdown-item>
-                  <el-dropdown-item :command="3">本月更新</el-dropdown-item>
-                  <el-dropdown-item :command="4" divided>全部影片</el-dropdown-item>
+                  <el-dropdown-item :command="1">采集本日</el-dropdown-item>
+                  <el-dropdown-item :command="2">采集本周</el-dropdown-item>
+                  <el-dropdown-item :command="3">采集本月</el-dropdown-item>
+                  <el-dropdown-item :command="4" divided>采集全部</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
