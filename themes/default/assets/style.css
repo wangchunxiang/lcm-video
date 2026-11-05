@@ -950,6 +950,8 @@ a.ep-tab { text-decoration: none; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* 与剧集网格内容右缘对齐：网格右侧有 4px padding + 6px 滚动条槽 */
+  padding-right: calc(var(--space-1) + 6px);
 }
 
 .play-side-lines .ep-sort { margin-left: 0; }
@@ -958,6 +960,7 @@ a.ep-tab { text-decoration: none; }
 .line-dd { position: relative; flex: 1 1 auto; min-width: 0; }
 
 .line-dd-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -965,7 +968,7 @@ a.ep-tab { text-decoration: none; }
   gap: var(--space-2);
   height: 32px;
   max-width: 100%;
-  padding: 0 var(--space-3);
+  padding: 0 34px 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -1003,10 +1006,13 @@ a.ep-tab { text-decoration: none; }
 }
 
 .line-dd-btn .chev {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
   display: inline-flex;
   align-items: center;
-  margin-left: var(--space-1);
   color: var(--text-3);
+  transform: translateY(-50%);
   transition: transform var(--transition);
 }
 
@@ -1016,7 +1022,7 @@ a.ep-tab { text-decoration: none; }
   opacity: 1;
 }
 
-.line-dd-btn.is-open .chev { transform: rotate(180deg); }
+.line-dd-btn.is-open .chev { transform: translateY(-50%) rotate(180deg); }
 
 .line-dd-panel {
   position: absolute;
@@ -1118,6 +1124,7 @@ a.ep-tab { text-decoration: none; }
   flex: 1;
   min-height: 0;
   max-height: none;
+  scrollbar-gutter: stable;
   overflow-y: auto;
 }
 
