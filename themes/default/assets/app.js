@@ -130,7 +130,6 @@
         Array.prototype.forEach.call(document.querySelectorAll('.ep-tab'), function (item) {
           item.classList.toggle('is-active', item === tab);
         });
-        history.replaceState(null, '', href);
       });
     });
   }
@@ -327,6 +326,7 @@
     });
   }
 
+  bindTabs();
   bindSort();
   bindLineDD();
   bindSpeed();
