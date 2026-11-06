@@ -23,7 +23,8 @@
           <span class="label">未检查</span>
         </div>
         <div class="summary-actions">
-          <el-button type="primary" :loading="scanning" @click="scanAll">检查全部</el-button>
+          <el-button type="primary" :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
+          <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
           <el-button :loading="loading" @click="load">刷新</el-button>
         </div>
       </div>
@@ -200,12 +201,21 @@ async function load(): Promise<void> {
   }
 }
 
-async function scanAll(): Promise<void> {
+async function scanAll(mode: 'pending' | 'all'): Promise<void> {
+  if (mode === 'all') {
+    const ok = await ElMessageBox.confirm(
+      `全部重检会忽略历史结果，把 ${summary.value.hosts} 个域名重新跑一遍，大约需要几十秒。`,
+      '全部重检',
+      { type: 'warning', confirmButtonText: '开始重检', cancelButtonText: '取消' },
+    ).then(() => true, () => false);
+    if (!ok) return;
+  }
   scanning.value = true;
   try {
-    await api.post('/cover-check/scan', {});
+    const data = await api.post<{ skipped: number }>('/cover-check/scan', { mode });
     await load();
-    ElNotification.success({ title: '检查完成', message: `共 ${summary.value.hosts} 个域名` });
+    const tail = mode === 'pending' && data.skipped > 0 ? `，跳过 ${data.skipped} 个上次正常的域名` : '';
+    ElNotification.success({ title: '检查完成', message: `共检查 ${summary.value.hosts - (mode === 'pending' ? data.skipped : 0)} 个域名${tail}` });
   } finally {
     scanning.value = false;
   }

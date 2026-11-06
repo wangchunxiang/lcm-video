@@ -41,24 +41,42 @@ export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db })
     return ok(reply, { items, summary });
   });
 
-  /** 检查一个域名或全部域名 */
+  /**
+   * 检查一个域名或全部域名。
+   * mode=pending（默认）只检查未检查/失效/无法验证的域名，跳过上次正常的；
+   * mode=all 忽略历史结果，全部重检。
+   */
   app.post('/scan', async (request, reply) => {
-    const body = (request.body ?? {}) as { host?: unknown };
+    const body = (request.body ?? {}) as { host?: unknown; mode?: unknown };
     const host = String(body.host ?? '').trim();
     if (host) {
       const result = await scanHost(db, host, await countHost(db, host));
-      return ok(reply, { items: [result] });
+      return ok(reply, { items: [result], skipped: 0 });
     }
 
+    const mode = String(body.mode ?? 'pending') === 'all' ? 'all' : 'pending';
     const hosts = await listCoverHosts(db);
-    const results = [];
-    // 域名之间 5 个并行，域名内部抽 2 张、间隔 3 秒
-    for (let i = 0; i < hosts.length; i += HOST_PARALLEL) {
-      const slice = hosts.slice(i, i + HOST_PARALLEL);
-      const part = await Promise.all(slice.map((item) => scanHost(db, item.host, item.vodCount)));
-      results.push(...part);
+    let targets = hosts;
+    let skipped = 0;
+    if (mode === 'pending') {
+      const states = await db.select({ host: coverCheck.host, status: coverCheck.status }).from(coverCheck);
+      const passed = new Set(states.filter((state) => state.status === 1).map((state) => state.host));
+      targets = hosts.filter((item) => !passed.has(item.host));
+      skipped = hosts.length - targets.length;
     }
-    return ok(reply, { items: results });
+
+    const results: Array<Awaited<ReturnType<typeof scanHost>>> = [];
+    // 用固定大小的并发池逐个取任务：快的域名不会等慢的，避免按批切分时每批都被最慢的那个拖住
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < targets.length) {
+        const item = targets[cursor++];
+        if (!item) break;
+        results.push(await scanHost(db, item.host, item.vodCount));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(HOST_PARALLEL, targets.length) }, worker));
+    return ok(reply, { items: results, skipped });
   });
 
   /** 某域名下的影片列表 */

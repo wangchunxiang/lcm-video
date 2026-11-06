@@ -13,8 +13,11 @@ const PAGE_REFERER = 'https://www.lcm-video.com/';
 const SAMPLE_COUNT = 2;
 /** 同一域名两次图片请求之间的间隔 */
 const SAMPLE_INTERVAL_MS = 3000;
-/** 检查全部时同时进行的域名数 */
-export const HOST_PARALLEL = 5;
+/**
+ * 检查全部时同时进行的域名数。
+ * 只影响不同域名之间的并发：同一域名内仍然抽 2 张、间隔 3 秒，不会把单个图床打爆。
+ */
+export const HOST_PARALLEL = 8;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -155,7 +158,12 @@ export async function checkHost(db: Db, host: string): Promise<CheckResult> {
   }
 
   const results: ProbeResult[] = [];
-  for (const url of urls) results.push(await probeImage(url));
+  for (const url of urls) {
+    const result = await probeImage(url);
+    results.push(result);
+    // 第一张就是网络不通（超时/DNS/连接失败）时，第二张必然同样不通，不必再等一个超时
+    if (results.length === 1 && !result.ok && result.network) break;
+  }
   const fails = results.filter((result) => !result.ok);
   const okCount = results.length - fails.length;
   if (fails.length === 0) {
