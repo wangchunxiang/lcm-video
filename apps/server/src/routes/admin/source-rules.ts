@@ -3,6 +3,7 @@ import { and, asc, desc, eq, like, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { collectSource, sourceRule, vod, vodPlay } from '@lcm/db';
 import { applyPlayUrlRules } from '@lcm/shared';
+import { toInt } from '@lcm/shared';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
 type Options = { db: Db };
@@ -15,11 +16,6 @@ type RuleBody = {
   is_enabled?: unknown;
   sort?: unknown;
 };
-
-function toInt(value: unknown, fallback = 0): number {
-  const num = Number(value);
-  return Number.isFinite(num) ? Math.trunc(num) : fallback;
-}
 
 const text = (value: unknown, max: number): string => String(value ?? '').trim().slice(0, max);
 

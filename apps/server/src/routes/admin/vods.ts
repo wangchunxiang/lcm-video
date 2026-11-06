@@ -2,7 +2,8 @@ import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type { Db } from '@lcm/db';
 import { category, collectSource, collectSourceCategory, vod, vodPlay } from '@lcm/db';
-import { countEpisodes, nameHash, normalizeName, parsePlayUrl } from '@lcm/shared';
+import { countEpisodes, nameHash, normalizeName, parsePlayUrl, toText } from '@lcm/shared';
+import { toInt } from '@lcm/shared';
 import { CollectClient } from '../../lib/collect/client.ts';
 import { loadCategories } from '../../lib/collect/match.ts';
 import { loadBrokenCoverHosts, loadMergeConfig } from '../../lib/collect/merge.ts';
@@ -13,15 +14,6 @@ import { ErrorCode, fail, ok } from '../../lib/http.ts';
 
 export interface VodRouteOpts {
   db: Db;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
-}
-
-function toText(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 function toIds(value: unknown): number[] {

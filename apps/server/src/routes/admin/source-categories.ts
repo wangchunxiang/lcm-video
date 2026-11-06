@@ -4,14 +4,10 @@ import type { Db } from '@lcm/db';
 import { category, collectSource, collectSourceCategory, vod } from '@lcm/db';
 import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { toInt } from '@lcm/shared';
 
 export interface SourceCategoryRouteOpts {
   db: Db;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
 interface MappingBody {

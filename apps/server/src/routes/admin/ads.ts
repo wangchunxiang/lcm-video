@@ -4,14 +4,10 @@ import type { Db } from '@lcm/db';
 import { adFeature } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { analyzeSource, pickSampleVods } from '../../lib/ads/analyze.ts';
+import { toInt } from '@lcm/shared';
 
 export interface AdsRouteOpts {
   db: Db;
-}
-
-function toInt(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
 

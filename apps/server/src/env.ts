@@ -39,5 +39,3 @@ export const env = {
 };
 
 export type Env = typeof env;
-
-export const isDev = env.nodeEnv !== 'production';

@@ -4,6 +4,7 @@ import type { Db } from '@lcm/db';
 import { category, collectSourceCategory, vod } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { clearNavCache } from '../../lib/theme.ts';
+import { toInt } from '@lcm/shared';
 
 export interface CategoryRouteOpts {
   db: Db;
@@ -18,11 +19,6 @@ interface CategoryBody {
   match_names?: unknown;
   sort?: unknown;
   is_show?: unknown;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
 async function validateBody(

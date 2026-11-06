@@ -3,6 +3,7 @@ import type { Db } from '@lcm/db';
 import { collectSource, coverCheck, vod, vodPlay } from '@lcm/db';
 import { CollectClient } from '../collect/client.ts';
 import { parseVodPage } from '../collect/parser.ts';
+import { hostOf } from '@lcm/shared';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
@@ -34,14 +35,6 @@ export type CheckResult = {
 export type ProbeResult = { ok: boolean; message: string; /** 失败原因是网络不通而非图床拒绝 */ network: boolean };
 
 /** 取 URL 的域名，取不到返回空串 */
-export function hostOf(url: string): string {
-  try {
-    return new URL(url).host.toLowerCase();
-  } catch {
-    return '';
-  }
-}
-
 /** 每个域名上次图片请求结束的时间戳 */
 const lastProbeAt = new Map<string, number>();
 /** 每个域名一条串行队列，保证同一域名的探测不会同时发出 */

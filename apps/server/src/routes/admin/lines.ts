@@ -3,6 +3,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { Db } from '@lcm/db';
 import { collectSource, playLine } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { toInt } from '@lcm/shared';
 
 export interface LineRouteOpts {
   db: Db;
@@ -12,11 +13,6 @@ interface LineBody {
   name?: unknown;
   sort?: unknown;
   is_enabled?: unknown;
-}
-
-function toInt(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
 }
 
 export const lineRoutes: FastifyPluginAsync<LineRouteOpts> = async (app, opts) => {

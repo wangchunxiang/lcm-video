@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, like, lte, or, sql, type SQL } from 'drizzle-or
 import type { Db } from '@lcm/db';
 import { adFeature, category, collectSource, playLine, vod, vodPlay } from '@lcm/db';
 import type { Liquid } from 'liquidjs';
-import { parsePlayUrl } from '@lcm/shared';
+import { escapeJson, parsePlayUrl } from '@lcm/shared';
 import { cleanPlaylist } from '../../lib/ads/skip.ts';
 import { speedRoutes } from './speed.ts';
 import {
@@ -481,8 +481,11 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const lines = await loadLines(id);
     const query = req.query as { line?: string };
     const wantedLineId = toInt(query.line);
-    const currentLine = lines.find((item) => item.id === wantedLineId) ?? lines[0];
-    const allEpisodes = currentLine ? parsePlayUrl(currentLine.playUrl) : [];
+    /* 每条线路的剧集只解析一次：当前线路、线路标签与内嵌 JSON 复用同一份结果 */
+    const parsedLines = lines.map((item) => ({ line: item, eps: parsePlayUrl(item.playUrl) }));
+    const picked = parsedLines.find((item) => item.line.id === wantedLineId) ?? parsedLines[0];
+    const currentLine = picked?.line;
+    const allEpisodes = picked?.eps ?? [];
     const totalEpisodes = allEpisodes.length;
     const episodes = allEpisodes.map((ep, index) => ({
       index: index + 1,
@@ -490,19 +493,19 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
       url: ep.url,
     }));
     const currentLineId = currentLine?.id ?? 0;
-    const lineTabs = lines.map((item) => ({
+    const lineTabs = parsedLines.map(({ line: item, eps }) => ({
       id: item.id,
       name: item.source_name,
-      total: parsePlayUrl(item.playUrl).length,
+      total: eps.length,
       href: `/detail/${row.id}?line=${item.id}`,
     }));
     /* 所有线路的剧集一次性下发，前端切换线路时直接渲染，不再请求 */
-    const episodeGroups = lines.map((item) => ({
+    const episodeGroups = parsedLines.map(({ line: item, eps }) => ({
       id: item.id,
       name: item.source_name,
-      items: parsePlayUrl(item.playUrl).map((ep, index) => ({ i: index + 1, n: ep.name })),
+      items: eps.map((ep, index) => ({ i: index + 1, n: ep.name })),
     }));
-    const episodeJson = JSON.stringify(episodeGroups).split('<').join(String.fromCharCode(92) + 'u003c');
+    const episodeJson = escapeJson(episodeGroups);
     return render(
       reply,
       'detail',
@@ -582,10 +585,13 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const lines = await loadLines(id);
     if (lines.length === 0) return notFound(reply);
 
-    const line = playId > 0 ? lines.find((item) => item.id === playId) : lines[0];
+    /* 每条线路的剧集只解析一次：当前线路、右栏列表与 need_hls 都复用这份结果 */
+    const parsedLines = lines.map((item) => ({ line: item, eps: parsePlayUrl(item.playUrl) }));
+    const picked = playId > 0 ? parsedLines.find((item) => item.line.id === playId) : parsedLines[0];
+    const line = picked?.line;
     if (!line) return notFound(reply);
 
-    const all = parsePlayUrl(line.playUrl);
+    const all = picked?.eps ?? [];
     if (all.length === 0) return notFound(reply);
 
     const currentEp = ep > 0 ? ep : 1;
@@ -618,8 +624,7 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     const iframeUrl = buildIframeUrl(line.parse_url, current.url);
     const episodeName = current.name || `第 ${currentEp} 集`;
     /* 每条线路的剧集与当前集播放参数：剧集给右侧列表，播放参数给换线路时重建播放器 */
-    const lineGroups = lines.map((item) => {
-      const eps = parsePlayUrl(item.playUrl);
+    const lineGroups = parsedLines.map(({ line: item, eps }) => {
       const at = Math.max(1, Math.min(currentEp, eps.length));
       const one = eps[at - 1];
       const url = one ? one.url : '';
@@ -636,9 +641,6 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         iframe_url: item.parse_url ? buildIframeUrl(item.parse_url, url) : '',
       };
     });
-    /* 内嵌 JSON 里转义 `<`，避免剧集名里的 `</script>` 提前闭合标签 */
-    const escapeJson = (value: unknown) =>
-      JSON.stringify(value).split('<').join(String.fromCharCode(92) + 'u003c');
     const episodeJson = escapeJson(
       lineGroups.map((item) => ({ id: item.id, name: item.name, items: item.items })),
     );
@@ -689,9 +691,8 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
         line_data: lineData,
         /* 只要有一条直连线路就需要播放器脚本；任何线路出现 m3u8 就带上 hls.js */
         need_player: lines.some((item) => !item.parse_url),
-        need_hls: lines.some(
-          (item) =>
-            !item.parse_url && parsePlayUrl(item.playUrl).some((ep) => /\.m3u8(\?|$)/i.test(ep.url)),
+        need_hls: parsedLines.some(
+          ({ line: item, eps }) => !item.parse_url && eps.some((ep) => /\.m3u8(\?|$)/i.test(ep.url)),
         ),
         current_ep: currentEp,
         current_ep_name: episodeName,

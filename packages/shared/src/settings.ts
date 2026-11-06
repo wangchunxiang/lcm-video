@@ -17,12 +17,6 @@ export interface SettingField {
   section?: string;
 }
 
-export const SETTING_GROUPS: { key: SettingGroup; label: string }[] = [
-  { key: 'site', label: '站点设置' },
-  { key: 'playback', label: '播放设置' },
-  { key: 'account', label: '账号设置' },
-];
-
 export const SETTINGS: SettingField[] = [
   {
     key: 'list_page_size',
@@ -182,9 +176,3 @@ export const SETTINGS: SettingField[] = [
     default: '7',
   },
 ];
-
-export const SETTING_KEYS = SETTINGS.map((item) => item.key);
-
-export function settingDefault(key: string): string {
-  return SETTINGS.find((item) => item.key === key)?.default ?? '';
-}

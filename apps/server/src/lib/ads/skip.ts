@@ -1,9 +1,7 @@
 import { eq } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { adFeature } from '@lcm/db';
-
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+import { fetchTextOnce } from '@lcm/shared';
 
 /** 时长比对容差（秒），源站同一支广告的分片时长是固定的，2% 以内视为一致 */
 const TOLERANCE = 0.03;
@@ -30,12 +28,6 @@ function absolutize(base: string, uri: string): string {
 function absolutizeTags(tag: string, base: string): string {
   if (!tag.includes('URI="')) return tag;
   return tag.replace(/URI="([^"]*)"/g, (_match, uri: string) => `URI="${absolutize(base, uri)}"`);
-}
-
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { 'user-agent': UA, accept: '*/*' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.text();
 }
 
 /** 解析播放列表正文，返回头部标签与分片；遇到 master playlist 返回 null */
@@ -99,7 +91,7 @@ async function fetchCached(url: string): Promise<string> {
   const hit = cache.get(url);
   const now = Date.now();
   if (hit && now - hit.at < CACHE_TTL) return hit.text;
-  const text = await fetchText(url);
+  const text = await fetchTextOnce(url, 8000);
   if (cache.size > 200) cache.clear();
   cache.set(url, { at: now, text });
   return text;

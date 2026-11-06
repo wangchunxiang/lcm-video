@@ -26,10 +26,6 @@ const runningBySource = new Map<number, number>();
 const runningByTask = new Map<number, number>();
 const cancelFlags = new Map<number, boolean>();
 
-export function isSourceBusy(sourceId: number): boolean {
-  return runningBySource.has(sourceId);
-}
-
 export function getRunningLogId(taskId: number): number | undefined {
   return runningByTask.get(taskId);
 }

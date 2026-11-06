@@ -667,7 +667,6 @@ a.ep-tab { text-decoration: none; }
   inset: 0;
 }
 
-.player .dplayer,
 .player .art-video-player {
   width: 100%;
   height: 100%;
@@ -990,7 +989,6 @@ a.ep-tab { text-decoration: none; }
 
 .line-dd-btn:hover { background: var(--surface-2); }
 
-.line-dd-label { color: var(--text-3); }
 
 .line-dd-name {
   flex: 0 1 auto;
@@ -1263,7 +1261,7 @@ a.ep-tab { text-decoration: none; }
 .copyright a:hover { color: var(--primary); }
 
 /* ---------- responsive ----------
-   三档断点：1400 收窄网格，1100 播放页改上下排列，900 移动端
+   四档断点：1400 收窄网格，1180 页头换行 + 播放页上下排列，1100 详情页竖排，900 收窄网格
    ---------- */
 
 @media (max-width: 1400px) {
@@ -1271,16 +1269,15 @@ a.ep-tab { text-decoration: none; }
 
 }
 
-@media (max-width: 900px) {
-  .vod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
-  /* 导航不隐藏，折行显示，移动端也能点到全部分类 */
+/* 1180 以下一行放不下：导航折到第二行（不折叠文字），播放页改为播放器在上 */
+@media (max-width: 1180px) {
   .header-inner {
     height: auto;
     flex-wrap: wrap;
-    padding: var(--space-2) 0;
-    gap: var(--space-2) var(--space-3);
+    padding: 6px 0;
+    gap: 6px var(--space-3);
   }
+  .logo { line-height: 48px; }
   .main-nav {
     order: 3;
     flex: 1 0 100%;
@@ -1288,8 +1285,24 @@ a.ep-tab { text-decoration: none; }
     flex-wrap: wrap;
     gap: 0;
   }
-  .main-nav > a { height: 36px; padding: 0 var(--space-2); }
-  .search-box { margin-left: auto; }
-  .search-box { width: 250px; }
+  .main-nav > a { height: 34px; padding: 0 var(--space-2); }
+  .search-box { margin-left: auto; width: 250px; }
 
+  .play-wrap { padding-right: 0; }
+  .play-side {
+    position: static;
+    width: 100%;
+    margin-top: var(--space-4);
+    gap: var(--space-2);
+  }
+  .play-side .ep-panel.is-active { flex: none; }
+  .play-side .ep-scroll { max-height: 320px; }
+  .play-side .episode-grid { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .play-side-lines { padding-right: 0; }
+  .play-side-nav { margin-top: var(--space-2); }
+}
+
+@media (max-width: 900px) {
+  .vod-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .play-side .episode-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }

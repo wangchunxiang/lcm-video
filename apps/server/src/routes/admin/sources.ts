@@ -16,6 +16,8 @@ import { autoMatchCategory, loadCategories } from '../../lib/collect/match.ts';
 import { fetchClassList } from '../../lib/collect/classes.ts';
 import { startSourceRun } from '../../lib/collect/runner.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { toText } from '@lcm/shared';
+import { toInt } from '@lcm/shared';
 
 export interface SourceRouteOpts {
   db: Db;
@@ -35,15 +37,6 @@ interface SourceBody {
   pagesize?: unknown;
   timeout?: unknown;
   retry_times?: unknown;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
-}
-
-function toText(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 function isHttpUrl(value: string): boolean {

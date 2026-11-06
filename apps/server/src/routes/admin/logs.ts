@@ -4,14 +4,10 @@ import type { Db } from '@lcm/db';
 import { collectLog, collectLogDetail, collectSource, collectTask } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { cancelByLog, startResume } from '../../lib/collect/runner.ts';
+import { toInt } from '@lcm/shared';
 
 export interface LogRouteOpts {
   db: Db;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
 function pageOf(query: Record<string, unknown>): { page: number; pageSize: number; offset: number } {

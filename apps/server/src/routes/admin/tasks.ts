@@ -5,18 +5,11 @@ import { collectSource, collectTask } from '@lcm/db';
 import { isValidCron, nextRunAt } from '../../lib/collect/cron.ts';
 import { cancelRun, getRunningLogId, startTask } from '../../lib/collect/runner.ts';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
+import { toText } from '@lcm/shared';
+import { toInt } from '@lcm/shared';
 
 export interface TaskRouteOpts {
   db: Db;
-}
-
-function toInt(value: unknown, fallback = 0): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.trunc(n) : fallback;
-}
-
-function toText(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
 }
 
 interface TaskBody {

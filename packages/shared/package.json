@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./cron": "./src/cron.ts",
     "./vod": "./src/vod.ts",
-    "./settings": "./src/settings.ts"
+    "./settings": "./src/settings.ts",
+    "./util": "./src/util.ts"
   }
 }

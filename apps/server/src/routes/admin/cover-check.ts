@@ -4,13 +4,9 @@ import type { Db } from '@lcm/db';
 import { coverCheck, vod } from '@lcm/db';
 import { ErrorCode, fail, ok } from '../../lib/http.ts';
 import { HOST_PARALLEL, clearHostCovers, listCoverHosts, repairHostCovers, scanHost } from '../../lib/covers/check.ts';
+import { toInt } from '@lcm/shared';
 
 type Options = { db: Db };
-
-function toInt(value: unknown, fallback = 0): number {
-  const num = Number(value);
-  return Number.isFinite(num) ? Math.trunc(num) : fallback;
-}
 
 /** 图片检查：按域名体检封面 */
 export const coverCheckRoutes: FastifyPluginAsync<Options> = async (app, { db }) => {

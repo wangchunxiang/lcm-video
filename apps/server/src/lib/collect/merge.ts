@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { coverCheck, setting } from '@lcm/db';
 import { getSetting } from '../settings.ts';
+import { hostOf } from '@lcm/shared';
 
 /** 同一条影片被多个采集源命中时，写库前对每个字段做取舍 */
 export type MergeMode = 'off' | 'merge';
@@ -59,18 +60,6 @@ export const FIXED_FIELDS = [
   { label: '分类 / 状态', hint: 'category_id、category_pid、status、created_at' },
   { label: '年份', hint: '旧值有值就保留，旧值为 0 才补' },
 ];
-
-export const FIXED_KEYS = [
-  'name',
-  'nameHash',
-  'nameHashLoose',
-  'letter',
-  'year',
-  'categoryId',
-  'categoryPid',
-  'status',
-  'createdAt',
-] as const;
 
 export interface MergeConfig {
   mode: MergeMode;
@@ -227,14 +216,6 @@ const parseDate = (value: string | null | undefined): { y: number; m: number; d:
   const compact = text.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (compact) return { y: Number(compact[1]), m: Number(compact[2]), d: Number(compact[3]) };
   return null;
-};
-
-const hostOf = (url: string): string => {
-  const matched = String(url ?? '')
-    .trim()
-    .match(/^(?:https?:)?\/\/([^/?#]+)/i);
-  const host = matched?.[1] ?? '';
-  return host.toLowerCase().replace(/:\d+$/, '');
 };
 
 /**

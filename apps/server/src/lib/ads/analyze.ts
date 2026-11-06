@@ -1,9 +1,7 @@
 import { and, eq, gte, inArray, isNotNull, lte, ne, sql } from 'drizzle-orm';
 import type { Db } from '@lcm/db';
 import { vod, vodPlay } from '@lcm/db';
-
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36';
+import { fetchText } from '@lcm/shared';
 
 /** 一次分析抽多少个作品 */
 export const SAMPLE_SIZE = 10;
@@ -38,41 +36,6 @@ export interface FoundFeature {
   kind: 1 | 2 | 3;
   hitVods: number;
   sample: Array<{ vod_id: number; vod_name: string; start: number; start_sec: number; url: string }>;
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return url.slice(0, 40);
-  }
-}
-
-async function fetchTextOnce(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'user-agent': UA, accept: '*/*' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}（${hostOf(url)}）`);
-  const text = await res.text();
-  if (!text.trim()) throw new Error(`响应为空（${hostOf(url)}）`);
-  return text;
-}
-
-/** 拉取重试一次：源站偶发 403 / 超时很常见，重试基本能恢复 */
-async function fetchText(url: string): Promise<string> {
-  try {
-    return await fetchTextOnce(url);
-  } catch (error) {
-    const first = error instanceof Error ? error.message : String(error);
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    try {
-      return await fetchTextOnce(url);
-    } catch (second) {
-      const msg = second instanceof Error ? second.message : String(second);
-      throw new Error(`${msg}；重试前：${first}`);
-    }
-  }
 }
 
 function resolveUrl(base: string, ref: string): string {
