@@ -37,7 +37,7 @@ export const vod = mysqlTable(
     nameHashLoose: char('name_hash_loose', { length: 32 }).notNull().default(''),
     subName: varchar('sub_name', { length: 500 }).notNull().default(''),
     letter: char('letter', { length: 1 }).notNull().default(''),
-    cover: varchar('cover', { length: 500 }).notNull().default(''),
+    cover: varchar('cover', { length: 1000 }).notNull().default(''),
     /** 生成列：封面域名，图片体检按域名统计/筛选时走索引，避免对 10 万行做 LIKE 全表扫 */
     coverHost: varchar('cover_host', { length: 100 })
       .notNull()

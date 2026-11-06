@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `lcm_vod` (
   `name_hash_loose` CHAR(32)     NOT NULL DEFAULT ''       COMMENT '宽松键（再去掉标点）的 MD5，仅用于提示疑似重复',
   `sub_name`      VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '副标题',
   `letter`        CHAR(1)        NOT NULL DEFAULT ''       COMMENT '首字母，A-Z 或 0-9，其余存空',
-  `cover`         VARCHAR(500)   NOT NULL DEFAULT ''       COMMENT '封面，源站完整 URL',
+  `cover`         VARCHAR(1000)  NOT NULL DEFAULT ''       COMMENT '封面，源站完整 URL',
   `cover_host`    VARCHAR(100)   GENERATED ALWAYS AS (SUBSTRING_INDEX(SUBSTRING_INDEX(`cover`, '/', 3), '/', -1)) VIRTUAL
                                                           COMMENT '封面域名，生成列；图片体检按域名统计时走索引',
   `actor`         VARCHAR(1000)   NOT NULL DEFAULT ''       COMMENT '演员',

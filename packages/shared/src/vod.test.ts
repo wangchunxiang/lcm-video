@@ -5,6 +5,7 @@ import {
   looseKey,
   matchKey,
   nameHash,
+  normalizeCover,
   normalizeName,
   parsePlayUrl,
   splitEpisodes,
@@ -59,5 +60,33 @@ describe('剧集解析', () => {
   it('名称缺失时兜底为第 N 集', () => {
     expect(episodeLabel({ name: '', url: 'http://a' }, 0)).toBe('第 1 集');
     expect(episodeLabel({ name: '正片', url: 'http://a' }, 3)).toBe('正片');
+  });
+});
+
+describe('封面地址归一化', () => {
+  it('保留正常 http 地址', () => {
+    expect(normalizeCover('https://a.com/x.jpg')).toBe('https://a.com/x.jpg');
+  });
+
+  it('协议相对地址补 https', () => {
+    expect(normalizeCover('//a.com/x.jpg')).toBe('https://a.com/x.jpg');
+  });
+
+  it('丢弃 base64 内联图', () => {
+    expect(normalizeCover('data:image/jpeg;base64,/9j/4AAQ')).toBe('');
+  });
+
+  it('丢弃非 http 与空值', () => {
+    expect(normalizeCover('/uploads/x.jpg')).toBe('');
+    expect(normalizeCover('')).toBe('');
+    expect(normalizeCover(null)).toBe('');
+  });
+
+  it('超过字段上限的地址丢弃', () => {
+    expect(normalizeCover(`https://a.com/${'x'.repeat(1200)}`)).toBe('');
+  });
+
+  it('迁移旧图床域名', () => {
+    expect(normalizeCover('https://ps.ryzypics.com/1.jpg')).toBe('https://pic.ry-pic.com/1.jpg');
   });
 });

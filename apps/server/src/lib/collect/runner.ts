@@ -225,7 +225,7 @@ async function executeRun(
         skipped: result.counters.skipped,
         ignored: result.counters.ignored,
         failed: result.counters.failed,
-        failDetail: result.fails.length > 0 ? result.fails : null,
+        failDetail: result.fails.length > 0 ? JSON.stringify(result.fails) : null,
       });
 
       // 记下已完成到第几页，失败后可以从这里续采

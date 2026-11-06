@@ -74,14 +74,22 @@ export function episodeLabel(episode: Episode, index: number): string {
   return episode.name || `第 ${index + 1} 集`;
 }
 
+/** 封面字段长度上限，与 lcm_vod.cover 一致 */
+export const COVER_MAX_LENGTH = 1000;
+
 /** 已知的封面域名迁移：源站换了图床但接口仍返回旧域名时，就地改写 */
 const COVER_HOST_MAP: Array<[string, string]> = [['ps.ryzypics.com', 'pic.ry-pic.com']];
 
 /** 把源站返回的封面地址里的旧域名换成新域名 */
 export function normalizeCover(url: string | null | undefined): string {
   // 源站偶尔把 & 写成 &amp;，直接当图片地址用会 400
-  const text = decodeEntities(String(url ?? '')).trim();
+  let text = decodeEntities(String(url ?? '')).trim();
   if (!text) return '';
+  if (text.startsWith('//')) text = `https:${text}`;
+  // 有的源站直接塞 base64 内联图（data:image/jpeg;base64,...），截断的坏图且超长，直接丢掉
+  if (!/^https?:\/\//i.test(text)) return '';
+  // 超过字段上限的地址同样放弃，避免整条影片写库失败
+  if (text.length > COVER_MAX_LENGTH) return '';
   for (const [from, to] of COVER_HOST_MAP) {
     if (text.includes(from)) return text.split(from).join(to);
   }
