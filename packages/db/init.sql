@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS `lcm_ad_feature` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `lcm_vod_merge_ignore` (
-  `merge_key` VARCHAR(40) NOT NULL COMMENT '类型:哈希，如 auto:abcdef',
+  `merge_key` VARCHAR(64) NOT NULL COMMENT '类型:哈希，宽松键分组可能带 ~年份，如 suspect:abcdef~2026',
   `kind` VARCHAR(10) NOT NULL DEFAULT 'auto' COMMENT 'auto 严格重复 suspect 疑似重复',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`merge_key`)

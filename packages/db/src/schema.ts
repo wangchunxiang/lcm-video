@@ -326,7 +326,7 @@ export const coverCheck = mysqlTable(
 export const vodMergeIgnore = mysqlTable(
   'lcm_vod_merge_ignore',
   {
-    mergeKey: varchar('merge_key', { length: 40 }).primaryKey(),
+    mergeKey: varchar('merge_key', { length: 64 }).primaryKey(),
     kind: varchar('kind', { length: 10 }).notNull().default('auto'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   },
