@@ -1,48 +1,30 @@
 {% layout 'mobile/layout' %}
-{% assign base = '/list/' | append: category.alias %}
-{% assign clear = filter | with_type: '' | with_year: '' %}
-{% block content %}
+{% assign base = base_url | default: '' %}
+{% if base == '' %}{% assign base = '/list/' | append: category.alias %}{% endif %}
+{% assign active = 0 %}
+{% if filter.type != '' %}{% assign active = active | plus: 1 %}{% endif %}
+{% if filter.year != '' %}{% assign active = active | plus: 1 %}{% endif %}
+{% if filter.sort != 'time' %}{% assign active = active | plus: 1 %}{% endif %}
+
+{% block top %}
 <div class="m-bar">
   <span class="m-bar-title">{{ category.name }}</span>
-  <button type="button" class="m-bar-btn" data-toggle-filter>
+  <span class="m-bar-count">{{ pagination.total }} 部</span>
+  <button
+    type="button"
+    class="m-bar-btn"
+    data-sheet-open="filter-sheet"
+    aria-haspopup="dialog"
+    aria-controls="filter-sheet"
+  >
     筛选
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"></path></svg>
+    {% if active > 0 %}<i class="m-dot" aria-hidden="true"></i>{% endif %}
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
   </button>
 </div>
+{% endblock %}
 
-<div class="m-filter" data-filter-panel>
-  {% if types.size > 0 %}
-  <div class="m-filter-row">
-    <span class="m-filter-label">类型</span>
-    <a class="m-chip{% if filter.type == '' %} is-on{% endif %}" href="{{ base | page_url: clear, 1 }}">全部</a>
-    {% for t in types %}
-    {% assign f = filter | with_type: t.alias %}
-    <a class="m-chip{% if filter.type == t.alias %} is-on{% endif %}" href="{{ base | page_url: f, 1 }}">{{ t.name }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {% if years.size > 0 %}
-  <div class="m-filter-row">
-    <span class="m-filter-label">年份</span>
-    {% assign fy_all = filter | with_year: '' %}
-    <a class="m-chip{% if filter.year == '' %} is-on{% endif %}" href="{{ base | page_url: fy_all, 1 }}">全部</a>
-    {% for y in years %}
-    {% assign fy = filter | with_year: y %}
-    <a class="m-chip{% if filter.year == y %} is-on{% endif %}" href="{{ base | page_url: fy, 1 }}">{{ y }}</a>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <div class="m-filter-row">
-    <span class="m-filter-label">排序</span>
-    {% assign fs_time = filter | with_sort: 'time' %}
-    {% assign fs_new = filter | with_sort: 'new' %}
-    <a class="m-chip{% if filter.sort == 'time' %} is-on{% endif %}" href="{{ base | page_url: fs_time, 1 }}">最近更新</a>
-    <a class="m-chip{% if filter.sort == 'new' %} is-on{% endif %}" href="{{ base | page_url: fs_new, 1 }}">最新入库</a>
-  </div>
-</div>
-
+{% block content %}
 <div class="m-grid" id="m-list">
   {% for v in vods %}
   {% render 'mobile/partials/poster-card', card: v %}
@@ -51,12 +33,16 @@
   {% endfor %}
 </div>
 
+{% if pagination.total > 0 %}
 {% if pagination.page < pagination.total_pages %}
 {% assign next_page = pagination.page | plus: 1 %}
 <div class="m-more-wrap">
   <a class="m-more-btn" id="m-more" href="{{ base | page_url: filter, next_page }}">加载更多</a>
 </div>
-{% elsif pagination.total > 0 %}
+{% else %}
 <p class="m-end">已全部加载 · 共 {{ pagination.total }} 部</p>
 {% endif %}
+{% endif %}
+
+{% render 'mobile/partials/filter-sheet', base: base, filter: filter, types: types, years: years %}
 {% endblock %}

@@ -8,7 +8,7 @@
       onload="this.classList.add('is-loaded')"
       onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
     >
-    {% if card.remarks != blank %}<span class="m-badge">{{ card.remarks }}</span>{% endif %}
+    {% if card.remarks != blank %}<span class="m-card-badge">{{ card.remarks }}</span>{% endif %}
   </div>
   <div class="m-card-title">{{ card.name }}</div>
   <div class="m-card-sub">{{ card.year }}{% if card.area != blank %} · {{ card.area }}{% endif %}</div>

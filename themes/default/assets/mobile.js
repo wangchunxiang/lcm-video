@@ -1,42 +1,49 @@
-/* 移动端交互：筛选收起、选集抽屉、列表触底加载 */
+/* 移动端交互：通用抽屉、筛选开合、列表触底加载、页头滚动 */
 (function () {
-  var toggle = document.querySelector('[data-toggle-filter]');
-  var panel = document.querySelector('[data-filter-panel]');
-  if (toggle && panel) {
-    var open = false;
-    toggle.addEventListener('click', function () {
-      open = !open;
-      panel.classList.toggle('is-open', open);
-      toggle.setAttribute('aria-expanded', String(open));
-    });
-  }
-})();
+  var sheets = Array.prototype.slice.call(document.querySelectorAll('[data-sheet]'));
+  if (!sheets.length) return;
 
-(function () {
-  var sheet = document.querySelector('[data-eps-sheet]');
-  if (!sheet) return;
+  var active = null;
 
-  function setOpen(open) {
+  function setOpen(sheet, open) {
+    if (!sheet) return;
+    if (open) {
+      sheets.forEach(function (item) {
+        if (item !== sheet && item.classList.contains('is-open')) setOpen(item, false);
+      });
+    }
     sheet.classList.toggle('is-open', open);
     sheet.setAttribute('aria-hidden', String(!open));
-    document.documentElement.style.overflow = open ? 'hidden' : '';
+    if (open) {
+      active = sheet;
+      document.documentElement.style.overflow = 'hidden';
+      var closer = sheet.querySelector('[data-sheet-close]');
+      if (closer) closer.focus({ preventScroll: true });
+    } else {
+      if (active === sheet) active = null;
+      if (!document.querySelector('.m-sheet.is-open')) {
+        document.documentElement.style.overflow = '';
+      }
+    }
   }
 
-  Array.prototype.forEach.call(document.querySelectorAll('[data-open-eps]'), function (el) {
-    el.addEventListener('click', function () {
-      setOpen(true);
-    });
+  document.addEventListener('click', function (event) {
+    var opener = event.target.closest && event.target.closest('[data-sheet-open]');
+    if (opener) {
+      event.preventDefault();
+      setOpen(document.getElementById(opener.getAttribute('data-sheet-open')), true);
+      return;
+    }
+
+    var closer = event.target.closest && event.target.closest('[data-sheet-close]');
+    if (closer) {
+      event.preventDefault();
+      setOpen(closer.closest('.m-sheet'), false);
+    }
   });
 
-  Array.prototype.forEach.call(document.querySelectorAll('[data-close-eps]'), function (el) {
-    el.addEventListener('click', function (e) {
-      e.preventDefault();
-      setOpen(false);
-    });
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && sheet.classList.contains('is-open')) setOpen(false);
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && active) setOpen(active, false);
   });
 })();
 
@@ -95,23 +102,24 @@
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
       if (entries.some(function (entry) { return entry.isIntersecting; })) load();
-    }, { rootMargin: '200px 0px' });
+    }, { rootMargin: '240px 0px' });
     io.observe(wrap);
   } else {
-    link.addEventListener('click', function (e) {
-      e.preventDefault();
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
       load();
     });
   }
 })();
 
-/* 移动端页头：顶部透明，滚动后浮出半透明底色 */
 (function () {
   var header = document.querySelector('.m-header');
   if (!header) return;
+
   function sync() {
-    header.classList.toggle('is-scrolled', window.scrollY > 8);
+    header.classList.toggle('is-scrolled', window.scrollY > 6);
   }
+
   window.addEventListener('scroll', sync, { passive: true });
   sync();
 })();

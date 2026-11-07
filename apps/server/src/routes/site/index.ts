@@ -758,6 +758,47 @@ export const siteRoutes: FastifyPluginAsync<SiteRouteOpts> = async (app, opts) =
     return renderPlay(reply, vodId, toInt(playId), toInt(ep));
   });
 
+  /* 单集播放参数：换集时前端就地重建播放器，不再整页刷新 */
+  app.get('/api/play/:id/:playId/:ep', async (req, reply) => {
+    const { id, playId, ep } = req.params as { id: string; playId: string; ep: string };
+    const vodId = toInt(id);
+    const lineId = toInt(playId);
+    const epIndex = toInt(ep);
+    reply.header('cache-control', 'no-store');
+    if (vodId <= 0 || lineId <= 0 || epIndex <= 0) return reply.code(400).send({ ok: false });
+
+    const lines = await loadLines(vodId);
+    const line = lines.find((item) => item.id === lineId);
+    if (!line) return reply.code(404).send({ ok: false });
+
+    const episodes = parsePlayUrl(line.playUrl);
+    const current = episodes[epIndex - 1];
+    if (!current) return reply.code(404).send({ ok: false });
+
+    const isHls = /\.m3u8(\?|$)/i.test(current.url);
+    /* 广告线路的 m3u8 走本站代理，和首屏渲染时的判断保持一致 */
+    const adRows =
+      line.source_id > 0 && !line.parse_url && isHls
+        ? await db
+            .select({ sourceId: adFeature.sourceId })
+            .from(adFeature)
+            .where(eq(adFeature.sourceId, line.source_id))
+            .limit(1)
+        : [];
+    const proxied = adRows.length > 0;
+
+    return reply.send({
+      ok: true,
+      id: line.id,
+      ep: epIndex,
+      count: episodes.length,
+      name: current.name || `第 ${epIndex} 集`,
+      play_url: proxied ? `/play/ad/${vodId}/${line.id}/${epIndex}` : current.url,
+      is_hls: isHls ? '1' : '0',
+      iframe_url: line.parse_url ? buildIframeUrl(line.parse_url, current.url) : '',
+    });
+  });
+
   /* ------------------------------- 搜索 ------------------------------- */
 
   app.get('/search', async (req, reply) => {

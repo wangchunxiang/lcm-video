@@ -1,18 +1,16 @@
 {% layout 'mobile/layout' %}
 {% block content %}
 <section class="m-404">
-  <div class="m-404-code">{{ status | default: 404 }}</div>
-  <p class="m-404-msg">{{ message | default: '页面不存在或已被移除' }}</p>
+  <p class="m-404-code">404</p>
+  <p class="m-404-msg">页面不存在或已被移除。</p>
   <div class="m-404-actions">
-    <a class="m-btn m-btn-primary" href="/">回到首页</a>
-    <a class="m-btn" href="javascript:history.back()">上一页</a>
+    <a class="m-btn m-btn-primary" href="/">返回首页</a>
+    <a class="m-btn" href="/search">搜索影片</a>
   </div>
-  {% if nav.size > 0 %}
-  <div class="m-404-nav">
+  <nav class="m-404-nav" aria-label="分类导航">
     {% for item in nav %}
     <a class="m-chip" href="/list/{{ item.alias }}">{{ item.name }}</a>
     {% endfor %}
-  </div>
-  {% endif %}
+  </nav>
 </section>
 {% endblock %}

@@ -14,7 +14,9 @@
     <div class="m-row-meta">
       {{ card.year }}{% if card.category_name != blank %} · {{ card.category_name }}{% endif %}{% if card.area != blank %} · {{ card.area }}{% endif %}
     </div>
-    {% if card.remarks != blank %}<div class="m-row-remark">{{ card.remarks }}</div>{% endif %}
+    {% if card.remarks != blank %}
+    <div class="m-row-tags"><span class="m-row-remark">{{ card.remarks }}</span></div>
+    {% endif %}
   </div>
   <span class="m-row-arrow" aria-hidden="true">›</span>
 </a>

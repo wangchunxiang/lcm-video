@@ -1,37 +1,66 @@
 {% layout 'mobile/layout' %}
-{% block content %}
+{% block top %}
 <nav class="m-cats" aria-label="分类导航">
   <a class="m-cat is-on" href="/">首页</a>
   {% for item in nav %}
   <a class="m-cat" href="/list/{{ item.alias }}">{{ item.name }}</a>
   {% endfor %}
 </nav>
+{% endblock %}
+{% block content %}
+{% assign featured = vods.first %}
+{% if featured %}
+<a class="m-feature" href="/detail/{{ featured.id }}">
+  <img
+    class="m-feature-cover"
+    src="{{ featured.cover | default: '/assets/img/poster-placeholder.svg' }}"
+    alt="{{ featured.name }}"
+    fetchpriority="high"
+    onerror="this.onerror=null;this.src='/assets/img/poster-placeholder.svg'"
+  >
+  <span class="m-feature-shade" aria-hidden="true"></span>
+  <span class="m-feature-tag">最新上线</span>
+  <div class="m-feature-body">
+    <div class="m-feature-title">{{ featured.name }}</div>
+    <div class="m-feature-meta">
+      {{ featured.year }}{% if featured.category_name != blank %} · {{ featured.category_name }}{% endif %}{% if featured.area != blank %} · {{ featured.area }}{% endif %}{% if featured.remarks != blank %} · {{ featured.remarks }}{% endif %}
+    </div>
+    <span class="m-feature-cta">查看详情</span>
+  </div>
+</a>
+{% endif %}
 
+{% if vods.size > 1 %}
 <section class="m-sec">
   <div class="m-sec-head">
     <h2>最新更新</h2>
-    <span class="m-sec-extra">今日 {{ today_count }} 部</span>
+    <a class="m-more" href="/today">今日 {{ today_count }} 部 ›</a>
   </div>
   <div class="m-rows">
-    {% for v in vods %}
+    {% for v in vods offset: 1 limit: 5 %}
     {% render 'mobile/partials/vod-row', card: v %}
-    {% else %}
-    <p class="m-empty">暂无影片，稍后再来看看。</p>
     {% endfor %}
   </div>
 </section>
+{% endif %}
 
 {% for block in home_categories %}
+{% if block.vods.size > 0 %}
 <section class="m-sec">
   <div class="m-sec-head">
     <h2>{{ block.name }}</h2>
     <a class="m-more" href="/list/{{ block.alias }}">更多 ›</a>
   </div>
   <div class="m-grid">
-    {% for v in block.vods %}
+    {% for v in block.vods limit: 6 %}
     {% render 'mobile/partials/poster-card', card: v %}
     {% endfor %}
   </div>
 </section>
+{% endif %}
 {% endfor %}
+
+{% if vods.size == 0 %}
+<p class="m-empty">暂无影片，稍后再来看看。</p>
+{% endif %}
 {% endblock %}

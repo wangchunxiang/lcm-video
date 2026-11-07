@@ -1,50 +1,64 @@
 {% layout 'mobile/layout' %}
+{% assign keyword = keyword | default: '' %}
 {% assign base = '/search' %}
-{% block content %}
+
+{% block top %}
 <form class="m-searchbar" action="/search" method="get" role="search">
-  <input type="search" name="wd" value="{{ keyword }}" placeholder="搜索片名" autocomplete="off" enterkeyhint="search">
-  <button type="submit">搜索</button>
+  <label class="m-search-field">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>
+    <input
+      class="m-search-input"
+      type="search"
+      name="wd"
+      value="{{ keyword }}"
+      placeholder="搜索片名、演员或关键词"
+      autocomplete="off"
+      enterkeyhint="search"
+      maxlength="50"
+      aria-label="搜索关键词"
+    >
+  </label>
+  <button class="m-search-submit" type="submit">搜索</button>
 </form>
+{% endblock %}
 
+{% block content %}
 {% if keyword == '' %}
-<p class="m-empty m-empty-lg">输入片名开始搜索。</p>
+<p class="m-search-empty">输入片名、演员或关键词开始搜索。</p>
 {% else %}
-<p class="m-hit">「{{ keyword }}」共 {{ pagination.total }} 部</p>
-
-{% if years.size > 0 %}
-<div class="m-filter">
-  <div class="m-filter-row">
-    <span class="m-filter-label">年份</span>
-    {% assign fy_all = filter | with_year: '' %}
-    <a class="m-chip{% if filter.year == '' %} is-on{% endif %}" href="{{ base | page_url: fy_all, 1 }}">全部</a>
-    {% for y in years %}
-    {% assign fy = filter | with_year: y %}
-    <a class="m-chip{% if filter.year == y %} is-on{% endif %}" href="{{ base | page_url: fy, 1 }}">{{ y }}</a>
-    {% endfor %}
-  </div>
-  <div class="m-filter-row">
-    <span class="m-filter-label">排序</span>
-    {% assign fs_time = filter | with_sort: 'time' %}
-    {% assign fs_new = filter | with_sort: 'new' %}
-    <a class="m-chip{% if filter.sort == 'time' %} is-on{% endif %}" href="{{ base | page_url: fs_time, 1 }}">最近更新</a>
-    <a class="m-chip{% if filter.sort == 'new' %} is-on{% endif %}" href="{{ base | page_url: fs_new, 1 }}">最新入库</a>
-  </div>
+<div class="m-result-bar">
+  <p class="m-hit">「{{ keyword }}」共 <b>{{ pagination.total }}</b> 部</p>
+  <button
+    type="button"
+    class="m-bar-btn"
+    data-sheet-open="filter-sheet"
+    aria-haspopup="dialog"
+    aria-controls="filter-sheet"
+  >
+    筛选
+    {% if filter.year != '' or filter.sort != 'time' %}<i class="m-dot" aria-hidden="true"></i>{% endif %}
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>
+  </button>
 </div>
-{% endif %}
 
 <div class="m-grid" id="m-list">
   {% for v in vods %}
   {% render 'mobile/partials/poster-card', card: v %}
   {% else %}
-  <p class="m-empty">没有找到「{{ keyword }}」，换个关键词试试。</p>
+  <p class="m-empty">没有找到与「{{ keyword }}」相关的影片，换个关键词试试。</p>
   {% endfor %}
 </div>
 
-{% if pagination.page < pagination.total_pages %}
+{% assign loaded = pagination.page | times: pagination.page_size %}
+{% if pagination.total > loaded %}
 {% assign next_page = pagination.page | plus: 1 %}
 <div class="m-more-wrap">
   <a class="m-more-btn" id="m-more" href="{{ base | page_url: filter, next_page }}">加载更多</a>
 </div>
+{% elsif pagination.total > 0 %}
+<p class="m-end">已全部加载 · 共 {{ pagination.total }} 部</p>
 {% endif %}
+
+{% render 'mobile/partials/filter-sheet', base: base, filter: filter, types: types, years: years %}
 {% endif %}
 {% endblock %}
