@@ -11,6 +11,7 @@ import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CollectSourceModule } from './modules/collect-source/collect-source.module';
 import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
+import { SourceRuleModule } from './modules/source-rule/source-rule.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { SettingModule } from './modules/setting/setting.module';
@@ -47,6 +48,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VodModule,
     CollectSourceModule,
     CollectSourceCategoryModule,
+    SourceRuleModule,
   ],
   controllers: [HealthController],
   providers: [
