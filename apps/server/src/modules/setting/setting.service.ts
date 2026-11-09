@@ -33,6 +33,15 @@ export class SettingService {
     return { name: dto.name, value };
   }
 
+  /** 读一个数字配置，缺失或不是数字时用兜底值。 */
+  async number(name: string, fallback: number): Promise<number> {
+    const rows = await this.load();
+    const raw = rows.get(name);
+    if (raw === undefined || raw.trim() === '') return fallback;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
   async update(dto: SettingUpdateDTO): Promise<SettingVO> {
     await this.prisma.setting.upsert({
       where: { key: dto.name },

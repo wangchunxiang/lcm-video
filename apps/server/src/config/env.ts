@@ -5,6 +5,7 @@ const EnvDTO = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().int().positive().default(3100),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL 未配置'),
+  JWT_SECRET: z.string().min(16, 'JWT_SECRET 至少要 16 个字符'),
 });
 
 export type Env = z.infer<typeof EnvDTO>;

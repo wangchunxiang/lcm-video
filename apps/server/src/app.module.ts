@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { pino } from 'pino';
 import { HealthController } from './common/health.controller';
+import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { validateEnv } from './config/env';
+import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { SettingModule } from './modules/setting/setting.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -33,7 +36,12 @@ import { PrismaModule } from './prisma/prisma.module';
     PrismaModule,
     SettingModule,
     CategoryModule,
+    AdminUserModule,
   ],
   controllers: [HealthController],
+  providers: [
+    // 全局登录守卫：除 @Public() 外所有接口都要带 token（决策 5.3）
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+  ],
 })
 export class AppModule {}
