@@ -11,6 +11,9 @@ import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CollectSourceModule } from './modules/collect-source/collect-source.module';
 import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
+import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
+import { CoverCheckModule } from './modules/cover-check/cover-check.module';
+import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
 import { CollectTaskModule } from './modules/collect-task/collect-task.module';
 import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
 import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
@@ -55,6 +58,9 @@ import { PrismaModule } from './prisma/prisma.module';
     CollectTaskLogModule,
     CollectTaskLogDetailModule,
     SourceRuleModule,
+    AdFeatureModule,
+    VodMergeIgnoreModule,
+    CoverCheckModule,
   ],
   controllers: [HealthController],
   providers: [
