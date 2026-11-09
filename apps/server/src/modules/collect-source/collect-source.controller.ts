@@ -1,6 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { z } from 'zod';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import type { Page } from '../../common/page';
+import { CollectRunner } from '../../jobs/collect/runner.js';
 import { CollectSourceService } from './collect-source.service';
 import type {
   CollectSourceAllDTO,
@@ -28,7 +30,10 @@ import {
  */
 @Controller('api/admin/collect-source')
 export class CollectSourceController {
-  constructor(private readonly collectSourceService: CollectSourceService) {}
+  constructor(
+    private readonly collectSourceService: CollectSourceService,
+    private readonly runner: CollectRunner,
+  ) {}
 
   @Post('create')
   async create(@Body(new ZodValidationPipe(CreateSchema)) dto: CollectSourceCreateDTO): Promise<CollectSourceVO> {
@@ -60,6 +65,15 @@ export class CollectSourceController {
   @Post('all')
   async all(@Body(new ZodValidationPipe(AllSchema)) dto: CollectSourceAllDTO): Promise<CollectSourceVO[]> {
     return this.collectSourceService.all(dto);
+  }
+
+  /** 手动采集：立即跑一次，不需要建任务 */
+  @Post('run')
+  run(
+    @Body(new ZodValidationPipe(z.object({ id: z.number().int().positive(), confirmEmpty: z.boolean().optional() })))
+    dto: { id: number; confirmEmpty?: boolean },
+  ) {
+    return this.runner.startSourceRun(dto.id, { confirmEmpty: dto.confirmEmpty ?? false });
   }
 
   @Post('batch')

@@ -1,4 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { z } from 'zod';
+import { CollectRunner } from '../../jobs/collect/runner.js';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CollectTaskService } from './collect-task.service';
 import {
@@ -13,7 +15,10 @@ import {
 
 @Controller('api/admin/collect-task')
 export class CollectTaskController {
-  constructor(private readonly tasks: CollectTaskService) {}
+  constructor(
+    private readonly tasks: CollectTaskService,
+    private readonly runner: CollectRunner,
+  ) {}
 
   @Post('create')
   create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
@@ -43,6 +48,19 @@ export class CollectTaskController {
   @Post('all')
   all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
     return this.tasks.all(dto);
+  }
+
+  /** 立即执行：不受 cron 限制，跑完写一条采集记录 */
+  @Post('run')
+  run(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+    return this.runner.startTask(dto.id, 'manual');
+  }
+
+  /** 取消正在执行的任务 */
+  @Post('cancel')
+  async cancel(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+    const ok = await this.runner.cancelByTask(dto.id);
+    return { cancelled: ok };
   }
 
   @Post('batch')

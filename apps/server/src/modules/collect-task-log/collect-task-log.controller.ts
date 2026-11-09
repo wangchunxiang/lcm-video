@@ -1,4 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { z } from 'zod';
+import { CollectRunner } from '../../jobs/collect/runner.js';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CollectTaskLogService } from './collect-task-log.service';
 import {
@@ -12,7 +14,10 @@ import {
 
 @Controller('api/admin/collect-task-log')
 export class CollectTaskLogController {
-  constructor(private readonly logs: CollectTaskLogService) {}
+  constructor(
+    private readonly logs: CollectTaskLogService,
+    private readonly runner: CollectRunner,
+  ) {}
 
   @Post('create')
   create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
@@ -32,6 +37,19 @@ export class CollectTaskLogController {
   @Post('get')
   get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
     return this.logs.get(dto);
+  }
+
+  /** 断点续采：从 last_page 的下一页继续 */
+  @Post('resume')
+  resume(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+    return this.runner.startResume(dto.id);
+  }
+
+  /** 取消正在跑的这一轮 */
+  @Post('cancel')
+  async cancel(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+    const ok = await this.runner.cancel(dto.id);
+    return { cancelled: ok };
   }
 
   @Post('page')

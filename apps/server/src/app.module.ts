@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { pino } from 'pino';
 import { HealthController } from './common/health.controller';
@@ -18,6 +19,7 @@ import { CollectTaskModule } from './modules/collect-task/collect-task.module';
 import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
 import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
 import { SourceRuleModule } from './modules/source-rule/source-rule.module';
+import { CollectModule } from './jobs/collect/collect.module.js';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { SettingModule } from './modules/setting/setting.module';
@@ -31,6 +33,7 @@ import { PrismaModule } from './prisma/prisma.module';
       envFilePath: ['../../.env', '.env'],
       validate: validateEnv,
     }),
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         logger: pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' }),
@@ -53,6 +56,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VodPlayModule,
     VodModule,
     CollectSourceModule,
+    CollectModule,
     CollectSourceCategoryModule,
     CollectTaskModule,
     CollectTaskLogModule,
