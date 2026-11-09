@@ -11,6 +11,9 @@ import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CollectSourceModule } from './modules/collect-source/collect-source.module';
 import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
+import { CollectTaskModule } from './modules/collect-task/collect-task.module';
+import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
+import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
 import { SourceRuleModule } from './modules/source-rule/source-rule.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
@@ -48,6 +51,9 @@ import { PrismaModule } from './prisma/prisma.module';
     VodModule,
     CollectSourceModule,
     CollectSourceCategoryModule,
+    CollectTaskModule,
+    CollectTaskLogModule,
+    CollectTaskLogDetailModule,
     SourceRuleModule,
   ],
   controllers: [HealthController],
