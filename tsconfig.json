@@ -15,7 +15,6 @@
     "types": ["node"]
   },
   "include": [
-    "apps/server/src/**/*.ts",
     "packages/shared/src/**/*.ts",
     "packages/db/src/**/*.ts",
     "packages/db/scripts/**/*.ts",
