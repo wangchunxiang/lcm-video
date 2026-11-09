@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { validateEnv } from './config/env';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
+import { PlayLineModule } from './modules/play-line/play-line.module';
 import { SettingModule } from './modules/setting/setting.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -37,6 +38,7 @@ import { PrismaModule } from './prisma/prisma.module';
     SettingModule,
     CategoryModule,
     AdminUserModule,
+    PlayLineModule,
   ],
   controllers: [HealthController],
   providers: [
