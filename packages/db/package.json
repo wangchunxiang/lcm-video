@@ -14,10 +14,12 @@
     "init": "node --env-file=../../.env scripts/init.ts"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "drizzle-orm": "^0.44.5",
     "mysql2": "^3.14.0"
   },
   "devDependencies": {
-    "drizzle-kit": "^0.31.0"
+    "drizzle-kit": "^0.31.0",
+    "prisma": "^6.19.3"
   }
 }

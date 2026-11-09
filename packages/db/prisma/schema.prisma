@@ -1,0 +1,371 @@
+// 数据库 schema 真相源：新库 `lcm-video`（MariaDB），与旧库 `lcm_video` 并存。
+// 设计依据见 docs/数据库设计-v2.md。
+//
+// 约定：
+// - 表名 lcm_ 前缀，列名小写下划线；TS 侧用 camelCase + @map 映射到列名。
+// - 枚举一律 tinyint unsigned + 注释，不使用数据库 enum。
+// - 不建物理外键：此处不声明 relation，跨表关联由 Service 层显式查询。
+// - CHECK 约束 Prisma 不支持，由迁移 SQL 手工追加（见 docs/数据库设计-v2.md 第 7 节）。
+// - updatedAt 由 Prisma 在应用层写入；库里只有 DEFAULT CURRENT_TIMESTAMP，不带 ON UPDATE。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// 分类，固定两级：pid = 0 为一级分类，二级分类的 pid 指向一级分类。
+model Category {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  /// 父分类 id，0 表示一级分类
+  pid        Int      @default(0) @db.UnsignedInt
+  name       String   @default("") @db.VarChar(50)
+  /// URL 段，如 movie
+  alias      String   @unique(map: "uk_alias") @default("") @db.VarChar(50)
+  /// 源站分类名匹配串，逗号分隔，用于自动映射
+  matchNames String   @map("match_names") @default("") @db.VarChar(255)
+  sort       Int      @default(0) @db.UnsignedInt
+  /// 1 前台显示 0 隐藏
+  isShow     Int      @map("is_show") @default(1) @db.UnsignedTinyInt
+  createdAt  DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt  DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([pid, sort], map: "idx_pid_sort")
+  @@map("lcm_category")
+}
+
+/// 影片主表。
+model Vod {
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  /// 二级分类 id
+  categoryId     Int       @map("category_id") @default(0) @db.UnsignedInt
+  /// 一级分类 id，冗余字段，按一级分类筛选时避免 join
+  categoryPid    Int       @map("category_pid") @default(0) @db.UnsignedInt
+  name           String    @default("") @db.VarChar(255)
+  /// 规范化片名的 MD5，严格判重用
+  nameHash       String    @map("name_hash") @default("") @db.Char(32)
+  /// 去掉标点后的 MD5，仅用于后台提示疑似重复
+  nameHashLoose  String    @map("name_hash_loose") @default("") @db.Char(32)
+  /// 别名
+  subName        String    @map("sub_name") @default("") @db.VarChar(500)
+  cover          String    @default("") @db.VarChar(1000)
+  /// 封面域名，写入 cover 时同步维护
+  coverHost      String    @map("cover_host") @default("") @db.VarChar(255)
+  actor          String    @default("") @db.VarChar(1000)
+  director       String    @default("") @db.VarChar(500)
+  writer         String    @default("") @db.VarChar(500)
+  /// 短简介，列表页用
+  intro          String    @default("") @db.VarChar(1000)
+  /// 长简介，详情页用
+  content        String?   @db.Text
+  /// 更新备注
+  remarks        String    @default("") @db.VarChar(255)
+  /// 上映日期，源站原文（Y-m-d / Y）
+  releaseDate    String    @map("release_date") @default("") @db.VarChar(20)
+  episodeCount   Int       @map("episode_count") @default(0) @db.UnsignedInt
+  area           String    @default("") @db.VarChar(100)
+  lang           String    @default("") @db.VarChar(100)
+  year           Int       @default(0) @db.UnsignedInt
+  /// 1 上架 0 下架
+  status         Int       @default(1) @db.UnsignedTinyInt
+  /// 最后一次采集时间，列表排序用
+  collectedAt    DateTime  @map("collected_at") @default(now()) @db.DateTime(0)
+  createdAt      DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt      DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([categoryId, status], map: "idx_category_status")
+  @@index([categoryPid, status], map: "idx_pid_status")
+  @@index([categoryId, status, year], map: "idx_category_status_year")
+  @@index([categoryPid, status, year], map: "idx_pid_status_year")
+  @@index([nameHash], map: "idx_name_hash")
+  @@index([nameHashLoose], map: "idx_name_hash_loose")
+  @@index([status, collectedAt], map: "idx_status_collected")
+  @@index([coverHost], map: "idx_cover_host")
+  /// 覆盖索引：status 收窄 + name LIKE 过滤，取 id/year/collected_at/created_at 不回表
+  @@index([status, name, year, collectedAt, createdAt], map: "idx_search")
+  @@map("lcm_vod")
+}
+
+/// 影片的播放线路数据。一行 = 某影片在某条线路上的全部集数。
+model VodPlay {
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  vodId           Int       @map("vod_id") @default(0) @db.UnsignedInt
+  /// NULL 表示手工添加的线路
+  sourceId        Int?      @map("source_id") @db.UnsignedInt
+  /// 线路标识，如 lzm3u8
+  sourceFrom      String    @map("source_from") @default("") @db.VarChar(50)
+  /// 源站内的影片 id，用于增量比对
+  sourceVodId     String    @map("source_vod_id") @default("") @db.VarChar(50)
+  /// 源站给出的更新时间，用于判断是否要更新
+  sourceUpdatedAt DateTime? @map("source_updated_at") @db.DateTime(0)
+  collectedAt     DateTime  @map("collected_at") @default(now()) @db.DateTime(0)
+  /// 整串播放地址：第1集$http://...#第2集$http://...
+  playUrl         String    @map("play_url") @db.MediumText
+  createdAt       DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt       DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@unique([vodId, sourceId, sourceFrom], map: "uk_vod_source_from")
+  @@index([sourceId], map: "idx_source")
+  @@index([sourceId, sourceVodId, vodId], map: "idx_source_vod_vod")
+  @@map("lcm_vod_play")
+}
+
+/// 采集源站，只支持 json 接口。
+model CollectSource {
+  id             Int       @id @default(autoincrement()) @db.UnsignedInt
+  name           String    @default("") @db.VarChar(50)
+  /// 采集接口地址
+  apiUrl         String    @map("api_url") @default("") @db.VarChar(255)
+  /// 附加参数串，如 t=1
+  apiParams      String    @map("api_params") @default("") @db.VarChar(500)
+  /// 播放解析接口，空表示直连
+  parseUrl       String    @map("parse_url") @default("") @db.VarChar(255)
+  isEnabled      Int       @map("is_enabled") @default(1) @db.UnsignedTinyInt
+  /// 请求间隔秒数，避免被封
+  intervalSec    Int       @map("interval_sec") @default(3) @db.UnsignedInt
+  /// 每页条数 1~100
+  pagesize       Int       @default(100) @db.UnsignedInt
+  timeout        Int       @default(30) @db.UnsignedInt
+  retryTimes     Int       @map("retry_times") @default(2) @db.UnsignedTinyInt
+  lastSyncAt     DateTime? @map("last_sync_at") @db.DateTime(0)
+  /// 0 未同步 1 成功 2 失败
+  lastSyncStatus Int       @map("last_sync_status") @default(0) @db.UnsignedTinyInt
+  lastSyncMsg    String    @map("last_sync_msg") @default("") @db.VarChar(255)
+  /// 最近一次采集到的线路标识，逗号分隔，后台候选提示用
+  playFrom       String    @map("play_from") @default("") @db.VarChar(500)
+  createdAt      DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt      DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([isEnabled], map: "idx_enabled")
+  @@map("lcm_collect_source")
+}
+
+/// 全站线路注册表。是显示覆盖层（改名/排序/停用），不是 vod_play 的父实体。
+model PlayLine {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  sourceFrom String   @unique(map: "uk_source_from") @map("source_from") @default("") @db.VarChar(50)
+  /// 前台显示名，空则回退到采集源名
+  name       String   @default("") @db.VarChar(50)
+  sort       Int      @default(0) @db.UnsignedInt
+  /// 0 停用该线路（全局，影响所有影片）
+  isEnabled  Int      @map("is_enabled") @default(1) @db.UnsignedTinyInt
+  createdAt  DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt  DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([sort], map: "idx_sort")
+  @@map("lcm_play_line")
+}
+
+/// 源站分类 → 本站分类的映射。
+/// 迁移时需手工追加 CHECK ((status = 1) = (category_id > 0))，见 ck_status_mapped。
+model CollectSourceCategory {
+  id             Int      @id @default(autoincrement()) @db.UnsignedInt
+  sourceId       Int      @map("source_id") @default(0) @db.UnsignedInt
+  /// 源站分类 id（字符串）
+  sourceTypeId   String   @map("source_type_id") @default("") @db.VarChar(50)
+  /// 源站分类名快照，同步分类时刷新
+  sourceTypeName String   @map("source_type_name") @default("") @db.VarChar(100)
+  /// 源站父分类 id，后台按两级树展示用
+  sourceTypePid  String   @map("source_type_pid") @default("") @db.VarChar(50)
+  /// 映射到的本站分类，0 表示未映射
+  categoryId     Int      @map("category_id") @default(0) @db.UnsignedInt
+  /// 映射方式：0 无 1 自动 2 手动（配合 status 区分手动映射 / 手动忽略）
+  matchType      Int      @map("match_type") @default(0) @db.UnsignedTinyInt
+  /// 0 未映射 1 已映射 2 已忽略
+  status         Int      @default(0) @db.UnsignedTinyInt
+  createdAt      DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt      DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@unique([sourceId, sourceTypeId], map: "uk_source_type")
+  @@index([categoryId], map: "idx_category")
+  @@index([sourceId, status], map: "idx_source_status")
+  @@map("lcm_collect_source_category")
+}
+
+/// 采集任务。
+model CollectTask {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  name          String    @default("") @db.VarChar(50)
+  sourceId      Int       @map("source_id") @default(0) @db.UnsignedInt
+  /// 1 最近24小时 2 最近7天 3 最近30天 4 全部
+  rangeType     Int       @map("range_type") @default(1) @db.UnsignedTinyInt
+  /// 5 段 cron
+  cron          String    @default("") @db.VarChar(50)
+  isEnabled     Int       @map("is_enabled") @default(1) @db.UnsignedTinyInt
+  lastRunAt     DateTime? @map("last_run_at") @db.DateTime(0)
+  /// 0 未运行 1 运行中 2 成功 3 失败 4 已取消
+  lastRunStatus Int       @map("last_run_status") @default(0) @db.UnsignedTinyInt
+  lastRunMsg    String    @map("last_run_msg") @default("") @db.VarChar(255)
+  createdAt     DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt     DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([sourceId], map: "idx_source")
+  @@index([isEnabled], map: "idx_enabled")
+  @@map("lcm_collect_task")
+}
+
+/// 采集任务的执行记录（原 lcm_collect_log）。
+model CollectTaskLog {
+  id            Int       @id @default(autoincrement()) @db.UnsignedInt
+  /// 0 表示手动采集
+  taskId        Int       @map("task_id") @default(0) @db.UnsignedInt
+  sourceId      Int       @map("source_id") @default(0) @db.UnsignedInt
+  /// 任务名快照，任务删除后仍可显示
+  taskName      String    @map("task_name") @default("") @db.VarChar(50)
+  rangeType     Int       @map("range_type") @default(1) @db.UnsignedTinyInt
+  /// 1 运行中 2 成功 3 失败 4 已取消
+  status        Int       @default(1) @db.UnsignedTinyInt
+  totalPages    Int       @map("total_pages") @default(0) @db.UnsignedInt
+  /// 已完成到第几页，断点续采锚点
+  lastPage      Int       @map("last_page") @default(0) @db.UnsignedInt
+  resumeCount   Int       @map("resume_count") @default(0) @db.UnsignedInt
+  /// 累计中断毫秒，用于扣减停机时间
+  interruptedMs Int       @map("interrupted_ms") @default(0) @db.UnsignedInt
+  total         Int       @default(0) @db.UnsignedInt
+  inserted      Int       @default(0) @db.UnsignedInt
+  updated       Int       @default(0) @db.UnsignedInt
+  skipped       Int       @default(0) @db.UnsignedInt
+  ignored       Int       @default(0) @db.UnsignedInt
+  failed        Int       @default(0) @db.UnsignedInt
+  message       String    @default("") @db.VarChar(500)
+  startedAt     DateTime  @map("started_at") @default(now()) @db.DateTime(0)
+  finishedAt    DateTime? @map("finished_at") @db.DateTime(0)
+  createdAt     DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt     DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([taskId, startedAt], map: "idx_task_started")
+  @@index([startedAt], map: "idx_started")
+  @@index([sourceId, startedAt], map: "idx_source_started")
+  @@map("lcm_collect_task_log")
+}
+
+/// 采集记录明细，一页一行。
+model CollectTaskLogDetail {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  logId      Int      @map("log_id") @default(0) @db.UnsignedInt
+  page       Int      @default(0) @db.UnsignedInt
+  /// 该页条数（上级表是累计值）
+  total      Int      @default(0) @db.UnsignedInt
+  inserted   Int      @default(0) @db.UnsignedInt
+  updated    Int      @default(0) @db.UnsignedInt
+  skipped    Int      @default(0) @db.UnsignedInt
+  ignored    Int      @default(0) @db.UnsignedInt
+  failed     Int      @default(0) @db.UnsignedInt
+  /// [{vod_id,name,reason}]
+  failDetail Json?    @map("fail_detail")
+  /// 该页结论；整页请求失败时只填这里
+  message    String   @default("") @db.VarChar(500)
+  createdAt  DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt  DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([logId, page], map: "idx_log_page")
+  @@map("lcm_collect_task_log_detail")
+}
+
+/// 后台账号。当前单账号全权限模型，无角色列。
+model AdminUser {
+  id              Int       @id @default(autoincrement()) @db.UnsignedInt
+  username        String    @unique(map: "uk_username") @default("") @db.VarChar(50)
+  /// scrypt$N$r$p$salt$hash
+  password        String    @default("") @db.VarChar(255)
+  nickname        String    @default("") @db.VarChar(50)
+  isEnabled       Int       @map("is_enabled") @default(1) @db.UnsignedTinyInt
+  /// 改密码时自增，使旧 token 失效
+  passwordVersion Int       @map("password_version") @default(0) @db.UnsignedInt
+  lastLoginAt     DateTime? @map("last_login_at") @db.DateTime(0)
+  /// IPv6 完整写法上限
+  lastLoginIp     String?   @map("last_login_ip") @db.VarChar(45)
+  createdAt       DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt       DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@map("lcm_admin_user")
+}
+
+/// 广告特征库：按分片时长指纹识别片头/片中/片尾广告。
+model AdFeature {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  sourceId  Int      @map("source_id") @default(0) @db.UnsignedInt
+  /// 1 片头 2 片中 3 片尾
+  kind      Int      @default(2) @db.UnsignedTinyInt
+  /// 分片时长指纹，逗号分隔（字符串才能建唯一索引）
+  durations String   @db.VarChar(255)
+  totalMs   Int      @map("total_ms") @default(0) @db.UnsignedInt
+  hitVods   Int      @map("hit_vods") @default(0) @db.UnsignedInt
+  /// [{vod_id,vod_name,start,start_sec,url}]
+  sample    Json?
+  createdAt DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@unique([sourceId, durations], map: "uk_source_durations")
+  @@index([sourceId], map: "idx_source")
+  @@map("lcm_ad_feature")
+}
+
+/// 重复影片忽略名单：用户在「重复影片」页点「不是重复」后记进来。
+model VodMergeIgnore {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  /// auto:<hash> 或 suspect:<hash>~<year>
+  mergeKey  String   @unique(map: "uk_merge_key") @map("merge_key") @db.VarChar(64)
+  /// 1 严格重复 2 疑似重复
+  kind      Int      @default(1) @db.UnsignedTinyInt
+  createdAt DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@map("lcm_vod_merge_ignore")
+}
+
+/// 采集源的地址替换规则，按 sort 升序依次套用。
+model SourceRule {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  sourceId  Int      @map("source_id") @default(0) @db.UnsignedInt
+  /// 1 播放地址 2 图片地址
+  kind      Int      @default(1) @db.UnsignedTinyInt
+  /// 源地址前缀
+  fromUrl   String   @map("from_url") @default("") @db.VarChar(255)
+  /// 替换成的前缀，空表示删除该前缀
+  toUrl     String   @map("to_url") @default("") @db.VarChar(255)
+  isEnabled Int      @map("is_enabled") @default(1) @db.UnsignedTinyInt
+  /// 应用顺序，小的先套
+  sort      Int      @default(0) @db.UnsignedInt
+  createdAt DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@unique([sourceId, kind, fromUrl], map: "uk_source_kind_from")
+  @@index([sourceId, kind], map: "idx_source_kind")
+  @@map("lcm_source_rule")
+}
+
+/// 图片域名体检：域名级，每域名抽查 2 张。
+model CoverCheck {
+  id         Int       @id @default(autoincrement()) @db.UnsignedInt
+  /// 封面域名，不含协议与路径
+  host       String    @unique(map: "uk_host") @default("") @db.VarChar(255)
+  /// 检查时引用该域名的影片数快照
+  vodCount   Int       @map("vod_count") @default(0) @db.UnsignedInt
+  /// 0 未检查 1 正常 2 失效 3 无法验证
+  status     Int       @default(0) @db.UnsignedTinyInt
+  sampleOk   Int       @map("sample_ok") @default(0) @db.UnsignedInt
+  sampleFail Int       @map("sample_fail") @default(0) @db.UnsignedInt
+  message    String    @default("") @db.VarChar(255)
+  checkedAt  DateTime? @map("checked_at") @db.DateTime(0)
+  createdAt  DateTime  @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt  DateTime  @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@index([status], map: "idx_status")
+  @@map("lcm_cover_check")
+}
+
+/// 站点配置 KV。类型校验与默认值由 packages/shared 的 zod schema 负责。
+model Setting {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  /// 配置键
+  key       String   @unique(map: "uk_name") @map("name") @default("") @db.VarChar(50)
+  value     String?  @db.Text
+  createdAt DateTime @map("created_at") @default(now()) @db.DateTime(0)
+  updatedAt DateTime @map("updated_at") @default(now()) @updatedAt @db.DateTime(0)
+
+  @@map("lcm_setting")
+}
