@@ -10,6 +10,7 @@ import { validateEnv } from './config/env';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CollectSourceModule } from './modules/collect-source/collect-source.module';
+import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { SettingModule } from './modules/setting/setting.module';
@@ -45,6 +46,7 @@ import { PrismaModule } from './prisma/prisma.module';
     VodPlayModule,
     VodModule,
     CollectSourceModule,
+    CollectSourceCategoryModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -95,3 +95,30 @@ export function normalizeCover(url: string | null | undefined): string {
   }
   return text;
 }
+
+/* ------------------------------ 源站分类自动匹配 ------------------------------ */
+
+export interface CategoryMatchInfo {
+  id: number;
+  pid: number;
+  name: string;
+  /** 可用于匹配的别名（category.match_names 按逗号拆开） */
+  matchNames: string[];
+}
+
+/**
+ * 源站分类名 → 本站分类 id：先比别名，再比分类名完全相等。
+ * 不继承父分类，也不做包含匹配；匹配不到返回 0。
+ */
+export function autoMatchCategory(sourceTypeName: string, categories: CategoryMatchInfo[]): number {
+  const name = sourceTypeName.trim();
+  if (name.length === 0) return 0;
+
+  for (const item of categories) {
+    if (item.matchNames.includes(name)) return item.id;
+  }
+  for (const item of categories) {
+    if (item.name === name) return item.id;
+  }
+  return 0;
+}
