@@ -3,6 +3,7 @@ import type { PlayLine, Prisma } from '@prisma/client';
 import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CollectSourceService } from '../collect-source/collect-source.service';
 import type {
   PlayLineAllDTO,
   PlayLineBatchDTO,
@@ -20,7 +21,10 @@ const SORT_STEP = 10;
 
 @Injectable()
 export class PlayLineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collectSourceService: CollectSourceService,
+  ) {}
 
   async create(dto: PlayLineCreateDTO): Promise<PlayLineVO> {
     const exists = await this.prisma.playLine.count({ where: { sourceFrom: dto.sourceFrom } });
@@ -47,7 +51,7 @@ export class PlayLineService {
       isEnabled: dto.isEnabled,
     };
     const row = await this.prisma.playLine.update({ where: { id: dto.id }, data });
-    return toVO(row, (await this.sourceNameMap()).get(row.sourceFrom) ?? '');
+    return toVO(row, (await this.collectSourceService.playFromNameMap()).get(row.sourceFrom) ?? '');
   }
 
   async delete(dto: PlayLineDeleteDTO): Promise<{ deleted: number }> {
@@ -61,7 +65,7 @@ export class PlayLineService {
     if (rows.length > 1) throw new BadRequestException('条件不唯一，请补充更精确的查询条件');
 
     const row = rows[0] as PlayLine;
-    return toVO(row, (await this.sourceNameMap()).get(row.sourceFrom) ?? '');
+    return toVO(row, (await this.collectSourceService.playFromNameMap()).get(row.sourceFrom) ?? '');
   }
 
   async page(dto: PlayLinePageDTO): Promise<Page<PlayLineVO>> {
@@ -75,7 +79,7 @@ export class PlayLineService {
         take: dto.pageSize,
       }),
     ]);
-    const names = await this.sourceNameMap();
+    const names = await this.collectSourceService.playFromNameMap();
     return toPage(
       rows.map((row) => toVO(row, names.get(row.sourceFrom) ?? '')),
       total,
@@ -90,7 +94,7 @@ export class PlayLineService {
       orderBy: [{ sort: 'asc' }, { id: 'asc' }],
       take: ALL_LIMIT,
     });
-    const names = await this.sourceNameMap();
+    const names = await this.collectSourceService.playFromNameMap();
     return rows.map((row) => toVO(row, names.get(row.sourceFrom) ?? ''));
   }
 
@@ -111,25 +115,6 @@ export class PlayLineService {
       ),
     );
     return null;
-  }
-
-  /**
-   * 线路标识 → 采集源名。来源是 lcm_collect_source.play_from（逗号列表），
-   * 同一标识只取第一个登记的源。
-   * TODO: 采集源模块就绪后改为注入 CollectSourceService，不在这里直查它表（决策 2.1）。
-   */
-  private async sourceNameMap(): Promise<Map<string, string>> {
-    const sources = await this.prisma.collectSource.findMany({
-      select: { name: true, playFrom: true },
-    });
-    const map = new Map<string, string>();
-    for (const source of sources) {
-      for (const part of source.playFrom.split(',')) {
-        const key = part.trim();
-        if (key.length > 0 && !map.has(key)) map.set(key, source.name);
-      }
-    }
-    return map;
   }
 
   private buildWhere(input: {

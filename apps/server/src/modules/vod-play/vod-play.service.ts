@@ -4,6 +4,7 @@ import type { Prisma, VodPlay } from '@prisma/client';
 import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CollectSourceService } from '../collect-source/collect-source.service';
 import type {
   VodPlayAllDTO,
   VodPlayByVodDTO,
@@ -20,7 +21,10 @@ const ALL_LIMIT = 1000;
 
 @Injectable()
 export class VodPlayService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collectSourceService: CollectSourceService,
+  ) {}
 
   async create(dto: VodPlayCreateDTO): Promise<VodPlayVO> {
     const vodExists = await this.prisma.vod.count({ where: { id: dto.vodId } });
@@ -46,7 +50,7 @@ export class VodPlayService {
         playUrl: dto.playUrl,
       },
     });
-    return toVO(row, await this.sourceNameMap([sourceId]));
+    return toVO(row, await this.collectSourceService.nameMap([sourceId]));
   }
 
   /** 采集来的线路只允许改播放地址；手工线路可以改名。 */
@@ -73,7 +77,7 @@ export class VodPlayService {
       where: { id: dto.id },
       data: { sourceFrom: dto.sourceFrom, playUrl: dto.playUrl },
     });
-    return toVO(row, await this.sourceNameMap([row.sourceId]));
+    return toVO(row, await this.collectSourceService.nameMap([row.sourceId]));
   }
 
   /** 删掉某影片的最后一条线路需要 force=true（旧站用 409 二次确认）。 */
@@ -112,7 +116,7 @@ export class VodPlayService {
     if (rows.length > 1) throw new BadRequestException('条件不唯一，请补充更精确的查询条件');
 
     const row = rows[0] as VodPlay;
-    return toVO(row, await this.sourceNameMap([row.sourceId]));
+    return toVO(row, await this.collectSourceService.nameMap([row.sourceId]));
   }
 
   async page(dto: VodPlayPageDTO): Promise<Page<VodPlayVO>> {
@@ -126,7 +130,7 @@ export class VodPlayService {
         take: dto.pageSize,
       }),
     ]);
-    const names = await this.sourceNameMap(rows.map((row) => row.sourceId));
+    const names = await this.collectSourceService.nameMap(rows.map((row) => row.sourceId));
     return toPage(
       rows.map((row) => toVO(row, names)),
       total,
@@ -141,7 +145,7 @@ export class VodPlayService {
       orderBy: [{ id: 'asc' }],
       take: ALL_LIMIT,
     });
-    const names = await this.sourceNameMap(rows.map((row) => row.sourceId));
+    const names = await this.collectSourceService.nameMap(rows.map((row) => row.sourceId));
     return rows.map((row) => toVO(row, names));
   }
 
@@ -151,26 +155,11 @@ export class VodPlayService {
       where: { vodId: dto.vodId },
       orderBy: [{ id: 'asc' }],
     });
-    const names = await this.sourceNameMap(rows.map((row) => row.sourceId));
+    const names = await this.collectSourceService.nameMap(rows.map((row) => row.sourceId));
     return rows.map((row) => ({
       ...toVO(row, names),
       episodes: parsePlayUrl(row.playUrl).map((episode) => ({ name: episode.name, url: episode.url })),
     }));
-  }
-
-  /**
-   * 采集源 id → 名称。采集源模块就绪后改为注入 CollectSourceService（决策 2.1）。
-   * TODO: collect-source 模块建好后删除这里的直查。
-   */
-  private async sourceNameMap(sourceIds: Array<number | null>): Promise<Map<number, string>> {
-    const ids = [...new Set(sourceIds.filter((id): id is number => id !== null))];
-    if (ids.length === 0) return new Map();
-
-    const rows = await this.prisma.collectSource.findMany({
-      where: { id: { in: ids } },
-      select: { id: true, name: true },
-    });
-    return new Map(rows.map((row) => [row.id, row.name]));
   }
 
   private buildWhere(input: {

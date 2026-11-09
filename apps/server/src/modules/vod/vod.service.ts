@@ -5,6 +5,7 @@ import type { Vod } from '@prisma/client';
 import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CollectSourceService } from '../collect-source/collect-source.service';
 import type {
   VodAllDTO,
   VodBatchDTO,
@@ -39,7 +40,10 @@ interface CategoryRef {
 
 @Injectable()
 export class VodService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collectSourceService: CollectSourceService,
+  ) {}
 
   async create(dto: VodCreateDTO): Promise<VodVO> {
     const category = await this.requireCategory(dto.categoryId);
@@ -211,7 +215,7 @@ export class VodService {
       orderBy: [{ id: 'asc' }],
       select: { id: true, sourceId: true, sourceFrom: true, playUrl: true },
     });
-    const sourceNames = await this.sourceNameMap(plays.map((play) => play.sourceId));
+    const sourceNames = await this.collectSourceService.nameMap(plays.map((play) => play.sourceId));
 
     const playBriefs: VodPlayBriefVO[] = plays.map((play) => ({
       id: play.id,
@@ -315,16 +319,6 @@ export class VodService {
     return new Map(
       rows.map((row) => [Number(row.vodId), { playCount: Number(row.plays), actualEpisodes: Number(row.episodes) }]),
     );
-  }
-
-  private async sourceNameMap(ids: Array<number | null>): Promise<Map<number, string>> {
-    const unique = [...new Set(ids.filter((id): id is number => id !== null))];
-    if (unique.length === 0) return new Map();
-    const rows = await this.prisma.collectSource.findMany({
-      where: { id: { in: unique } },
-      select: { id: true, name: true },
-    });
-    return new Map(rows.map((row) => [row.id, row.name]));
   }
 
   private toVO(
