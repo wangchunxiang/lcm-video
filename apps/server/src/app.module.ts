@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { pino } from 'pino';
 import { HealthController } from './common/health.controller';
 import { validateEnv } from './config/env';
+import { CategoryModule } from './modules/category/category.module';
 import { SettingModule } from './modules/setting/setting.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma/prisma.module';
     }),
     PrismaModule,
     SettingModule,
+    CategoryModule,
   ],
   controllers: [HealthController],
 })
