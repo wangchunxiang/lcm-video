@@ -3,14 +3,18 @@ import { Prisma } from '@prisma/client';
 import type { CoverCheck } from '@prisma/client';
 import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
+import { HOST_PARALLEL, clearHostCovers, repairHostCovers, scanHost } from '../../jobs/covers/repair';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CoverCheckAllDTO,
   CoverCheckCreateDTO,
   CoverCheckDeleteDTO,
+  CoverCheckClearDTO,
   CoverCheckGetDTO,
   CoverCheckHostVodsDTO,
   CoverCheckPageDTO,
+  CoverCheckRepairDTO,
+  CoverCheckScanDTO,
   CoverCheckUpdateDTO,
   CoverCheckVO,
   CoverCheckHostVO,
@@ -168,5 +172,64 @@ export class CoverCheckService {
       this.prisma.vod.count({ where }),
     ]);
     return toPage(rows, total, dto.pageNum, dto.pageSize);
+  }
+  /**
+   * 检查一个域名或全部域名。
+   * mode=pending（默认）只检查未检查/失效/无法验证的域名，跳过上次正常的；
+   * mode=all 忽略历史结果，全部重检。
+   */
+  async scan(
+    dto: CoverCheckScanDTO,
+  ): Promise<{ items: Array<Awaited<ReturnType<typeof scanHost>>>; skipped: number }> {
+    if (dto.host) {
+      const vodCount = await this.prisma.vod.count({ where: { coverHost: dto.host } });
+      return { items: [await scanHost(this.prisma, dto.host, vodCount)], skipped: 0 };
+    }
+
+    const { items: hosts } = await this.hosts();
+    let targets = hosts;
+    let skipped = 0;
+    if (dto.mode === 'pending') {
+      targets = hosts.filter((item) => item.status !== 1);
+      skipped = hosts.length - targets.length;
+    }
+
+    const results: Awaited<ReturnType<typeof scanHost>>[] = [];
+    // 固定大小的并发池：快的域名不会等慢的，避免按批切分时每批都被最慢的拖住
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (cursor < targets.length) {
+        const item = targets[cursor++];
+        if (!item) break;
+        results.push(await scanHost(this.prisma, item.host, item.vodCount));
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(HOST_PARALLEL, targets.length) }, worker));
+    return { items: results, skipped };
+  }
+
+  /** 清空该域名下的封面 */
+  async clear(dto: CoverCheckClearDTO): Promise<{ needConfirm: boolean; total: number; cleared: number }> {
+    const total = await this.prisma.vod.count({ where: { coverHost: dto.host } });
+    if (!dto.confirm) return { needConfirm: true, total, cleared: 0 };
+    const cleared = await clearHostCovers(this.prisma, dto.host);
+    return { needConfirm: false, total, cleared };
+  }
+
+  /** 修复该域名下的封面 */
+  async repair(dto: CoverCheckRepairDTO): Promise<{
+    needConfirm: boolean;
+    total: number;
+    fixed: number;
+    failed: number;
+    remaining: number;
+    items: Array<{ vodId: number; name: string; from: string; to: string; ok: boolean; reason: string }>;
+  }> {
+    const total = await this.prisma.vod.count({ where: { coverHost: dto.host } });
+    if (!dto.confirm) {
+      return { needConfirm: true, total, fixed: 0, failed: 0, remaining: total, items: [] };
+    }
+    const result = await repairHostCovers(this.prisma, { host: dto.host, limit: dto.limit });
+    return { needConfirm: false, total, ...result };
   }
 }

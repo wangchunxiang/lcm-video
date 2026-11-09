@@ -97,3 +97,25 @@ export interface CoverCheckSummaryVO {
   unverified: number;
   unchecked: number;
 }
+
+/** 体检：不传 host 就检查全部域名；mode=pending 跳过上次正常的 */
+export const CoverCheckScanDTO = z.object({
+  host: z.string().trim().max(255).optional(),
+  mode: z.union([z.literal('pending'), z.literal('all')], { message: 'mode 只能是 pending 或 all' }).default('pending'),
+});
+export type CoverCheckScanDTO = z.infer<typeof CoverCheckScanDTO>;
+
+/** 清空某域名下的封面，前台退回占位图；confirm=false 只返回会影响的条数 */
+export const CoverCheckClearDTO = z.object({
+  host: hostField,
+  confirm: z.boolean().default(false),
+});
+export type CoverCheckClearDTO = z.infer<typeof CoverCheckClearDTO>;
+
+/** 修复某域名下的封面（按片名去源站找替换），confirm=false 只返回剩余条数 */
+export const CoverCheckRepairDTO = z.object({
+  host: hostField,
+  confirm: z.boolean().default(false),
+  limit: z.number().int().min(1).max(50).default(20),
+});
+export type CoverCheckRepairDTO = z.infer<typeof CoverCheckRepairDTO>;
