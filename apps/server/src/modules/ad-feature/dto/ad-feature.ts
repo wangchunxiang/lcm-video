@@ -88,3 +88,9 @@ export interface AdFeatureVO {
   createdAt: string;
   updatedAt: string;
 }
+
+/** 抽取样本 / 执行分析：只按采集源 */
+export const AdFeatureAnalyzeDTO = z.object({
+  sourceId: z.number().int().positive('请选择采集源'),
+});
+export type AdFeatureAnalyzeDTO = z.infer<typeof AdFeatureAnalyzeDTO>;

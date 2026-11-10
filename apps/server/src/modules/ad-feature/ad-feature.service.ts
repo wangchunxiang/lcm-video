@@ -4,8 +4,11 @@ import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
+import { analyzeSource, pickSampleVods } from '../../jobs/ads/analyze';
+import { cleanPlaylist } from '../../jobs/ads/skip';
 import type {
   AdFeatureAllDTO,
+  AdFeatureAnalyzeDTO,
   AdFeatureBySourceDTO,
   AdFeatureCreateDTO,
   AdFeatureDeleteDTO,
@@ -139,5 +142,36 @@ export class AdFeatureService {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }));
+  }
+/**
+   * 随机抽 `SAMPLE_SIZE` 部作品用于预览：只取有播放地址、状态正常的影片。
+   * 抽样逻辑在 jobs/ads/analyze.ts，和真正跑分析时用的是同一份。
+   */
+  async pick(dto: AdFeatureAnalyzeDTO) {
+    await this.assertSource(dto.sourceId);
+    const items = await pickSampleVods(this.prisma, dto.sourceId);
+    return { items };
+  }
+
+  /**
+   * 执行广告特征分析。日志通过回调边跑边推，由控制器转成 NDJSON 流。
+   * 只算候选，不落库——落库要人工确认（create 的 upsert）。
+   */
+  async analyze(dto: AdFeatureAnalyzeDTO, onLog: (line: string) => void) {
+    await this.assertSource(dto.sourceId);
+    return analyzeSource(this.prisma, dto.sourceId, onLog);
+  }
+
+  /** 播放代理用：按该源已确认的特征剔除上游播放列表里的广告分片 */
+  cleanPlaylist(sourceId: number, url: string) {
+    return cleanPlaylist(this.prisma, sourceId, url);
+  }
+
+  private async assertSource(sourceId: number): Promise<void> {
+    const source = await this.prisma.collectSource.findUnique({
+      where: { id: sourceId },
+      select: { id: true },
+    });
+    if (!source) throw new NotFoundException('采集源不存在');
   }
 }
