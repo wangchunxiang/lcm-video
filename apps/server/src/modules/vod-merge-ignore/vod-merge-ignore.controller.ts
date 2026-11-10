@@ -1,15 +1,23 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { VodMergeIgnoreService } from './vod-merge-ignore.service';
 import {
-  VodMergeIgnoreAllDTO as AllDTO,
-  VodMergeIgnoreByKeysDTO as ByKeysDTO,
-  VodMergeIgnoreCreateDTO as CreateDTO,
-  VodMergeIgnoreDeleteDTO as DeleteDTO,
-  VodMergeIgnoreGetDTO as GetDTO,
-  VodMergeIgnorePageDTO as PageDTO,
-  VodMergeIgnoreToggleDTO as ToggleDTO,
-  VodMergeIgnoreUpdateDTO as UpdateDTO,
+  Controller,
+  Post,
+} from '@nestjs/common';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  VodMergeIgnoreService,
+} from './vod-merge-ignore.service';
+
+import {
+  VodMergeIgnoreAllDTO,
+  VodMergeIgnoreByKeysDTO,
+  VodMergeIgnoreCreateDTO,
+  VodMergeIgnoreDeleteDTO,
+  VodMergeIgnoreGetDTO,
+  VodMergeIgnorePageDTO,
+  VodMergeIgnoreToggleDTO,
+  VodMergeIgnoreUpdateDTO,
 } from './dto/vod-merge-ignore';
 
 @Controller('api/admin/vod-merge-ignore')
@@ -17,42 +25,42 @@ export class VodMergeIgnoreController {
   constructor(private readonly ignores: VodMergeIgnoreService) {}
 
   @Post('create')
-  create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
+  create(@ZodBody(VodMergeIgnoreCreateDTO) dto: VodMergeIgnoreCreateDTO) {
     return this.ignores.create(dto);
   }
 
   @Post('update')
-  update(@Body(new ZodValidationPipe(UpdateDTO)) dto: UpdateDTO) {
+  update(@ZodBody(VodMergeIgnoreUpdateDTO) dto: VodMergeIgnoreUpdateDTO) {
     return this.ignores.update(dto);
   }
 
   @Post('delete')
-  remove(@Body(new ZodValidationPipe(DeleteDTO)) dto: DeleteDTO) {
+  remove(@ZodBody(VodMergeIgnoreDeleteDTO) dto: VodMergeIgnoreDeleteDTO) {
     return this.ignores.delete(dto);
   }
 
   @Post('get')
-  get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
+  get(@ZodBody(VodMergeIgnoreGetDTO) dto: VodMergeIgnoreGetDTO) {
     return this.ignores.get(dto);
   }
 
   @Post('page')
-  page(@Body(new ZodValidationPipe(PageDTO)) dto: PageDTO) {
+  page(@ZodBody(VodMergeIgnorePageDTO) dto: VodMergeIgnorePageDTO) {
     return this.ignores.page(dto);
   }
 
   @Post('all')
-  all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
+  all(@ZodBody(VodMergeIgnoreAllDTO) dto: VodMergeIgnoreAllDTO) {
     return this.ignores.all(dto);
   }
 
   @Post('toggle')
-  toggle(@Body(new ZodValidationPipe(ToggleDTO)) dto: ToggleDTO) {
+  toggle(@ZodBody(VodMergeIgnoreToggleDTO) dto: VodMergeIgnoreToggleDTO) {
     return this.ignores.toggle(dto);
   }
 
   @Post('by-keys')
-  byKeys(@Body(new ZodValidationPipe(ByKeysDTO)) dto: ByKeysDTO) {
+  byKeys(@ZodBody(VodMergeIgnoreByKeysDTO) dto: VodMergeIgnoreByKeysDTO) {
     return this.ignores.byKeys(dto);
   }
 }

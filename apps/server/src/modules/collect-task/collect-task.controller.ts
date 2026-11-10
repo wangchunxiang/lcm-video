@@ -1,16 +1,32 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { z } from 'zod';
-import { CollectRunner } from '../../jobs/collect/runner.js';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { CollectTaskService } from './collect-task.service';
+import { Controller,
+  Post,
+} from '@nestjs/common';
+
 import {
-  CollectTaskAllDTO as AllDTO,
-  CollectTaskBatchDTO as BatchDTO,
-  CollectTaskCreateDTO as CreateDTO,
-  CollectTaskDeleteDTO as DeleteDTO,
-  CollectTaskGetDTO as GetDTO,
-  CollectTaskPageDTO as PageDTO,
-  CollectTaskUpdateDTO as UpdateDTO,
+  z,
+} from 'zod';
+
+import {
+} from '../../common/validation/zod-validation.pipe';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  CollectRunner,
+} from '../../jobs/collect/runner.js';
+
+import {
+  CollectTaskService,
+} from './collect-task.service';
+
+import {
+  CollectTaskAllDTO,
+  CollectTaskBatchDTO,
+  CollectTaskCreateDTO,
+  CollectTaskDeleteDTO,
+  CollectTaskGetDTO,
+  CollectTaskPageDTO,
+  CollectTaskUpdateDTO,
 } from './dto/collect-task';
 
 @Controller('api/admin/collect-task')
@@ -21,50 +37,50 @@ export class CollectTaskController {
   ) {}
 
   @Post('create')
-  create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
+  create(@ZodBody(CollectTaskCreateDTO) dto: CollectTaskCreateDTO) {
     return this.tasks.create(dto);
   }
 
   @Post('update')
-  update(@Body(new ZodValidationPipe(UpdateDTO)) dto: UpdateDTO) {
+  update(@ZodBody(CollectTaskUpdateDTO) dto: CollectTaskUpdateDTO) {
     return this.tasks.update(dto);
   }
 
   @Post('delete')
-  remove(@Body(new ZodValidationPipe(DeleteDTO)) dto: DeleteDTO) {
+  remove(@ZodBody(CollectTaskDeleteDTO) dto: CollectTaskDeleteDTO) {
     return this.tasks.delete(dto);
   }
 
   @Post('get')
-  get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
+  get(@ZodBody(CollectTaskGetDTO) dto: CollectTaskGetDTO) {
     return this.tasks.get(dto);
   }
 
   @Post('page')
-  page(@Body(new ZodValidationPipe(PageDTO)) dto: PageDTO) {
+  page(@ZodBody(CollectTaskPageDTO) dto: CollectTaskPageDTO) {
     return this.tasks.page(dto);
   }
 
   @Post('all')
-  all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
+  all(@ZodBody(CollectTaskAllDTO) dto: CollectTaskAllDTO) {
     return this.tasks.all(dto);
   }
 
   /** 立即执行：不受 cron 限制，跑完写一条采集记录 */
   @Post('run')
-  run(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+  run(@ZodBody(z.object({ id: z.number().int().positive() })) dto: { id: number }) {
     return this.runner.startTask(dto.id, 'manual');
   }
 
   /** 取消正在执行的任务 */
   @Post('cancel')
-  async cancel(@Body(new ZodValidationPipe(z.object({ id: z.number().int().positive() }))) dto: { id: number }) {
+  async cancel(@ZodBody(z.object({ id: z.number().int().positive() })) dto: { id: number }) {
     const ok = await this.runner.cancelByTask(dto.id);
     return { cancelled: ok };
   }
 
   @Post('batch')
-  batch(@Body(new ZodValidationPipe(BatchDTO)) dto: BatchDTO) {
+  batch(@ZodBody(CollectTaskBatchDTO) dto: CollectTaskBatchDTO) {
     return this.tasks.batch(dto);
   }
 }

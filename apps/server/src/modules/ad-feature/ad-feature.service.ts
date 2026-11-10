@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AdFeature, Prisma } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
 import { analyzeSource, pickSampleVods } from '../../jobs/ads/analyze';

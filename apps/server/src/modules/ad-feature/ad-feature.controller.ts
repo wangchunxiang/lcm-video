@@ -1,17 +1,32 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
-import type { Response } from 'express';
-import { Raw } from '../../common/raw.decorator';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { AdFeatureService } from './ad-feature.service';
 import {
-  AdFeatureAllDTO as AllDTO,
-  AdFeatureAnalyzeDTO as AnalyzeDTO,
-  AdFeatureBySourceDTO as BySourceDTO,
-  AdFeatureCreateDTO as CreateDTO,
-  AdFeatureDeleteDTO as DeleteDTO,
-  AdFeatureGetDTO as GetDTO,
-  AdFeaturePageDTO as PageDTO,
-  AdFeatureUpdateDTO as UpdateDTO,
+  Controller,
+  Post,
+  Res,
+} from '@nestjs/common';
+
+import {
+  Raw,
+} from '../../common/http/raw.decorator';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import type {
+  Response,
+} from 'express';
+
+import {
+  AdFeatureService,
+} from './ad-feature.service';
+
+import {
+  AdFeatureAllDTO,
+  AdFeatureAnalyzeDTO,
+  AdFeatureBySourceDTO,
+  AdFeatureCreateDTO,
+  AdFeatureDeleteDTO,
+  AdFeatureGetDTO,
+  AdFeaturePageDTO,
+  AdFeatureUpdateDTO,
 } from './dto/ad-feature';
 
 @Controller('api/admin/ad-feature')
@@ -19,43 +34,43 @@ export class AdFeatureController {
   constructor(private readonly features: AdFeatureService) {}
 
   @Post('create')
-  create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
+  create(@ZodBody(AdFeatureCreateDTO) dto: AdFeatureCreateDTO) {
     return this.features.create(dto);
   }
 
   @Post('update')
-  update(@Body(new ZodValidationPipe(UpdateDTO)) dto: UpdateDTO) {
+  update(@ZodBody(AdFeatureUpdateDTO) dto: AdFeatureUpdateDTO) {
     return this.features.update(dto);
   }
 
   @Post('delete')
-  remove(@Body(new ZodValidationPipe(DeleteDTO)) dto: DeleteDTO) {
+  remove(@ZodBody(AdFeatureDeleteDTO) dto: AdFeatureDeleteDTO) {
     return this.features.delete(dto);
   }
 
   @Post('get')
-  get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
+  get(@ZodBody(AdFeatureGetDTO) dto: AdFeatureGetDTO) {
     return this.features.get(dto);
   }
 
   @Post('page')
-  page(@Body(new ZodValidationPipe(PageDTO)) dto: PageDTO) {
+  page(@ZodBody(AdFeaturePageDTO) dto: AdFeaturePageDTO) {
     return this.features.page(dto);
   }
 
   @Post('all')
-  all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
+  all(@ZodBody(AdFeatureAllDTO) dto: AdFeatureAllDTO) {
     return this.features.all(dto);
   }
 
   @Post('by-source')
-  bySource(@Body(new ZodValidationPipe(BySourceDTO)) dto: BySourceDTO) {
+  bySource(@ZodBody(AdFeatureBySourceDTO) dto: AdFeatureBySourceDTO) {
     return this.features.bySource(dto);
   }
 
   /** 随机抽 10 部作品给前端预览 */
   @Post('pick')
-  pick(@Body(new ZodValidationPipe(AnalyzeDTO)) dto: AnalyzeDTO) {
+  pick(@ZodBody(AdFeatureAnalyzeDTO) dto: AdFeatureAnalyzeDTO) {
     return this.features.pick(dto);
   }
 
@@ -66,7 +81,7 @@ export class AdFeatureController {
   @Post('analyze-stream')
   @Raw()
   async analyzeStream(
-    @Body(new ZodValidationPipe(AnalyzeDTO)) dto: AnalyzeDTO,
+    @ZodBody(AdFeatureAnalyzeDTO) dto: AdFeatureAnalyzeDTO,
     @Res() res: Response,
   ): Promise<void> {
     res.writeHead(200, {

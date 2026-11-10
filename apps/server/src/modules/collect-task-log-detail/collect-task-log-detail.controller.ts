@@ -1,13 +1,21 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { CollectTaskLogDetailService } from './collect-task-log-detail.service';
 import {
-  CollectTaskLogDetailAllDTO as AllDTO,
-  CollectTaskLogDetailCreateDTO as CreateDTO,
-  CollectTaskLogDetailDeleteDTO as DeleteDTO,
-  CollectTaskLogDetailGetDTO as GetDTO,
-  CollectTaskLogDetailPageDTO as PageDTO,
-  CollectTaskLogDetailUpdateDTO as UpdateDTO,
+  Controller,
+  Post,
+} from '@nestjs/common';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  CollectTaskLogDetailService,
+} from './collect-task-log-detail.service';
+
+import {
+  CollectTaskLogDetailAllDTO,
+  CollectTaskLogDetailCreateDTO,
+  CollectTaskLogDetailDeleteDTO,
+  CollectTaskLogDetailGetDTO,
+  CollectTaskLogDetailPageDTO,
+  CollectTaskLogDetailUpdateDTO,
 } from './dto/collect-task-log-detail';
 
 @Controller('api/admin/collect-task-log-detail')
@@ -15,32 +23,32 @@ export class CollectTaskLogDetailController {
   constructor(private readonly details: CollectTaskLogDetailService) {}
 
   @Post('create')
-  create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
+  create(@ZodBody(CollectTaskLogDetailCreateDTO) dto: CollectTaskLogDetailCreateDTO) {
     return this.details.create(dto);
   }
 
   @Post('update')
-  update(@Body(new ZodValidationPipe(UpdateDTO)) dto: UpdateDTO) {
+  update(@ZodBody(CollectTaskLogDetailUpdateDTO) dto: CollectTaskLogDetailUpdateDTO) {
     return this.details.update(dto);
   }
 
   @Post('delete')
-  remove(@Body(new ZodValidationPipe(DeleteDTO)) dto: DeleteDTO) {
+  remove(@ZodBody(CollectTaskLogDetailDeleteDTO) dto: CollectTaskLogDetailDeleteDTO) {
     return this.details.delete(dto);
   }
 
   @Post('get')
-  get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
+  get(@ZodBody(CollectTaskLogDetailGetDTO) dto: CollectTaskLogDetailGetDTO) {
     return this.details.get(dto);
   }
 
   @Post('page')
-  page(@Body(new ZodValidationPipe(PageDTO)) dto: PageDTO) {
+  page(@ZodBody(CollectTaskLogDetailPageDTO) dto: CollectTaskLogDetailPageDTO) {
     return this.details.page(dto);
   }
 
   @Post('all')
-  all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
+  all(@ZodBody(CollectTaskLogDetailAllDTO) dto: CollectTaskLogDetailAllDTO) {
     return this.details.all(dto);
   }
 }

@@ -3,8 +3,8 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import type { NextFunction, Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/all-exceptions.filter';
-import { ResponseInterceptor } from './common/response.interceptor';
+import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
+import { ResponseInterceptor } from './common/http/response.interceptor';
 
 /**
  * 进程入口。三件事：全局信封、统一异常出口、监听端口。

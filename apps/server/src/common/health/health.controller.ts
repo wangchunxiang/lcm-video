@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Public } from './public.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
+import { Public } from '../security/public.decorator';
 
 /** 探活：连库查一次，确认进程与数据库都可用。 */
 @Controller()

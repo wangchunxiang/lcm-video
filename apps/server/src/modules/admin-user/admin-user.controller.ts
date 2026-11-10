@@ -1,34 +1,50 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
-import type { Request } from 'express';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { CurrentUser } from '../../common/current-user.decorator';
-import type { AuthUser } from '../../common/current-user.decorator';
-import type { Page } from '../../common/page';
-import { Public } from '../../common/public.decorator';
-import { AdminUserService } from './admin-user.service';
+import {
+  Controller,
+  Post,
+  Req,
+} from '@nestjs/common';
+
+import {
+  CurrentUser,
+} from '../../common/security/current-user.decorator';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
 import type {
+  AuthUser,
+} from '../../common/security/current-user.decorator';
+
+import type {
+  Page,
+} from '../../common/pagination/page';
+
+import {
+  Public,
+} from '../../common/security/public.decorator';
+
+import type {
+  Request,
+} from 'express';
+
+import {
+  AdminUserService,
+} from './admin-user.service';
+
+import {
   AdminUserAllDTO,
   AdminUserCreateDTO,
   AdminUserDeleteDTO,
   AdminUserGetDTO,
   AdminUserPageDTO,
   AdminUserUpdateDTO,
-  AdminUserVO,
   ChangePasswordDTO,
   LoginDTO,
-  LoginVO,
   ProfileDTO,
 } from './dto/admin-user';
-import {
-  AdminUserAllDTO as AllSchema,
-  AdminUserCreateDTO as CreateSchema,
-  AdminUserDeleteDTO as DeleteSchema,
-  AdminUserGetDTO as GetSchema,
-  AdminUserPageDTO as PageSchema,
-  AdminUserUpdateDTO as UpdateSchema,
-  ChangePasswordDTO as ChangePasswordSchema,
-  LoginDTO as LoginSchema,
-  ProfileDTO as ProfileSchema,
+
+import type {
+  AdminUserVO,
+  LoginVO,
 } from './dto/admin-user';
 
 /** 账号表的六个标准接口，路径 /api/admin/admin-user/<动作>。 */
@@ -37,13 +53,13 @@ export class AdminUserController {
   constructor(private readonly adminUserService: AdminUserService) {}
 
   @Post('create')
-  async create(@Body(new ZodValidationPipe(CreateSchema)) dto: AdminUserCreateDTO): Promise<AdminUserVO> {
+  async create(@ZodBody(AdminUserCreateDTO) dto: AdminUserCreateDTO): Promise<AdminUserVO> {
     return this.adminUserService.create(dto);
   }
 
   @Post('update')
   async update(
-    @Body(new ZodValidationPipe(UpdateSchema)) dto: AdminUserUpdateDTO,
+    @ZodBody(AdminUserUpdateDTO) dto: AdminUserUpdateDTO,
     @CurrentUser() user: AuthUser,
   ): Promise<AdminUserVO> {
     return this.adminUserService.update(dto, user.id);
@@ -51,24 +67,24 @@ export class AdminUserController {
 
   @Post('delete')
   async delete(
-    @Body(new ZodValidationPipe(DeleteSchema)) dto: AdminUserDeleteDTO,
+    @ZodBody(AdminUserDeleteDTO) dto: AdminUserDeleteDTO,
     @CurrentUser() user: AuthUser,
   ): Promise<{ deleted: number }> {
     return this.adminUserService.delete(dto, user.id);
   }
 
   @Post('get')
-  async get(@Body(new ZodValidationPipe(GetSchema)) dto: AdminUserGetDTO): Promise<AdminUserVO> {
+  async get(@ZodBody(AdminUserGetDTO) dto: AdminUserGetDTO): Promise<AdminUserVO> {
     return this.adminUserService.get(dto);
   }
 
   @Post('page')
-  async page(@Body(new ZodValidationPipe(PageSchema)) dto: AdminUserPageDTO): Promise<Page<AdminUserVO>> {
+  async page(@ZodBody(AdminUserPageDTO) dto: AdminUserPageDTO): Promise<Page<AdminUserVO>> {
     return this.adminUserService.page(dto);
   }
 
   @Post('all')
-  async all(@Body(new ZodValidationPipe(AllSchema)) dto: AdminUserAllDTO): Promise<AdminUserVO[]> {
+  async all(@ZodBody(AdminUserAllDTO) dto: AdminUserAllDTO): Promise<AdminUserVO[]> {
     return this.adminUserService.all(dto);
   }
 }
@@ -85,7 +101,7 @@ export class AuthController {
   @Public()
   @Post('auth/login')
   async login(
-    @Body(new ZodValidationPipe(LoginSchema)) dto: LoginDTO,
+    @ZodBody(LoginDTO) dto: LoginDTO,
     @Req() request: Request,
   ): Promise<LoginVO> {
     return this.adminUserService.login(dto, request.ip ?? '');
@@ -105,7 +121,7 @@ export class AuthController {
 
   @Post('account/profile')
   async profile(
-    @Body(new ZodValidationPipe(ProfileSchema)) dto: ProfileDTO,
+    @ZodBody(ProfileDTO) dto: ProfileDTO,
     @CurrentUser() user: AuthUser,
   ): Promise<AdminUserVO> {
     return this.adminUserService.updateProfile(user.id, dto);
@@ -113,7 +129,7 @@ export class AuthController {
 
   @Post('account/password')
   async password(
-    @Body(new ZodValidationPipe(ChangePasswordSchema)) dto: ChangePasswordDTO,
+    @ZodBody(ChangePasswordDTO) dto: ChangePasswordDTO,
     @CurrentUser() user: AuthUser,
   ): Promise<null> {
     return this.adminUserService.changePassword(user.id, dto);

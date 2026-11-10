@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CollectTaskLog } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
 import { CollectTaskLogDetailService } from '../collect-task-log-detail/collect-task-log-detail.service';

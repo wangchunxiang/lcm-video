@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CoverCheck } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { HOST_PARALLEL, clearHostCovers, repairHostCovers, scanHost } from '../../jobs/covers/repair';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {

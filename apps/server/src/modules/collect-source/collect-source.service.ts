@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { CollectSource } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { autoMatchCategory } from '@lcm/shared';
 import { fetchClassList } from '../../jobs/collect/classes';

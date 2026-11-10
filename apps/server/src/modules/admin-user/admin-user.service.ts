@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AdminUser, Prisma } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
-import { signToken } from '../../common/jwt';
-import { hashPassword, verifyPassword } from '../../common/password';
-import { isLocked, recordFailure, resetFailures } from '../../common/login-lock';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
+import { signToken } from '../../common/security/jwt';
+import { hashPassword, verifyPassword } from '../../common/security/password';
+import { isLocked, recordFailure, resetFailures } from '../../common/security/login-lock';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SettingService } from '../setting/setting.service';
 import type {

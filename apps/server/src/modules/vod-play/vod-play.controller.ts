@@ -1,26 +1,31 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import type { Page } from '../../common/page';
-import { VodPlayService } from './vod-play.service';
+import {
+  Controller,
+  Post,
+} from '@nestjs/common';
+
 import type {
+  Page,
+} from '../../common/pagination/page';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  VodPlayService,
+} from './vod-play.service';
+
+import {
   VodPlayAllDTO,
   VodPlayByVodDTO,
   VodPlayCreateDTO,
   VodPlayDeleteDTO,
-  VodPlayDetailVO,
   VodPlayGetDTO,
   VodPlayPageDTO,
   VodPlayUpdateDTO,
-  VodPlayVO,
 } from './dto/vod-play';
-import {
-  VodPlayAllDTO as AllSchema,
-  VodPlayByVodDTO as ByVodSchema,
-  VodPlayCreateDTO as CreateSchema,
-  VodPlayDeleteDTO as DeleteSchema,
-  VodPlayGetDTO as GetSchema,
-  VodPlayPageDTO as PageSchema,
-  VodPlayUpdateDTO as UpdateSchema,
+
+import type {
+  VodPlayDetailVO,
+  VodPlayVO,
 } from './dto/vod-play';
 
 /**
@@ -32,40 +37,40 @@ export class VodPlayController {
   constructor(private readonly vodPlayService: VodPlayService) {}
 
   @Post('create')
-  async create(@Body(new ZodValidationPipe(CreateSchema)) dto: VodPlayCreateDTO): Promise<VodPlayVO> {
+  async create(@ZodBody(VodPlayCreateDTO) dto: VodPlayCreateDTO): Promise<VodPlayVO> {
     return this.vodPlayService.create(dto);
   }
 
   @Post('update')
-  async update(@Body(new ZodValidationPipe(UpdateSchema)) dto: VodPlayUpdateDTO): Promise<VodPlayVO> {
+  async update(@ZodBody(VodPlayUpdateDTO) dto: VodPlayUpdateDTO): Promise<VodPlayVO> {
     return this.vodPlayService.update(dto);
   }
 
   @Post('delete')
   async delete(
-    @Body(new ZodValidationPipe(DeleteSchema)) dto: VodPlayDeleteDTO,
+    @ZodBody(VodPlayDeleteDTO) dto: VodPlayDeleteDTO,
   ): Promise<{ deleted: number }> {
     return this.vodPlayService.delete(dto);
   }
 
   @Post('get')
-  async get(@Body(new ZodValidationPipe(GetSchema)) dto: VodPlayGetDTO): Promise<VodPlayVO> {
+  async get(@ZodBody(VodPlayGetDTO) dto: VodPlayGetDTO): Promise<VodPlayVO> {
     return this.vodPlayService.get(dto);
   }
 
   @Post('page')
-  async page(@Body(new ZodValidationPipe(PageSchema)) dto: VodPlayPageDTO): Promise<Page<VodPlayVO>> {
+  async page(@ZodBody(VodPlayPageDTO) dto: VodPlayPageDTO): Promise<Page<VodPlayVO>> {
     return this.vodPlayService.page(dto);
   }
 
   @Post('all')
-  async all(@Body(new ZodValidationPipe(AllSchema)) dto: VodPlayAllDTO): Promise<VodPlayVO[]> {
+  async all(@ZodBody(VodPlayAllDTO) dto: VodPlayAllDTO): Promise<VodPlayVO[]> {
     return this.vodPlayService.all(dto);
   }
 
   @Post('by-vod')
   async byVod(
-    @Body(new ZodValidationPipe(ByVodSchema)) dto: VodPlayByVodDTO,
+    @ZodBody(VodPlayByVodDTO) dto: VodPlayByVodDTO,
   ): Promise<VodPlayDetailVO[]> {
     return this.vodPlayService.byVod(dto);
   }

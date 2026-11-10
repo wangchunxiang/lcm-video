@@ -10,7 +10,7 @@ import { Reflector } from '@nestjs/core';
 import { bearerToken, verifyToken } from './jwt';
 import type { AuthedRequest } from './current-user.decorator';
 import { IS_PUBLIC_KEY } from './public.decorator';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 /**
  * 全局登录守卫（决策 5.3）：默认所有接口都要登录，`@Public()` 的除外。

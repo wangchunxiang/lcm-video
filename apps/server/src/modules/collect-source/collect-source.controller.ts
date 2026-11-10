@@ -1,29 +1,41 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { z } from 'zod';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import type { Page } from '../../common/page';
-import { CollectRunner } from '../../jobs/collect/runner.js';
-import { CollectSourceService } from './collect-source.service';
+import { Controller,
+  Post,
+} from '@nestjs/common';
+
+import {
+  z,
+} from 'zod';
+
+import {
+} from '../../common/validation/zod-validation.pipe';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
 import type {
+  Page,
+} from '../../common/pagination/page';
+
+import {
+  CollectRunner,
+} from '../../jobs/collect/runner.js';
+
+import {
+  CollectSourceService,
+} from './collect-source.service';
+
+import {
   CollectSourceAllDTO,
   CollectSourceBatchDTO,
   CollectSourceCreateDTO,
   CollectSourceDeleteDTO,
   CollectSourceGetDTO,
   CollectSourcePageDTO,
+  CollectSourceRunDTO,
   CollectSourceUpdateDTO,
-  CollectSourceVO,
 } from './dto/collect-source';
-import type { CollectSourceRunDTO } from './dto/collect-source';
-import {
-  CollectSourceAllDTO as AllSchema,
-  CollectSourceBatchDTO as BatchSchema,
-  CollectSourceCreateDTO as CreateSchema,
-  CollectSourceDeleteDTO as DeleteSchema,
-  CollectSourceGetDTO as GetSchema,
-  CollectSourcePageDTO as PageSchema,
-  CollectSourceUpdateDTO as UpdateSchema,
-  CollectSourceRunDTO as RunSchema,
+
+import type {
+  CollectSourceVO,
 } from './dto/collect-source';
 
 /**
@@ -38,41 +50,41 @@ export class CollectSourceController {
   ) {}
 
   @Post('create')
-  async create(@Body(new ZodValidationPipe(CreateSchema)) dto: CollectSourceCreateDTO): Promise<CollectSourceVO> {
+  async create(@ZodBody(CollectSourceCreateDTO) dto: CollectSourceCreateDTO): Promise<CollectSourceVO> {
     return this.collectSourceService.create(dto);
   }
 
   @Post('update')
-  async update(@Body(new ZodValidationPipe(UpdateSchema)) dto: CollectSourceUpdateDTO): Promise<CollectSourceVO> {
+  async update(@ZodBody(CollectSourceUpdateDTO) dto: CollectSourceUpdateDTO): Promise<CollectSourceVO> {
     return this.collectSourceService.update(dto);
   }
 
   @Post('delete')
   async delete(
-    @Body(new ZodValidationPipe(DeleteSchema)) dto: CollectSourceDeleteDTO,
+    @ZodBody(CollectSourceDeleteDTO) dto: CollectSourceDeleteDTO,
   ): Promise<{ deleted: number; lines: number; emptyVods: number }> {
     return this.collectSourceService.delete(dto);
   }
 
   @Post('get')
-  async get(@Body(new ZodValidationPipe(GetSchema)) dto: CollectSourceGetDTO): Promise<CollectSourceVO> {
+  async get(@ZodBody(CollectSourceGetDTO) dto: CollectSourceGetDTO): Promise<CollectSourceVO> {
     return this.collectSourceService.get(dto);
   }
 
   @Post('page')
-  async page(@Body(new ZodValidationPipe(PageSchema)) dto: CollectSourcePageDTO): Promise<Page<CollectSourceVO>> {
+  async page(@ZodBody(CollectSourcePageDTO) dto: CollectSourcePageDTO): Promise<Page<CollectSourceVO>> {
     return this.collectSourceService.page(dto);
   }
 
   @Post('all')
-  async all(@Body(new ZodValidationPipe(AllSchema)) dto: CollectSourceAllDTO): Promise<CollectSourceVO[]> {
+  async all(@ZodBody(CollectSourceAllDTO) dto: CollectSourceAllDTO): Promise<CollectSourceVO[]> {
     return this.collectSourceService.all(dto);
   }
 
   /** 手动采集：立即跑一次，不需要建任务 */
   @Post('run')
   run(
-    @Body(new ZodValidationPipe(z.object({ id: z.number().int().positive(), confirmEmpty: z.boolean().optional() })))
+    @ZodBody(z.object({ id: z.number().int().positive(), confirmEmpty: z.boolean().optional() }))
     dto: { id: number; confirmEmpty?: boolean },
   ) {
     return this.runner.startSourceRun(dto.id, { confirmEmpty: dto.confirmEmpty ?? false });
@@ -80,18 +92,18 @@ export class CollectSourceController {
 
   /** 测试连通性：拉一次源站分类，不落库 */
   @Post('test')
-  test(@Body(new ZodValidationPipe(RunSchema)) dto: CollectSourceRunDTO) {
+  test(@ZodBody(CollectSourceRunDTO) dto: CollectSourceRunDTO) {
     return this.collectSourceService.test(dto);
   }
 
   /** 拉取源站分类并写入映射表，未映射的顺手自动匹配 */
   @Post('fetch-categories')
-  fetchCategories(@Body(new ZodValidationPipe(RunSchema)) dto: CollectSourceRunDTO) {
+  fetchCategories(@ZodBody(CollectSourceRunDTO) dto: CollectSourceRunDTO) {
     return this.collectSourceService.fetchCategories(dto);
   }
 
   @Post('batch')
-  async batch(@Body(new ZodValidationPipe(BatchSchema)) dto: CollectSourceBatchDTO): Promise<{ affected: number }> {
+  async batch(@ZodBody(CollectSourceBatchDTO) dto: CollectSourceBatchDTO): Promise<{ affected: number }> {
     return this.collectSourceService.batch(dto);
   }
 }

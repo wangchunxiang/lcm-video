@@ -1,17 +1,25 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { CoverCheckService } from './cover-check.service';
 import {
-  CoverCheckAllDTO as AllDTO,
-  CoverCheckClearDTO as ClearDTO,
-  CoverCheckCreateDTO as CreateDTO,
-  CoverCheckDeleteDTO as DeleteDTO,
-  CoverCheckGetDTO as GetDTO,
-  CoverCheckHostVodsDTO as HostVodsDTO,
-  CoverCheckPageDTO as PageDTO,
-  CoverCheckRepairDTO as RepairDTO,
-  CoverCheckScanDTO as ScanDTO,
-  CoverCheckUpdateDTO as UpdateDTO,
+  Controller,
+  Post,
+} from '@nestjs/common';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  CoverCheckService,
+} from './cover-check.service';
+
+import {
+  CoverCheckAllDTO,
+  CoverCheckClearDTO,
+  CoverCheckCreateDTO,
+  CoverCheckDeleteDTO,
+  CoverCheckGetDTO,
+  CoverCheckHostVodsDTO,
+  CoverCheckPageDTO,
+  CoverCheckRepairDTO,
+  CoverCheckScanDTO,
+  CoverCheckUpdateDTO,
 } from './dto/cover-check';
 
 @Controller('api/admin/cover-check')
@@ -19,32 +27,32 @@ export class CoverCheckController {
   constructor(private readonly checks: CoverCheckService) {}
 
   @Post('create')
-  create(@Body(new ZodValidationPipe(CreateDTO)) dto: CreateDTO) {
+  create(@ZodBody(CoverCheckCreateDTO) dto: CoverCheckCreateDTO) {
     return this.checks.create(dto);
   }
 
   @Post('update')
-  update(@Body(new ZodValidationPipe(UpdateDTO)) dto: UpdateDTO) {
+  update(@ZodBody(CoverCheckUpdateDTO) dto: CoverCheckUpdateDTO) {
     return this.checks.update(dto);
   }
 
   @Post('delete')
-  remove(@Body(new ZodValidationPipe(DeleteDTO)) dto: DeleteDTO) {
+  remove(@ZodBody(CoverCheckDeleteDTO) dto: CoverCheckDeleteDTO) {
     return this.checks.delete(dto);
   }
 
   @Post('get')
-  get(@Body(new ZodValidationPipe(GetDTO)) dto: GetDTO) {
+  get(@ZodBody(CoverCheckGetDTO) dto: CoverCheckGetDTO) {
     return this.checks.get(dto);
   }
 
   @Post('page')
-  page(@Body(new ZodValidationPipe(PageDTO)) dto: PageDTO) {
+  page(@ZodBody(CoverCheckPageDTO) dto: CoverCheckPageDTO) {
     return this.checks.page(dto);
   }
 
   @Post('all')
-  all(@Body(new ZodValidationPipe(AllDTO)) dto: AllDTO) {
+  all(@ZodBody(CoverCheckAllDTO) dto: CoverCheckAllDTO) {
     return this.checks.all(dto);
   }
 
@@ -56,25 +64,25 @@ export class CoverCheckController {
 
   /** 检查一个域名或全部域名 */
   @Post('scan')
-  scan(@Body(new ZodValidationPipe(ScanDTO)) dto: ScanDTO) {
+  scan(@ZodBody(CoverCheckScanDTO) dto: CoverCheckScanDTO) {
     return this.checks.scan(dto);
   }
 
   /** 清空某域名下的封面 */
   @Post('clear')
-  clear(@Body(new ZodValidationPipe(ClearDTO)) dto: ClearDTO) {
+  clear(@ZodBody(CoverCheckClearDTO) dto: CoverCheckClearDTO) {
     return this.checks.clear(dto);
   }
 
   /** 修复某域名下的封面 */
   @Post('repair')
-  repair(@Body(new ZodValidationPipe(RepairDTO)) dto: RepairDTO) {
+  repair(@ZodBody(CoverCheckRepairDTO) dto: CoverCheckRepairDTO) {
     return this.checks.repair(dto);
   }
 
   /** 某域名下的影片，供换封面/清空前预览 */
   @Post('host-vods')
-  hostVods(@Body(new ZodValidationPipe(HostVodsDTO)) dto: HostVodsDTO) {
+  hostVods(@ZodBody(CoverCheckHostVodsDTO) dto: CoverCheckHostVodsDTO) {
     return this.checks.hostVods(dto);
   }
 }

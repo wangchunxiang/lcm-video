@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import type { SourceRule } from '@prisma/client';
 import { applyPlayUrlRules } from '@lcm/shared';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
 import type {

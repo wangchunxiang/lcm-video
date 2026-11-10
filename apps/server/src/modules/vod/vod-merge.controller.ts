@@ -1,12 +1,20 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { VodMergeService } from './vod-merge.service';
 import {
-  VodMergeBatchDTO as BatchDTO,
-  VodMergeBatchKeysDTO as BatchKeysDTO,
-  VodMergeGroupDTO as GroupDTO,
-  VodMergeIgnoreDTO as IgnoreDTO,
-  VodMergeMergeDTO as MergeDTO,
+  Controller,
+  Post,
+} from '@nestjs/common';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  VodMergeService,
+} from './vod-merge.service';
+
+import {
+  VodMergeBatchDTO,
+  VodMergeBatchKeysDTO,
+  VodMergeGroupDTO,
+  VodMergeIgnoreDTO,
+  VodMergeMergeDTO,
 } from './dto/vod-merge';
 
 /**
@@ -25,31 +33,31 @@ export class VodMergeController {
 
   /** 单组详情（成员与线路来源） */
   @Post('group')
-  group(@Body(new ZodValidationPipe(GroupDTO)) dto: GroupDTO) {
+  group(@ZodBody(VodMergeGroupDTO) dto: VodMergeGroupDTO) {
     return this.merge.group(dto);
   }
 
   /** 合并一组 */
   @Post('merge')
-  mergeGroup(@Body(new ZodValidationPipe(MergeDTO)) dto: MergeDTO) {
+  mergeGroup(@ZodBody(VodMergeMergeDTO) dto: VodMergeMergeDTO) {
     return this.merge.merge(dto);
   }
 
   /** 忽略 / 恢复一个分组 */
   @Post('ignore')
-  ignore(@Body(new ZodValidationPipe(IgnoreDTO)) dto: IgnoreDTO) {
+  ignore(@ZodBody(VodMergeIgnoreDTO) dto: VodMergeIgnoreDTO) {
     return this.merge.ignore(dto);
   }
 
   /** 一键合并全部可自动合并的分组 */
   @Post('batch')
-  batch(@Body(new ZodValidationPipe(BatchDTO)) dto: BatchDTO) {
+  batch(@ZodBody(VodMergeBatchDTO) dto: VodMergeBatchDTO) {
     return this.merge.batch(dto);
   }
 
   /** 勾选若干分组批量合并或忽略 */
   @Post('batch-keys')
-  batchKeys(@Body(new ZodValidationPipe(BatchKeysDTO)) dto: BatchKeysDTO) {
+  batchKeys(@ZodBody(VodMergeBatchKeysDTO) dto: VodMergeBatchKeysDTO) {
     return this.merge.batchKeys(dto);
   }
 }

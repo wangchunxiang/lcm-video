@@ -1,24 +1,30 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import type { Page } from '../../common/page';
-import { CategoryService } from './category.service';
+import {
+  Controller,
+  Post,
+} from '@nestjs/common';
+
 import type {
+  Page,
+} from '../../common/pagination/page';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  CategoryService,
+} from './category.service';
+
+import {
   CategoryAllDTO,
   CategoryCreateDTO,
   CategoryDeleteDTO,
   CategoryGetDTO,
-  CategoryNodeVO,
   CategoryPageDTO,
   CategoryUpdateDTO,
-  CategoryVO,
 } from './dto/category';
-import {
-  CategoryAllDTO as AllSchema,
-  CategoryCreateDTO as CreateSchema,
-  CategoryDeleteDTO as DeleteSchema,
-  CategoryGetDTO as GetSchema,
-  CategoryPageDTO as PageSchema,
-  CategoryUpdateDTO as UpdateSchema,
+
+import type {
+  CategoryNodeVO,
+  CategoryVO,
 } from './dto/category';
 
 /**
@@ -30,34 +36,34 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post('create')
-  async create(@Body(new ZodValidationPipe(CreateSchema)) dto: CategoryCreateDTO): Promise<CategoryVO> {
+  async create(@ZodBody(CategoryCreateDTO) dto: CategoryCreateDTO): Promise<CategoryVO> {
     return this.categoryService.create(dto);
   }
 
   @Post('update')
-  async update(@Body(new ZodValidationPipe(UpdateSchema)) dto: CategoryUpdateDTO): Promise<CategoryVO> {
+  async update(@ZodBody(CategoryUpdateDTO) dto: CategoryUpdateDTO): Promise<CategoryVO> {
     return this.categoryService.update(dto);
   }
 
   @Post('delete')
   async delete(
-    @Body(new ZodValidationPipe(DeleteSchema)) dto: CategoryDeleteDTO,
+    @ZodBody(CategoryDeleteDTO) dto: CategoryDeleteDTO,
   ): Promise<{ deleted: number; resetMappings: number }> {
     return this.categoryService.delete(dto);
   }
 
   @Post('get')
-  async get(@Body(new ZodValidationPipe(GetSchema)) dto: CategoryGetDTO): Promise<CategoryVO> {
+  async get(@ZodBody(CategoryGetDTO) dto: CategoryGetDTO): Promise<CategoryVO> {
     return this.categoryService.get(dto);
   }
 
   @Post('page')
-  async page(@Body(new ZodValidationPipe(PageSchema)) dto: CategoryPageDTO): Promise<Page<CategoryVO>> {
+  async page(@ZodBody(CategoryPageDTO) dto: CategoryPageDTO): Promise<Page<CategoryVO>> {
     return this.categoryService.page(dto);
   }
 
   @Post('all')
-  async all(@Body(new ZodValidationPipe(AllSchema)) dto: CategoryAllDTO): Promise<CategoryVO[]> {
+  async all(@ZodBody(CategoryAllDTO) dto: CategoryAllDTO): Promise<CategoryVO[]> {
     return this.categoryService.all(dto);
   }
 

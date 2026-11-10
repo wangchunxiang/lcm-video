@@ -1,8 +1,19 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import type { Page } from '../../common/page';
-import { PlayLineService } from './play-line.service';
+import {
+  Controller,
+  Post,
+} from '@nestjs/common';
+
 import type {
+  Page,
+} from '../../common/pagination/page';
+
+import { ZodBody } from '../../common/validation/zod-body.decorator';
+
+import {
+  PlayLineService,
+} from './play-line.service';
+
+import {
   PlayLineAllDTO,
   PlayLineBatchDTO,
   PlayLineCreateDTO,
@@ -11,17 +22,10 @@ import type {
   PlayLinePageDTO,
   PlayLineSortDTO,
   PlayLineUpdateDTO,
-  PlayLineVO,
 } from './dto/play-line';
-import {
-  PlayLineAllDTO as AllSchema,
-  PlayLineBatchDTO as BatchSchema,
-  PlayLineCreateDTO as CreateSchema,
-  PlayLineDeleteDTO as DeleteSchema,
-  PlayLineGetDTO as GetSchema,
-  PlayLinePageDTO as PageSchema,
-  PlayLineSortDTO as SortSchema,
-  PlayLineUpdateDTO as UpdateSchema,
+
+import type {
+  PlayLineVO,
 } from './dto/play-line';
 
 /**
@@ -33,42 +37,42 @@ export class PlayLineController {
   constructor(private readonly playLineService: PlayLineService) {}
 
   @Post('create')
-  async create(@Body(new ZodValidationPipe(CreateSchema)) dto: PlayLineCreateDTO): Promise<PlayLineVO> {
+  async create(@ZodBody(PlayLineCreateDTO) dto: PlayLineCreateDTO): Promise<PlayLineVO> {
     return this.playLineService.create(dto);
   }
 
   @Post('update')
-  async update(@Body(new ZodValidationPipe(UpdateSchema)) dto: PlayLineUpdateDTO): Promise<PlayLineVO> {
+  async update(@ZodBody(PlayLineUpdateDTO) dto: PlayLineUpdateDTO): Promise<PlayLineVO> {
     return this.playLineService.update(dto);
   }
 
   @Post('delete')
-  async delete(@Body(new ZodValidationPipe(DeleteSchema)) dto: PlayLineDeleteDTO): Promise<{ deleted: number }> {
+  async delete(@ZodBody(PlayLineDeleteDTO) dto: PlayLineDeleteDTO): Promise<{ deleted: number }> {
     return this.playLineService.delete(dto);
   }
 
   @Post('get')
-  async get(@Body(new ZodValidationPipe(GetSchema)) dto: PlayLineGetDTO): Promise<PlayLineVO> {
+  async get(@ZodBody(PlayLineGetDTO) dto: PlayLineGetDTO): Promise<PlayLineVO> {
     return this.playLineService.get(dto);
   }
 
   @Post('page')
-  async page(@Body(new ZodValidationPipe(PageSchema)) dto: PlayLinePageDTO): Promise<Page<PlayLineVO>> {
+  async page(@ZodBody(PlayLinePageDTO) dto: PlayLinePageDTO): Promise<Page<PlayLineVO>> {
     return this.playLineService.page(dto);
   }
 
   @Post('all')
-  async all(@Body(new ZodValidationPipe(AllSchema)) dto: PlayLineAllDTO): Promise<PlayLineVO[]> {
+  async all(@ZodBody(PlayLineAllDTO) dto: PlayLineAllDTO): Promise<PlayLineVO[]> {
     return this.playLineService.all(dto);
   }
 
   @Post('batch')
-  async batch(@Body(new ZodValidationPipe(BatchSchema)) dto: PlayLineBatchDTO): Promise<{ updated: number }> {
+  async batch(@ZodBody(PlayLineBatchDTO) dto: PlayLineBatchDTO): Promise<{ updated: number }> {
     return this.playLineService.batch(dto);
   }
 
   @Post('sort')
-  async sort(@Body(new ZodValidationPipe(SortSchema)) dto: PlayLineSortDTO): Promise<null> {
+  async sort(@ZodBody(PlayLineSortDTO) dto: PlayLineSortDTO): Promise<null> {
     return this.playLineService.sort(dto);
   }
 }

@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { countEpisodes, looseHash, nameHash, normalizeName } from '@lcm/shared';
 import { Prisma } from '@prisma/client';
 import type { Vod } from '@prisma/client';
-import type { Page } from '../../common/page';
-import { toPage } from '../../common/page';
+import type { Page } from '../../common/pagination/page';
+import { toPage } from '../../common/pagination/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
 import { CollectClient } from '../../jobs/collect/client';
