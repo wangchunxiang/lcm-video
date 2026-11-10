@@ -1,12 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoryEntity } from '../category/category.entity';
+import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { SettingEntity } from '../setting/setting.entity';
 import { VodEntity } from './vod.entity';
 import { VodController } from './vod.controller';
 import { VodService } from './vod.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([VodEntity, CategoryEntity])],
+  imports: [
+    TypeOrmModule.forFeature([VodEntity, CategoryEntity, SettingEntity, CoverCheckEntity]),
+  ],
   controllers: [VodController],
   providers: [VodService],
   exports: [VodService],

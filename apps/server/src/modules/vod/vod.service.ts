@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import type { FindOptionsWhere } from 'typeorm';
@@ -8,6 +8,13 @@ import { CategoryEntity } from '../category/category.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import { VodEntity } from './vod.entity';
 import type { BatchVodDTO, CreateVodDTO, UpdateVodDTO } from './dto/vod.dto';
+import { CollectClient } from '../../jobs/collect/client';
+import { loadBrokenCoverHosts, loadMergeConfig } from '../../jobs/collect/merge';
+import { parseVodPage } from '../../jobs/collect/parser';
+import { processPage } from '../../jobs/collect/writer';
+import type { CategoryInfo, FailItem, MappingInfo, SourceVod } from '../../jobs/collect/types';
+import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { SettingEntity } from '../setting/setting.entity';
 
 /** 列表行：影片 + 分类名 + 线路统计。 */
 export interface VodRow extends VodEntity {
@@ -33,6 +40,8 @@ export class VodService extends AppCrudService<VodEntity> {
   constructor(
     @InjectRepository(VodEntity) repository: Repository<VodEntity>,
     @InjectRepository(CategoryEntity) private readonly categoryRepository: Repository<CategoryEntity>,
+    @InjectRepository(SettingEntity) private readonly settingRepository: Repository<SettingEntity>,
+    @InjectRepository(CoverCheckEntity) private readonly coverCheckRepository: Repository<CoverCheckEntity>,
     private readonly dataSource: DataSource,
   ) {
     super(repository);
@@ -160,6 +169,127 @@ export class VodService extends AppCrudService<VodEntity> {
   }
 
   /** 给一组影片补分类名与线路统计（一条 SQL 聚合，避免 N+1）。 */
+  /** 重新采集单片：回源站取这一部，按当前入库规则覆盖。 */
+  async recollect(dto: {
+    id: string;
+    sourceId?: string;
+  }): Promise<{ inserted: number; updated: number; failed: number; fails: FailItem[] }> {
+    const vod = await this.repository.findOne({ where: { id: dto.id }, select: { id: true } });
+    if (vod === null) throw new NotFoundException('影片不存在');
+
+    const plays = await this.dataSource.query<
+      Array<{ sourceId: string | null; sourceVodId: string }>
+    >('SELECT source_id AS sourceId, source_vod_id AS sourceVodId FROM lcm_vod_play WHERE vod_id = ?', [
+      dto.id,
+    ]);
+    const candidates = plays.filter((row) => (row.sourceId ?? '') !== '' && row.sourceVodId !== '');
+    const target =
+      dto.sourceId === undefined
+        ? candidates[0]
+        : candidates.find((row) => row.sourceId === dto.sourceId);
+    if (target === undefined) {
+      throw new BadRequestException(
+        dto.sourceId === undefined
+          ? '该影片没有可回溯的采集来源，无法重新采集'
+          : '该影片没有来自这个采集源的线路，无法重新采集',
+      );
+    }
+
+    const sources = await this.dataSource.query<
+      Array<{
+        id: string;
+        name: string;
+        apiUrl: string;
+        apiParams: string;
+        intervalSec: number;
+        timeout: number;
+        retryTimes: number;
+        pagesize: number;
+        isEnabled: number;
+      }>
+    >(
+      `SELECT id, name, api_url AS apiUrl, api_params AS apiParams, interval_sec AS intervalSec,
+              timeout, retry_times AS retryTimes, pagesize, is_enabled AS isEnabled
+         FROM lcm_collect_source WHERE id = ? LIMIT 1`,
+      [target.sourceId],
+    );
+    const source = sources[0];
+    if (source === undefined) throw new BadRequestException('采集源已不存在');
+    if (source.isEnabled === 0) throw new BadRequestException('采集源已停用，先启用再重新采集');
+
+    const client = new CollectClient({
+      id: source.id,
+      name: source.name,
+      apiUrl: source.apiUrl,
+      apiParams: source.apiParams,
+      intervalSec: source.intervalSec,
+      timeout: source.timeout,
+      retryTimes: source.retryTimes,
+      pagesize: source.pagesize,
+    });
+
+    let item: SourceVod | undefined;
+    try {
+      const raw = await client.request({ ac: 'detail', ids: target.sourceVodId, at: 'json' });
+      const parsed = parseVodPage(raw);
+      item = parsed.list.find((row) => row.vodId === target.sourceVodId) ?? parsed.list[0];
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : '采集失败');
+    }
+    if (item === undefined) throw new BadRequestException('源站没有返回该影片');
+
+    const mappings = await this.dataSource.query<
+      Array<{ categoryId: string; status: number }>
+    >(
+      'SELECT category_id AS categoryId, status FROM lcm_collect_source_category WHERE source_id = ? AND source_type_id = ? LIMIT 1',
+      [source.id, item.typeId],
+    );
+    const mappingRow = mappings[0];
+    if (mappingRow === undefined || mappingRow.status !== 1 || mappingRow.categoryId === '0') {
+      throw new BadRequestException(
+        `该片所属源站分类（${item.typeName}）未映射，请先在分类映射里处理`,
+      );
+    }
+
+    const mapping = new Map<string, MappingInfo>();
+    mapping.set(item.typeId, { categoryId: mappingRow.categoryId, status: mappingRow.status });
+
+    const result = await processPage(this.dataSource, {
+      sourceId: source.id,
+      items: [item],
+      mapping,
+      categories: await this.loadCategoryMap(),
+      forceVodId: dto.id,
+      keepCollectedAt: true,
+      merge: await loadMergeConfig(this.settingRepository),
+      brokenCoverHosts: await loadBrokenCoverHosts(this.coverCheckRepository),
+    });
+
+    return {
+      inserted: result.counters.inserted,
+      updated: result.counters.updated,
+      failed: result.counters.failed,
+      fails: result.fails,
+    };
+  }
+
+  /** 分类信息表：入库时按源站分类取本站分类名与别名关键词。 */
+  private async loadCategoryMap(): Promise<Map<string, CategoryInfo>> {
+    const rows = await this.dataSource.query<
+      Array<{ id: string; pid: string; name: string; matchNames: string }>
+    >('SELECT id, pid, name, match_names AS matchNames FROM lcm_category');
+    const map = new Map<string, CategoryInfo>();
+    for (const row of rows) {
+      map.set(row.id, {
+        id: row.id,
+        pid: row.pid,
+        name: row.name,
+        matchNames: row.matchNames === '' ? [] : row.matchNames.split(/[,，]/),
+      });
+    }
+    return map;
+  }
+
   private async decorate(rows: VodEntity[]): Promise<VodRow[]> {
     if (rows.length === 0) return [];
 
