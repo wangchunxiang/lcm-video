@@ -12,6 +12,7 @@ import { validateEnv } from './config/env';
 import { createDataSourceOptions } from './database/options';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
 import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
 import { SourceRuleModule } from './modules/source-rule/source-rule.module';
@@ -25,6 +26,7 @@ import { VodModule } from './modules/vod/vod.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { SettingModule } from './modules/setting/setting.module';
+import { CollectModule } from './jobs/collect/collect.module';
 
 @Module({
   imports: [
@@ -56,6 +58,7 @@ import { SettingModule } from './modules/setting/setting.module';
     SettingModule,
     AdminUserModule,
     CategoryModule,
+    DashboardModule,
     PlayLineModule,
     AdFeatureModule,
     VodMergeIgnoreModule,
@@ -68,6 +71,7 @@ import { SettingModule } from './modules/setting/setting.module';
     CollectSourceModule,
     VodModule,
     VodPlayModule,
+    CollectModule,
   ],
   controllers: [HealthController],
   providers: [
