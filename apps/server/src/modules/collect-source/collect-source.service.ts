@@ -4,6 +4,9 @@ import type { CollectSource } from '@prisma/client';
 import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
+import { autoMatchCategory } from '@lcm/shared';
+import { fetchClassList } from '../../jobs/collect/classes';
+import type { SourceRuntime } from '../../jobs/collect/types';
 import type {
   CollectSourceAllDTO,
   CollectSourceBatchDTO,
@@ -11,6 +14,7 @@ import type {
   CollectSourceDeleteDTO,
   CollectSourceGetDTO,
   CollectSourcePageDTO,
+  CollectSourceRunDTO,
   CollectSourceUpdateDTO,
   CollectSourceVO,
 } from './dto/collect-source';
@@ -170,6 +174,120 @@ export class CollectSourceService {
     }
     return where;
   }
+  /**
+   * 测试连通性：只拉一次源站分类列表，不落库。
+   * 失败也回 code=0（这是"探测结果"，不是接口失败），前端按 ok 字段展示。
+   */
+  async test(dto: CollectSourceRunDTO) {
+    const source = await this.loadRuntime(dto.id);
+    const startedAt = Date.now();
+    try {
+      const { classes, via } = await fetchClassList(source);
+      return {
+        ok: true,
+        elapsedMs: Date.now() - startedAt,
+        categories: classes.length,
+        via,
+        sample: classes.slice(0, 5).map((item) => item.typeName),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        elapsedMs: Date.now() - startedAt,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * 拉取源站分类并写入映射表：已存在的更新名称与父级，
+   * 未映射的记录顺手自动匹配一次（与"自动匹配"按钮同一套规则）。
+   */
+  async fetchCategories(dto: CollectSourceRunDTO) {
+    const source = await this.loadRuntime(dto.id);
+
+    let classes;
+    try {
+      classes = (await fetchClassList(source)).classes;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await this.prisma.collectSource.update({
+        where: { id: dto.id },
+        data: { lastSyncAt: new Date(), lastSyncStatus: 2, lastSyncMsg: message.slice(0, 255) },
+      });
+      throw new BadRequestException(`获取分类失败：${message}`);
+    }
+
+    if (classes.length === 0) {
+      throw new BadRequestException('接口没有返回分类数据（需要 ac=list 且响应带 class）');
+    }
+
+    for (const item of classes) {
+      await this.prisma.collectSourceCategory.upsert({
+        where: { sourceId_sourceTypeId: { sourceId: dto.id, sourceTypeId: item.typeId } },
+        create: {
+          sourceId: dto.id,
+          sourceTypeId: item.typeId,
+          sourceTypeName: item.typeName,
+          sourceTypePid: item.typePid,
+        },
+        update: { sourceTypeName: item.typeName, sourceTypePid: item.typePid },
+      });
+    }
+
+    // 未映射的记录自动匹配：只补 categoryId=0 且未忽略的
+    const [pending, categories] = await Promise.all([
+      this.prisma.collectSourceCategory.findMany({
+        where: { sourceId: dto.id, status: 0, categoryId: 0 },
+        select: { id: true, sourceTypeName: true },
+      }),
+      this.prisma.category.findMany({
+        orderBy: [{ pid: 'asc' }, { sort: 'asc' }],
+        select: { id: true, pid: true, name: true, matchNames: true },
+      }),
+    ]);
+    const matchInfo = categories.map((row) => ({
+      id: row.id,
+      pid: row.pid,
+      name: row.name,
+      matchNames: row.matchNames.split(',').map((item) => item.trim()).filter(Boolean),
+    }));
+
+    let matched = 0;
+    for (const row of pending) {
+      const categoryId = autoMatchCategory(row.sourceTypeName, matchInfo);
+      if (categoryId <= 0) continue;
+      await this.prisma.collectSourceCategory.update({
+        where: { id: row.id },
+        data: { categoryId, status: 1, matchType: 1 },
+      });
+      matched += 1;
+    }
+
+    await this.prisma.collectSource.update({
+      where: { id: dto.id },
+      data: { lastSyncAt: new Date(), lastSyncStatus: 1, lastSyncMsg: `共 ${classes.length} 个分类` },
+    });
+
+    const total = await this.prisma.collectSourceCategory.count({ where: { sourceId: dto.id } });
+    return { total, synced: classes.length, matched, unmapped: pending.length - matched };
+  }
+
+  /** 组装引擎需要的运行期配置（只有分类同步与连通性测试会用到） */
+  private async loadRuntime(id: number): Promise<SourceRuntime> {
+    const row = await this.prisma.collectSource.findUnique({ where: { id } });
+    if (row === null) throw new NotFoundException('采集源不存在');
+    return {
+      id: row.id,
+      name: row.name,
+      apiUrl: row.apiUrl,
+      apiParams: row.apiParams,
+      intervalSec: row.intervalSec,
+      timeout: row.timeout,
+      retryTimes: row.retryTimes,
+      pagesize: row.pagesize,
+    };
+  }
 }
 
 function toVO(row: CollectSource): CollectSourceVO {
@@ -191,4 +309,4 @@ function toVO(row: CollectSource): CollectSourceVO {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
-}
+  }

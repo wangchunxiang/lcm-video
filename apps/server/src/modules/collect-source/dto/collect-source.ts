@@ -112,3 +112,9 @@ export interface CollectSourceVO {
   createdAt: string;
   updatedAt: string;
 }
+
+/** 连通性测试 / 拉取分类：只需要 id */
+export const CollectSourceRunDTO = z.object({
+  id: z.number().int().positive('请选择采集源'),
+});
+export type CollectSourceRunDTO = z.infer<typeof CollectSourceRunDTO>;

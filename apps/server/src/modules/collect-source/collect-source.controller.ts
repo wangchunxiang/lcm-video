@@ -14,6 +14,7 @@ import type {
   CollectSourceUpdateDTO,
   CollectSourceVO,
 } from './dto/collect-source';
+import type { CollectSourceRunDTO } from './dto/collect-source';
 import {
   CollectSourceAllDTO as AllSchema,
   CollectSourceBatchDTO as BatchSchema,
@@ -22,6 +23,7 @@ import {
   CollectSourceGetDTO as GetSchema,
   CollectSourcePageDTO as PageSchema,
   CollectSourceUpdateDTO as UpdateSchema,
+  CollectSourceRunDTO as RunSchema,
 } from './dto/collect-source';
 
 /**
@@ -74,6 +76,18 @@ export class CollectSourceController {
     dto: { id: number; confirmEmpty?: boolean },
   ) {
     return this.runner.startSourceRun(dto.id, { confirmEmpty: dto.confirmEmpty ?? false });
+  }
+
+  /** 测试连通性：拉一次源站分类，不落库 */
+  @Post('test')
+  test(@Body(new ZodValidationPipe(RunSchema)) dto: CollectSourceRunDTO) {
+    return this.collectSourceService.test(dto);
+  }
+
+  /** 拉取源站分类并写入映射表，未映射的顺手自动匹配 */
+  @Post('fetch-categories')
+  fetchCategories(@Body(new ZodValidationPipe(RunSchema)) dto: CollectSourceRunDTO) {
+    return this.collectSourceService.fetchCategories(dto);
   }
 
   @Post('batch')
