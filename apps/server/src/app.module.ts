@@ -14,6 +14,7 @@ import { CollectSourceModule } from './modules/collect-source/collect-source.mod
 import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
 import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
 import { CoverCheckModule } from './modules/cover-check/cover-check.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
 import { CollectTaskModule } from './modules/collect-task/collect-task.module';
 import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
@@ -55,6 +56,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PlayLineModule,
     VodPlayModule,
     VodModule,
+    DashboardModule,
     CollectSourceModule,
     CollectModule,
     CollectSourceCategoryModule,
