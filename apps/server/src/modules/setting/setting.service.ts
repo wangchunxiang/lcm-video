@@ -1,66 +1,90 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import type { SettingDTO, SettingUpdateDTO, SettingVO } from './dto/setting';
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { FindOptionsWhere, Repository } from 'typeorm';
+import { AppCrudService } from '../../common/crud/app-crud.service';
+import { SettingEntity } from './setting.entity';
 
-interface SettingCache {
-  at: number;
-  rows: Map<string, string>;
-}
-
-const CACHE_TTL_MS = 60_000;
+/** 进程内缓存时长：配置读多写少，60 秒足够，改动后立刻失效。 */
+const CACHE_MS = 60_000;
 
 /**
- * 站点配置。底层是 KV 表 lcm_setting（列名 name，Prisma 里叫 key），
- * 读取走进程内缓存（60 秒），任何写入立刻失效（决策 3.7）。
+ * 站点配置（KV 表）。
+ *
+ * 全站到处都要读配置（播放器开关、分页条数、站点名），每个请求查一次库代价高，
+ * 所以这里做 60 秒进程内缓存，任何写入都立即清空缓存。
  */
 @Injectable()
-export class SettingService {
-  private cache: SettingCache | null = null;
+export class SettingService extends AppCrudService<SettingEntity> {
+  private cache: { at: number; value: Map<string, string> } | null = null;
 
-  constructor(private readonly prisma: PrismaService) {}
-
-  async all(): Promise<SettingVO[]> {
-    const rows = await this.load();
-    return [...rows.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, value]) => ({ name, value }));
+  constructor(@InjectRepository(SettingEntity) repository: Repository<SettingEntity>) {
+    super(repository);
   }
 
-  async get(dto: SettingDTO): Promise<SettingVO> {
-    const rows = await this.load();
-    const value = rows.get(dto.name);
-    if (value === undefined) throw new NotFoundException(`配置 ${dto.name} 不存在`);
-    return { name: dto.name, value };
-  }
-
-  /** 读一个数字配置，缺失或不是数字时用兜底值。 */
-  async number(name: string, fallback: number): Promise<number> {
-    const rows = await this.load();
-    const raw = rows.get(name);
-    if (raw === undefined || raw.trim() === '') return fallback;
-    const value = Number(raw);
-    return Number.isFinite(value) ? value : fallback;
-  }
-
-  async update(dto: SettingUpdateDTO): Promise<SettingVO> {
-    await this.prisma.setting.upsert({
-      where: { key: dto.name },
-      create: { key: dto.name, value: dto.value },
-      update: { value: dto.value },
-    });
-    this.cache = null;
-    return { name: dto.name, value: dto.value };
-  }
-
-  private async load(): Promise<Map<string, string>> {
-    if (this.cache !== null && Date.now() - this.cache.at < CACHE_TTL_MS) {
-      return this.cache.rows;
+  /** 取全部配置为 `键 -> 值` 的映射。 */
+  async map(): Promise<Record<string, string>> {
+    const cached = this.cache;
+    if (cached !== null && Date.now() - cached.at < CACHE_MS) {
+      return Object.fromEntries(cached.value);
     }
-    const records = await this.prisma.setting.findMany();
-    const rows = new Map<string, string>();
-    for (const record of records) rows.set(record.key, record.value ?? '');
-    if (rows.size === 0) throw new BadRequestException('配置表为空');
-    this.cache = { at: Date.now(), rows };
-    return rows;
+
+    const rows = await this.repository.find();
+    const result: Record<string, string> = {};
+    for (const row of rows) {
+      result[row.key] = row.value ?? '';
+    }
+    this.cache = { at: Date.now(), value: new Map(Object.entries(result)) };
+    return result;
+  }
+
+  /** 取单个配置，不存在返回 `fallback`。 */
+  async get(key: string, fallback = ''): Promise<string> {
+    const all = await this.map();
+    return all[key] ?? fallback;
+  }
+
+  /** 取数字配置，非法值回落默认。 */
+  async number(key: string, fallback: number): Promise<number> {
+    const raw = await this.get(key);
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  /** 取布尔配置：库里存 `'1'` / `'0'`。 */
+  async flag(key: string, fallback: boolean): Promise<boolean> {
+    const raw = await this.get(key);
+    if (raw === '1') return true;
+    if (raw === '0') return false;
+    return fallback;
+  }
+
+  /** 写入（存在则更新），写完清缓存。 */
+  async save(key: string, value: string): Promise<SettingEntity> {
+    const existing = await this.repository.findOne({ where: { key } });
+    const row =
+      existing === null
+        ? await this.repository.save(this.repository.create({ key, value }))
+        : await this.repository.save({ ...existing, value });
+    this.cache = null;
+    return row;
+  }
+
+  /** 批量写入，一个事务，写完清缓存。 */
+  async saveMany(entries: Array<{ key: string; value: string }>): Promise<number> {
+    for (const entry of entries) {
+      await this.save(entry.key, entry.value);
+    }
+    this.cache = null;
+    return entries.length;
+  }
+
+  /** 删除后清缓存。 */
+  override async delete(
+    criteria: string | FindOptionsWhere<SettingEntity>,
+    softDelete?: boolean,
+  ): Promise<{ success: boolean; message: string }> {
+    const result = await super.delete(criteria, softDelete);
+    this.cache = null;
+    return result;
   }
 }

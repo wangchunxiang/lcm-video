@@ -5,11 +5,12 @@ import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter } from './common/http/all-exceptions.filter';
-import { ResponseInterceptor } from './common/http/response.interceptor';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { AppValidationPipe } from './common/pipes/validation.pipe';
 
 /**
- * 进程入口。三件事：全局信封、统一异常出口、监听端口。
+ * 进程入口。四件事：入参校验、统一信封、统一异常出口、监听端口。
  * 启动：npm run dev（nest start --watch，.env 由 ConfigModule 读取）。
  * 生产：npm run build && npm start（node --env-file=../../.env dist/main.js）。
  */
@@ -35,6 +36,7 @@ async function bootstrap(): Promise<void> {
     next();
   });
 
+  app.useGlobalPipes(new AppValidationPipe());
   app.useGlobalInterceptors(new ResponseInterceptor<unknown>(app.get(Reflector)));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();

@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { AdminUserController, AuthController } from './admin-user.controller';
-import { AdminUserService } from './admin-user.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { SettingModule } from '../setting/setting.module';
+import { AdminUserEntity } from './admin-user.entity';
+import { AdminUserController } from './admin-user.controller';
+import { AuthController } from './auth.controller';
+import { AdminUserService } from './admin-user.service';
 
-/** 账号表：controller 里的登录接口依赖 SettingService 读 login_expire_days。 */
 @Module({
-  imports: [SettingModule],
+  imports: [TypeOrmModule.forFeature([AdminUserEntity]), SettingModule],
   controllers: [AdminUserController, AuthController],
   providers: [AdminUserService],
   exports: [AdminUserService],

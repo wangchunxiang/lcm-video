@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface TokenPayload {
-  /** 管理员 id */
-  uid: number;
+  /** 管理员 id（BIGINT 列，JS 侧是字符串，见 AppBaseEntity） */
+  uid: string;
   /** 密码版本：改密后 +1，旧 token 随之失效 */
   pv: number;
   /** 过期时间（秒级时间戳） */
@@ -17,7 +17,7 @@ function signature(data: string, secret: string): string {
   return createHmac('sha256', secret).update(data).digest('base64url');
 }
 
-/** 生成 HS256 JWT（不引第三方依赖，格式与旧服务端一致）。 */
+/** 生成 HS256 JWT（不引第三方依赖）。 */
 export function signToken(payload: TokenPayload, secret: string): string {
   const head = encode({ alg: 'HS256', typ: 'JWT' });
   const body = encode(payload);
@@ -45,7 +45,8 @@ export function verifyToken(token: string, secret: string): TokenPayload | null 
   }
 
   if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) return null;
-  if (typeof payload.uid !== 'number' || typeof payload.pv !== 'number') return null;
+  if (typeof payload.uid !== 'string' || payload.uid === '') return null;
+  if (typeof payload.pv !== 'number') return null;
   return payload;
 }
 

@@ -1,0 +1,48 @@
+import { Body, Controller, Get, Post, Put, Req } from '@nestjs/common';
+import type { Request } from 'express';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { AuthUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { AdminUserService } from './admin-user.service';
+import type { AdminUserVO } from './admin-user.service';
+import { ChangePasswordDTO, LoginDTO, UpdateProfileDTO } from './dto/admin-user.dto';
+import type { LoginVO } from './dto/admin-user.dto';
+
+/**
+ * 会话与自助操作。
+ * 只有登录是 `@Public()`；其余要求已登录（全局守卫兜底）。
+ */
+@Controller('api/admin/auth')
+export class AuthController {
+  constructor(private readonly adminUserService: AdminUserService) {}
+
+  @Public()
+  @Post('login')
+  login(@Body() dto: LoginDTO, @Req() request: Request): Promise<LoginVO> {
+    return this.adminUserService.login(dto, request.ip ?? '0.0.0.0');
+  }
+
+  /** 登出不需要服务端状态：token 在 localStorage，前端删掉即可。 */
+  @Post('logout')
+  logout(): { success: boolean } {
+    return { success: true };
+  }
+
+  @Get('me')
+  me(@CurrentUser() user: AuthUser): Promise<AdminUserVO> {
+    return this.adminUserService.me(user.id);
+  }
+
+  @Put('profile')
+  updateProfile(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDTO): Promise<AdminUserVO> {
+    return this.adminUserService.updateProfile(user.id, dto);
+  }
+
+  @Put('password')
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: ChangePasswordDTO,
+  ): Promise<{ success: boolean }> {
+    return this.adminUserService.changePassword(user.id, dto);
+  }
+}

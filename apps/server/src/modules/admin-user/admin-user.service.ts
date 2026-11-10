@@ -1,36 +1,49 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { AdminUser, Prisma } from '@prisma/client';
-import type { Page } from '../../common/pagination/page';
-import { toPage } from '../../common/pagination/page';
-import { signToken } from '../../common/security/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { FindOptionsWhere, Repository } from 'typeorm';
+import { AppCrudService } from '../../common/crud/app-crud.service';
 import { hashPassword, verifyPassword } from '../../common/security/password';
 import { isLocked, recordFailure, resetFailures } from '../../common/security/login-lock';
-import { PrismaService } from '../../prisma/prisma.service';
+import { signToken } from '../../common/security/jwt';
 import { SettingService } from '../setting/setting.service';
+import { AdminUserEntity } from './admin-user.entity';
 import type {
-  AdminUserAllDTO,
-  AdminUserCreateDTO,
-  AdminUserDeleteDTO,
-  AdminUserGetDTO,
-  AdminUserPageDTO,
-  AdminUserUpdateDTO,
-  AdminUserVO,
   ChangePasswordDTO,
+  CreateAdminUserDTO,
   LoginDTO,
   LoginVO,
-  ProfileDTO,
-} from './dto/admin-user';
+  UpdateAdminUserDTO,
+  UpdateProfileDTO,
+} from './dto/admin-user.dto';
 
-const ALL_LIMIT = 1000;
+/** 未配置 `login_expire_days` 时的默认有效期（天）。 */
 const DEFAULT_EXPIRE_DAYS = 7;
 
-function toVO(row: AdminUser): AdminUserVO {
+/** 对外视图：绝不带密码哈希。 */
+export interface AdminUserVO {
+  id: string;
+  username: string;
+  nickname: string;
+  isEnabled: number;
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function toVO(row: AdminUserEntity): AdminUserVO {
   return {
     id: row.id,
     username: row.username,
     nickname: row.nickname,
     isEnabled: row.isEnabled,
+    // 本方法可能被 service 内部调用（不经由信封拦截器），这里自己转 ISO
     lastLoginAt: row.lastLoginAt === null ? null : row.lastLoginAt.toISOString(),
     lastLoginIp: row.lastLoginIp,
     createdAt: row.createdAt.toISOString(),
@@ -38,163 +51,141 @@ function toVO(row: AdminUser): AdminUserVO {
   };
 }
 
+/**
+ * 后台账号（决策 5.3）。
+ *
+ * 单账号全权限模型：没有角色表、没有刷新令牌。密码用 scrypt，改密码时
+ * `password_version` 自增，让所有旧 token 立即失效。
+ */
 @Injectable()
-export class AdminUserService {
+export class AdminUserService extends AppCrudService<AdminUserEntity> {
   constructor(
-    private readonly prisma: PrismaService,
+    @InjectRepository(AdminUserEntity) repository: Repository<AdminUserEntity>,
     private readonly config: ConfigService,
     private readonly settings: SettingService,
-  ) {}
+  ) {
+    super(repository);
+  }
 
-  /** 登录：连续失败 5 次锁 15 分钟；成功后发 token 并记一次登录时间与 IP。 */
+  /** 登录：连续失败 5 次锁 15 分钟；成功后记最后登录时间与 IP。 */
   async login(dto: LoginDTO, ip: string): Promise<LoginVO> {
-    if (isLocked(ip)) throw new BadRequestException('尝试次数过多，请 15 分钟后再试');
-
-    const user = await this.prisma.adminUser.findUnique({ where: { username: dto.username } });
-    const passed = user !== null && verifyPassword(dto.password, user.password);
-    if (user === null || !passed) {
-      recordFailure(ip);
-      throw new UnauthorizedException('账号或密码错误');
+    const lockKey = `login:${ip}`;
+    if (isLocked(lockKey)) {
+      throw new ForbiddenException('密码错误次数过多，请 15 分钟后再试');
     }
-    if (user.isEnabled !== 1) throw new UnauthorizedException('账号已被禁用');
 
-    resetFailures(ip);
+    const user = await this.repository.findOne({ where: { username: dto.username } });
+    if (user === null || !verifyPassword(dto.password, user.password)) {
+      recordFailure(lockKey);
+      throw new UnauthorizedException('账号或密码不正确');
+    }
+    if (user.isEnabled !== 1) throw new ForbiddenException('账号已被禁用');
+    resetFailures(lockKey);
 
     const days = await this.settings.number('login_expire_days', DEFAULT_EXPIRE_DAYS);
-    const expireAt = Math.floor(Date.now() / 1000) + days * 86400;
-    const secret = this.config.get<string>('JWT_SECRET') ?? '';
-    const token = signToken({ uid: user.id, pv: user.passwordVersion, exp: expireAt }, secret);
+    const expireDays = Number.isFinite(days) && days > 0 ? Math.trunc(days) : DEFAULT_EXPIRE_DAYS;
+    const expireAt = new Date(Date.now() + expireDays * 24 * 60 * 60 * 1000);
+    const exp = Math.floor(expireAt.getTime() / 1000);
 
-    const updated = await this.prisma.adminUser.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date(), lastLoginIp: ip.slice(0, 45) },
-    });
+    const token = signToken(
+      { uid: user.id, pv: user.passwordVersion, exp },
+      this.config.get<string>('JWT_SECRET') ?? '',
+    );
 
-    return { token, expireAt, user: toVO(updated) };
-  }
-
-  async me(id: number): Promise<AdminUserVO> {
-    const row = await this.prisma.adminUser.findUnique({ where: { id } });
-    if (row === null) throw new NotFoundException('账号不存在');
-    return toVO(row);
-  }
-
-  async create(dto: AdminUserCreateDTO): Promise<AdminUserVO> {
-    const exists = await this.prisma.adminUser.count({ where: { username: dto.username } });
-    if (exists > 0) throw new BadRequestException('账号已存在');
-
-    const row = await this.prisma.adminUser.create({
-      data: {
-        username: dto.username,
-        password: hashPassword(dto.password),
-        nickname: dto.nickname.length > 0 ? dto.nickname : dto.username,
-        isEnabled: dto.isEnabled,
-      },
-    });
-    return toVO(row);
-  }
-
-  /** 改密码会自增 passwordVersion，已发出的 token 全部失效。 */
-  async update(dto: AdminUserUpdateDTO, operatorId: number): Promise<AdminUserVO> {
-    const current = await this.prisma.adminUser.findUnique({ where: { id: dto.id } });
-    if (current === null) throw new NotFoundException('账号不存在');
-    if (dto.isEnabled === 0 && dto.id === operatorId) throw new BadRequestException('不能禁用当前登录的账号');
-
-    if (dto.username !== undefined && dto.username !== current.username) {
-      const exists = await this.prisma.adminUser.count({ where: { username: dto.username } });
-      if (exists > 0) throw new BadRequestException('账号已存在');
-    }
-
-    const data: Prisma.AdminUserUpdateInput = {
-      username: dto.username,
-      nickname: dto.nickname,
-      isEnabled: dto.isEnabled,
+    await this.repository.update(user.id, { lastLoginAt: new Date(), lastLoginIp: ip });
+    return {
+      token,
+      expireAt: expireAt.toISOString(),
+      user: { id: user.id, username: user.username, nickname: user.nickname },
     };
+  }
+
+  /** 当前登录人。 */
+  async me(id: string): Promise<AdminUserVO> {
+    const user = await this.repository.findOne({ where: { id } });
+    if (user === null) throw new UnauthorizedException('账号不存在');
+    return toVO(user);
+  }
+
+  /** 新建：账号唯一，密码入库前哈希。 */
+  override async create(data: Partial<AdminUserEntity>): Promise<AdminUserEntity> {
+    const dto = data as unknown as CreateAdminUserDTO;
+    const username = dto.username.trim();
+    const exists = await this.repository.findOne({ where: { username } });
+    if (exists !== null) throw new BadRequestException(`账号 ${username} 已存在`);
+
+    return super.create({
+      username,
+      password: hashPassword(dto.password),
+      nickname: dto.nickname ?? '',
+      isEnabled: dto.isEnabled ?? 1,
+    });
+  }
+
+  /** 修改：传了密码就重置（版本 +1）并踢掉旧登录；不能禁用自己。 */
+  override async update(
+    criteria: string | FindOptionsWhere<AdminUserEntity>,
+    data: Partial<AdminUserEntity>,
+  ): Promise<AdminUserEntity> {
+    const dto = data as unknown as UpdateAdminUserDTO;
+    if (typeof criteria === 'string' && dto.isEnabled === 0) {
+      throw new BadRequestException('不能禁用自己的账号');
+    }
+
+    const patch: Partial<AdminUserEntity> = {};
+    if (dto.nickname !== undefined) patch.nickname = dto.nickname;
+    if (dto.isEnabled !== undefined) patch.isEnabled = dto.isEnabled;
     if (dto.password !== undefined) {
-      data.password = hashPassword(dto.password);
-      data.passwordVersion = { increment: 1 };
+      patch.password = hashPassword(dto.password);
+      patch.passwordVersion = (await this.currentVersion(criteria)) + 1;
     }
-
-    const row = await this.prisma.adminUser.update({ where: { id: dto.id }, data });
-    return toVO(row);
+    if (Object.keys(patch).length === 0) throw new BadRequestException('没有要修改的内容');
+    return super.update(criteria, patch);
   }
 
-  /** 删除：不能删自己，也不能把启用中的账号删空。 */
-  async delete(dto: AdminUserDeleteDTO, operatorId: number): Promise<{ deleted: number }> {
-    if (dto.ids.includes(operatorId)) throw new BadRequestException('不能删除当前登录的账号');
-
-    const enabledLeft = await this.prisma.adminUser.count({
-      where: { isEnabled: 1, id: { notIn: dto.ids } },
-    });
-    if (enabledLeft === 0) throw new BadRequestException('至少要保留一个启用状态的账号');
-
-    const result = await this.prisma.adminUser.deleteMany({ where: { id: { in: dto.ids } } });
-    return { deleted: result.count };
-  }
-
-  async get(dto: AdminUserGetDTO): Promise<AdminUserVO> {
-    const rows = await this.prisma.adminUser.findMany({ where: this.buildWhere(dto), take: 2 });
-    if (rows.length === 0) throw new NotFoundException('账号不存在');
-    if (rows.length > 1) throw new BadRequestException('条件不唯一，请补充更精确的查询条件');
-    return toVO(rows[0] as AdminUser);
-  }
-
-  async page(dto: AdminUserPageDTO): Promise<Page<AdminUserVO>> {
-    const where = this.buildWhere({ keyword: dto.keyword, isEnabled: dto.isEnabled });
-    const [total, rows] = await this.prisma.$transaction([
-      this.prisma.adminUser.count({ where }),
-      this.prisma.adminUser.findMany({
-        where,
-        orderBy: [{ id: 'asc' }],
-        skip: (dto.pageNum - 1) * dto.pageSize,
-        take: dto.pageSize,
-      }),
-    ]);
-    return toPage(rows.map(toVO), total, dto.pageNum, dto.pageSize);
-  }
-
-  async all(dto: AdminUserAllDTO): Promise<AdminUserVO[]> {
-    const rows = await this.prisma.adminUser.findMany({
-      where: this.buildWhere({ isEnabled: dto.isEnabled }),
-      orderBy: [{ id: 'asc' }],
-      take: ALL_LIMIT,
-    });
-    return rows.map(toVO);
-  }
-
-  async updateProfile(id: number, dto: ProfileDTO): Promise<AdminUserVO> {
-    const row = await this.prisma.adminUser.update({ where: { id }, data: { nickname: dto.nickname } });
-    return toVO(row);
-  }
-
-  /** 改自己的密码：校验原密码，成功后 passwordVersion +1，旧 token 全部失效。 */
-  async changePassword(id: number, dto: ChangePasswordDTO): Promise<null> {
-    if (dto.newPassword === dto.oldPassword) throw new BadRequestException('新密码不能与原密码相同');
-
-    const current = await this.prisma.adminUser.findUnique({ where: { id } });
-    if (current === null) throw new NotFoundException('账号不存在');
-    if (!verifyPassword(dto.oldPassword, current.password)) throw new BadRequestException('原密码不正确');
-
-    await this.prisma.adminUser.update({
-      where: { id },
-      data: { password: hashPassword(dto.newPassword), passwordVersion: { increment: 1 } },
-    });
-    return null;
-  }
-
-  private buildWhere(input: {
-    id?: number;
-    username?: string;
-    keyword?: string;
-    isEnabled?: number;
-  }): Prisma.AdminUserWhereInput {
-    const where: Prisma.AdminUserWhereInput = {};
-    if (input.id !== undefined) where.id = input.id;
-    if (input.username !== undefined) where.username = input.username;
-    if (input.isEnabled !== undefined) where.isEnabled = input.isEnabled;
-    if (input.keyword !== undefined && input.keyword.length > 0) {
-      where.OR = [{ username: { contains: input.keyword } }, { nickname: { contains: input.keyword } }];
+  /** 删除：不能删自己，也不能把最后一个启用的账号删掉。 */
+  override async delete(
+    criteria: string | FindOptionsWhere<AdminUserEntity>,
+    softDelete?: boolean,
+  ): Promise<{ success: boolean; message: string }> {
+    if (typeof criteria === 'string') {
+      const left = await this.repository.count({ where: { isEnabled: 1 } });
+      const target = await this.repository.findOne({ where: { id: criteria } });
+      if (target !== null && target.isEnabled === 1 && left <= 1) {
+        throw new BadRequestException('至少要保留一个启用状态的账号');
+      }
     }
-    return where;
+    return super.delete(criteria, softDelete);
+  }
+
+  /** 改自己的昵称。 */
+  async updateProfile(id: string, dto: UpdateProfileDTO): Promise<AdminUserVO> {
+    await this.repository.update(id, { nickname: dto.nickname });
+    return this.me(id);
+  }
+
+  /** 改自己的密码：校验原密码、新旧不能相同、版本 +1 使旧 token 失效。 */
+  async changePassword(id: string, dto: ChangePasswordDTO): Promise<{ success: boolean }> {
+    const user = await this.repository.findOne({ where: { id } });
+    if (user === null) throw new UnauthorizedException('账号不存在');
+    if (!verifyPassword(dto.oldPassword, user.password)) {
+      throw new BadRequestException('原密码不正确');
+    }
+    if (dto.oldPassword === dto.newPassword) {
+      throw new BadRequestException('新密码不能与原密码相同');
+    }
+    await this.repository.update(id, {
+      password: hashPassword(dto.newPassword),
+      passwordVersion: user.passwordVersion + 1,
+    });
+    return { success: true };
+  }
+
+  private async currentVersion(criteria: string | FindOptionsWhere<AdminUserEntity>): Promise<number> {
+    const user = await this.repository.findOne({
+      where: typeof criteria === 'string' ? { id: criteria } : criteria,
+    });
+    if (user === null) throw new BadRequestException('账号不存在');
+    return user.passwordVersion;
   }
 }

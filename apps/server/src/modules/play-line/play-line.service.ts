@@ -1,153 +1,75 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { PlayLine, Prisma } from '@prisma/client';
-import type { Page } from '../../common/pagination/page';
-import { toPage } from '../../common/pagination/page';
-import { PrismaService } from '../../prisma/prisma.service';
-import { CollectSourceService } from '../collect-source/collect-source.service';
-import type {
-  PlayLineAllDTO,
-  PlayLineBatchDTO,
-  PlayLineCreateDTO,
-  PlayLineDeleteDTO,
-  PlayLineGetDTO,
-  PlayLinePageDTO,
-  PlayLineSortDTO,
-  PlayLineUpdateDTO,
-  PlayLineVO,
-} from './dto/play-line';
-
-const ALL_LIMIT = 1000;
-const SORT_STEP = 10;
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
+import { AppCrudService } from '../../common/crud/app-crud.service';
+import { PlayLineEntity } from './play-line.entity';
 
 @Injectable()
-export class PlayLineService {
+export class PlayLineService extends AppCrudService<PlayLineEntity> {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly collectSourceService: CollectSourceService,
-  ) {}
-
-  async create(dto: PlayLineCreateDTO): Promise<PlayLineVO> {
-    const exists = await this.prisma.playLine.count({ where: { sourceFrom: dto.sourceFrom } });
-    if (exists > 0) throw new BadRequestException(`线路标识 ${dto.sourceFrom} 已存在`);
-
-    const row = await this.prisma.playLine.create({
-      data: {
-        sourceFrom: dto.sourceFrom,
-        name: dto.name,
-        sort: dto.sort,
-        isEnabled: dto.isEnabled,
-      },
-    });
-    return toVO(row, '');
+    @InjectRepository(PlayLineEntity) repository: Repository<PlayLineEntity>,
+    private readonly dataSource: DataSource,
+  ) {
+    super(repository);
   }
 
-  async update(dto: PlayLineUpdateDTO): Promise<PlayLineVO> {
-    const current = await this.prisma.playLine.findUnique({ where: { id: dto.id } });
-    if (current === null) throw new NotFoundException('线路不存在');
-
-    const data: Prisma.PlayLineUpdateInput = {
-      name: dto.name,
-      sort: dto.sort,
-      isEnabled: dto.isEnabled,
-    };
-    const row = await this.prisma.playLine.update({ where: { id: dto.id }, data });
-    return toVO(row, (await this.collectSourceService.playFromNameMap()).get(row.sourceFrom) ?? '');
+  /** 新建前校验标识唯一（库里的唯一索引会抛英文错误，这里给中文提示）。 */
+  override async create(data: Partial<PlayLineEntity>): Promise<PlayLineEntity> {
+    const sourceFrom = String(data.sourceFrom ?? '').trim();
+    if (sourceFrom === '') throw new BadRequestException('线路标识不能为空');
+    const exists = await this.repository.findOne({ where: { sourceFrom } });
+    if (exists !== null) throw new BadRequestException(`线路标识 ${sourceFrom} 已存在`);
+    return super.create({ ...data, sourceFrom, name: data.name ?? '' });
   }
 
-  async delete(dto: PlayLineDeleteDTO): Promise<{ deleted: number }> {
-    const result = await this.prisma.playLine.deleteMany({ where: { id: { in: dto.ids } } });
-    return { deleted: result.count };
-  }
-
-  async get(dto: PlayLineGetDTO): Promise<PlayLineVO> {
-    const rows = await this.prisma.playLine.findMany({ where: this.buildWhere(dto), take: 2 });
-    if (rows.length === 0) throw new NotFoundException('线路不存在');
-    if (rows.length > 1) throw new BadRequestException('条件不唯一，请补充更精确的查询条件');
-
-    const row = rows[0] as PlayLine;
-    return toVO(row, (await this.collectSourceService.playFromNameMap()).get(row.sourceFrom) ?? '');
-  }
-
-  async page(dto: PlayLinePageDTO): Promise<Page<PlayLineVO>> {
-    const where = this.buildWhere({ keyword: dto.keyword, isEnabled: dto.isEnabled });
-    const [total, rows] = await this.prisma.$transaction([
-      this.prisma.playLine.count({ where }),
-      this.prisma.playLine.findMany({
-        where,
-        orderBy: [{ sort: 'asc' }, { id: 'asc' }],
-        skip: (dto.pageNum - 1) * dto.pageSize,
-        take: dto.pageSize,
-      }),
-    ]);
-    const names = await this.collectSourceService.playFromNameMap();
-    return toPage(
-      rows.map((row) => toVO(row, names.get(row.sourceFrom) ?? '')),
-      total,
-      dto.pageNum,
-      dto.pageSize,
-    );
-  }
-
-  async all(dto: PlayLineAllDTO): Promise<PlayLineVO[]> {
-    const rows = await this.prisma.playLine.findMany({
-      where: this.buildWhere({ isEnabled: dto.isEnabled }),
-      orderBy: [{ sort: 'asc' }, { id: 'asc' }],
-      take: ALL_LIMIT,
-    });
-    const names = await this.collectSourceService.playFromNameMap();
-    return rows.map((row) => toVO(row, names.get(row.sourceFrom) ?? ''));
-  }
-
-  /** 批量启用/停用（旧站 /batch）。停用是全局的：该线路对所有影片都消失。 */
-  async batch(dto: PlayLineBatchDTO): Promise<{ updated: number }> {
-    const result = await this.prisma.playLine.updateMany({
-      where: { id: { in: dto.ids } },
-      data: { isEnabled: dto.action === 'enable' ? 1 : 0 },
-    });
-    return { updated: result.count };
-  }
-
-  /** 按传入顺序重排，sort = (index + 1) * 10（旧站 /sort）。 */
-  async sort(dto: PlayLineSortDTO): Promise<null> {
-    await this.prisma.$transaction(
-      dto.ids.map((id, index) =>
-        this.prisma.playLine.update({ where: { id }, data: { sort: (index + 1) * SORT_STEP } }),
-      ),
-    );
-    return null;
-  }
-
-  private buildWhere(input: {
-    id?: number;
-    sourceFrom?: string;
-    name?: string;
-    keyword?: string;
-    isEnabled?: number;
-  }): Prisma.PlayLineWhereInput {
-    const where: Prisma.PlayLineWhereInput = {};
-    if (input.id !== undefined) where.id = input.id;
-    if (input.sourceFrom !== undefined) where.sourceFrom = input.sourceFrom;
-    if (input.name !== undefined) where.name = input.name;
-    if (input.isEnabled !== undefined) where.isEnabled = input.isEnabled;
-    if (input.keyword !== undefined && input.keyword.length > 0) {
-      where.OR = [
-        { sourceFrom: { contains: input.keyword } },
-        { name: { contains: input.keyword } },
-      ];
+  /** 线路标识是对 `lcm_vod_play.source_from` 的 join 键，改了会让历史数据失去关联。 */
+  override async update(
+    criteria: string | FindOptionsWhere<PlayLineEntity>,
+    data: Partial<PlayLineEntity>,
+  ): Promise<PlayLineEntity> {
+    if (data.sourceFrom !== undefined) {
+      throw new BadRequestException('线路标识创建后不可修改');
     }
-    return where;
+    return super.update(criteria, data);
   }
-}
 
-function toVO(row: PlayLine, sourceName: string): PlayLineVO {
-  return {
-    id: row.id,
-    sourceFrom: row.sourceFrom,
-    name: row.name,
-    sort: row.sort,
-    isEnabled: row.isEnabled,
-    sourceName,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
+  /** 拖拽排序：按传入顺序重排为 10、20、30…，一次事务写完。 */
+  async sort(ids: string[]): Promise<{ updated: number }> {
+    if (ids.length === 0) throw new BadRequestException('没有要排序的线路');
+    const rows = await this.repository.find({
+      where: ids.map((id) => ({ id })),
+      select: { id: true },
+    });
+    if (rows.length !== ids.length) throw new BadRequestException('有线路已被删除，请刷新后重试');
+
+    await this.dataSource.transaction(async (manager) => {
+      for (const [index, id] of ids.entries()) {
+        await manager.update(PlayLineEntity, { id }, { sort: (index + 1) * 10 });
+      }
+    });
+    return { updated: ids.length };
+  }
+
+  /** 批量启停：`isEnabled = 0` 是全局开关，影响所有影片在该线路上的展示。 */
+  async switchMany(ids: string[], isEnabled: number): Promise<{ updated: number }> {
+    if (ids.length === 0) throw new BadRequestException('没有要修改的线路');
+    const result = await this.repository.update(ids, { isEnabled });
+    return { updated: result.affected ?? 0 };
+  }
+
+  /** 线路 → 采集源名：`lcm_collect_source.play_from` 是逗号串，反查第一条命中的源。 */
+  async sourceNameMap(): Promise<Map<string, string>> {
+    const rows = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
+      'SELECT name, play_from AS playFrom FROM lcm_collect_source WHERE play_from <> \'\'',
+    );
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      for (const key of row.playFrom.split(',')) {
+        const trimmed = key.trim();
+        if (trimmed !== '' && !map.has(trimmed)) map.set(trimmed, row.name);
+      }
+    }
+    return map;
+  }
 }

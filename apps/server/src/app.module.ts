@@ -1,31 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { pino } from 'pino';
 import { HealthController } from './common/health/health.controller';
-import { JwtAuthGuard } from './common/security/jwt-auth.guard';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { validateEnv } from './config/env';
+import { createDataSourceOptions } from './database/options';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
-import { CategoryModule } from './modules/category/category.module';
-import { CollectSourceModule } from './modules/collect-source/collect-source.module';
-import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
-import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
-import { CoverCheckModule } from './modules/cover-check/cover-check.module';
-import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
-import { CollectTaskModule } from './modules/collect-task/collect-task.module';
-import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
-import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
-import { SourceRuleModule } from './modules/source-rule/source-rule.module';
-import { CollectModule } from './jobs/collect/collect.module.js';
 import { PlayLineModule } from './modules/play-line/play-line.module';
-import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { SettingModule } from './modules/setting/setting.module';
-import { VodModule } from './modules/vod/vod.module';
-import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -49,24 +36,14 @@ import { PrismaModule } from './prisma/prisma.module';
         },
       },
     }),
-    PrismaModule,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        createDataSourceOptions(config.getOrThrow<string>('DATABASE_URL')),
+    }),
     SettingModule,
-    CategoryModule,
     AdminUserModule,
     PlayLineModule,
-    VodPlayModule,
-    VodModule,
-    DashboardModule,
-    CollectSourceModule,
-    CollectModule,
-    CollectSourceCategoryModule,
-    CollectTaskModule,
-    CollectTaskLogModule,
-    CollectTaskLogDetailModule,
-    SourceRuleModule,
-    AdFeatureModule,
-    VodMergeIgnoreModule,
-    CoverCheckModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { schedulerState } from '../../jobs/collect/scheduler';
-import { PrismaService } from '../../prisma/prisma.service';
-import { Public } from '../security/public.decorator';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { Public } from '../decorators/public.decorator';
 
-/** 探活：不只探数据库，还带上「调度是否还在跳」和进程内存。 */
+/** 探活：不只探数据库，还带上进程内存与在跑的采集数。 */
 @Controller()
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   @Public()
   @Get('healthz')
@@ -16,28 +16,21 @@ export class HealthController {
     uptimeSec: number;
     rssMb: number;
     runningTasks: number;
-    scheduler: { lastTickAt: string | null; ageSec: number | null; lastTickMs: number; lastError: string };
   }> {
     const startedAt = Date.now();
-    await this.prisma.$queryRaw`SELECT 1`;
+    await this.dataSource.query('SELECT 1');
     const dbMs = Date.now() - startedAt;
 
-    // 调度器卡住时（长任务占住线程）数据库仍然是通的，只看 db 会误判为健康。
-    const runningTasks = await this.prisma.collectTaskLog.count({ where: { status: 1 } });
-    const lastTickAt = schedulerState.lastTickAt;
+    const rows = await this.dataSource.query<Array<{ total: string }>>(
+      'SELECT COUNT(*) AS total FROM lcm_collect_task_log WHERE status = 1',
+    );
 
     return {
       db: 'up',
       dbMs,
       uptimeSec: Math.round(process.uptime()),
       rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
-      runningTasks,
-      scheduler: {
-        lastTickAt: lastTickAt ? lastTickAt.toISOString() : null,
-        ageSec: lastTickAt ? Math.round((Date.now() - lastTickAt.getTime()) / 1000) : null,
-        lastTickMs: schedulerState.lastTickMs,
-        lastError: schedulerState.lastError,
-      },
+      runningTasks: Number(rows.at(0)?.total ?? 0),
     };
   }
 }
