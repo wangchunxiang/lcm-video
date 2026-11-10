@@ -22,10 +22,7 @@ import {
   PlayLinePageDTO,
   PlayLineSortDTO,
   PlayLineUpdateDTO,
-} from './dto/play-line';
-
-import type {
-  PlayLineVO,
+  type PlayLineVO,
 } from './dto/play-line';
 
 /**

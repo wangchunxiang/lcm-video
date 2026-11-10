@@ -40,11 +40,8 @@ import {
   ChangePasswordDTO,
   LoginDTO,
   ProfileDTO,
-} from './dto/admin-user';
-
-import type {
-  AdminUserVO,
-  LoginVO,
+  type AdminUserVO,
+  type LoginVO,
 } from './dto/admin-user';
 
 /** 账号表的六个标准接口，路径 /api/admin/admin-user/<动作>。 */

@@ -24,11 +24,8 @@ import {
   CollectSourceCategoryPageDTO,
   CollectSourceCategoryRemapDTO,
   CollectSourceCategoryUpdateDTO,
-} from './dto/collect-source-category';
-
-import type {
-  CollectSourceCategorySummaryVO,
-  CollectSourceCategoryVO,
+  type CollectSourceCategorySummaryVO,
+  type CollectSourceCategoryVO,
 } from './dto/collect-source-category';
 
 /** 源站分类映射：标准六件套，另加 by-source / map / match / remap-vods 四个批量操作。 */

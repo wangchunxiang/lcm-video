@@ -8,10 +8,7 @@ import { ZodBody } from '../../common/validation/zod-body.decorator';
 import {
   SettingDTO,
   SettingUpdateDTO,
-} from './dto/setting';
-
-import type {
-  SettingVO,
+  type SettingVO,
 } from './dto/setting';
 
 import {

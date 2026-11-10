@@ -32,10 +32,7 @@ import {
   CollectSourcePageDTO,
   CollectSourceRunDTO,
   CollectSourceUpdateDTO,
-} from './dto/collect-source';
-
-import type {
-  CollectSourceVO,
+  type CollectSourceVO,
 } from './dto/collect-source';
 
 /**

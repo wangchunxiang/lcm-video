@@ -21,11 +21,8 @@ import {
   VodPlayGetDTO,
   VodPlayPageDTO,
   VodPlayUpdateDTO,
-} from './dto/vod-play';
-
-import type {
-  VodPlayDetailVO,
-  VodPlayVO,
+  type VodPlayDetailVO,
+  type VodPlayVO,
 } from './dto/vod-play';
 
 /**

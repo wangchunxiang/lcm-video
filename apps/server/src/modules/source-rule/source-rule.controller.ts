@@ -21,11 +21,8 @@ import {
   SourceRuleGetDTO,
   SourceRulePageDTO,
   SourceRuleUpdateDTO,
-} from './dto/source-rule';
-
-import type {
-  SourceRuleApplyResult,
-  SourceRuleVO,
+  type SourceRuleApplyResult,
+  type SourceRuleVO,
 } from './dto/source-rule';
 
 /** 地址替换规则：标准六件套 + apply（把规则重刷到历史数据）。 */

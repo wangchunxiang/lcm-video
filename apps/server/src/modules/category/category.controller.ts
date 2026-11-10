@@ -20,11 +20,8 @@ import {
   CategoryGetDTO,
   CategoryPageDTO,
   CategoryUpdateDTO,
-} from './dto/category';
-
-import type {
-  CategoryNodeVO,
-  CategoryVO,
+  type CategoryNodeVO,
+  type CategoryVO,
 } from './dto/category';
 
 /**

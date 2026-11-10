@@ -22,11 +22,8 @@ import {
   VodPageDTO,
   VodRecollectDTO,
   VodUpdateDTO,
-} from './dto/vod';
-
-import type {
-  VodDetailVO,
-  VodVO,
+  type VodDetailVO,
+  type VodVO,
 } from './dto/vod';
 
 /**
