@@ -148,3 +148,11 @@ export interface VodPlayBriefVO {
   sourceFrom: string;
   episodeCount: number;
 }
+
+/** 重新采集单部影片：只按原始采集源再拉一次详情 */
+export const VodRecollectDTO = z.object({
+  id: z.number().int().positive('请选择影片'),
+  /** 指定用哪条采集线路回溯；不传则取第一条可回溯的线路 */
+  sourceId: z.number().int().positive().optional(),
+});
+export type VodRecollectDTO = z.infer<typeof VodRecollectDTO>;

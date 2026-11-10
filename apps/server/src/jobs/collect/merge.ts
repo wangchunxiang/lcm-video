@@ -299,6 +299,9 @@ export function mergeVodContent(
     cover = mergeCover(old.cover, next.cover, old.coverHost ?? '', ctx);
   }
   set('cover', cover);
+  // cover_host 是从 cover 派生的业务列，必须跟着一起改，否则后台图片体检会认错域名
+  const coverHost = cover === '' ? '' : hostOf(cover);
+  if (coverHost !== (old.coverHost ?? '')) set('coverHost', coverHost);
 
   const dateStrategy = effectiveStrategy(config.fields.releaseDate ?? 'date', ctx);
   if (dateStrategy !== 'keep' && !isBlank(next.releaseDate)) {

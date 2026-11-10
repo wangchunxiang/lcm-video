@@ -10,6 +10,7 @@ import type {
   VodDetailVO,
   VodGetDTO,
   VodPageDTO,
+  VodRecollectDTO,
   VodUpdateDTO,
   VodVO,
 } from './dto/vod';
@@ -20,6 +21,7 @@ import {
   VodDeleteDTO as DeleteSchema,
   VodGetDTO as GetSchema,
   VodPageDTO as PageSchema,
+  VodRecollectDTO as RecollectSchema,
   VodUpdateDTO as UpdateSchema,
 } from './dto/vod';
 
@@ -59,6 +61,14 @@ export class VodController {
   @Post('all')
   async all(@Body(new ZodValidationPipe(AllSchema)) dto: VodAllDTO): Promise<VodVO[]> {
     return this.vodService.all(dto);
+  }
+
+  /** 重新采集：按原始采集源再拉一次这一部影片 */
+  @Post('recollect')
+  async recollect(
+    @Body(new ZodValidationPipe(RecollectSchema)) dto: VodRecollectDTO,
+  ): Promise<{ inserted: number; updated: number; failed: number; fails: unknown[] }> {
+    return this.vodService.recollect(dto);
   }
 
   @Post('batch')

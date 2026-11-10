@@ -6,6 +6,11 @@ import type { Page } from '../../common/page';
 import { toPage } from '../../common/page';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
+import { CollectClient } from '../../jobs/collect/client';
+import { parseVodPage } from '../../jobs/collect/parser';
+import { loadBrokenCoverHosts, loadMergeConfig } from '../../jobs/collect/merge';
+import { processPage } from '../../jobs/collect/writer';
+import type { CategoryInfo, MappingInfo } from '../../jobs/collect/types';
 import type {
   VodAllDTO,
   VodBatchDTO,
@@ -15,6 +20,7 @@ import type {
   VodGetDTO,
   VodPageDTO,
   VodPlayBriefVO,
+  VodRecollectDTO,
   VodUpdateDTO,
   VodVO,
 } from './dto/vod';
@@ -345,5 +351,115 @@ export class VodService {
       createdAt: row.createdAt.toISOString(),
     };
   }
+
+  /**
+   * 重新采集单部影片。
+   *
+   * 与批量采集走同一条写库路径（`processPage`），区别只有两点：
+   * `forceVodId` 指定目标影片，避免同名影片被当成新片插入；`keepCollectedAt`
+   * 不改采集时间，免得重采把老片顶到「最新更新」。
+   */
+  async recollect(dto: VodRecollectDTO) {
+    const vod = await this.prisma.vod.findUnique({ where: { id: dto.id }, select: { id: true } });
+    if (vod === null) throw new NotFoundException('影片不存在');
+
+    const plays = await this.prisma.vodPlay.findMany({
+      where: { vodId: dto.id },
+      select: { sourceId: true, sourceVodId: true },
+    });
+    const candidates = plays.filter((row) => (row.sourceId ?? 0) > 0 && row.sourceVodId !== '');
+    const target =
+      dto.sourceId === undefined
+        ? candidates[0]
+        : candidates.find((row) => row.sourceId === dto.sourceId);
+    if (target === undefined) {
+      throw new BadRequestException(
+        dto.sourceId === undefined
+          ? '该影片没有可回溯的采集来源，无法重新采集'
+          : '该影片没有来自这个采集源的线路，无法重新采集',
+      );
+    }
+
+    const source = await this.prisma.collectSource.findUnique({ where: { id: target.sourceId ?? 0 } });
+    if (source === null) throw new BadRequestException('采集源已不存在');
+    if (source.isEnabled === 0) throw new BadRequestException('采集源已停用，先启用再重新采集');
+
+    const client = new CollectClient({
+      id: source.id,
+      name: source.name,
+      apiUrl: source.apiUrl,
+      apiParams: source.apiParams,
+      intervalSec: source.intervalSec,
+      timeout: source.timeout,
+      retryTimes: source.retryTimes,
+      pagesize: source.pagesize,
+    });
+
+    let item;
+    try {
+      const raw = await client.request({ ac: 'detail', ids: target.sourceVodId, at: 'json' });
+      const parsed = parseVodPage(raw);
+      item = parsed.list.find((row) => row.vodId === target.sourceVodId) ?? parsed.list[0];
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : '采集失败');
+    }
+    if (item === undefined) throw new BadRequestException('源站没有返回该影片');
+
+    const mappingRow = await this.prisma.collectSourceCategory.findUnique({
+      where: { sourceId_sourceTypeId: { sourceId: source.id, sourceTypeId: item.typeId } },
+    });
+    if (mappingRow === null || mappingRow.status !== 1 || mappingRow.categoryId === 0) {
+      throw new BadRequestException(
+        `该片所属源站分类（${item.typeName}）未映射，请先在分类映射里处理`,
+      );
+    }
+
+    const mapping = new Map<string, MappingInfo>();
+    mapping.set(item.typeId, { categoryId: mappingRow.categoryId, status: mappingRow.status });
+
+    const categories = await this.loadCategoryMap();
+    const merge = await loadMergeConfig(this.prisma);
+    const brokenCoverHosts = await loadBrokenCoverHosts(this.prisma);
+
+    const result = await processPage(this.prisma, {
+      sourceId: source.id,
+      items: [item],
+      mapping,
+      categories,
+      forceVodId: dto.id,
+      keepCollectedAt: true,
+      merge,
+      brokenCoverHosts,
+    });
+
+    return {
+      inserted: result.counters.inserted,
+      updated: result.counters.updated,
+      failed: result.counters.failed,
+      fails: result.fails,
+    };
+  }
+
+  /** 分类表：写库时要带上 pid（一级分类的父级固定 0） */
+  private async loadCategoryMap(): Promise<Map<number, CategoryInfo>> {
+    const rows = await this.prisma.category.findMany({
+      select: { id: true, pid: true, name: true, matchNames: true },
+    });
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          pid: row.pid,
+          name: row.name,
+          matchNames: row.matchNames
+            .split(/[,，]/)
+            .map((part) => part.trim())
+            .filter((part) => part !== ''),
+        },
+      ]),
+    );
+  }
+
 }
 
