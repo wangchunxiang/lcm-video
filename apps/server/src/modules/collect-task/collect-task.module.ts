@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CollectTaskEntity } from './collect-task.entity';
+import { CollectTaskController } from './collect-task.controller';
+import { CollectTaskService } from './collect-task.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([CollectTaskEntity])],
+  controllers: [CollectTaskController],
+  providers: [CollectTaskService],
+  exports: [CollectTaskService],
+})
+export class CollectTaskModule {}

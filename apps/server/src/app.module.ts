@@ -11,6 +11,18 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { validateEnv } from './config/env';
 import { createDataSourceOptions } from './database/options';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
+import { CategoryModule } from './modules/category/category.module';
+import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
+import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
+import { SourceRuleModule } from './modules/source-rule/source-rule.module';
+import { CoverCheckModule } from './modules/cover-check/cover-check.module';
+import { CollectTaskModule } from './modules/collect-task/collect-task.module';
+import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
+import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
+import { CollectSourceCategoryModule } from './modules/collect-source-category/collect-source-category.module';
+import { CollectSourceModule } from './modules/collect-source/collect-source.module';
+import { VodModule } from './modules/vod/vod.module';
+import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { SettingModule } from './modules/setting/setting.module';
 
@@ -43,7 +55,19 @@ import { SettingModule } from './modules/setting/setting.module';
     }),
     SettingModule,
     AdminUserModule,
+    CategoryModule,
     PlayLineModule,
+    AdFeatureModule,
+    VodMergeIgnoreModule,
+    SourceRuleModule,
+    CoverCheckModule,
+    CollectTaskModule,
+    CollectTaskLogModule,
+    CollectTaskLogDetailModule,
+    CollectSourceCategoryModule,
+    CollectSourceModule,
+    VodModule,
+    VodPlayModule,
   ],
   controllers: [HealthController],
   providers: [
