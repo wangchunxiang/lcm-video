@@ -271,11 +271,12 @@ export class VodMergeService {
             ${line.sourceUpdatedAt}, ${line.collectedAt})
           ON DUPLICATE KEY UPDATE
             source_vod_id = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(source_vod_id), source_vod_id),
-            play_url = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(play_url), play_url)`;
+            play_url = IF(CHAR_LENGTH(VALUES(play_url)) > CHAR_LENGTH(play_url), VALUES(play_url), play_url),
+            updated_at = NOW()`;
       }
       await tx.vodPlay.deleteMany({ where: { vodId: { in: others } } });
       if (latest) {
-        await tx.$executeRaw`UPDATE lcm_vod SET collected_at = GREATEST(collected_at, ${latest}) WHERE id = ${keep.id}`;
+        await tx.$executeRaw`UPDATE lcm_vod SET collected_at = GREATEST(collected_at, ${latest}), updated_at = NOW() WHERE id = ${keep.id}`;
       }
       await tx.vod.deleteMany({ where: { id: { in: others } } });
     });

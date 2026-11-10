@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { CollectTaskLogDetail, Prisma } from '@prisma/client';
-import type { Page } from '../../common/pagination/page';
-import { toPage } from '../../common/pagination/page';
+import type { CrudDelegate } from '../../common/crud/crud.service';
+import { CrudService, patchOf } from '../../common/crud/crud.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CollectTaskLogDetailAllDTO,
@@ -12,9 +12,6 @@ import type {
   CollectTaskLogDetailUpdateDTO,
   CollectTaskLogDetailVO,
 } from './dto/collect-task-log-detail';
-
-/** 查询全部时的硬上限（决策 2.9）。 */
-const ALL_LIMIT = 1000;
 
 function toVO(row: CollectTaskLogDetail): CollectTaskLogDetailVO {
   return {
@@ -35,8 +32,52 @@ function toVO(row: CollectTaskLogDetail): CollectTaskLogDetailVO {
 }
 
 @Injectable()
-export class CollectTaskLogDetailService {
-  constructor(private readonly prisma: PrismaService) {}
+export class CollectTaskLogDetailService extends CrudService<
+  CollectTaskLogDetail,
+  CollectTaskLogDetailVO,
+  CollectTaskLogDetailGetDTO,
+  CollectTaskLogDetailPageDTO,
+  CollectTaskLogDetailAllDTO,
+  CollectTaskLogDetailDeleteDTO
+> {
+  protected readonly label = '明细';
+
+  constructor(private readonly prisma: PrismaService) {
+    super();
+  }
+
+  /** 用 getter 而不是字段初始化：字段初始化早于构造函数体，那时 this.prisma 还不存在 */
+  protected get delegate(): CrudDelegate<CollectTaskLogDetail> {
+    return this.prisma.collectTaskLogDetail as unknown as CrudDelegate<CollectTaskLogDetail>;
+  }
+
+  protected toVO(row: CollectTaskLogDetail): CollectTaskLogDetailVO {
+    return toVO(row);
+  }
+
+  protected getWhere(dto: CollectTaskLogDetailGetDTO): Prisma.CollectTaskLogDetailWhereInput {
+    const where: Prisma.CollectTaskLogDetailWhereInput = {};
+    if (dto.id) where.id = dto.id;
+    if (dto.logId) where.logId = dto.logId;
+    if (dto.page !== undefined) where.page = dto.page;
+    return where;
+  }
+
+  protected pageWhere(dto: CollectTaskLogDetailPageDTO): Prisma.CollectTaskLogDetailWhereInput {
+    return { logId: dto.logId };
+  }
+
+  protected allWhere(dto: CollectTaskLogDetailAllDTO): Prisma.CollectTaskLogDetailWhereInput {
+    return { logId: dto.logId };
+  }
+
+  protected pageOrder(): Prisma.CollectTaskLogDetailOrderByWithRelationInput[] {
+    return [{ page: 'desc' }, { id: 'desc' }];
+  }
+
+  protected allOrder(): Prisma.CollectTaskLogDetailOrderByWithRelationInput[] {
+    return [{ page: 'asc' }, { id: 'asc' }];
+  }
 
   async create(dto: CollectTaskLogDetailCreateDTO): Promise<CollectTaskLogDetailVO> {
     const log = await this.prisma.collectTaskLog.findUnique({
@@ -53,58 +94,17 @@ export class CollectTaskLogDetailService {
   }
 
   async update(dto: CollectTaskLogDetailUpdateDTO): Promise<CollectTaskLogDetailVO> {
-    const current = await this.prisma.collectTaskLogDetail.findUnique({ where: { id: dto.id } });
-    if (!current) throw new NotFoundException('明细不存在');
+    await this.requireRow(dto.id);
 
     const { id, failDetail, ...rest } = dto;
-    const patch: Prisma.CollectTaskLogDetailUpdateInput = Object.fromEntries(
-      Object.entries(rest).filter(([, value]) => value !== undefined),
-    );
+    void id;
+    const patch = this.requirePatch(patchOf(rest as Record<string, unknown>));
     if (failDetail !== undefined) patch.failDetail = failDetail ?? undefined;
-    if (Object.keys(patch).length === 0) throw new BadRequestException('没有要修改的内容');
 
-    return toVO(await this.prisma.collectTaskLogDetail.update({ where: { id }, data: patch }));
-  }
-
-  async delete(dto: CollectTaskLogDetailDeleteDTO): Promise<{ deleted: number }> {
-    const result = await this.prisma.collectTaskLogDetail.deleteMany({
-      where: { id: { in: dto.ids } },
+    const row = await this.prisma.collectTaskLogDetail.update({
+      where: { id: dto.id },
+      data: patch as Prisma.CollectTaskLogDetailUpdateInput,
     });
-    return { deleted: result.count };
-  }
-
-  async get(dto: CollectTaskLogDetailGetDTO): Promise<CollectTaskLogDetailVO> {
-    const where: Prisma.CollectTaskLogDetailWhereInput = {};
-    if (dto.id) where.id = dto.id;
-    if (dto.logId) where.logId = dto.logId;
-    if (dto.page !== undefined) where.page = dto.page;
-
-    const rows = await this.prisma.collectTaskLogDetail.findMany({ where, take: 2 });
-    if (rows.length === 0) throw new NotFoundException('明细不存在');
-    if (rows.length > 1) throw new BadRequestException('条件不唯一，请补充更精确的查询条件');
-    return toVO(rows[0]!);
-  }
-
-  async page(dto: CollectTaskLogDetailPageDTO): Promise<Page<CollectTaskLogDetailVO>> {
-    const where: Prisma.CollectTaskLogDetailWhereInput = { logId: dto.logId };
-    const [rows, total] = await Promise.all([
-      this.prisma.collectTaskLogDetail.findMany({
-        where,
-        orderBy: [{ page: 'desc' }, { id: 'desc' }],
-        skip: (dto.pageNum - 1) * dto.pageSize,
-        take: dto.pageSize,
-      }),
-      this.prisma.collectTaskLogDetail.count({ where }),
-    ]);
-    return toPage(rows.map(toVO), total, dto.pageNum, dto.pageSize);
-  }
-
-  async all(dto: CollectTaskLogDetailAllDTO): Promise<CollectTaskLogDetailVO[]> {
-    const rows = await this.prisma.collectTaskLogDetail.findMany({
-      where: { logId: dto.logId },
-      orderBy: [{ page: 'asc' }, { id: 'asc' }],
-      take: ALL_LIMIT,
-    });
-    return rows.map(toVO);
+    return toVO(row);
   }
 }

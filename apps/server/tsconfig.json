@@ -13,6 +13,7 @@
     "verbatimModuleSyntax": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "sourceMap": true,

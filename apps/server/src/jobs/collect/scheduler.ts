@@ -7,6 +7,13 @@ import { CollectRunner } from './runner.js';
 /** 任务表按分钟对齐的 cron，每 30 秒扫一次即可覆盖，避免漏掉整点 */
 const TICK_MS = 30_000;
 
+/** 调度器心跳：/healthz 用它判断「进程活着但调度卡死」。 */
+export const schedulerState: {
+  lastTickAt: Date | null;
+  lastTickMs: number;
+  lastError: string;
+} = { lastTickAt: null, lastTickMs: 0, lastError: '' };
+
 @Injectable()
 export class CollectScheduler implements OnApplicationBootstrap {
   private readonly logger = new Logger(CollectScheduler.name);
@@ -29,11 +36,16 @@ export class CollectScheduler implements OnApplicationBootstrap {
   async tick(): Promise<void> {
     if (this.ticking) return;
     this.ticking = true;
+    const startedAt = Date.now();
     try {
       await this.scan();
+      schedulerState.lastError = '';
     } catch (error) {
-      this.logger.error(`采集调度扫描失败：${error instanceof Error ? error.message : String(error)}`);
+      schedulerState.lastError = error instanceof Error ? error.message : String(error);
+      this.logger.error(`采集调度扫描失败：${schedulerState.lastError}`);
     } finally {
+      schedulerState.lastTickAt = new Date();
+      schedulerState.lastTickMs = Date.now() - startedAt;
       this.ticking = false;
     }
   }

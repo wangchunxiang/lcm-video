@@ -250,23 +250,36 @@ export class CollectRunner {
     let logId = 0;
     if (input.reuseLogId !== undefined) {
       logId = input.reuseLogId;
-      await this.prisma.collectTaskLog.update({
-        where: { id: logId },
+      // 条件更新即抢锁：两个并发续采只有一个能把记录从「已结束」改回「运行中」
+      const claimed = await this.prisma.collectTaskLog.updateMany({
+        where: { id: logId, status: { not: 1 } },
         data: { status: 1, resumeCount: input.resumeCount, finishedAt: null, message: '' },
       });
+      if (claimed.count === 0) return { ok: false, msg: '该记录正在运行' };
     } else {
-      const log = await this.prisma.collectTaskLog.create({
-        data: {
-          taskId: input.taskId,
-          sourceId: input.sourceId,
-          taskName: input.taskName,
-          rangeType: input.rangeType,
-          status: 1,
-          resumeCount: input.resumeCount,
-          startedAt: new Date(),
-        },
+      // 同一源站同时只允许一路采集。startSourceRun/调度器前面的 findRunningLog 是
+      // 「先查后写」，两个请求同时到达会都通过；这里锁住源站行再查一次才是原子的。
+      const created = await this.prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT id FROM lcm_collect_source WHERE id = ${input.sourceId} FOR UPDATE`;
+        const busy = await tx.collectTaskLog.findFirst({
+          where: { sourceId: input.sourceId, status: 1 },
+          select: { id: true },
+        });
+        if (busy) return null;
+        return tx.collectTaskLog.create({
+          data: {
+            taskId: input.taskId,
+            sourceId: input.sourceId,
+            taskName: input.taskName,
+            rangeType: input.rangeType,
+            status: 1,
+            resumeCount: input.resumeCount,
+            startedAt: new Date(),
+          },
+        });
       });
-      logId = log.id;
+      if (created === null) return { ok: false, msg: '该采集源正在采集，请先停止' };
+      logId = created.id;
     }
 
     const controller = new AbortController();

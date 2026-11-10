@@ -48,12 +48,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
           msg = detail.filter((item): item is string => typeof item === 'string').join('; ');
         }
       }
-    } else if (exception instanceof Error) {
-      msg = exception.message;
+    }
+
+    // 非 HttpException 一律不回原始 message：Prisma / 驱动的报错里带 SQL 片段和列名，
+    // 只留在日志里靠 reqId 关联，前端只需要知道「服务器异常」。
+    if (!(exception instanceof HttpException)) {
+      msg = '服务器异常';
     }
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       code = CODE_SERVER_ERROR;
+      msg = '服务器异常';
       this.logger.error({ reqId, err: exception }, '未处理的异常');
     }
 

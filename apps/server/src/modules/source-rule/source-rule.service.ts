@@ -124,11 +124,13 @@ export class SourceRuleService {
     if (!confirm) return { needConfirm: true, total, affected: 0 };
     if (total === 0) return { needConfirm: false, total: 0, affected: 0 };
 
-    // cover_host 是业务列（决策：不用生成列），换前缀后必须一起重算
+    // cover_host 是业务列（决策：不用生成列），换前缀后必须一起重算；
+    // 原生 SQL 不触发 Prisma 的 @updatedAt，updated_at 要自己写。
     await this.prisma.$executeRaw`
       UPDATE lcm_vod
       SET cover = CONCAT(${rule.toUrl}, SUBSTRING(cover, ${rule.fromUrl.length + 1})),
-          cover_host = LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(${rule.toUrl}, SUBSTRING(cover, ${rule.fromUrl.length + 1})), '/', 3), '/', -1))
+          cover_host = LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(${rule.toUrl}, SUBSTRING(cover, ${rule.fromUrl.length + 1})), '/', 3), '/', -1)),
+          updated_at = NOW()
       WHERE cover LIKE ${prefix}
     `;
     return { needConfirm: false, total, affected: total };
@@ -153,7 +155,7 @@ export class SourceRuleService {
       const cases = Prisma.join(batch.map((row) => Prisma.sql`WHEN ${row.id} THEN ${row.playUrl}`), ' ');
       const ids = Prisma.join(batch.map((row) => Prisma.sql`${row.id}`));
       await this.prisma.$executeRaw(
-        Prisma.sql`UPDATE lcm_vod_play SET play_url = CASE id ${cases} ELSE play_url END WHERE id IN (${ids})`,
+        Prisma.sql`UPDATE lcm_vod_play SET play_url = CASE id ${cases} ELSE play_url END, updated_at = NOW() WHERE id IN (${ids})`,
       );
       affected += batch.length;
     }
