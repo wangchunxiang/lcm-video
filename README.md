@@ -27,7 +27,7 @@ apps/
       common/          crud 基类、装饰器、过滤器、守卫、拦截器、管道、安全工具
       config/          configuration.ts / validation.schema.ts / typeorm.config.ts
       database/        data-source.ts、init-db.ts、seed.ts、migrations/、seeds/
-      modules/         一表一模块，CRUD 由 @Crud() 生成；另有 collect、portal、health 等无表模块
+      modules/         一表一模块，CRUD 由 @AppCrud() 生成；另有 collect、portal、health 等无表模块
     test/              集成测试（e2e）预留；单测与源码同目录，跑 vitest
   admin/               管理后台（dev 3200，build 到 /admin/）
   web/                 用户端前台（dev 3300），页面目前为占位实现

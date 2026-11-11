@@ -1,4 +1,4 @@
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { Post } from '@nestjs/common';
 import { CategoryEntity } from './category.entity';
 import { CategoryService } from './category.service';
@@ -8,21 +8,10 @@ import { CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
 /**
  * 分类管理：`@Crud()` 生成标准 REST，另加 `tree`（前台导航树）与 `options`（下拉）。
  */
-@Crud({
+@AppCrud({
   entity: CategoryEntity,
   path: 'api/admin/category',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateCategoryDTO, update: UpdateCategoryDTO },
-  messages: { deleted: '分类已删除' },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class CategoryController {
   constructor(public readonly service: CategoryService) {}

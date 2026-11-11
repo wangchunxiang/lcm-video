@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
 import { CollectSourceEntity } from './collect-source.entity';
 import { CollectSourceService } from './collect-source.service';
@@ -22,20 +22,10 @@ class RunDTO extends SourceIdDTO {
 }
 
 /** 采集源站：标准 REST + 连通性测试 + 拉取分类。 */
-@Crud({
+@AppCrud({
   entity: CollectSourceEntity,
   path: 'api/admin/collect-source',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateCollectSourceDTO, update: UpdateCollectSourceDTO },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class CollectSourceController {
   constructor(public readonly service: CollectSourceService) {}

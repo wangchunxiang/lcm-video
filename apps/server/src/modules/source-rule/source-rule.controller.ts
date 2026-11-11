@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
 import { SourceRuleEntity } from './source-rule.entity';
 import { SourceRuleService } from './source-rule.service';
@@ -18,20 +18,10 @@ class ApplyDTO {
 }
 
 /** 地址替换规则：标准 REST + 历史数据重刷。 */
-@Crud({
+@AppCrud({
   entity: SourceRuleEntity,
   path: 'api/admin/source-rule',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateSourceRuleDTO, update: UpdateSourceRuleDTO },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class SourceRuleController {
   constructor(public readonly service: SourceRuleService) {}

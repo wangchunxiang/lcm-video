@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { SettingEntity } from './setting.entity';
 import { SettingService } from './setting.service';
 import { CreateSettingDTO, UpdateSettingDTO } from './dto/setting.dto';
@@ -11,21 +11,10 @@ import { CreateSettingDTO, UpdateSettingDTO } from './dto/setting.dto';
  *
  * 注意：`map` 用 POST 而不是 GET，避免落到 `GET /:id` 上被当成 id 解析。
  */
-@Crud({
+@AppCrud({
   entity: SettingEntity,
   path: 'api/admin/setting',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateSettingDTO, update: UpdateSettingDTO },
-  messages: { deleted: '配置已删除' },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class SettingController {
   constructor(public readonly service: SettingService) {}

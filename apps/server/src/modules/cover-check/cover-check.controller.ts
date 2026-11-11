@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CoverCheckEntity } from './cover-check.entity';
@@ -43,20 +43,10 @@ class HostVodsDTO extends HostDTO {
 }
 
 /** 封面体检：标准 REST + 域名概览 / 扫描 / 清空 / 修复。 */
-@Crud({
+@AppCrud({
   entity: CoverCheckEntity,
   path: 'api/admin/cover-check',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateCoverCheckDTO, update: UpdateCoverCheckDTO },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class CoverCheckController {
   constructor(public readonly service: CoverCheckService) {}

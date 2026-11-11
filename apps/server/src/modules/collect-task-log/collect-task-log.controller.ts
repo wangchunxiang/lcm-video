@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { IsString, Matches } from 'class-validator';
 import { CollectTaskLogEntity } from './collect-task-log.entity';
 import { CollectTaskLogService } from './collect-task-log.service';
@@ -14,20 +14,10 @@ class LogIdDTO {
 }
 
 /** 采集记录：标准 REST + 续采 / 停止。 */
-@Crud({
+@AppCrud({
   entity: CollectTaskLogEntity,
   path: 'api/admin/collect-task-log',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateCollectTaskLogDTO, update: UpdateCollectTaskLogDTO },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class CollectTaskLogController {
   constructor(public readonly service: CollectTaskLogService) {}

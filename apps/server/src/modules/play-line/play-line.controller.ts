@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { PlayLineEntity } from './play-line.entity';
 import { PlayLineService } from './play-line.service';
 import {
@@ -16,24 +16,10 @@ import {
  * 注意：`@Crud()` 自带 `@Controller`，这个类不要再加 `@Controller` 装饰器；
  * 且必须暴露名为 `service` 的属性，路由处理器才能拿到它。
  */
-@Crud({
+@AppCrud({
   entity: PlayLineEntity,
   path: 'api/admin/play-line',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreatePlayLineDTO, update: UpdatePlayLineDTO },
-  messages: {
-    deleted: '线路已删除',
-    noItemsToDelete: '没有要删除的线路',
-  },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class PlayLineController {
   constructor(public readonly service: PlayLineService) {}

@@ -1,5 +1,5 @@
 import { Body, Post } from '@nestjs/common';
-import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
+import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { VodPlayEntity } from './vod-play.entity';
 import { VodPlayService } from './vod-play.service';
 import type { VodPlayRow } from './vod-play.service';
@@ -11,20 +11,10 @@ import {
 } from './dto/vod-play.dto';
 
 /** 播放线路：标准 REST + `by-vod`/`delete-many`（带「最后一条线路」保护）。 */
-@Crud({
+@AppCrud({
   entity: VodPlayEntity,
   path: 'api/admin/vod-play',
-  softDelete: false,
-  maxPerPage: 100,
   dto: { create: CreateVodPlayDTO, update: UpdateVodPlayDTO },
-  routes: {
-    [CrudActionsEnum.CREATE_MANY]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH]: false,
-    [CrudActionsEnum.DELETE_FROM_TRASH_MANY]: false,
-    [CrudActionsEnum.RESTORE]: false,
-    [CrudActionsEnum.RESTORE_MANY]: false,
-    [CrudActionsEnum.REORDER]: false,
-  },
 })
 export class VodPlayController {
   constructor(public readonly service: VodPlayService) {}
