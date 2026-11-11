@@ -88,6 +88,23 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
   配置在 `vitest.e2e.config.ts`。
 - 用例共用一套 fixture 数据，因此串行执行（`fileParallelism: false`），一次约 10 秒。
 
+## 部署
+
+单进程同时提供 API 与两个前端（决策 7.3）：构建产物存在时，`/admin/` 由 `apps/admin/dist` 托管、
+`/` 由 `apps/web/dist` 托管，history 路由回落到各自的 `index.html`；产物不存在则跳过（开发时各跑 vite dev server）。
+
+```bash
+# 方式一：Docker（两阶段构建，运行阶段只带 prune 后的依赖与 dist）
+docker build -t lcm-video .
+docker run -p 3100:3100 --env-file .env lcm-video
+
+# 方式二：PM2
+npm ci && npm run build
+pm2 start ecosystem.config.cjs
+```
+
+数据库与 `.env` 都不进镜像；容器启动后自动执行迁移建表（见「快速开始」）。
+
 ## 当前状态
 
 - 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/site/*`、重复影片合并已完成，真库冒烟通过。

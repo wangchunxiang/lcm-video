@@ -1,10 +1,12 @@
 node_modules
 **/node_modules
+**/dist
+.turbo
 logs
 uploads
-apps/admin/dist
 .git
 .env
 docs
 参考项目
 tmp
+.shots
