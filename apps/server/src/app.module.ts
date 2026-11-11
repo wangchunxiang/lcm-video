@@ -25,6 +25,7 @@ import { CollectSourceModule } from './modules/collect-source/collect-source.mod
 import { VodModule } from './modules/vod/vod.module';
 import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
+import { PortalModule } from './modules/portal/portal.module';
 import { SettingModule } from './modules/setting/setting.module';
 import { CollectModule } from './jobs/collect/collect.module';
 
@@ -71,6 +72,7 @@ import { CollectModule } from './jobs/collect/collect.module';
     CollectSourceModule,
     VodModule,
     VodPlayModule,
+    PortalModule,
     CollectModule,
   ],
   controllers: [HealthController],

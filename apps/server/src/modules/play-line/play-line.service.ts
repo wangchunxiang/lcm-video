@@ -58,6 +58,18 @@ export class PlayLineService extends AppCrudService<PlayLineEntity> {
     return { updated: result.affected ?? 0 };
   }
 
+  /** 列表行带上采集源名（`play_from` 里登记了这条线路标识的源站名）。 */
+  override async findMany(
+    params: Parameters<AppCrudService<PlayLineEntity>['findMany']>[0],
+  ): Promise<{ items: PlayLineEntity[]; total: number }> {
+    const page = await super.findMany(params);
+    const names = await this.sourceNameMap();
+    return {
+      total: page.total,
+      items: page.items.map((row) => ({ ...row, sourceName: names.get(row.sourceFrom) ?? '' })),
+    };
+  }
+
   /** 线路 → 采集源名：`lcm_collect_source.play_from` 是逗号串，反查第一条命中的源。 */
   async sourceNameMap(): Promise<Map<string, string>> {
     const rows = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
