@@ -2,10 +2,7 @@ import { Body, Post } from '@nestjs/common';
 import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
 import { VodEntity } from './vod.entity';
 import { VodService } from './vod.service';
-import { BatchVodDTO } from './dto/batch-vod.dto';
-import { CreateVodDTO } from './dto/create-vod.dto';
-import { RecollectDTO } from './dto/recollect-vod.dto';
-import { UpdateVodDTO } from './dto/update-vod.dto';
+import { BatchVodDTO, CreateVodDTO, RecollectDTO, UpdateVodDTO } from './dto/vod.dto';
 
 /** 影片管理：标准 REST + 批量改分类/上下架。 */
 @Crud({

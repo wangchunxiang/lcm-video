@@ -7,10 +7,7 @@ import { AppCrudService } from '../../common/crud/app-crud.service';
 import { CategoryEntity } from '../category/category.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import { VodEntity } from './vod.entity';
-import type { BatchVodDTO } from './dto/batch-vod.dto';
-import type { CreateVodDTO } from './dto/create-vod.dto';
-import type { UpdateVodDTO } from './dto/update-vod.dto';
-import type { VodRow } from './dto/vod-response.dto';
+import type { BatchVodDTO, CreateVodDTO, UpdateVodDTO } from './dto/vod.dto';
 import { CollectClient } from '../collect/client';
 import { loadBrokenCoverHosts, loadMergeConfig } from '../collect/merge';
 import { parseVodPage } from '../collect/parser';
@@ -18,6 +15,14 @@ import { processPage } from '../collect/writer';
 import type { CategoryInfo, FailItem, MappingInfo, SourceVod } from '../collect/types';
 import { CoverCheckEntity } from '../cover-check/cover-check.entity';
 import { SettingEntity } from '../setting/setting.entity';
+
+/** 列表行：影片 + 分类名 + 线路统计。 */
+export interface VodRow extends VodEntity {
+  categoryName: string;
+  parentName: string;
+  plays: number;
+  episodes: number;
+}
 
 /** 从封面地址取域名，写进 `cover_host`（业务列，图片检查按它统计）。 */
 export function coverHostOf(cover: string): string {

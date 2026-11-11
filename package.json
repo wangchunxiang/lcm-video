@@ -20,7 +20,8 @@
     "start": "npm run start -w apps/server",
     "typecheck": "tsc --noEmit -p tsconfig.json && turbo run typecheck",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "db:init": "node --env-file=.env apps/server/scripts/init-db.cjs",
+    "db:init": "npm run db:init -w apps/server",
+    "db:seed": "npm run db:seed -w apps/server",
     "lint": "eslint .",
     "test": "vitest run"
   },
