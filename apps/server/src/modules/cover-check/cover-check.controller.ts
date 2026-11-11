@@ -1,46 +1,16 @@
 import { Body, Post } from '@nestjs/common';
 import { AppCrud } from '../../common/crud/app-crud.decorator';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-import { Type } from 'class-transformer';
 import { CoverCheckEntity } from './cover-check.entity';
 import { CoverCheckService } from './cover-check.service';
 import type { CoverHostSummary } from './cover-check.service';
 import type { RepairItem, ScanResult } from './repair';
-import { CreateCoverCheckDTO, UpdateCoverCheckDTO } from './dto/cover-check.dto';
-
-/** 域名入参。 */
-class HostDTO {
-  @IsString({ message: '域名必须是字符串' })
-  @MinLength(1, { message: '域名不能为空' })
-  @MaxLength(255, { message: '域名最长 255 个字符' })
-  host!: string;
-}
-
-/** 修复入参：limit 控制一次处理多少部。 */
-class RepairDTO extends HostDTO {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'limit 必须是整数' })
-  @Min(1, { message: 'limit 最小 1' })
-  @Max(500, { message: 'limit 最大 500' })
-  limit?: number;
-}
-
-/** 域名下的影片分页入参。 */
-class HostVodsDTO extends HostDTO {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'take 必须是整数' })
-  @Min(1, { message: 'take 最小 1' })
-  @Max(100, { message: 'take 最大 100' })
-  take?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'skip 必须是整数' })
-  @Min(0, { message: 'skip 不能为负' })
-  skip?: number;
-}
+import {
+  CreateCoverCheckDTO,
+  HostDTO,
+  HostVodsDTO,
+  RepairDTO,
+  UpdateCoverCheckDTO,
+} from './dto/cover-check.dto';
 
 /** 封面体检：标准 REST + 域名概览 / 扫描 / 清空 / 修复。 */
 @AppCrud({

@@ -1,19 +1,12 @@
 import { Body, Post, Res } from '@nestjs/common';
 import { AppCrud } from '../../common/crud/app-crud.decorator';
-import { IsString, Matches } from 'class-validator';
 import type { Response } from 'express';
 import { Raw } from '../../common/decorators/raw.decorator';
+import { SourceIdDTO } from '../../common/dto/id.dto';
 import { AdFeatureEntity } from './ad-feature.entity';
 import { AdFeatureService } from './ad-feature.service';
 import type { AdAnalyzeResult } from './ad-feature.service';
 import { CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-feature.dto';
-
-/** 采集源 id 入参。 */
-class SourceIdDTO {
-  @IsString({ message: '采集源 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '采集源 id 必须是数字' })
-  sourceId!: string;
-}
 
 /** 广告特征：标准 REST + 抽样预览 / 流式分析。 */
 @AppCrud({

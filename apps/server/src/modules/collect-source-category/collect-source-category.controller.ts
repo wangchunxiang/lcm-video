@@ -1,57 +1,15 @@
 import { Body, Post } from '@nestjs/common';
 import { AppCrud } from '../../common/crud/app-crud.decorator';
-import { Type } from 'class-transformer';
-import {
-  ArrayNotEmpty,
-  IsArray,
-  IsInt,
-  IsOptional,
-  IsString,
-  Matches,
-} from 'class-validator';
+import { SourceIdDTO } from '../../common/dto/id.dto';
 import { CollectSourceCategoryEntity } from './collect-source-category.entity';
 import { CollectSourceCategoryService } from './collect-source-category.service';
 import type { MappingSummary } from './collect-source-category.service';
 import {
   CreateCollectSourceCategoryDTO,
+  MapDTO,
+  RemapDTO,
   UpdateCollectSourceCategoryDTO,
 } from './dto/collect-source-category.dto';
-
-/** 采集源 id 入参。 */
-class SourceIdDTO {
-  @IsString({ message: '采集源 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '采集源 id 必须是数字' })
-  sourceId!: string;
-}
-
-/** 批量映射入参。 */
-class MapDTO {
-  @IsArray({ message: 'ids 必须是数组' })
-  @ArrayNotEmpty({ message: '请选择要处理的行' })
-  @IsString({ each: true, message: 'id 必须是数字' })
-  ids!: string[];
-
-  @IsOptional()
-  @IsString({ message: 'categoryId 必须是数字' })
-  @Matches(/^\d+$/, { message: 'categoryId 必须是数字' })
-  categoryId?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt({ message: 'status 必须是整数' })
-  status?: number;
-}
-
-/** 重刷影片分类入参。 */
-class RemapDTO extends SourceIdDTO {
-  @IsString({ message: '映射 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '映射 id 必须是数字' })
-  id!: string;
-
-  @IsString({ message: '来源分类 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '来源分类 id 必须是数字' })
-  fromCategoryId!: string;
-}
 
 /** 源站分类映射：标准 REST + 按源查询 / 批量映射 / 自动匹配 / 重刷影片。 */
 @AppCrud({

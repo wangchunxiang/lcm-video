@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IdDTO } from '../../../common/dto/id.dto';
 
 /** 新建SourceRule。 */
 export class CreateSourceRuleDTO {
@@ -63,4 +64,11 @@ export class UpdateSourceRuleDTO {
   @Type(() => Number)
   @IsInt({ message: '必须是整数' })
   sort?: number;
+}
+
+/** 重刷入参：confirm=false 只预览。 */
+export class ApplyDTO extends IdDTO {
+  @IsOptional()
+  @IsBoolean({ message: 'confirm 必须是布尔值' })
+  confirm?: boolean;
 }

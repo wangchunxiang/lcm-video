@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDate, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IdDTO } from '../../../common/dto/id.dto';
 
 /** 新建CollectSource。 */
 export class CreateCollectSourceDTO {
@@ -135,4 +136,11 @@ export class UpdateCollectSourceDTO {
   @IsString({ message: '必须是字符串' })
   @MaxLength(500, { message: '最长 500 个字符' })
   playFrom?: string;
+}
+
+/** 采集入参：confirmEmpty=true 表示空数据也照跑。 */
+export class RunDTO extends IdDTO {
+  @IsOptional()
+  @IsBoolean({ message: 'confirmEmpty 必须是布尔值' })
+  confirmEmpty?: boolean;
 }

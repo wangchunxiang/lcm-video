@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { SourceIdDTO } from '../../../common/dto/id.dto';
 
 /** 新建CollectSourceCategory。 */
 export class CreateCollectSourceCategoryDTO {
@@ -74,4 +75,33 @@ export class UpdateCollectSourceCategoryDTO {
   @Type(() => Number)
   @IsInt({ message: '必须是整数' })
   status?: number;
+}
+
+/** 批量映射入参。 */
+export class MapDTO {
+  @IsArray({ message: 'ids 必须是数组' })
+  @ArrayNotEmpty({ message: '请选择要处理的行' })
+  @IsString({ each: true, message: 'id 必须是数字' })
+  ids!: string[];
+
+  @IsOptional()
+  @IsString({ message: 'categoryId 必须是数字' })
+  @Matches(/^\d+$/, { message: 'categoryId 必须是数字' })
+  categoryId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'status 必须是整数' })
+  status?: number;
+}
+
+/** 重刷影片分类入参。 */
+export class RemapDTO extends SourceIdDTO {
+  @IsString({ message: '映射 id 必须是数字' })
+  @Matches(/^\d+$/, { message: '映射 id 必须是数字' })
+  id!: string;
+
+  @IsString({ message: '来源分类 id 必须是数字' })
+  @Matches(/^\d+$/, { message: '来源分类 id 必须是数字' })
+  fromCategoryId!: string;
 }
