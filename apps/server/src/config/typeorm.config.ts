@@ -1,4 +1,6 @@
 import type { DataSourceOptions } from 'typeorm';
+import { ENTITIES } from '../database/entities';
+import { MIGRATIONS } from '../database/migrations/index';
 
 /** 解析 `mysql://user:pass@host:port/db`。密码里可能有 `@`、`:`，必须走 URL 解码。 */
 export function parseDatabaseUrl(url: string): {
@@ -39,8 +41,8 @@ export function createDataSourceOptions(url: string): DataSourceOptions {
     synchronize: false,
     migrationsRun: true,
     logging: false,
-    // 本文件在 config/ 下，实体在 modules/ 下、迁移在 database/ 下，都是它的兄弟目录
-    entities: [`${__dirname}/../modules/**/*.entity.{ts,js}`],
-    migrations: [`${__dirname}/../database/migrations/*.{ts,js}`],
+    // 实体与迁移都是显式清单：glob 在 e2e（vitest + swc）下会 require 到 .ts，Node 解析不了装饰器
+    entities: ENTITIES,
+    migrations: MIGRATIONS,
   };
 }

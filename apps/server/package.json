@@ -6,7 +6,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node --env-file=../../.env dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "db:migrate": "node --env-file-if-exists=../../.env --import tsx src/database/migrate.ts",
     "db:seed": "node --env-file-if-exists=../../.env --import tsx src/database/seed.ts",
     "db:reset": "node --env-file-if-exists=../../.env --import tsx src/database/reset.ts"
@@ -37,9 +37,14 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.7",
+    "@nestjs/testing": "^11.2.9",
+    "@swc/core": "^1.16.22",
     "@types/compression": "^1.8.1",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
-    "tsx": "^4.23.15"
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "unplugin-swc": "^2.0.0"
   }
 }

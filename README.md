@@ -67,6 +67,7 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 | `npm run check` | typecheck + lint + test + build，提交前跑这一个 |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest（`packages/**` 与 `apps/**` 下的 `*.test.ts`） |
+| `npm run test:e2e` | 真库端到端测试（`apps/server/test/**/*.e2e-spec.ts`），需要一个可用的 MySQL |
 | `npm run db:migrate` | 手动执行未应用的迁移（启动时也会自动执行） |
 | `npm run db:seed` | 导入 `src/database/seeds/*.sql`（`-- --dry-run` 只打印） |
 | `npm run db:reset` | 开发用：DROP 全表后按迁移重建（需 `-- --force`） |
@@ -74,6 +75,18 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ## 环境变量
 
 见 `.env.example`。服务端用 `@nestjs/config` 装载并校验，缺关键变量会启动失败。
+
+## 端到端测试
+
+`npm run test:e2e` 在真 MySQL 上跑完整 HTTP 链路（登录、CRUD、门户只读接口），
+装配方式复刻 `apps/server/src/main.ts`，所以管道 / 拦截器 / 过滤器测的就是线上行为。
+
+- 测试库由 `TEST_DATABASE_URL` 指定；不配就把 `DATABASE_URL` 的库名加 `_test` 后缀。
+  库名不以 `_test` 结尾会直接拒绝运行，避免误连开发库。
+- 每次运行会先清空测试库的表，再由应用启动时的迁移重新建表 —— 跑之前不用手工准备结构。
+- 依赖 swc 转译（esbuild 不产出 `design:paramtypes`，NestJS 的构造注入会拿到 undefined），
+  配置在 `vitest.e2e.config.ts`。
+- 用例共用一套 fixture 数据，因此串行执行（`fileParallelism: false`），一次约 10 秒。
 
 ## 当前状态
 
