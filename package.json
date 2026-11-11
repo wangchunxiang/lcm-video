@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.11.0",
   "engines": {
     "node": ">=24.0.0"
   },
@@ -11,12 +12,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n server,admin -c cyan,green \"npm:dev:server\" \"npm:dev:admin\"",
+    "dev": "concurrently -n server,admin,web -c cyan,green,magenta \"npm:dev:server\" \"npm:dev:admin\" \"npm:dev:web\"",
     "dev:server": "npm run build -w packages/shared && npm run dev -w apps/server",
     "dev:admin": "npm run dev -w apps/admin",
-    "build": "npm run build -w packages/shared && npm run build -w apps/admin && npm run build -w apps/server",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "turbo run build",
     "start": "npm run start -w apps/server",
-    "typecheck": "npm run build -w packages/shared && tsc --noEmit -p apps/server/tsconfig.json && npm run typecheck -w packages/shared",
+    "typecheck": "tsc --noEmit -p tsconfig.json && turbo run typecheck",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "db:init": "node --env-file=.env apps/server/scripts/init-db.cjs",
     "lint": "eslint .",
     "test": "vitest run"
@@ -26,6 +29,7 @@
     "@types/node": "^24.0.0",
     "concurrently": "^9.1.2",
     "eslint": "^9.39.5",
+    "turbo": "^2.11.10",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.72.1",
     "vitest": "^3.2.7"

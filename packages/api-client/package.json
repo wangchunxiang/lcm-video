@@ -1,0 +1,18 @@
+{
+  "name": "@lcm/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "前后台共用的请求层：统一信封解包、错误码、nest-crud 查询协议（纯 TS，无运行时依赖）",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

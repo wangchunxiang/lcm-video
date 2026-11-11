@@ -1,6 +1,7 @@
 参考项目/
 node_modules/
 dist/
+.turbo/
 .env
 *.log
 logs/

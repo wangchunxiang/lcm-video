@@ -1,0 +1,109 @@
+import { createHttpClient } from '@lcm/api-client';
+
+/**
+ * 前台只读接口客户端（`/api/site/*`，服务端 PortalController，全部公开）。
+ * 下面的类型与 `apps/server/src/modules/portal/portal.service.ts` 的返回结构一一对应。
+ *
+ * TODO：这些契约类型应当挪到 `@lcm/shared`，由前后端同时引用；等页面成型时再收口。
+ */
+const http = createHttpClient({ baseUrl: '/api/site' });
+
+/** 卡片：列表/首页统一的最小影片信息。 */
+export interface VodCard {
+  id: string;
+  name: string;
+  subName: string;
+  cover: string;
+  year: number;
+  area: string;
+  remarks: string;
+  episodeCount: number;
+  categoryId: string;
+  categoryName: string;
+}
+
+export interface CategoryNode {
+  id: string;
+  name: string;
+  alias: string;
+  children: Array<{ id: string; name: string; alias: string }>;
+}
+
+export interface PlayLine {
+  sourceId: string;
+  sourceFrom: string;
+  name: string;
+  episodes: number;
+}
+
+export interface VodRow {
+  title: string;
+  more: string;
+  items: VodCard[];
+}
+
+export interface EpisodeItem {
+  index: number;
+  name: string;
+  url: string;
+}
+
+export interface HomeResult {
+  categories: CategoryNode[];
+  rows: VodRow[];
+}
+
+export interface VodListPage {
+  category: { id: string; name: string; alias: string; pid: string } | null;
+  types: Array<{ id: string; name: string; alias: string }>;
+  years: number[];
+  items: VodCard[];
+  total: number;
+}
+
+export interface VodDetail {
+  vod: VodCard & {
+    content: string;
+    actor: string;
+    director: string;
+    releaseDate: string;
+    lang: string;
+  };
+  lines: PlayLine[];
+  related: VodCard[];
+}
+
+export interface VodPlay {
+  vod: { id: string; name: string; cover: string; remarks: string };
+  lines: PlayLine[];
+  line: PlayLine;
+  episodes: EpisodeItem[];
+  current: number;
+}
+
+export interface ListParams {
+  type?: string;
+  year?: string | number;
+  sort?: 'time' | 'new';
+  take?: number;
+  skip?: number;
+}
+
+export interface SearchParams {
+  wd: string;
+  year?: string | number;
+  sort?: 'time' | 'new';
+  take?: number;
+  skip?: number;
+}
+
+export const portal = {
+  home: () => http.get<HomeResult>('/home'),
+  categories: () => http.get<CategoryNode[]>('/categories'),
+  list: (alias: string, params: ListParams = {}) =>
+    http.get<VodListPage>(`/list/${encodeURIComponent(alias)}`, params),
+  detail: (id: string) => http.get<VodDetail>(`/detail/${id}`),
+  play: (id: string, params: { line?: number; ep?: number } = {}) =>
+    http.get<VodPlay>(`/play/${id}`, params),
+  search: (params: SearchParams) => http.get<{ items: VodCard[]; total: number }>('/search', params),
+};

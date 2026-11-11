@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node",
@@ -20,5 +20,5 @@
     "declaration": false
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "legacy"]
+  "exclude": ["node_modules", "dist"]
 }

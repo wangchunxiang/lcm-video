@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@lcm/api-client": "*",
     "@lcm/shared": "*",
     "element-plus": "^2.9.7",
     "hls.js": "^1.7.3",
