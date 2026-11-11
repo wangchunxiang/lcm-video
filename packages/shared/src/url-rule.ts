@@ -1,12 +1,4 @@
-/** 采集源的地址替换规则 */
-export type UrlRule = {
-  /** 1 播放地址 2 图片地址 */
-  kind: number;
-  fromUrl: string;
-  toUrl: string;
-  isEnabled?: number;
-  sort?: number;
-};
+import type { UrlRule } from './types/url-rule.ts';
 
 /** 规则按 sort 升序，停用的跳过 */
 function usable(rules: UrlRule[]): UrlRule[] {

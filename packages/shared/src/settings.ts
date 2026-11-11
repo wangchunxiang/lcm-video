@@ -1,21 +1,4 @@
-export type SettingType = 'text' | 'textarea' | 'number' | 'switch' | 'select' | 'order';
-
-export type SettingGroup = 'site' | 'playback' | 'ads' | 'account';
-
-export interface SettingField {
-  /** 存储键，对应 lcm_setting.name */
-  key: string;
-  group: SettingGroup;
-  label: string;
-  type: SettingType;
-  default: string;
-  /** 说明文字，展示在表单项下方 */
-  hint?: string;
-  /** type = select 时的选项 */
-  options?: { label: string; value: string }[];
-  /** 小节标题，同一小节内的字段连续展示 */
-  section?: string;
-}
+import type { SettingField } from './types/setting.ts';
 
 export const SETTINGS: SettingField[] = [
   {

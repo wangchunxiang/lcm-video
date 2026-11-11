@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { Public } from '../decorators/public.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 
-/** 探活：不只探数据库，还带上进程内存与在跑的采集数。 */
+/** 探活：不只看数据库，还带上进程内存与在跑的采集数。 */
 @Controller()
 export class HealthController {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}

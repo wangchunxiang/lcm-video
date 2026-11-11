@@ -1,4 +1,4 @@
-import { createDataSourceOptions } from './options';
+import { createDataSourceOptions } from '../config/typeorm.config';
 import { DataSource } from 'typeorm';
 
 /**

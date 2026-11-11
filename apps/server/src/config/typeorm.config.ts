@@ -21,9 +21,9 @@ export function parseDatabaseUrl(url: string): {
 }
 
 /**
- * Nest 与 CLI 共用的连接参数。
+ * Nest 与 CLI 共用的连接参数（MySQL / MariaDB）。
  *
- * - `timezone: 'Z'`：DateTime 列按 UTC 解释，与旧 Prisma 写入的值一致。
+ * - `timezone: 'Z'`：DateTime 列按 UTC 解释，与旧库写入的值一致。
  * - `synchronize: false`：结构变更一律走迁移，禁止启动时自动改表。
  * - 不设 `supportBigNumbers/bigNumberStrings`：TypeORM 的 mysql 驱动默认就是 true/true，
  *   BIGINT 列因此以字符串返回（见 `AppBaseEntity` 的说明）。
@@ -36,7 +36,8 @@ export function createDataSourceOptions(url: string): DataSourceOptions {
     timezone: 'Z',
     synchronize: false,
     logging: false,
+    // 本文件在 config/ 下，实体在 modules/ 下、迁移在 database/ 下，都是它的兄弟目录
     entities: [`${__dirname}/../modules/**/*.entity.{ts,js}`],
-    migrations: [`${__dirname}/migrations/*.{ts,js}`],
+    migrations: [`${__dirname}/../database/migrations/*.{ts,js}`],
   };
 }

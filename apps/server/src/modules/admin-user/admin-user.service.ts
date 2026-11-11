@@ -89,7 +89,7 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
 
     const token = signToken(
       { uid: user.id, pv: user.passwordVersion, exp },
-      this.config.get<string>('JWT_SECRET') ?? '',
+      this.config.get<string>('app.jwtSecret') ?? '',
     );
 
     await this.repository.update(user.id, { lastLoginAt: new Date(), lastLoginIp: ip });

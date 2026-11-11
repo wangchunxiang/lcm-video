@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { decodeEntities } from './html.ts';
+import type { CategoryMatchInfo, Episode } from './types/vod.ts';
 
 /**
  * 影片名归一化：去首尾空格、全角转半角、合并连续空格。
@@ -40,13 +41,6 @@ export function nameHash(name: string): string {
 /** 宽松键的 MD5，仅用于后台疑似重复提示。 */
 export function looseHash(name: string): string {
   return createHash('md5').update(looseKey(name), 'utf8').digest('hex');
-}
-
-export interface Episode {
-  /** 剧集名称，如「第01集」 */
-  name: string;
-  /** 播放地址 */
-  url: string;
 }
 
 /** 按 `#` 切分剧集串，空值返回空数组。 */
@@ -97,14 +91,6 @@ export function normalizeCover(url: string | null | undefined): string {
 }
 
 /* ------------------------------ 源站分类自动匹配 ------------------------------ */
-
-export interface CategoryMatchInfo {
-  id: number;
-  pid: number;
-  name: string;
-  /** 可用于匹配的别名（category.match_names 按逗号拆开） */
-  matchNames: string[];
-}
 
 /**
  * 源站分类名 → 本站分类 id：先比别名，再比分类名完全相等。

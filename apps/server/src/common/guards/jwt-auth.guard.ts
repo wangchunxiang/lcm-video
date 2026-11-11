@@ -44,7 +44,7 @@ export class JwtAuthGuard implements CanActivate {
     const token = bearerToken(request.headers.authorization);
     if (token === null) throw new UnauthorizedException('请先登录');
 
-    const secret = this.config.get<string>('JWT_SECRET') ?? '';
+    const secret = this.config.get<string>('app.jwtSecret') ?? '';
     const payload = verifyToken(token, secret);
     if (payload === null) throw new UnauthorizedException('登录已失效，请重新登录');
 

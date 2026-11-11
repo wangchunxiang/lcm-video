@@ -1,9 +1,0 @@
-{
-  "name": "@lcm/db",
-  "version": "0.1.0",
-  "private": true,
-  "description": "v2 早期数据层（Prisma/drizzle）已退役，只保留初始数据 SQL；建表由 apps/server 的 TypeORM 迁移负责",
-  "files": [
-    "seed"
-  ]
-}

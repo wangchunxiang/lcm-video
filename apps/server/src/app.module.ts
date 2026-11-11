@@ -6,10 +6,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { pino } from 'pino';
-import { HealthController } from './common/health/health.controller';
+import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { validateEnv } from './config/env';
-import { createDataSourceOptions } from './database/options';
+import { configuration } from './config/configuration';
+import { validateEnv } from './config/validation.schema';
+import { createDataSourceOptions } from './config/typeorm.config';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -35,6 +36,7 @@ import { CollectModule } from './jobs/collect/collect.module';
       isGlobal: true,
       envFilePath: ['../../.env', '.env'],
       validate: validateEnv,
+      load: [configuration],
     }),
     ScheduleModule.forRoot(),
     LoggerModule.forRoot({
@@ -54,12 +56,13 @@ import { CollectModule } from './jobs/collect/collect.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
-        createDataSourceOptions(config.getOrThrow<string>('DATABASE_URL')),
+        createDataSourceOptions(config.getOrThrow<string>('app.databaseUrl')),
     }),
     SettingModule,
     AdminUserModule,
     CategoryModule,
     DashboardModule,
+    HealthModule,
     PlayLineModule,
     AdFeatureModule,
     VodMergeIgnoreModule,
@@ -75,7 +78,7 @@ import { CollectModule } from './jobs/collect/collect.module';
     PortalModule,
     CollectModule,
   ],
-  controllers: [HealthController],
+  controllers: [],
   providers: [
     // 全局登录守卫：除 @Public() 外所有接口都要带 token（决策 5.3）
     { provide: APP_GUARD, useClass: JwtAuthGuard },

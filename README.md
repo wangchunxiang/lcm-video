@@ -23,19 +23,19 @@ apps/
   server/              NestJS 后端（PORT 默认 3100）
     src/
       main.ts          入口：helmet / compression / 全局管道与拦截器
-      app.module.ts    根模块：配置、TypeORM、pino、定时任务、18 个业务模块
+      app.module.ts    根模块：配置、TypeORM、pino、定时任务、业务模块
       common/          crud 基类、装饰器、过滤器、守卫、拦截器、管道、安全工具
-      config/          环境变量装载与校验（env.ts）
-      database/        data-source.ts、options.ts、migrations/
+      config/          configuration.ts / validation.schema.ts / typeorm.config.ts
+      database/        data-source.ts、migrations/、seeds/
       jobs/            采集（collect）、广告（ads）、封面体检（covers）
-      modules/         一表一模块，CRUD 由 @Crud() 生成
+      modules/         一表一模块，CRUD 由 @Crud() 生成；另有 portal 与 health
     scripts/           init-db.cjs 等运维脚本
+    test/              集成测试（e2e）预留；单测与源码同目录，跑 vitest
   admin/               管理后台（dev 3200，build 到 /admin/）
   web/                 用户端前台（dev 3300），页面目前为占位实现
 packages/
-  shared/              前后端共享契约：cron / html / vod / url-rule / settings / util
+  shared/              共享契约：enums/ 枚举、types/ 纯类型、cron / html / vod / url-rule / settings / util
   api-client/          http.ts（统一信封、错误码、Bearer token）+ query-builder.ts（nest-crud 协议）
-  db/                  仅保留 seed/*.sql（v2 的 Prisma/drizzle 层已退役）
 docs/                  架构、数据库设计、功能对齐与样式规范
 themes/                老站的模板资源（前台重写前保留）
 ```
@@ -51,7 +51,7 @@ npm run db:init             # 按 TypeORM 迁移建表
 npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ```
 
-首次建库后没有管理员账号：`packages/db/seed/*.sql` 目前没有应用脚本，且内容待校对，
+首次建库后没有管理员账号：`apps/server/src/database/seeds/*.sql` 目前没有应用脚本，且内容待校对，
 建议从已有库 `mysqldump` 出 `lcm_admin_user` / `lcm_category` / `lcm_setting` 三张表替换。
 
 ## 脚本
@@ -77,4 +77,4 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 - 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/site/*`、重复影片合并已完成，真库冒烟通过。
 - 管理后台：页面齐全，但仍是 v2 契约（cookie 会话、`page` / `page_size` 分页），尚未对接 v3 的 Bearer token 与 `take` / `skip`。
 - 用户端前台：仅骨架（路由 + 五个占位页 + `/api/site` 客户端），样式与播放器待做。
-- 文档：`docs/` 中部分内容仍按 Prisma + drizzle 描述，与 TypeORM 实现不一致，待返工。
+- 文档：`docs/架构-v2.md` 与 `docs/数据库设计-v2.md` 已对齐 TypeORM 实现；`docs/技术方案.md` 是 v1 遗留方案（Fastify + LiquidJS），开头已标注过时，只当产品范围参考。

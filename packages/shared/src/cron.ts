@@ -3,15 +3,7 @@
  * 时间按调用方所在时区解释——服务端进程时区固定 Asia/Shanghai，浏览器同样是 Asia/Shanghai。
  */
 
-export interface CronParts {
-  minute: Set<number>;
-  hour: Set<number>;
-  day: Set<number>;
-  month: Set<number>;
-  week: Set<number>;
-  dayRestricted: boolean;
-  weekRestricted: boolean;
-}
+import type { CronParts } from './types/cron.ts';
 
 const FIELD_LIMITS: Array<[string, number, number]> = [
   ['分钟', 0, 59],

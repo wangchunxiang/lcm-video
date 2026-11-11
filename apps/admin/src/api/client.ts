@@ -8,7 +8,8 @@ import { createHttpClient } from '@lcm/api-client';
  * cookie 会话发请求。对接时给 `createHttpClient` 传 `getToken` 即可，调用方不用改。
  */
 const http = createHttpClient({
-  baseUrl: '/api/admin',
+  // 默认同源 /api/admin；部署到别处时用 .env 的 VITE_API_BASE 覆盖
+  baseUrl: import.meta.env.VITE_API_BASE || '/api/admin',
   credentials: 'same-origin',
 });
 

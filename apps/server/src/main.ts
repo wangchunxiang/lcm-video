@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import compression from 'compression';
 import type { NextFunction, Request, Response } from 'express';
@@ -40,7 +41,8 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(new ResponseInterceptor<unknown>(app.get(Reflector)));
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
-  const port = Number(process.env.PORT ?? 3100);
+  // 端口来自校验过的配置快照（config/configuration.ts），不再直接摸 process.env
+  const port = app.get(ConfigService).getOrThrow<number>('app.port');
   await app.listen(port);
 }
 

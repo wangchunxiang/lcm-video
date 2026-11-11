@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyCoverRules, applyPlayUrlRules, applyUrlRule, applyUrlRules, type UrlRule } from './url-rule.ts';
+import { applyCoverRules, applyPlayUrlRules, applyUrlRule, applyUrlRules } from './url-rule.ts';
+import type { UrlRule } from './types/url-rule.ts';
 
 const rule = (fromUrl: string, toUrl: string, extra: Partial<UrlRule> = {}): UrlRule => ({
   kind: 1,

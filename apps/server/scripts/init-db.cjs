@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { DataSource } = require('typeorm');
-const { createDataSourceOptions } = require('../dist/database/options.js');
+const { createDataSourceOptions } = require('../dist/config/typeorm.config.js');
 
 const URL = process.env.DATABASE_URL;
 if (!URL) {

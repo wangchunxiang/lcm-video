@@ -2,7 +2,7 @@ import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Min, MinLength, validateSync } from 'class-validator';
 
 /** 启动时必须存在的环境变量，缺一个就起不来（决策 1.4）。 */
-class EnvVariables {
+export class EnvVariables {
   @IsIn(['development', 'production', 'test'], { message: 'NODE_ENV 只能是 development / production / test' })
   NODE_ENV: string = 'development';
 
