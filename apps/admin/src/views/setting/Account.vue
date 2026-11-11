@@ -2,14 +2,13 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import type { SettingField } from '@lcm/shared';
 import { api } from '../../api/client.ts';
 import { auth, logout } from '../../auth.ts';
 
 const router = useRouter();
 
 const profile = reactive({ nickname: auth.user?.nickname ?? '' });
-const password = reactive({ old_password: '', new_password: '', confirm: '' });
+const password = reactive({ oldPassword: '', newPassword: '', confirm: '' });
 const expireDays = ref('7');
 const loading = ref(false);
 const savingProfile = ref(false);
@@ -19,8 +18,8 @@ const savingExpire = ref(false);
 async function load() {
   loading.value = true;
   try {
-    const data = await api.get<{ items: (SettingField & { value: string })[] }>('/settings');
-    expireDays.value = data.items.find((item) => item.key === 'login_expire_days')?.value ?? '7';
+    const settings = await api.post<Record<string, string>>('/setting/map');
+    expireDays.value = settings['login_expire_days'] ?? '7';
     profile.nickname = auth.user?.nickname ?? '';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载配置失败');
@@ -36,7 +35,7 @@ async function saveProfile() {
   }
   savingProfile.value = true;
   try {
-    const result = await api.put<{ nickname: string }>('/account/profile', { nickname: profile.nickname.trim() });
+    const result = await api.put<{ nickname: string }>('/auth/profile', { nickname: profile.nickname.trim() });
     if (auth.user) auth.user.nickname = result.nickname;
     ElMessage.success('昵称已更新');
   } catch (error) {
@@ -47,20 +46,20 @@ async function saveProfile() {
 }
 
 async function savePassword() {
-  if (!password.old_password || !password.new_password) {
+  if (!password.oldPassword || !password.newPassword) {
     ElMessage.warning('请填写原密码和新密码');
     return;
   }
-  if (password.new_password !== password.confirm) {
+  if (password.newPassword !== password.confirm) {
     ElMessage.warning('两次输入的新密码不一致');
     return;
   }
 
   savingPassword.value = true;
   try {
-    await api.put('/account/password', {
-      old_password: password.old_password,
-      new_password: password.new_password,
+    await api.put('/auth/password', {
+      oldPassword: password.oldPassword,
+      newPassword: password.newPassword,
     });
     ElMessage.success('密码已修改，请重新登录');
     await logout();
@@ -75,7 +74,9 @@ async function savePassword() {
 async function saveExpireDays() {
   savingExpire.value = true;
   try {
-    await api.put('/settings', { values: { login_expire_days: expireDays.value } });
+    await api.post('/setting/save-many', {
+      entries: [{ key: 'login_expire_days', value: String(expireDays.value) }],
+    });
     ElMessage.success('已保存');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
@@ -119,7 +120,7 @@ onMounted(() => {
           <label class="field-label">原密码</label>
           <div class="field-ctrl">
             <el-input
-              v-model="password.old_password"
+              v-model="password.oldPassword"
               type="password"
               show-password
               autocomplete="current-password"
@@ -131,7 +132,7 @@ onMounted(() => {
           <label class="field-label">新密码</label>
           <div class="field-ctrl">
             <el-input
-              v-model="password.new_password"
+              v-model="password.newPassword"
               type="password"
               show-password
               autocomplete="new-password"

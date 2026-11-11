@@ -21,38 +21,131 @@ interface FixedRow {
   hint: string;
 }
 
-interface RulesPayload {
-  mode: string;
-  fields: FieldRow[];
-  fixed: FixedRow[];
-  default_mode: string;
-  default_fields: Record<string, string>;
+interface FieldDef {
+  key: string;
+  label: string;
+  strategies: string[];
+  hint: string;
 }
+
+interface MergeConfig {
+  mode: string;
+  fields: Record<string, string>;
+}
+
+/** 入库规则存在 lcm_setting 的 merge_rules 键里 */
+const MERGE_CONFIG_KEY = 'merge_rules';
+
+/** 策略中文名，与服务端 apps/server/src/modules/collect/merge.ts 的 STRATEGY_LABELS 保持一致 */
+const STRATEGY_LABELS: Record<string, string> = {
+  keep: '保留旧值',
+  new: '总是覆盖',
+  nonempty: '新值非空才覆盖',
+  longer: '取较长',
+  more: '按人数取多',
+  larger: '取较大数值',
+  progress: '按更新进度比较',
+  date: '旧值空才补',
+  cover: '旧图为空或已失效才换',
+};
+
+/** 可配置字段，与服务端 MERGE_FIELDS 保持一致（没有接口吐出这份定义） */
+const MERGE_FIELDS: FieldDef[] = [
+  { key: 'progress', label: '更新进度', strategies: ['progress', 'keep'], hint: '完结 > 连载 > 标记；连载按集数取大，标记之间保留旧值' },
+  { key: 'episodeCount', label: '集数', strategies: ['larger', 'new', 'keep'], hint: '默认取较大值，避免源站数据残缺把集数改小' },
+  { key: 'cover', label: '封面', strategies: ['cover', 'nonempty', 'new', 'keep'], hint: '旧图缺失、旧图域名已失效、或同源更新时替换' },
+  { key: 'subName', label: '副标题', strategies: ['nonempty', 'longer', 'new', 'keep'], hint: '一句话卖点，默认新值非空才覆盖' },
+  { key: 'intro', label: '简介', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
+  { key: 'content', label: '剧情', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
+  { key: 'actor', label: '演员', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多，人数相同保留旧值' },
+  { key: 'director', label: '导演', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
+  { key: 'writer', label: '编剧', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
+  { key: 'area', label: '地区', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
+  { key: 'lang', label: '语言', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
+  { key: 'releaseDate', label: '上映日期', strategies: ['date', 'nonempty', 'new', 'keep'], hint: '旧值空或旧值不是日期、新值是日期时才替换' },
+];
+
+/** 不参与合并的字段，页面上只做说明 */
+const FIXED_FIELDS: FixedRow[] = [
+  { label: '片名 / 判重键', hint: 'name、nameHash、nameHashLoose' },
+  { label: '分类 / 状态', hint: 'categoryId、categoryPid、status、createdAt' },
+  { label: '年份', hint: '旧值有值就保留，旧值为 0 才补' },
+];
+
+function defaultFields(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of MERGE_FIELDS) out[field.key] = field.strategies[0] ?? 'keep';
+  return out;
+}
+
+const DEFAULT_CONFIG: MergeConfig = { mode: 'merge', fields: defaultFields() };
 
 const loading = ref(false);
 const saving = ref(false);
 const mode = ref('merge');
 const fields = ref<FieldRow[]>([]);
-const fixed = ref<FixedRow[]>([]);
+const fixed = ref<FixedRow[]>(FIXED_FIELDS);
 const defaults = reactive<{ mode: string; fields: Record<string, string> }>({
-  mode: 'merge',
-  fields: {},
+  mode: DEFAULT_CONFIG.mode,
+  fields: { ...DEFAULT_CONFIG.fields },
 });
 const values = reactive<Record<string, string>>({});
 
 const mergeOn = computed(() => mode.value === 'merge');
 
+/** 与服务端 normalizeMergeConfig 同规则：未知字段丢弃、非法策略回退默认 */
+function normalizeConfig(raw: unknown): MergeConfig {
+  const config: MergeConfig = { mode: DEFAULT_CONFIG.mode, fields: { ...DEFAULT_CONFIG.fields } };
+  if (raw === null || raw === undefined || typeof raw !== 'object') return config;
+  const input = raw as { mode?: unknown; fields?: unknown };
+  if (input.mode === 'off' || input.mode === 'merge') config.mode = input.mode;
+  if (input.fields !== undefined && input.fields !== null && typeof input.fields === 'object') {
+    for (const [key, value] of Object.entries(input.fields as Record<string, unknown>)) {
+      const def = MERGE_FIELDS.find((field) => field.key === key);
+      if (!def) continue;
+      if (typeof value === 'string' && def.strategies.includes(value)) config.fields[key] = value;
+    }
+  }
+  return config;
+}
+
+function buildFields(config: MergeConfig): FieldRow[] {
+  return MERGE_FIELDS.map((def) => ({
+    key: def.key,
+    label: def.label,
+    hint: def.hint,
+    value: config.fields[def.key] ?? def.strategies[0] ?? 'keep',
+    options: def.strategies.map((strategy) => ({
+      value: strategy,
+      label: STRATEGY_LABELS[strategy] ?? strategy,
+    })),
+  }));
+}
+
+function applyConfig(config: MergeConfig): void {
+  mode.value = config.mode;
+  fields.value = buildFields(config);
+  for (const key of Object.keys(values)) delete values[key];
+  for (const [key, value] of Object.entries(config.fields)) values[key] = value;
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const data = await api.get<RulesPayload>('/merge-rules');
-    mode.value = data.mode;
-    fields.value = data.fields;
-    fixed.value = data.fixed;
-    defaults.mode = data.default_mode;
-    defaults.fields = data.default_fields;
-    for (const key of Object.keys(values)) delete values[key];
-    for (const field of data.fields) values[field.key] = field.value;
+    const map = await api.post<Record<string, string>>('/setting/map');
+    const raw = (map[MERGE_CONFIG_KEY] ?? '').trim();
+    let config: MergeConfig = DEFAULT_CONFIG;
+    if (raw) {
+      try {
+        config = normalizeConfig(JSON.parse(raw) as unknown);
+      } catch {
+        config = DEFAULT_CONFIG;
+      }
+    }
+    applyConfig(config);
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '加载入库规则失败');
+    applyConfig(DEFAULT_CONFIG);
   } finally {
     loading.value = false;
   }
@@ -66,8 +159,13 @@ function resetToDefault(): void {
 async function save(): Promise<void> {
   saving.value = true;
   try {
-    await api.put('/merge-rules', { mode: mode.value, fields: { ...values } });
+    const value = JSON.stringify({ mode: mode.value, fields: { ...values } });
+    await api.post<{ saved: number }>('/setting/save-many', {
+      entries: [{ key: MERGE_CONFIG_KEY, value }],
+    });
     ElMessage.success('入库规则已保存，下一轮采集生效');
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '保存失败');
   } finally {
     saving.value = false;
   }

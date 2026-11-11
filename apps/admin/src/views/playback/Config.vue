@@ -2,12 +2,9 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import Hls from 'hls.js';
 import { ElMessage } from 'element-plus';
-import type { SettingField } from '@lcm/shared';
+import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
-
-interface FieldItem extends SettingField {
-  value: string;
-}
+import { getToken } from '../../session.ts';
 
 interface Row {
   key: string;
@@ -47,7 +44,7 @@ const form = reactive<Record<string, string>>({
 });
 
 interface SourceItem {
-  id: number;
+  id: string;
   name: string;
   isEnabled: number;
 }
@@ -57,16 +54,17 @@ const savingKey = ref('');
 
 /** 去广告：选源 → 抽片 → 分析 → 人工确认，后端接口待接入，这里先跑演示流程 */
 const sources = ref<SourceItem[]>([]);
-const adsSourceId = ref<number | null>(null);
+const adsSourceId = ref<string | null>(null);
 
 interface SampleVod {
-  id: number;
+  id: string;
   name: string;
   episode: string;
+  url: string;
 }
 
 interface AdFeature {
-  id: number;
+  id: string;
   kind: number;
   durations: string;
   totalMs: number;
@@ -224,7 +222,8 @@ function secondsText(ms: number) {
 async function confirmAd(row: Candidate) {
   if (!adsSourceId.value) return;
   try {
-    await api.post(`/sources/${adsSourceId.value}/ads`, {
+    await api.post('/ad-feature', {
+      sourceId: adsSourceId.value,
       durations: row.durations,
       kind: row.kind,
       totalMs: row.totalMs,
@@ -247,7 +246,7 @@ function dismissAd(row: Candidate) {
 async function removeFeature(row: AdFeature) {
   if (!adsSourceId.value) return;
   try {
-    await api.del(`/sources/${adsSourceId.value}/ads/${row.id}`);
+    await api.del(`/ad-feature/${row.id}`);
     await loadFeatures();
     ElMessage.success('已撤销');
   } catch (error) {
@@ -266,8 +265,11 @@ watch(adsSourceId, () => {
 async function loadFeatures() {
   if (!adsSourceId.value) return;
   try {
-    const data = await api.get<AdFeature[]>(`/sources/${adsSourceId.value}/ads`);
-    confirmed.value = data;
+    const data = await api.get<{ items: AdFeature[] }>(
+      '/ad-feature',
+      buildListQuery({ take: 100, where: { sourceId: adsSourceId.value } }),
+    );
+    confirmed.value = data.items;
   } catch {
     confirmed.value = [];
   }
@@ -281,8 +283,8 @@ async function pickVods() {
   }
   picking.value = true;
   try {
-    const data = await api.post<{ items: SampleVod[] }>(`/sources/${adsSourceId.value}/ads/pick`);
-    sampleVods.value = data.items;
+    const data = await api.post<SampleVod[]>('/ad-feature/pick', { sourceId: adsSourceId.value });
+    sampleVods.value = data;
     candidates.value = [];
     logs.value = [];
   } catch (error) {
@@ -294,8 +296,7 @@ async function pickVods() {
 
 interface StreamMessage {
   type: 'log' | 'result' | 'error';
-  text?: string;
-  message?: string;
+  msg?: string;
   features?: Array<Omit<AdFeature, 'id' | 'status'>>;
   sampled?: number;
 }
@@ -307,12 +308,12 @@ function handleStreamMessage(raw: string) {
   } catch {
     return;
   }
-  if (msg.type === 'log' && msg.text) {
-    pushLog(msg.text);
+  if (msg.type === 'log' && msg.msg) {
+    pushLog(msg.msg);
     return;
   }
   if (msg.type === 'error') {
-    pushLog(`分析失败：${msg.message ?? '未知错误'}`);
+    pushLog(`分析失败：${msg.msg ?? '未知错误'}`);
     return;
   }
   if (msg.type === 'result') {
@@ -336,11 +337,14 @@ async function startAnalyze() {
   logs.value = [];
   logVisible.value = true;
   try {
-    const res = await fetch(`/api/admin/sources/${adsSourceId.value}/ads/analyze-stream`, {
+    const token = getToken();
+    const res = await fetch('/api/admin/ad-feature/analyze-stream', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: '{}',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ sourceId: adsSourceId.value }),
     });
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
     const reader = res.body.getReader();
@@ -368,7 +372,7 @@ async function startAnalyze() {
 
 async function loadSources() {
   try {
-    const data = await api.get<{ items: SourceItem[] }>('/sources', { page_size: 100 });
+    const data = await api.get<{ items: SourceItem[] }>('/collect-source', buildListQuery({ take: 100 }));
     sources.value = data.items;
   } catch {
     sources.value = [];
@@ -387,9 +391,10 @@ const panelItems = computed(() => [
 async function load() {
   loading.value = true;
   try {
-    const data = await api.get<{ items: FieldItem[] }>('/settings');
-    for (const item of data.items) {
-      if (KEYS.includes(item.key)) form[item.key] = item.value ?? '';
+    const data = await api.post<Record<string, string>>('/setting/map');
+    for (const key of KEYS) {
+      const value = data[key];
+      if (value !== undefined) form[key] = value;
     }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载配置失败');
@@ -402,7 +407,7 @@ async function load() {
 async function saveKey(key: string) {
   savingKey.value = key;
   try {
-    await api.put('/settings', { values: { [key]: String(form[key] ?? '') } });
+    await api.post('/setting/save-many', { entries: [{ key, value: String(form[key] ?? '') }] });
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
     await load();

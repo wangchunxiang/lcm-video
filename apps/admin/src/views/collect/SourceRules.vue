@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { buildListQuery, likeValue } from '@lcm/api-client';
 import { api, ApiError } from '../../api/client.ts';
 
 interface RuleRow {
-  id: number;
-  sourceId: number;
-  sourceName: string;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
+  sourceId: string;
   kind: number;
   fromUrl: string;
   toUrl: string;
@@ -16,8 +17,14 @@ interface RuleRow {
 }
 
 interface SourceOption {
-  id: number;
+  id: string;
   name: string;
+}
+
+interface ApplyPreview {
+  needConfirm: boolean;
+  total: number;
+  affected: number;
 }
 
 const items = ref<RuleRow[]>([]);
@@ -31,12 +38,12 @@ let resizeObserver: ResizeObserver | null = null;
 
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增规则');
-const editingId = ref(0);
+const editingId = ref('');
 const saving = ref(false);
-const applying = ref(0);
+const applying = ref('');
 
 const form = reactive({
-  source_id: '' as string | number,
+  source_id: '',
   kind: 1,
   from_url: '',
   to_url: '',
@@ -46,15 +53,24 @@ const form = reactive({
 
 const kindText = (kind: number): string => (kind === 2 ? '图片地址' : '播放地址');
 
+/** 规则表只存 sourceId，列表里按采集源列表翻译成名称。 */
+function sourceName(id: string): string {
+  return sources.value.find((item) => item.id === id)?.name ?? '—';
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const params: Record<string, string> = {};
-    if (filters.source_id) params.source_id = String(filters.source_id);
-    if (filters.kind) params.kind = String(filters.kind);
-    if (filters.status) params.status = String(filters.status);
-    if (filters.keyword.trim()) params.keyword = filters.keyword.trim();
-    const data = await api.get<{ items: RuleRow[] }>('/source-rules', { params });
+    const where: Record<string, unknown> = {};
+    if (filters.source_id) where['sourceId'] = filters.source_id;
+    if (filters.kind) where['kind'] = Number(filters.kind);
+    if (filters.status) where['isEnabled'] = Number(filters.status);
+    const keyword = filters.keyword.trim();
+    if (keyword) where['fromUrl'] = { $like: likeValue(keyword) };
+    const data = await api.get<{ items: RuleRow[]; total: number }>(
+      '/source-rule',
+      buildListQuery({ take: 100, where }),
+    );
     items.value = data.items;
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '加载失败');
@@ -65,9 +81,10 @@ async function load(): Promise<void> {
 
 async function loadSources(): Promise<void> {
   try {
-    const data = await api.get<{ items: SourceOption[] }>('/sources', {
-      params: { page: '1', page_size: '100' },
-    });
+    const data = await api.get<{ items: SourceOption[]; total: number }>(
+      '/collect-source',
+      buildListQuery({ take: 100, order: { id: 'ASC' } }),
+    );
     sources.value = data.items.map((item) => ({ id: item.id, name: item.name }));
   } catch {
     sources.value = [];
@@ -84,7 +101,7 @@ function resetFilters(): void {
 
 function openCreate(): void {
   dialogTitle.value = '新增规则';
-  editingId.value = 0;
+  editingId.value = '';
   form.source_id = sources.value[0]?.id ?? '';
   form.kind = 1;
   form.from_url = '';
@@ -114,15 +131,15 @@ async function submit(): Promise<void> {
   saving.value = true;
   try {
     const body = {
-      source_id: Number(form.source_id),
+      sourceId: form.source_id,
       kind: form.kind,
-      from_url: form.from_url.trim(),
-      to_url: form.to_url.trim(),
+      fromUrl: form.from_url.trim(),
+      toUrl: form.to_url.trim(),
       sort: Number(form.sort) || 0,
-      is_enabled: form.is_enabled,
+      isEnabled: form.is_enabled,
     };
-    if (editingId.value > 0) await api.put(`/source-rules/${editingId.value}`, body);
-    else await api.post('/source-rules', body);
+    if (editingId.value) await api.put(`/source-rule/${editingId.value}`, body);
+    else await api.post('/source-rule', body);
     ElMessage.success('已保存');
     dialogVisible.value = false;
     await load();
@@ -135,15 +152,9 @@ async function submit(): Promise<void> {
 
 async function toggle(row: RuleRow): Promise<void> {
   try {
-    await api.put(`/source-rules/${row.id}`, {
-      source_id: row.sourceId,
-      kind: row.kind,
-      from_url: row.fromUrl,
-      to_url: row.toUrl,
-      sort: row.sort,
-      is_enabled: row.isEnabled === 1 ? 0 : 1,
-    });
-    row.isEnabled = row.isEnabled === 1 ? 0 : 1;
+    const next = row.isEnabled === 1 ? 0 : 1;
+    await api.put(`/source-rule/${row.id}`, { isEnabled: next });
+    row.isEnabled = next;
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '操作失败');
   }
@@ -160,7 +171,7 @@ async function remove(row: RuleRow): Promise<void> {
     return;
   }
   try {
-    await api.del(`/source-rules/${row.id}`);
+    await api.del(`/source-rule/${row.id}`);
     ElMessage.success('已删除');
     await load();
   } catch (error) {
@@ -171,11 +182,8 @@ async function remove(row: RuleRow): Promise<void> {
 async function apply(row: RuleRow): Promise<void> {
   applying.value = row.id;
   try {
-    const preview = await api.post<{ needConfirm: boolean; total: number; affected: number }>(
-      `/source-rules/${row.id}/apply`,
-      { confirm: false },
-    );
-    applying.value = 0;
+    const preview = await api.post<ApplyPreview>('/source-rule/apply', { id: row.id, confirm: false });
+    applying.value = '';
     if (preview.total === 0) {
       ElMessage.info('没有需要替换的数据');
       return;
@@ -190,13 +198,13 @@ async function apply(row: RuleRow): Promise<void> {
       return;
     }
     applying.value = row.id;
-    const result = await api.post<{ affected: number }>(`/source-rules/${row.id}/apply`, { confirm: true });
+    const result = await api.post<ApplyPreview>('/source-rule/apply', { id: row.id, confirm: true });
     ElMessage.success(`已替换 ${result.affected} 条`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '重刷失败');
   } finally {
-    applying.value = 0;
+    applying.value = '';
   }
 }
 
@@ -223,7 +231,7 @@ onBeforeUnmount(() => {
     <el-card shadow="never" class="search-card">
       <div class="search-bar">
         <el-select v-model="filters.source_id" placeholder="采集源" clearable style="width: 180px" @change="load">
-          <el-option v-for="s in sources" :key="s.id" :label="s.name" :value="String(s.id)" />
+          <el-option v-for="s in sources" :key="s.id" :label="s.name" :value="s.id" />
         </el-select>
         <el-select v-model="filters.kind" placeholder="类型" clearable style="width: 120px; margin-left: 8px" @change="load">
           <el-option label="播放地址" :value="'1'" />
@@ -252,7 +260,9 @@ onBeforeUnmount(() => {
       </div>
       <div ref="wrapRef" class="table-wrap">
         <el-table v-loading="loading" :data="items" border stripe :height="tableHeight">
-          <el-table-column prop="sourceName" label="采集源" width="140" show-overflow-tooltip />
+          <el-table-column label="采集源" width="140" show-overflow-tooltip>
+            <template #default="{ row }">{{ sourceName(row.sourceId) }}</template>
+          </el-table-column>
           <el-table-column label="类型" width="100" align="center">
             <template #default="{ row }">{{ kindText(row.kind) }}</template>
           </el-table-column>

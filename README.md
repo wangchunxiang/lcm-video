@@ -108,6 +108,6 @@ pm2 start ecosystem.config.cjs
 ## 当前状态
 
 - 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/site/*`、重复影片合并已完成，真库冒烟通过。
-- 管理后台：页面齐全，但仍是 v2 契约（cookie 会话、`page` / `page_size` 分页），尚未对接 v3 的 Bearer token 与 `take` / `skip`。
+- 管理后台：已对接 v3（Bearer token 存 localStorage、`take` / `skip` 分页、`where` / `order` JSON 过滤、camelCase 字段、`PUT` 更新）；`vue-tsc` 纳入 `npm run typecheck`。
 - 用户端前台：仅骨架（路由 + 五个占位页 + `/api/site` 客户端），样式与播放器待做。
 - 文档：`docs/架构-v2.md` 与 `docs/数据库设计-v2.md` 已对齐 TypeORM 实现；`docs/技术方案.md` 是 v1 遗留方案（Fastify + LiquidJS），开头已标注过时，只当产品范围参考。

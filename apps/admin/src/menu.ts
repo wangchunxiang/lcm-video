@@ -43,7 +43,6 @@ export const menus: MenuItem[] = [
     title: '高级工具',
     icon: 'SetUp',
     children: [
-      { path: '/tools/data', title: '数据处理', icon: 'MagicStick' },
       { path: '/tools/merge', title: '重复影片', icon: 'CopyDocument' },
       { path: '/tools/cover-check', title: '图片检查', icon: 'Picture' },
     ],

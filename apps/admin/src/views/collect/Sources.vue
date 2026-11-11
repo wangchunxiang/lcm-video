@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
+import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 
 interface SourceRow {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
   apiUrl: string;
-  apiFormat: string;
   apiParams: string;
   parseUrl: string;
-  sort: number;
+  playFrom: string;
   isEnabled: number;
   pagesize: number;
   intervalSec: number;
@@ -33,15 +34,14 @@ const wrapRef = ref<HTMLElement | null>(null);
 const tableHeight = ref(400);
 let resizeObserver: ResizeObserver | null = null;
 const loading = ref(false);
-const testing = ref(0);
+const testing = ref('');
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增源站');
-const editingId = ref(0);
+const editingId = ref('');
 
 const form = reactive({
   name: '',
   api_url: '',
-  api_format: 'json',
   api_params: '',
   parse_url: '',
   is_enabled: 1,
@@ -52,13 +52,6 @@ const form = reactive({
 });
 
 const FORBIDDEN_PARAMS = ['ac', 'pg', 'pagesize', 'at', 'h'];
-
-const formatError = computed(() => {
-  const url = form.api_url.trim();
-  if (/\/at\/json\/?/i.test(url) && form.api_format !== 'json') return '接口地址里是 /at/json/，接口格式要选 json';
-  if (/\/at\/xml\/?/i.test(url) && form.api_format !== 'xml') return '接口地址里是 /at/xml/，接口格式要选 xml';
-  return '';
-});
 
 const paramsError = computed(() => {
   const raw = form.api_params.trim().replace(/^\?/, '');
@@ -71,10 +64,19 @@ const paramsError = computed(() => {
 async function load() {
   loading.value = true;
   try {
-    const params = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) });
-    if (filters.keyword.trim()) params.set('keyword', filters.keyword.trim());
-    if (filters.status !== '') params.set('status', filters.status);
-    const data = await api.get<{ items: SourceRow[]; total: number }>(`/sources?${params.toString()}`);
+    const where: Record<string, unknown> = {};
+    const keyword = filters.keyword.trim();
+    if (keyword) where['name'] = { $like: `%${keyword}%` };
+    if (filters.status !== '') where['isEnabled'] = Number(filters.status);
+    const data = await api.get<{ items: SourceRow[]; total: number }>(
+      '/collect-source',
+      buildListQuery({
+        take: pageSize.value,
+        skip: (page.value - 1) * pageSize.value,
+        where,
+        order: { id: 'ASC' },
+      }),
+    );
     items.value = data.items;
     total.value = data.total;
     selection.value = [];
@@ -105,7 +107,6 @@ function onPageChange(next: number) {
 function resetForm() {
   form.name = '';
   form.api_url = '';
-  form.api_format = 'json';
   form.api_params = '';
   form.parse_url = '';
   form.is_enabled = 1;
@@ -113,7 +114,7 @@ function resetForm() {
   form.interval_sec = 3;
   form.timeout = 30;
   form.retry_times = 2;
-  editingId.value = 0;
+  editingId.value = '';
 }
 
 function openCreate() {
@@ -127,7 +128,6 @@ function openEdit(row: SourceRow) {
   editingId.value = row.id;
   form.name = row.name;
   form.api_url = row.apiUrl;
-  form.api_format = row.apiFormat;
   form.api_params = row.apiParams;
   form.parse_url = row.parseUrl;
   form.is_enabled = row.isEnabled;
@@ -152,7 +152,6 @@ function readNumber(value: unknown, fallback: number, min: number, max: number, 
 async function submit() {
   if (!form.name.trim()) return ElMessage.warning('请填写名称');
   if (!/^https?:\/\//i.test(form.api_url.trim())) return ElMessage.warning('接口地址必须以 http:// 或 https:// 开头');
-  if (formatError.value) return ElMessage.warning(formatError.value);
   if (paramsError.value) return ElMessage.warning(paramsError.value);
 
   const pagesize = readNumber(form.pagesize, 100, 1, 100, '每页条数');
@@ -163,13 +162,24 @@ async function submit() {
   if (timeout === null) return;
   const retryTimes = readNumber(form.retry_times, 2, 0, 10, '重试次数');
   if (retryTimes === null) return;
-  const payload = { ...form, pagesize, interval_sec: intervalSec, timeout, retry_times: retryTimes };
+
+  const payload = {
+    name: form.name.trim(),
+    apiUrl: form.api_url.trim(),
+    apiParams: form.api_params.trim(),
+    parseUrl: form.parse_url.trim(),
+    isEnabled: form.is_enabled,
+    pagesize,
+    intervalSec,
+    timeout,
+    retryTimes,
+  };
 
   try {
-    if (editingId.value > 0) {
-      await api.put(`/sources/${editingId.value}`, payload);
+    if (editingId.value !== '') {
+      await api.put(`/collect-source/${editingId.value}`, payload);
     } else {
-      await api.post('/sources', payload);
+      await api.post('/collect-source', payload);
     }
     ElMessage.success('已保存');
     dialogVisible.value = false;
@@ -183,11 +193,15 @@ function onSelectionChange(rows: SourceRow[]) {
   selection.value = rows;
 }
 
+/** 批量启用/停用：v3 没有批量动作接口，逐个 PUT。 */
 async function batchStatus(action: 'enable' | 'disable') {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
+  const isEnabled = action === 'enable' ? 1 : 0;
   try {
-    await api.post('/sources/batch', { action, ids });
+    for (const id of ids) {
+      await api.put(`/collect-source/${id}`, { isEnabled });
+    }
     ElMessage.success(action === 'enable' ? `已启用 ${ids.length} 个源` : `已停用 ${ids.length} 个源`);
     await load();
   } catch (error) {
@@ -199,14 +213,8 @@ async function batchDelete() {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
   try {
-    const result = await api.post<{ affected: number; lines: number; empty_vods: number }>('/sources/batch', {
-      action: 'delete',
-      ids,
-    });
-    ElMessage.success(`已删除 ${result.affected} 个采集源，连带删除 ${result.lines} 条播放线路`);
-    if (result.empty_vods > 0) {
-      ElMessage.warning(`有 ${result.empty_vods} 部影片已没有播放线路，可在「工具 → 清理无线路影片」处理`);
-    }
+    await api.del('/collect-source/delete/bulk', { ids: ids.join(',') });
+    ElMessage.success(`已删除 ${ids.length} 个采集源`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
@@ -214,7 +222,7 @@ async function batchDelete() {
 }
 
 /**
- * 删源会连带清掉线路、任务与记录，先提示影响范围，再单独确认一次。
+ * 删源不可恢复，先提示影响范围，再单独确认一次。
  * 返回 true 表示两次确认都点了确认。
  */
 async function confirmRemove(message: string, title: string): Promise<boolean> {
@@ -241,7 +249,7 @@ async function confirmRemove(message: string, title: string): Promise<boolean> {
 
 async function confirmBatchDelete() {
   const confirmed = await confirmRemove(
-    `确定删除选中的 ${selection.value.length} 个采集源吗？这些源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除。`,
+    `确定删除选中的 ${selection.value.length} 个采集源吗？该源的分类映射与采集任务会一并删除。`,
     '批量删除',
   );
   if (!confirmed) return;
@@ -259,14 +267,15 @@ async function testSource(row: SourceRow) {
     showClose: false,
   });
   try {
-    const data = await api.post<{ ok: boolean; elapsed_ms: number; categories: number; sample: string[]; message?: string }>(
-      `/sources/${row.id}/test`,
+    const data = await api.post<{ ok: boolean; elapsedMs: number; categories: number; via: string; msg: string }>(
+      '/collect-source/test',
+      { id: row.id },
     );
     notice.close();
     if (data.ok) {
       ElNotification({
         title: '测试通过',
-        message: `${row.name}：接口正常，耗时 ${data.elapsed_ms}ms`,
+        message: `${row.name}：接口正常，耗时 ${data.elapsedMs}ms，${data.categories} 个分类（${data.via}）`,
         type: 'success',
         position: 'top-right',
         duration: 4000,
@@ -274,7 +283,7 @@ async function testSource(row: SourceRow) {
     } else {
       ElNotification({
         title: '测试失败',
-        message: `${row.name}：${data.message ?? '接口返回异常'}`,
+        message: `${row.name}：${data.msg || '接口返回异常'}`,
         type: 'error',
         position: 'top-right',
         duration: 0,
@@ -292,49 +301,46 @@ async function testSource(row: SourceRow) {
       showClose: true,
     });
   } finally {
-    testing.value = 0;
+    testing.value = '';
   }
 }
 
 function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
   return {
     name: row.name,
-    api_url: row.apiUrl,
-    api_format: row.apiFormat,
-    api_params: row.apiParams,
-    parse_url: row.parseUrl,
-    is_enabled: row.isEnabled,
-    interval_sec: row.intervalSec,
+    apiUrl: row.apiUrl,
+    apiParams: row.apiParams,
+    parseUrl: row.parseUrl,
+    isEnabled: row.isEnabled,
+    intervalSec: row.intervalSec,
     pagesize: row.pagesize,
     timeout: row.timeout,
-    retry_times: row.retryTimes,
+    retryTimes: row.retryTimes,
     ...patch,
   };
 }
 
-const RANGE_LABELS: Record<number, string> = {
-  1: '采集本日',
-  2: '采集本周',
-  3: '采集本月',
-  4: '采集全部',
-};
-
-async function runSource(row: SourceRow, rangeType: number) {
-  if (rangeType === 4) {
-    try {
-      await ElMessageBox.confirm(
-        `将按「采集全部」范围采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`,
-        '开始采集',
-        { type: 'warning', confirmButtonText: '开始采集', cancelButtonText: '取消' },
-      );
-    } catch {
-      return;
-    }
+/** v3 的手动采集按源站默认时间窗跑，范围由采集任务配置。 */
+async function runSource(row: SourceRow) {
+  try {
+    await ElMessageBox.confirm(`将开始采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`, '开始采集', {
+      type: 'warning',
+      confirmButtonText: '开始采集',
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
   }
 
   try {
-    await api.post(`/sources/${row.id}/run`, { range_type: rangeType });
-    ElMessage.success(`已开始采集「${row.name}」（${RANGE_LABELS[rangeType]}），可在采集记录查看进度`);
+    const result = await api.post<{ ok: boolean; logId?: string; msg?: string }>('/collect-source/run', {
+      id: row.id,
+    });
+    if (result.ok) {
+      ElMessage.success(`已开始采集「${row.name}」，可在采集记录查看进度`);
+    } else {
+      ElMessage.warning(result.msg || '未能开始采集');
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '开始采集失败');
   }
@@ -343,7 +349,7 @@ async function runSource(row: SourceRow, rangeType: number) {
 async function toggleStatus(row: SourceRow) {
   const next = row.isEnabled === 1 ? 0 : 1;
   try {
-    await api.put(`/sources/${row.id}`, toBody(row, { is_enabled: next }));
+    await api.put(`/collect-source/${row.id}`, toBody(row, { isEnabled: next }));
     ElMessage.success(next === 1 ? '已启用' : '已停用');
     await load();
   } catch (error) {
@@ -354,17 +360,14 @@ async function toggleStatus(row: SourceRow) {
 
 async function remove(row: SourceRow) {
   const confirmed = await confirmRemove(
-    `确定删除采集源「${row.name}」吗？该源的播放线路（含剧集）、采集任务、采集记录、地址替换规则与分类映射会一并删除。`,
+    `确定删除采集源「${row.name}」吗？该源的分类映射与采集任务会一并删除。`,
     '删除采集源',
   );
   if (!confirmed) return;
 
   try {
-    const result = await api.del<{ id: number; lines: number; empty_vods: number }>(`/sources/${row.id}`);
-    ElMessage.success(`已删除采集源，连带删除 ${result.lines} 条播放线路`);
-    if (result.empty_vods > 0) {
-      ElMessage.warning(`有 ${result.empty_vods} 部影片已没有播放线路，可在「工具 → 清理无线路影片」处理`);
-    }
+    await api.del(`/collect-source/${row.id}`);
+    ElMessage.success('已删除采集源');
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
@@ -429,7 +432,6 @@ onBeforeUnmount(() => {
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
       <el-table-column prop="apiUrl" label="接口地址" min-width="240" show-overflow-tooltip />
-      <el-table-column prop="apiFormat" label="格式" width="70" align="center" />
       <el-table-column label="解析接口" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
           <span v-if="row.parseUrl">{{ row.parseUrl }}</span>
@@ -459,20 +461,7 @@ onBeforeUnmount(() => {
         <template #default="{ row }">
           <div class="row-actions">
             <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
-            <el-dropdown trigger="click" @command="(cmd: number) => runSource(row, cmd)">
-              <el-button link type="primary">
-                采集
-                <el-icon class="caret"><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item :command="1">采集本日</el-dropdown-item>
-                  <el-dropdown-item :command="2">采集本周</el-dropdown-item>
-                  <el-dropdown-item :command="3">采集本月</el-dropdown-item>
-                  <el-dropdown-item :command="4" divided>采集全部</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <el-button link type="primary" @click="runSource(row)">采集</el-button>
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </div>
@@ -499,13 +488,6 @@ onBeforeUnmount(() => {
         </el-form-item>
         <el-form-item label="接口地址" required>
           <el-input v-model="form.api_url" placeholder="https://example.com/api.php/provide/vod/" />
-        </el-form-item>
-        <el-form-item label="返回格式">
-          <el-radio-group v-model="form.api_format">
-            <el-radio value="json">JSON</el-radio>
-            <el-radio value="xml">XML</el-radio>
-          </el-radio-group>
-          <div v-if="formatError" class="hint danger">{{ formatError }}</div>
         </el-form-item>
         <el-form-item label="额外参数">
           <el-input v-model="form.api_params" placeholder="如 t=1&amp;year=2024，可留空" />

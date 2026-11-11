@@ -1,39 +1,23 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
-import type { SettingField } from '@lcm/shared';
 import { api } from '../../api/client.ts';
-import ImageUpload from '../../components/ImageUpload.vue';
-
-interface FieldItem extends SettingField {
-  value: string;
-}
-
-interface ThemeItem {
-  name: string;
-  title: string;
-  active: boolean;
-}
 
 interface Row {
   key: string;
   label: string;
-  kind: 'text' | 'image' | 'select' | 'textarea';
+  kind: 'text' | 'select' | 'textarea';
   hint?: string;
 }
 
-/** 站点设置页自己的字段，改这个页面不会影响其他设置页 */
+/** 站点设置页自己的字段，改这个页面不会影响其他设置页。 */
 const FIELDS: Row[] = [
   { key: 'site_name', label: '站点名称', kind: 'text' },
   { key: 'site_subtitle', label: '站点副标题', kind: 'text' },
-  { key: 'site_logo', label: '站点 LOGO', kind: 'image', hint: '留空则显示站名文字' },
-  { key: 'site_favicon', label: '站点图标', kind: 'image', hint: '浏览器标签页上的小图标' },
-  { key: 'site_theme', label: '当前模板', kind: 'select' },
   { key: 'site_disclaimer', label: '免责声明', kind: 'textarea', hint: '显示在前台页脚' },
   { key: 'site_stats_code', label: '统计代码', kind: 'textarea', hint: '原样输出到前台页面底部' },
   { key: 'list_page_size', label: '列表每页条数', kind: 'text', hint: '建议保持 24（三行八列）' },
   { key: 'collect_log_keep_days', label: '日志保留天数', kind: 'text', hint: '超期自动清理' },
-  { key: 'upload_max_mb', label: '单文件上传上限', kind: 'text', hint: '单位 MB' },
 ];
 
 const KEYS = FIELDS.map((field) => field.key);
@@ -41,27 +25,23 @@ const KEYS = FIELDS.map((field) => field.key);
 const form = reactive<Record<string, string>>({
   site_name: '',
   site_subtitle: '',
-  site_theme: 'default',
-  site_logo: '',
-  site_favicon: '',
   site_disclaimer: '',
   site_stats_code: '',
   list_page_size: '24',
   collect_log_keep_days: '30',
-  upload_max_mb: '2',
 });
 
-const themes = ref<ThemeItem[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 
 async function load() {
   loading.value = true;
   try {
-    const data = await api.get<{ items: FieldItem[]; themes: ThemeItem[] }>('/settings');
-    themes.value = data.themes ?? [];
-    for (const item of data.items) {
-      if (KEYS.includes(item.key)) form[item.key] = item.value ?? '';
+    // v3 的 map 接口一次返回全部配置键值，页面只取自己关心的几个
+    const data = await api.post<Record<string, string>>('/setting/map');
+    for (const key of KEYS) {
+      const value = data[key];
+      if (value !== undefined) form[key] = value;
     }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载配置失败');
@@ -71,12 +51,11 @@ async function load() {
 }
 
 async function save() {
-  const values: Record<string, string> = {};
-  for (const key of KEYS) values[key] = String(form[key] ?? '');
+  const entries = KEYS.map((key) => ({ key, value: String(form[key] ?? '') }));
 
   saving.value = true;
   try {
-    await api.put('/settings', { values });
+    await api.post('/setting/save-many', { entries });
     ElMessage.success('保存成功');
     await load();
   } catch (error) {
@@ -98,12 +77,8 @@ onMounted(() => {
         <div v-for="row in FIELDS" :key="row.key" class="field">
           <label class="field-label">{{ row.label }}</label>
           <div class="field-ctrl">
-            <ImageUpload v-if="row.kind === 'image'" v-model="form[row.key]" />
-            <el-select v-else-if="row.kind === 'select'" v-model="form[row.key]" style="width: 220px">
-              <el-option v-for="theme in themes" :key="theme.name" :label="theme.title" :value="theme.name" />
-            </el-select>
             <el-input
-              v-else-if="row.kind === 'textarea'"
+              v-if="row.kind === 'textarea'"
               v-model="form[row.key]"
               type="textarea"
               :rows="3"
@@ -156,9 +131,6 @@ onMounted(() => {
   margin-top: 2px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-.field-ctrl :deep(.image-upload) {
-  max-width: 360px;
 }
 .card-foot {
   display: flex;

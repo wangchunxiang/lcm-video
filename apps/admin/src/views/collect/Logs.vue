@@ -2,14 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TagProps } from 'element-plus';
+import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 
 interface LogRow {
-  id: number;
-  taskId: number;
-  taskName: string | null;
-  manual: boolean;
-  sourceId: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
+  taskId: string;
+  taskName: string;
+  sourceId: string;
+  /** 服务端不返回，前端按 sources 表补 */
   sourceName: string | null;
   status: number;
   totalPages: number;
@@ -28,7 +30,8 @@ interface LogRow {
 }
 
 interface DetailRow {
-  id: number;
+  id: string;
+  logId: string;
   page: number;
   total: number;
   inserted: number;
@@ -41,7 +44,7 @@ interface DetailRow {
 }
 
 interface SourceRow {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -74,11 +77,13 @@ function numClass(kind: NumKind): string {
   return `num num-${kind}`;
 }
 
+/** v3 记录状态：1 运行中 / 2 成功 / 3 失败 / 4 已取消 */
 function statusOf(row: { status: number }): { text: string; type: TagProps['type'] } {
-  if (row.status === 0) return { text: '进行中', type: 'warning' };
-  if (row.status === 1) return { text: '成功', type: 'success' };
-  if (row.status === 2) return { text: '失败', type: 'danger' };
-  return { text: '已取消', type: 'info' };
+  if (row.status === 1) return { text: '运行中', type: 'warning' };
+  if (row.status === 2) return { text: '成功', type: 'success' };
+  if (row.status === 3) return { text: '失败', type: 'danger' };
+  if (row.status === 4) return { text: '已取消', type: 'info' };
+  return { text: '未知', type: 'info' };
 }
 
 const nowTick = ref(Date.now());
@@ -98,14 +103,27 @@ function durationText(row: LogRow): string {
   return elapsedText(row.startedAt, row.finishedAt);
 }
 
+function decorate(rows: LogRow[]): LogRow[] {
+  const nameById = new Map(sources.value.map((item) => [item.id, item.name]));
+  return rows.map((row) => ({ ...row, sourceName: nameById.get(row.sourceId) ?? null }));
+}
+
 async function load(silent = false) {
   if (!silent) loading.value = true;
   try {
-    const params = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) });
-    if (filters.status !== '') params.set('status', filters.status);
-    if (filters.source_id !== '') params.set('source_id', filters.source_id);
-    const data = await api.get<{ items: LogRow[]; total: number }>(`/logs?${params.toString()}`);
-    items.value = data.items;
+    const where: Record<string, unknown> = {};
+    if (filters.status !== '') where['status'] = Number(filters.status);
+    if (filters.source_id !== '') where['sourceId'] = filters.source_id;
+    const data = await api.get<{ items: LogRow[]; total: number }>(
+      '/collect-task-log',
+      buildListQuery({
+        take: pageSize.value,
+        skip: (page.value - 1) * pageSize.value,
+        where,
+        order: { id: 'DESC' },
+      }),
+    );
+    items.value = decorate(data.items);
     total.value = data.total;
     if (items.value.length === 0 && page.value > 1) {
       page.value -= 1;
@@ -120,20 +138,26 @@ async function load(silent = false) {
 
 async function loadSources() {
   try {
-    const data = await api.get<{ items: SourceRow[] }>('/sources?page_size=100');
+    const data = await api.get<{ items: SourceRow[] }>('/collect-source', buildListQuery({ take: 100 }));
     sources.value = data.items;
   } catch {
     sources.value = [];
   }
 }
 
-async function loadDetails(logId: number, targetPage = 1, silent = false) {
+async function loadDetails(logId: string, targetPage = 1, silent = false) {
   if (!silent) detailLoading.value = true;
   try {
-    const data = await api.get<{ log: LogRow; items: DetailRow[]; total: number }>(
-      `/logs/${logId}?page=${targetPage}&page_size=${detailPageSize.value}`,
+    // v3 明细是独立表，按 logId 过滤、按页码升序
+    const data = await api.get<{ items: DetailRow[]; total: number }>(
+      '/collect-task-log-detail',
+      buildListQuery({
+        take: detailPageSize.value,
+        skip: (targetPage - 1) * detailPageSize.value,
+        where: { logId },
+        order: { page: 'ASC' },
+      }),
     );
-    currentLog.value = data.log;
     details.value = data.items;
     detailTotal.value = data.total;
     detailPage.value = targetPage;
@@ -162,7 +186,7 @@ function liveDuration(row: LogRow): string {
 const progressPercent = computed(() => {
   const log = currentLog.value;
   if (!log) return 0;
-  if (log.totalPages <= 0) return log.status === 0 ? 0 : 100;
+  if (log.totalPages <= 0) return log.status === 1 ? 0 : 100;
   return Math.min(100, Math.round((detailTotal.value / log.totalPages) * 100));
 });
 
@@ -176,7 +200,7 @@ function msText(ms: number): string {
 const actualDuration = computed(() => {
   const log = currentLog.value;
   if (!log) return '';
-  if (log.status === 0 || !log.finishedAt) return liveDuration(log);
+  if (log.status === 1 || !log.finishedAt) return liveDuration(log);
   const wall = new Date(log.finishedAt).getTime() - new Date(log.startedAt).getTime();
   return msText(wall - (log.interruptedMs || 0));
 });
@@ -184,7 +208,7 @@ const actualDuration = computed(() => {
 /** 只有执行中且总页数未知时才走不确定态，已结束的一律显示实际百分比 */
 const progressIndeterminate = computed(() => {
   const log = currentLog.value;
-  return Boolean(log && log.status === 0 && log.totalPages <= 0);
+  return Boolean(log && log.status === 1 && log.totalPages <= 0);
 });
 
 function rowIndex(index: number): number {
@@ -198,12 +222,12 @@ function onPageChange(value: number) {
 
 /** 失败或取消的记录还有剩下的页，就可以从断点继续 */
 function canResume(row: LogRow): boolean {
-  if (row.status !== 2 && row.status !== 3) return false;
+  if (row.status !== 3 && row.status !== 4) return false;
   if (row.totalPages > 0 && row.lastPage >= row.totalPages) return false;
   return true;
 }
 
-const resuming = ref(0);
+const resuming = ref('');
 
 async function resume(row: LogRow): Promise<void> {
   const startPage = row.lastPage + 1;
@@ -220,17 +244,20 @@ async function resume(row: LogRow): Promise<void> {
   }
   resuming.value = row.id;
   try {
-    const result = await api.post<{ logId: number; message: string }>(`/logs/${row.id}/resume`);
-    ElMessage.success(result.message);
+    const result = await api.post<{ ok: boolean; logId?: string; msg?: string }>('/collect-task-log/resume', {
+      id: row.id,
+    });
+    if (result.ok) ElMessage.success('已开始续采');
+    else ElMessage.warning(result.msg || '未能续采');
     await load(true);
   } catch (error) {
     ElMessage.error((error as Error).message);
   } finally {
-    resuming.value = 0;
+    resuming.value = '';
   }
 }
 
-const stopping = ref(0);
+const stopping = ref('');
 
 async function stop(row: LogRow): Promise<void> {
   try {
@@ -244,13 +271,13 @@ async function stop(row: LogRow): Promise<void> {
   }
   stopping.value = row.id;
   try {
-    await api.post(`/logs/${row.id}/cancel`);
+    await api.post('/collect-task-log/cancel', { id: row.id });
     ElMessage.success('已通知停止，正在收尾');
     await load(true);
   } catch (error) {
     ElMessage.error((error as Error).message);
   } finally {
-    stopping.value = 0;
+    stopping.value = '';
   }
 }
 
@@ -279,9 +306,9 @@ onMounted(async () => {
     nowTick.value = Date.now();
   }, 1000);
   timer = setInterval(() => {
-    const running = items.value.some((row) => row.status === 0);
+    const running = items.value.some((row) => row.status === 1);
     if (running) void load(true);
-    if (drawerVisible.value && currentLog.value && currentLog.value.status === 0) {
+    if (drawerVisible.value && currentLog.value && currentLog.value.status === 1) {
       void loadDetails(currentLog.value.id, detailPage.value, true);
     }
   }, 5000);
@@ -325,10 +352,10 @@ onBeforeUnmount(() => {
           <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="String(item.id)" />
         </el-select>
         <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 120px">
-          <el-option label="进行中" value="0" />
-          <el-option label="成功" value="1" />
-          <el-option label="失败" value="2" />
-          <el-option label="已取消" value="3" />
+          <el-option label="运行中" value="1" />
+          <el-option label="成功" value="2" />
+          <el-option label="失败" value="3" />
+          <el-option label="已取消" value="4" />
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
@@ -401,7 +428,7 @@ onBeforeUnmount(() => {
                 续采
               </el-button>
               <el-button
-                v-if="row.status === 0"
+                v-if="row.status === 1"
                 link
                 type="danger"
                 :loading="stopping === row.id"
@@ -444,7 +471,7 @@ onBeforeUnmount(() => {
       </div>
 
       <el-descriptions v-if="currentLog" :column="3" border class="log-summary">
-        <el-descriptions-item label="任务">{{ currentLog.manual ? '手动采集' : currentLog.taskName || '任务已删除' }}</el-descriptions-item>
+        <el-descriptions-item label="任务">{{ currentLog.taskId === '0' ? '手动采集' : currentLog.taskName || '任务已删除' }}</el-descriptions-item>
         <el-descriptions-item label="采集源">{{ currentLog.sourceName || '源已删除' }}</el-descriptions-item>
         <el-descriptions-item label="采集数">{{ currentLog.total }}</el-descriptions-item>
         <el-descriptions-item label="新增">{{ currentLog.inserted }}</el-descriptions-item>

@@ -1,37 +1,51 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 
 interface SourceRow {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
-  apiFormat: string;
 }
 
 interface SourceCategoryRow {
-  id: number;
+  id: string;
+  sourceId: string;
   sourceTypeId: string;
   sourceTypeName: string;
   sourceTypePid: string;
-  categoryId: number;
+  categoryId: string;
   matchType: number;
   status: number;
-  categoryName: string | null;
-  categoryPid: number | null;
 }
 
 interface CategoryNode {
-  id: number;
-  pid: number;
+  id: string;
+  pid: string;
   name: string;
   children?: CategoryNode[];
 }
 
+interface MappingSummary {
+  total: number;
+  mapped: number;
+  ignored: number;
+  unmapped: number;
+}
+
+interface FetchCategoriesResult {
+  total: number;
+  synced: number;
+  matched: number;
+  unmapped: number;
+}
+
 const sources = ref<SourceRow[]>([]);
-const sourceId = ref(0);
+const sourceId = ref('');
 const rows = ref<SourceCategoryRow[]>([]);
-const summary = ref({ total: 0, mapped: 0, ignored: 0, unmapped: 0 });
+const summary = ref<MappingSummary>({ total: 0, mapped: 0, ignored: 0, unmapped: 0 });
 const loading = ref(false);
 const fetching = ref(false);
 const matching = ref(false);
@@ -41,6 +55,9 @@ const categoryTree = ref<CategoryNode[]>([]);
 type StatusFilter = 'all' | '1' | '0' | '2';
 const statusFilter = ref<StatusFilter>('all');
 const selected = ref<SourceCategoryRow[]>([]);
+
+/** 记录每行上一次的映射分类，重刷已入库影片时用它定位「旧分类」。 */
+const lastCategoryIds = ref<Record<string, string>>({});
 
 const filteredRows = computed(() => {
   if (statusFilter.value === 'all') return rows.value;
@@ -79,28 +96,39 @@ function toggleFilter(value: StatusFilter) {
   statusFilter.value = statusFilter.value === value ? 'all' : value;
 }
 
+/** 更新映射前记下旧分类，供「重刷」使用。 */
+function rememberCategory(row: SourceCategoryRow) {
+  if (row.categoryId) lastCategoryIds.value[row.id] = row.categoryId;
+}
+
 async function loadSources() {
-  const data = await api.get<{ items: SourceRow[] }>('/sources');
+  const data = await api.get<{ items: SourceRow[]; total: number }>(
+    '/collect-source',
+    buildListQuery({ take: 100, order: { id: 'ASC' } }),
+  );
   sources.value = data.items;
-  if (sourceId.value === 0 && sources.value.length > 0) {
-    sourceId.value = sources.value[0].id;
+  const first = sources.value[0];
+  if (!sourceId.value && first) {
+    sourceId.value = first.id;
   }
 }
 
 async function loadCategories() {
-  const data = await api.get<{ items: CategoryNode[] }>('/categories');
-  categoryTree.value = data.items;
+  categoryTree.value = await api.post<CategoryNode[]>('/category/tree');
 }
 
 async function load() {
-  if (sourceId.value <= 0) {
+  if (!sourceId.value) {
     rows.value = [];
+    selected.value = [];
+    summary.value = { total: 0, mapped: 0, ignored: 0, unmapped: 0 };
     return;
   }
   loading.value = true;
   try {
-    const data = await api.get<{ items: SourceCategoryRow[]; summary: typeof summary.value }>(
-      `/sources/${sourceId.value}/categories`,
+    const data = await api.post<{ items: SourceCategoryRow[]; summary: MappingSummary }>(
+      '/collect-source-category/by-source',
+      { sourceId: sourceId.value },
     );
     rows.value = data.items;
     summary.value = data.summary;
@@ -112,13 +140,14 @@ async function load() {
 }
 
 async function fetchCategories() {
-  if (sourceId.value <= 0) return;
+  if (!sourceId.value) return;
   fetching.value = true;
   try {
-    const data = await api.post<{ fetched: number; mapped: number; matched: number }>(
-      `/sources/${sourceId.value}/fetch-categories`,
-    );
-    ElMessage.success(`获取到 ${data.fetched} 个分类，已映射 ${data.mapped} 个，本次自动匹配 ${data.matched} 个`);
+    const data = await api.post<FetchCategoriesResult>('/collect-source/fetch-categories', {
+      id: sourceId.value,
+    });
+    const mapped = Math.max(data.total - data.unmapped, 0);
+    ElMessage.success(`获取到 ${data.total} 个分类，已映射 ${mapped} 个，本次自动匹配 ${data.matched} 个`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '获取分类失败');
@@ -128,10 +157,12 @@ async function fetchCategories() {
 }
 
 async function autoMatch() {
-  if (sourceId.value <= 0) return;
+  if (!sourceId.value) return;
   matching.value = true;
   try {
-    const data = await api.post<{ scanned: number; matched: number }>(`/sources/${sourceId.value}/categories/match`);
+    const data = await api.post<{ scanned: number; matched: number }>('/collect-source-category/match', {
+      sourceId: sourceId.value,
+    });
     ElMessage.success(`扫描 ${data.scanned} 个未映射分类，自动匹配 ${data.matched} 个`);
     await load();
   } catch (error) {
@@ -141,21 +172,22 @@ async function autoMatch() {
   }
 }
 
-async function applyRow(row: SourceCategoryRow, categoryId: number) {
+async function applyRow(row: SourceCategoryRow, categoryId: string) {
+  const target = categoryId ?? '';
   try {
-    const body = categoryId > 0 ? { category_id: categoryId } : { category_id: 0, status: 0 };
-    await api.put(`/sources/${sourceId.value}/categories/${row.id}`, body);
-    ElMessage.success(categoryId > 0 ? '已映射' : '已取消映射');
-    await load();
+    rememberCategory(row);
+    const body = target ? { ids: [row.id], categoryId: target } : { ids: [row.id], status: 0 };
+    await api.post<{ updated: number }>('/collect-source-category/map', body);
+    ElMessage.success(target ? '已映射' : '已取消映射');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '映射失败');
-    await load();
   }
+  await load();
 }
 
 async function ignoreRow(row: SourceCategoryRow) {
   try {
-    await api.put(`/sources/${sourceId.value}/categories/${row.id}`, { status: 2 });
+    await api.post('/collect-source-category/map', { ids: [row.id], status: 2 });
     ElMessage.success('已忽略分类');
     await load();
   } catch (error) {
@@ -165,7 +197,7 @@ async function ignoreRow(row: SourceCategoryRow) {
 
 async function restoreRow(row: SourceCategoryRow) {
   try {
-    await api.put(`/sources/${sourceId.value}/categories/${row.id}`, { status: 0, category_id: 0 });
+    await api.post('/collect-source-category/map', { ids: [row.id], status: 0 });
     ElMessage.success('已恢复为未映射');
     await load();
   } catch (error) {
@@ -187,11 +219,11 @@ async function batchApply(payload: { status: number }, action: string) {
     return;
   }
   try {
-    const data = await api.put<{ affected: number }>(`/sources/${sourceId.value}/categories/batch`, {
+    const data = await api.post<{ updated: number }>('/collect-source-category/map', {
       ids: selected.value.map((row) => row.id),
       ...payload,
     });
-    ElMessage.success(`已${action} ${data.affected} 个分类`);
+    ElMessage.success(`已${action} ${data.updated} 个分类`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
@@ -216,27 +248,46 @@ async function unmapRow(row: SourceCategoryRow) {
   } catch {
     return;
   }
-  await applyRow(row, 0);
+  await applyRow(row, '');
 }
 
 async function remapVods(row: SourceCategoryRow) {
+  if (!row.categoryId) {
+    ElMessage.warning('这条源站分类还没有映射到本站分类');
+    return;
+  }
+  // 服务端需要「影片当前所在分类」定位要重刷的数据，即映射变更前的旧分类
+  const remembered = lastCategoryIds.value[row.id] ?? '';
+  let fromCategoryId = remembered;
   try {
-    await ElMessageBox.confirm(
-      `将把该分类下已入库的影片改成当前映射的分类，可能影响大量数据，确定继续吗？`,
+    const { value } = await ElMessageBox.prompt(
+      `将把「${row.sourceTypeName}」下已入库的影片改成当前映射的分类（ID ${row.categoryId}），可能影响大量数据。请确认这些影片当前所在的本站分类 ID：`,
       '按新映射重刷',
-      { type: 'warning', confirmButtonText: '开始重刷', cancelButtonText: '取消' },
+      {
+        type: 'warning',
+        confirmButtonText: '开始重刷',
+        cancelButtonText: '取消',
+        inputValue: remembered,
+        inputPattern: /^\d+$/,
+        inputErrorMessage: '请输入数字分类 ID',
+        inputPlaceholder: '影片当前所在分类 ID',
+      },
     );
+    fromCategoryId = String(value ?? '');
   } catch {
     return;
   }
+  if (!fromCategoryId) return;
   try {
-    const data = await api.post<{ affected: number; from: number; to: number }>(
-      `/sources/${sourceId.value}/categories/${row.id}/remap-vods`,
+    const data = await api.post<{ affected: number; from: string; to: string }>(
+      '/collect-source-category/remap-vods',
+      { sourceId: sourceId.value, id: row.id, fromCategoryId },
     );
     ElMessage.success(`已重刷 ${data.affected} 部影片`);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '重刷失败');
+    await load();
   }
 }
 
@@ -346,7 +397,7 @@ onBeforeUnmount(() => {
             clearable
             placeholder="未映射"
             size="small"
-            @update:model-value="(value: number | undefined) => applyRow(row, value ?? 0)"
+            @update:model-value="(value: string | undefined) => applyRow(row, value ?? '')"
           />
         </template>
       </el-table-column>

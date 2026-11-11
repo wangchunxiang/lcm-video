@@ -4,13 +4,16 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
 import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
+import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 import CronEditor from '../../components/CronEditor.vue';
 
 interface TaskRow {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
-  sourceId: number;
+  sourceId: string;
+  /** 服务端不返回，前端按 sources 表补 */
   sourceName: string | null;
   rangeType: number;
   cron: string;
@@ -18,12 +21,14 @@ interface TaskRow {
   lastRunAt: string | null;
   lastRunStatus: number;
   lastRunMsg: string;
-  runningLogId: number | null;
+  /** 派生：lastRunStatus === 1 视为运行中 */
+  runningLogId: string | null;
+  /** 派生：按 cron 现算下一次执行时间 */
   nextRunAt: string | null;
 }
 
 interface SourceRow {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -35,7 +40,7 @@ const pageSize = ref(20);
 const total = ref(0);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增采集任务');
-const editingId = ref(0);
+const editingId = ref('');
 const tableRef = ref<TableInstance>();
 const selection = ref<TaskRow[]>([]);
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -55,21 +60,41 @@ const rangeOptions = [
 
 const form = reactive({
   name: '',
-  source_id: 0,
+  source_id: '',
   range_type: 1,
   cron: '',
   is_enabled: 1,
 });
 
+function decorate(rows: TaskRow[]): TaskRow[] {
+  const nameById = new Map(sources.value.map((item) => [item.id, item.name]));
+  const now = new Date();
+  return rows.map((row) => ({
+    ...row,
+    sourceName: nameById.get(row.sourceId) ?? null,
+    runningLogId: row.lastRunStatus === 1 ? row.id : null,
+    nextRunAt: row.cron && isValidCron(row.cron) === null ? formatRunTime(nextRunAt(row.cron, now) ?? now) : null,
+  }));
+}
+
 async function load(silent = false) {
   if (!silent) loading.value = true;
   try {
-    const query = new URLSearchParams({ page: String(page.value), page_size: String(pageSize.value) });
-    if (filters.keyword.trim()) query.set('keyword', filters.keyword.trim());
-    if (filters.source_id !== '') query.set('source_id', filters.source_id);
-    if (filters.status !== '') query.set('status', filters.status);
-    const data = await api.get<{ items: TaskRow[]; total: number }>(`/tasks?${query.toString()}`);
-    items.value = data.items;
+    const where: Record<string, unknown> = {};
+    const keyword = filters.keyword.trim();
+    if (keyword) where['name'] = { $like: `%${keyword}%` };
+    if (filters.source_id !== '') where['sourceId'] = filters.source_id;
+    if (filters.status !== '') where['isEnabled'] = Number(filters.status);
+    const data = await api.get<{ items: TaskRow[]; total: number }>(
+      '/collect-task',
+      buildListQuery({
+        take: pageSize.value,
+        skip: (page.value - 1) * pageSize.value,
+        where,
+        order: { id: 'ASC' },
+      }),
+    );
+    items.value = decorate(data.items);
     total.value = data.total;
     if (items.value.length === 0 && page.value > 1) {
       page.value -= 1;
@@ -84,7 +109,7 @@ async function load(silent = false) {
 
 async function loadSources() {
   try {
-    const data = await api.get<{ items: SourceRow[] }>('/sources?page_size=100');
+    const data = await api.get<{ items: SourceRow[] }>('/collect-source', buildListQuery({ take: 100 }));
     sources.value = data.items;
   } catch {
     sources.value = [];
@@ -114,11 +139,11 @@ function onSelectionChange(rows: TaskRow[]) {
 
 function resetForm() {
   form.name = '';
-  form.source_id = sources.value[0]?.id ?? 0;
+  form.source_id = sources.value[0]?.id ?? '';
   form.range_type = 1;
   form.cron = '';
   form.is_enabled = 1;
-  editingId.value = 0;
+  editingId.value = '';
 }
 
 function openCreate() {
@@ -139,15 +164,25 @@ function openEdit(row: TaskRow) {
   dialogVisible.value = true;
 }
 
+function payload() {
+  return {
+    name: form.name.trim(),
+    sourceId: form.source_id,
+    rangeType: form.range_type,
+    cron: form.cron.trim(),
+    isEnabled: form.is_enabled,
+  };
+}
+
 async function submit() {
   if (!form.name.trim()) return ElMessage.warning('请填写任务名称');
-  if (form.source_id <= 0) return ElMessage.warning('请选择采集源');
+  if (form.source_id === '') return ElMessage.warning('请选择采集源');
 
   try {
-    if (editingId.value > 0) {
-      await api.put(`/tasks/${editingId.value}`, form);
+    if (editingId.value !== '') {
+      await api.put(`/collect-task/${editingId.value}`, payload());
     } else {
-      await api.post('/tasks', form);
+      await api.post('/collect-task', payload());
     }
     ElMessage.success('已保存');
     dialogVisible.value = false;
@@ -160,10 +195,10 @@ async function submit() {
 function toBody(row: TaskRow, patch: Partial<Record<string, unknown>> = {}) {
   return {
     name: row.name,
-    source_id: row.sourceId,
-    range_type: row.rangeType,
+    sourceId: row.sourceId,
+    rangeType: row.rangeType,
     cron: row.cron,
-    is_enabled: row.isEnabled,
+    isEnabled: row.isEnabled,
     ...patch,
   };
 }
@@ -171,7 +206,7 @@ function toBody(row: TaskRow, patch: Partial<Record<string, unknown>> = {}) {
 async function toggleStatus(row: TaskRow) {
   const next = row.isEnabled === 1 ? 0 : 1;
   try {
-    await api.put(`/tasks/${row.id}`, toBody(row, { is_enabled: next }));
+    await api.put(`/collect-task/${row.id}`, toBody(row, { isEnabled: next }));
     ElMessage.success(next === 1 ? '已启用' : '已停用');
     await load(true);
   } catch (error) {
@@ -182,8 +217,14 @@ async function toggleStatus(row: TaskRow) {
 
 async function run(row: TaskRow) {
   try {
-    const data = await api.post<{ logId: number }>(`/tasks/${row.id}/run`);
-    ElMessage.success(`已开始采集，记录 #${data.logId}`);
+    const data = await api.post<{ ok: boolean; logId?: string; msg?: string }>('/collect-task/run', {
+      id: row.id,
+    });
+    if (data.ok) {
+      ElMessage.success(`已开始采集，记录 #${data.logId ?? '-'}`);
+    } else {
+      ElMessage.warning(data.msg || '未能开始采集');
+    }
     await load(true);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '启动失败');
@@ -192,7 +233,7 @@ async function run(row: TaskRow) {
 
 async function cancel(row: TaskRow) {
   try {
-    await api.post(`/tasks/${row.id}/cancel`);
+    await api.post('/collect-task/cancel', { id: row.id });
     ElMessage.success('已发出取消指令，当前页结束后停止');
     await load(true);
   } catch (error) {
@@ -211,7 +252,7 @@ async function remove(row: TaskRow) {
     return;
   }
   try {
-    await api.del(`/tasks/${row.id}`);
+    await api.del(`/collect-task/${row.id}`);
     ElMessage.success('已删除');
     await load();
   } catch (error) {
@@ -219,11 +260,15 @@ async function remove(row: TaskRow) {
   }
 }
 
+/** 批量启用/停用：v3 没有批量动作接口，逐个 PUT。 */
 async function batchStatus(action: 'enable' | 'disable') {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
+  const isEnabled = action === 'enable' ? 1 : 0;
   try {
-    await api.post('/tasks/batch', { action, ids });
+    for (const id of ids) {
+      await api.put(`/collect-task/${id}`, { isEnabled });
+    }
     ElMessage.success(action === 'enable' ? `已启用 ${ids.length} 个任务` : `已停用 ${ids.length} 个任务`);
     await load();
   } catch (error) {
@@ -244,7 +289,7 @@ async function confirmBatchDelete() {
     return;
   }
   try {
-    await api.post('/tasks/batch', { action: 'delete', ids });
+    await api.del('/collect-task/delete/bulk', { ids: ids.join(',') });
     ElMessage.success(`已删除 ${ids.length} 个任务`);
     await load();
   } catch (error) {
@@ -256,11 +301,12 @@ function rangeLabel(value: number): string {
   return rangeOptions.find((item) => item.value === value)?.label ?? String(value);
 }
 
+/** v3 任务状态：0 未运行 / 1 运行中 / 2 成功 / 3 失败 / 4 已取消 */
 function runStatus(row: TaskRow): { text: string; type: 'success' | 'danger' | 'info' | 'warning' } {
-  if (row.runningLogId !== null) return { text: '运行中', type: 'warning' };
-  if (row.lastRunStatus === 1) return { text: '成功', type: 'success' };
-  if (row.lastRunStatus === 2) return { text: '失败', type: 'danger' };
-  if (row.lastRunStatus === 3) return { text: '已取消', type: 'info' };
+  if (row.lastRunStatus === 1) return { text: '运行中', type: 'warning' };
+  if (row.lastRunStatus === 2) return { text: '成功', type: 'success' };
+  if (row.lastRunStatus === 3) return { text: '失败', type: 'danger' };
+  if (row.lastRunStatus === 4) return { text: '已取消', type: 'info' };
   return { text: '未执行', type: 'info' };
 }
 
@@ -395,7 +441,7 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="执行状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.runningLogId" type="primary" size="small" effect="light">运行中</el-tag>
+              <el-tag v-if="row.lastRunStatus === 1" type="primary" size="small" effect="light">运行中</el-tag>
               <span v-else class="muted">空闲</span>
             </template>
           </el-table-column>
@@ -424,7 +470,7 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="操作" width="170" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="row.runningLogId === null" link type="primary" @click="run(row)">执行</el-button>
+              <el-button v-if="row.lastRunStatus !== 1" link type="primary" @click="run(row)">执行</el-button>
               <el-button v-else link type="warning" @click="cancel(row)">取消</el-button>
               <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
               <el-button link type="danger" @click="remove(row)">删除</el-button>

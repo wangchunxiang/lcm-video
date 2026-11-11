@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { login } from '../auth.ts';
+import { stripBase } from '../session.ts';
 
 const router = useRouter();
 const route = useRoute();
@@ -19,7 +20,7 @@ async function onSubmit() {
   try {
     await login(form.value.username.trim(), form.value.password);
     ElMessage.success('登录成功');
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard';
+    const redirect = typeof route.query.redirect === 'string' ? stripBase(route.query.redirect) : '/dashboard';
     await router.replace(redirect);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '登录失败');

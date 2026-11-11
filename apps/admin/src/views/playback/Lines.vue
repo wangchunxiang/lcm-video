@@ -2,9 +2,11 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import { buildListQuery } from '@lcm/api-client';
 
 interface LineItem {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   sourceFrom: string;
   name: string;
   sort: number;
@@ -22,14 +24,21 @@ const pager = reactive({ page: 1, page_size: 20 });
 
 async function load() {
   loading.value = true;
-  const params = new URLSearchParams();
-  if (filters.keyword.trim()) params.set('keyword', filters.keyword.trim());
-  if (filters.status) params.set('status', filters.status);
-  params.set('page', String(pager.page));
-  params.set('page_size', String(pager.page_size));
+  const where: Record<string, unknown> = {};
+  const keyword = filters.keyword.trim();
+  if (keyword) {
+    where['$or'] = [{ sourceFrom: { $like: `%${keyword}%` } }, { name: { $like: `%${keyword}%` } }];
+  }
+  if (filters.status !== '') where['isEnabled'] = Number(filters.status);
   try {
-    const data = await api.get<{ items: LineItem[]; total: number; page: number; page_size: number }>(
-      `/lines?${params.toString()}`,
+    const data = await api.get<{ items: LineItem[]; total: number }>(
+      '/play-line',
+      buildListQuery({
+        take: pager.page_size,
+        skip: (pager.page - 1) * pager.page_size,
+        where,
+        order: { sort: 'ASC', id: 'ASC' },
+      }),
     );
     items.value = data.items;
     total.value = data.total;
@@ -66,7 +75,7 @@ function changePageSize(size: number) {
 
 async function patch(row: LineItem, body: Record<string, unknown>) {
   try {
-    await api.put(`/lines/${row.id}`, body);
+    await api.put(`/play-line/${row.id}`, body);
     ElMessage.success('已保存');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '保存失败');
@@ -76,7 +85,7 @@ async function patch(row: LineItem, body: Record<string, unknown>) {
 
 const editVisible = ref(false);
 const editSaving = ref(false);
-const editForm = reactive({ id: 0, sourceFrom: '', name: '', isEnabled: 1 });
+const editForm = reactive({ id: '', sourceFrom: '', name: '', isEnabled: 1 });
 
 function openEdit(row: LineItem) {
   editForm.id = row.id;
@@ -93,9 +102,9 @@ async function saveEdit() {
   }
   editSaving.value = true;
   try {
-    await api.put(`/lines/${editForm.id}`, {
+    await api.put(`/play-line/${editForm.id}`, {
       name: editForm.name.trim(),
-      is_enabled: editForm.isEnabled,
+      isEnabled: editForm.isEnabled,
     });
     ElMessage.success('已保存');
     editVisible.value = false;
@@ -118,7 +127,7 @@ async function remove(row: LineItem) {
     return;
   }
   try {
-    await api.del(`/lines/${row.id}`);
+    await api.del(`/play-line/${row.id}`);
     ElMessage.success('已删除');
     await load();
   } catch (error) {
@@ -127,7 +136,7 @@ async function remove(row: LineItem) {
 }
 
 function toggleStatus(row: LineItem) {
-  void patch(row, { is_enabled: row.isEnabled });
+  void patch(row, { isEnabled: row.isEnabled });
 }
 
 async function batch(action: 'enable' | 'disable') {
@@ -144,7 +153,7 @@ async function batch(action: 'enable' | 'disable') {
     return;
   }
   try {
-    await api.post('/lines/batch', { ids: selection.value.map((row) => row.id), action });
+    await api.post('/play-line/switch', { ids: selection.value.map((row) => row.id), isEnabled: action === 'enable' ? 1 : 0 });
     ElMessage.success(`已${label}`);
     await load();
   } catch (error) {
@@ -154,12 +163,12 @@ async function batch(action: 'enable' | 'disable') {
 
 const sortVisible = ref(false);
 const sortSaving = ref(false);
-const sortList = ref<{ id: number; sourceFrom: string; name: string }[]>([]);
+const sortList = ref<{ id: string; sourceFrom: string; name: string }[]>([]);
 const dragIndex = ref(-1);
 
 async function openSort() {
   try {
-    const data = await api.get<{ items: LineItem[] }>('/lines?page=1&page_size=100');
+    const data = await api.get<{ items: LineItem[] }>('/play-line', buildListQuery({ take: 100, order: { sort: 'ASC', id: 'ASC' } }));
     sortList.value = data.items.map((row) => ({
       id: row.id,
       sourceFrom: row.sourceFrom,
@@ -191,7 +200,7 @@ function endDrag() {
 async function saveSortOrder() {
   sortSaving.value = true;
   try {
-    await api.post('/lines/sort', { ids: sortList.value.map((row) => row.id) });
+    await api.post('/play-line/sort', { ids: sortList.value.map((row) => row.id) });
     ElMessage.success('排序已保存');
     sortVisible.value = false;
     await load();

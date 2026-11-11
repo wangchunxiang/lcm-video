@@ -15,7 +15,7 @@ interface LightGroup {
 }
 
 interface MemberLine {
-  sourceId: number;
+  sourceId: string;
   sourceFrom: string;
   sourceName: string;
   episodes?: number;
@@ -23,7 +23,8 @@ interface MemberLine {
 }
 
 interface Member {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
   year: number;
   status: number;
@@ -85,7 +86,7 @@ const keyword = ref('');
 const activeGroup = ref<LightGroup | null>(null);
 const detail = ref<GroupDetail | null>(null);
 const detailLoading = ref(false);
-const keepId = ref(0);
+const keepId = ref('');
 
 const summary = computed(
   () =>
@@ -138,9 +139,17 @@ function kindTagType(kind: 'auto' | 'suspect' | 'same'): 'success' | 'warning' |
   if (kind === 'suspect') return 'warning';
   return 'danger';
 }
-
 function statusText(status: number): string {
   return status === 1 ? '已上架' : '已下架';
+}
+
+/** BIGINT 主键是字符串，按数值比较大小 */
+function compareId(left: string, right: string): number {
+  const a = BigInt(left);
+  const b = BigInt(right);
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
 }
 
 function yearText(member: Member): string {
@@ -168,7 +177,7 @@ const maxEpisodes = computed(() => {
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    preview.value = await api.get<Preview>('/tools/merge-vods/preview');
+    preview.value = await api.post<Preview>('/vod-merge/preview');
     if (groups.value.length === 0) {
       activeGroup.value = null;
       detail.value = null;
@@ -185,12 +194,10 @@ async function select(group: LightGroup): Promise<void> {
   detail.value = null;
   detailLoading.value = true;
   try {
-    const data = await api.get<GroupDetail>(
-      `/tools/merge-vods/group?key=${group.key}&kind=${group.kind}`,
-    );
+    const data = await api.post<GroupDetail>('/vod-merge/group', { key: group.key, kind: group.kind });
     detail.value = data;
-    const sorted = [...data.members].sort((a, b) => b.playCount - a.playCount || a.id - b.id);
-    keepId.value = sorted[0]?.id ?? 0;
+    const sorted = [...data.members].sort((a, b) => b.playCount - a.playCount || compareId(a.id, b.id));
+    keepId.value = sorted[0]?.id ?? '';
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载失败');
   } finally {
@@ -216,9 +223,9 @@ async function mergeCurrent(): Promise<void> {
 
   busy.value = true;
   try {
-    const res = await api.post<{ merged: number }>('/tools/merge-vods', {
+    const res = await api.post<{ merged: number }>('/vod-merge/merge', {
       ids: group.members.map((item) => item.id),
-      keep_id: keep.id,
+      keepId: keep.id,
     });
     ElMessage.success(`已合并 ${res.merged} 条`);
     activeGroup.value = null;
@@ -247,7 +254,7 @@ async function ignoreCurrent(): Promise<void> {
 
   busy.value = true;
   try {
-    await api.post('/tools/merge-vods/ignore', { key: group.key, kind: group.kind, ignored: true });
+    await api.post('/vod-merge/ignore', { key: group.key, kind: group.kind, ignored: true });
     ElMessage.success('已忽略这组');
     activeGroup.value = null;
     detail.value = null;
@@ -263,7 +270,7 @@ async function mergeAll(): Promise<void> {
   if (summary.value.autoGroups === 0) return;
   let plan: { groups: number; vods: number };
   try {
-    plan = await api.post<{ groups: number; vods: number }>('/tools/merge-vods/batch', { confirm: false });
+    plan = await api.post<{ groups: number; vods: number }>('/vod-merge/batch', { confirm: false });
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
     return;
@@ -281,7 +288,7 @@ async function mergeAll(): Promise<void> {
 
   busy.value = true;
   try {
-    const res = await api.post<{ groups: number; merged: number }>('/tools/merge-vods/batch', { confirm: true });
+    const res = await api.post<{ groups: number; merged: number }>('/vod-merge/batch', { confirm: true });
     ElMessage.success(`已合并 ${res.groups} 组，删除 ${res.merged} 条`);
     activeGroup.value = null;
     detail.value = null;
@@ -330,7 +337,7 @@ async function batchMerge(): Promise<void> {
   let plan: { groups: number; vods: number; skipped: number };
   try {
     plan = await api.post<{ groups: number; vods: number; skipped: number }>(
-      '/tools/merge-vods/batch-keys',
+      '/vod-merge/batch-keys',
       { keys, action: 'merge', confirm: false },
     );
   } catch (error) {
@@ -357,7 +364,7 @@ async function batchMerge(): Promise<void> {
   busy.value = true;
   try {
     const res = await api.post<{ groups: number; merged: number; skipped: number }>(
-      '/tools/merge-vods/batch-keys',
+      '/vod-merge/batch-keys',
       { keys, action: 'merge', confirm: true },
     );
     const after = res.skipped > 0 ? `，跳过 ${res.skipped} 组` : '';
@@ -389,7 +396,7 @@ async function batchIgnore(): Promise<void> {
 
   busy.value = true;
   try {
-    const res = await api.post<{ ignored: number }>('/tools/merge-vods/batch-keys', {
+    const res = await api.post<{ ignored: number }>('/vod-merge/batch-keys', {
       keys,
       action: 'ignore',
       confirm: true,

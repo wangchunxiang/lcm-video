@@ -17,9 +17,10 @@ interface LogRow {
 }
 
 interface VodRow {
-  id: number;
+  id: string;
   name: string;
-  status: number;
+  cover: string;
+  year: number;
   collectedAt: string | null;
 }
 
@@ -37,24 +38,26 @@ interface DashboardData {
 const loading = ref(false);
 const data = ref<DashboardData | null>(null);
 
+/** v3 日志状态：1 运行中 / 2 成功 / 3 失败 / 4 已取消 */
 const statusText = (status: number): string => {
-  if (status === 0) return '进行中';
-  if (status === 1) return '成功';
-  if (status === 3) return '已取消';
-  return '失败';
+  if (status === 1) return '运行中';
+  if (status === 2) return '成功';
+  if (status === 3) return '失败';
+  if (status === 4) return '已取消';
+  return '未知';
 };
 
 const statusType = (status: number): 'success' | 'warning' | 'danger' | 'info' => {
-  if (status === 1) return 'success';
-  if (status === 0) return 'warning';
-  if (status === 3) return 'info';
+  if (status === 2) return 'success';
+  if (status === 1) return 'warning';
+  if (status === 4) return 'info';
   return 'danger';
 };
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    data.value = await api.get<DashboardData>('/dashboard');
+    data.value = await api.get<DashboardData>('/dashboard/summary');
   } catch (error) {
     ElMessage.error((error as Error).message);
   } finally {
@@ -138,12 +141,8 @@ onMounted(load);
           <el-table :data="data?.recentVods ?? []" size="small" empty-text="还没有影片">
             <el-table-column prop="id" label="ID" width="70" />
             <el-table-column prop="name" label="片名" min-width="140" show-overflow-tooltip />
-            <el-table-column label="状态" width="80">
-              <template #default="{ row }">
-                <el-tag size="small" :type="row.status === 1 ? 'success' : 'info'">
-                  {{ row.status === 1 ? '在架' : '下架' }}
-                </el-tag>
-              </template>
+            <el-table-column label="年份" width="80" align="center">
+              <template #default="{ row }">{{ row.year || '—' }}</template>
             </el-table-column>
           </el-table>
         </el-card>

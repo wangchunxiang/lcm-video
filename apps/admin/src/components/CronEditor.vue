@@ -142,7 +142,7 @@ function onIntervalUnitChange(unit: 'minute' | 'hour') {
         <el-select
           :model-value="intervalUnit"
           style="width: 90px"
-          @update:model-value="(value) => onIntervalUnitChange(value as 'minute' | 'hour')"
+          @update:model-value="(value: string) => onIntervalUnitChange(value as 'minute' | 'hour')"
         >
           <el-option label="分钟" value="minute" />
           <el-option label="小时" value="hour" />

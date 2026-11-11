@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { api, ApiError } from '../api/client.ts';
+import { api } from '../api/client.ts';
 
 interface VodDetail {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
   subName: string;
-  categoryId: number;
-  categoryPid: number;
-  categoryName: string | null;
-  parentName: string | null;
+  categoryId: string;
+  categoryPid: string;
+  categoryName: string;
+  parentName: string;
   year: number;
   area: string;
   lang: string;
@@ -18,15 +19,16 @@ interface VodDetail {
   director: string;
   writer: string;
   intro: string;
-  content: string;
+  content: string | null;
   remarks: string;
   releaseDate: string;
   cover: string;
-  letter: string;
   episodeCount: number;
   status: number;
   collectedAt: string;
   createdAt: string;
+  plays: number;
+  episodes: number;
 }
 
 interface Episode {
@@ -35,11 +37,10 @@ interface Episode {
 }
 
 interface PlayLine {
-  id: number;
-  sourceId: number;
-  sourceName: string | null;
+  id: string;
+  sourceId: string;
+  sourceName: string;
   sourceFrom: string;
-  sourceVodId: string;
   sourceUpdatedAt: string | null;
   episodes: Episode[];
   dirty?: boolean;
@@ -47,13 +48,13 @@ interface PlayLine {
 }
 
 interface CategoryNode {
-  id: number;
-  pid: number;
+  id: string;
+  pid: string;
   name: string;
   children?: CategoryNode[];
 }
 
-const props = defineProps<{ modelValue: boolean; vodId: number }>();
+const props = defineProps<{ modelValue: boolean; vodId: string }>();
 const emit = defineEmits<{ (e: 'update:modelValue', value: boolean): void; (e: 'saved'): void }>();
 
 const visible = computed({
@@ -66,8 +67,8 @@ const loading = ref(false);
 const saving = ref(false);
 const form = reactive({
   name: '',
-  sub_name: '',
-  category_id: 0,
+  subName: '',
+  categoryId: '' as string | null,
   year: 0,
   area: '',
   lang: '',
@@ -77,10 +78,9 @@ const form = reactive({
   intro: '',
   content: '',
   remarks: '',
-  release_date: '',
+  releaseDate: '',
   cover: '',
-  letter: '',
-  episode_count: 0,
+  episodeCount: 0,
   status: 1,
   categoryName: '',
   collectedAt: '',
@@ -91,50 +91,47 @@ const lines = ref<PlayLine[]>([]);
 const totalEpisodes = computed(() => Math.max(0, ...lines.value.map((line) => line.episodes.length)));
 const categories = ref<CategoryNode[]>([]);
 
-const activeLineId = ref<number | null>(null);
+const activeLineId = ref<string | null>(null);
 const activeLine = computed(() => lines.value.find((line) => line.id === activeLineId.value) ?? null);
 
 const pasteVisible = ref(false);
 const pasteTarget = ref<PlayLine | null>(null);
 const pasteText = ref('');
 
-
 async function load() {
   if (!props.vodId) return;
   loading.value = true;
   try {
     const [detail, categoryData] = await Promise.all([
-      api.get<{ vod: VodDetail }>(`/vods/${props.vodId}`),
-      api.get<{ items: CategoryNode[] }>('/categories'),
+      api.get<VodDetail>(`/vod/${props.vodId}`),
+      api.post<CategoryNode[]>('/category/tree'),
     ]);
-    categories.value = categoryData.items;
+    categories.value = categoryData;
 
-    const row = detail.vod;
     Object.assign(form, {
-      name: row.name,
-      sub_name: row.subName,
-      category_id: row.categoryId,
-      year: row.year,
-      area: row.area,
-      lang: row.lang,
-      actor: row.actor,
-      director: row.director,
-      writer: row.writer,
-      intro: row.intro,
-      content: row.content ?? '',
-      remarks: row.remarks,
-      release_date: row.releaseDate,
-      cover: row.cover,
-      letter: row.letter,
-      episode_count: row.episodeCount,
-      status: row.status,
-      categoryName: [row.parentName, row.categoryName].filter(Boolean).join(' / '),
-      collectedAt: row.collectedAt,
-      createdAt: row.createdAt ?? '',
+      name: detail.name,
+      subName: detail.subName,
+      categoryId: detail.categoryId,
+      year: detail.year,
+      area: detail.area,
+      lang: detail.lang,
+      actor: detail.actor,
+      director: detail.director,
+      writer: detail.writer,
+      intro: detail.intro,
+      content: detail.content ?? '',
+      remarks: detail.remarks,
+      releaseDate: detail.releaseDate,
+      cover: detail.cover,
+      episodeCount: detail.episodeCount,
+      status: detail.status,
+      categoryName: [detail.parentName, detail.categoryName].filter(Boolean).join(' / '),
+      collectedAt: detail.collectedAt,
+      createdAt: detail.createdAt ?? '',
     });
 
-    const plays = await api.get<{ items: PlayLine[] }>(`/vods/${props.vodId}/plays`);
-    lines.value = plays.items.map((line) => ({ ...line, episodes: [...line.episodes] }));
+    const plays = await api.post<PlayLine[]>('/vod-play/by-vod', { vodId: props.vodId });
+    lines.value = plays.map((line) => ({ ...line, episodes: [...line.episodes] }));
     if (!lines.value.some((line) => line.id === activeLineId.value)) {
       activeLineId.value = lines.value[0]?.id ?? null;
     }
@@ -169,12 +166,16 @@ function onSave() {
 }
 
 async function saveBase() {
+  if (!form.categoryId) {
+    ElMessage.warning('请选择分类');
+    return;
+  }
   saving.value = true;
   try {
-    await api.put(`/vods/${props.vodId}`, {
+    await api.put(`/vod/${props.vodId}`, {
+      categoryId: form.categoryId,
       name: form.name,
-      sub_name: form.sub_name,
-      category_id: form.category_id,
+      subName: form.subName,
       year: Number(form.year) || 0,
       area: form.area,
       lang: form.lang,
@@ -184,10 +185,9 @@ async function saveBase() {
       intro: form.intro,
       content: form.content,
       remarks: form.remarks,
-      release_date: form.release_date,
+      releaseDate: form.releaseDate,
       cover: form.cover,
-      letter: form.letter,
-      episode_count: Number(form.episode_count) || 0,
+      episodeCount: Number(form.episodeCount) || 0,
       status: form.status,
     });
     ElMessage.success('已保存');
@@ -209,7 +209,7 @@ function episodesToUrl(episodes: Episode[]): string {
 async function saveLine(line: PlayLine, message = '线路已保存') {
   line.saving = true;
   try {
-    await api.put(`/plays/${line.id}`, { play_url: episodesToUrl(line.episodes) });
+    await api.put(`/vod-play/${line.id}`, { playUrl: episodesToUrl(line.episodes) });
     ElMessage.success(message);
     line.dirty = false;
     const keepId = activeLineId.value;
@@ -232,31 +232,11 @@ async function removeLine(line: PlayLine) {
     return;
   }
   try {
-    await api.del(`/plays/${line.id}`);
+    await api.del(`/vod-play/${line.id}`);
     ElMessage.success('已删除线路');
     await load();
     activeTab.value = 'lines';
   } catch (error) {
-    if (error instanceof ApiError && error.code === 409) {
-      try {
-        await ElMessageBox.confirm(error.message, '删除最后一条线路', {
-          type: 'warning',
-          confirmButtonText: '仍要删除',
-          cancelButtonText: '取消',
-        });
-      } catch {
-        return;
-      }
-      try {
-        await api.del(`/plays/${line.id}?force=1`);
-        ElMessage.success('已删除线路');
-        await load();
-        activeTab.value = 'lines';
-      } catch (inner) {
-        ElMessage.error(inner instanceof Error ? inner.message : '删除失败');
-      }
-      return;
-    }
     ElMessage.error(error instanceof Error ? error.message : '删除失败');
   }
 }
@@ -315,7 +295,7 @@ function applyPaste() {
 }
 
 function lineTitle(line: PlayLine): string {
-  if (line.sourceId === 0) return line.sourceFrom;
+  if (line.sourceId === '0' || line.sourceId === '') return line.sourceFrom;
   return `${line.sourceName || '源站'} · ${line.sourceFrom}`;
 }
 </script>
@@ -378,13 +358,13 @@ function lineTitle(line: PlayLine): string {
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="副标题">
-                      <el-input v-model="form.sub_name" maxlength="255" />
+                      <el-input v-model="form.subName" maxlength="500" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="分类">
                       <el-tree-select
-                        v-model="form.category_id"
+                        v-model="form.categoryId"
                         :data="categories"
                         :props="{ label: 'name', children: 'children' }"
                         node-key="id"
@@ -398,65 +378,60 @@ function lineTitle(line: PlayLine): string {
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="年份">
-                      <el-input v-model="form.year" maxlength="4" />
+                      <el-input-number v-model="form.year" :min="0" :max="2100" :controls="false" style="width: 100%" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="地区">
-                      <el-input v-model="form.area" maxlength="50" />
+                      <el-input v-model="form.area" maxlength="100" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="语言">
-                      <el-input v-model="form.lang" maxlength="50" />
-                    </el-form-item>
-                  </el-col>
-                  <el-col :span="12">
-                    <el-form-item label="首字母">
-                      <el-input v-model="form.letter" maxlength="1" />
+                      <el-input v-model="form.lang" maxlength="100" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="上映日期">
-                      <el-input v-model="form.release_date" maxlength="20" />
+                      <el-input v-model="form.releaseDate" maxlength="20" placeholder="2024-05-01" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="总集数">
-                      <el-input v-model="form.episode_count" maxlength="6" />
+                      <el-input-number v-model="form.episodeCount" :min="0" :max="9999" :controls="false" style="width: 100%" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="备注">
-                      <el-input v-model="form.remarks" maxlength="100" />
+                      <el-input v-model="form.remarks" maxlength="255" />
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="24">
                     <el-form-item label="封面地址">
-                      <el-input v-model="form.cover" placeholder="https://…" />
+                      <el-input v-model="form.cover" placeholder="https://…" maxlength="1000" />
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="12">
                     <el-form-item label="导演">
-                      <el-input v-model="form.director" maxlength="255" />
+                      <el-input v-model="form.director" maxlength="500" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="编剧">
-                      <el-input v-model="form.writer" maxlength="255" />
+                      <el-input v-model="form.writer" maxlength="500" />
                     </el-form-item>
                   </el-col>
                   <el-col :span="24">
                     <el-form-item label="演员">
-                      <el-input v-model="form.actor" maxlength="500" />
+                      <el-input v-model="form.actor" maxlength="1000" />
                     </el-form-item>
                   </el-col>
 
                   <el-col :span="24">
                     <el-form-item label="简介">
-                      <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="500" show-word-limit />
+                      <el-input v-model="form.intro" type="textarea" :rows="2" maxlength="1000" show-word-limit />
                     </el-form-item>
                   </el-col>
                   <el-col :span="24">
@@ -636,9 +611,6 @@ function lineTitle(line: PlayLine): string {
   flex: 1;
   min-width: 0;
 }
-.group-gap {
-  height: 4px;
-}
 .line-toolbar {
   display: flex;
   align-items: center;
@@ -653,12 +625,6 @@ function lineTitle(line: PlayLine): string {
   margin-left: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-.line {
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 4px;
 }
 code {
   padding: 0 3px;

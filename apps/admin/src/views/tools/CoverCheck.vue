@@ -153,10 +153,10 @@ interface HostRow {
 }
 
 interface CoverVod {
-  id: number;
+  /** BIGINT 主键，服务端按字符串返回 */
+  id: string;
   name: string;
   cover: string;
-  status: number;
 }
 
 const rows = ref<HostRow[]>([]);
@@ -192,8 +192,8 @@ const visibleRows = computed(() =>
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const data = await api.get<{ items: HostRow[]; summary: typeof summary.value }>('/cover-check');
-    rows.value = data.items;
+    const data = await api.post<{ hosts: HostRow[]; summary: typeof summary.value }>('/cover-check/hosts');
+    rows.value = data.hosts;
     summary.value = data.summary;
     measure();
   } finally {
@@ -210,12 +210,24 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
     ).then(() => true, () => false);
     if (!ok) return;
   }
+  const targets = mode === 'all' ? rows.value : rows.value.filter((row) => row.status !== 1);
+  const skipped = rows.value.length - targets.length;
   scanning.value = true;
   try {
-    const data = await api.post<{ skipped: number }>('/cover-check/scan', { mode });
+    // v3 只有单域名扫描接口，这里按 8 个并发把待检域名跑一遍（与服务端原先的 HOST_PARALLEL 一致）
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (cursor < targets.length) {
+        const row = targets[cursor];
+        cursor += 1;
+        if (!row) continue;
+        await api.post('/cover-check/scan', { host: row.host });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(8, targets.length) }, () => worker()));
     await load();
-    const tail = mode === 'pending' && data.skipped > 0 ? `，跳过 ${data.skipped} 个上次正常的域名` : '';
-    ElNotification.success({ title: '检查完成', message: `共检查 ${summary.value.hosts - (mode === 'pending' ? data.skipped : 0)} 个域名${tail}` });
+    const tail = mode === 'pending' && skipped > 0 ? `，跳过 ${skipped} 个上次正常的域名` : '';
+    ElNotification.success({ title: '检查完成', message: `共检查 ${targets.length} 个域名${tail}` });
   } finally {
     scanning.value = false;
   }
@@ -243,10 +255,11 @@ async function openVods(row: HostRow): Promise<void> {
 async function loadVods(): Promise<void> {
   vodLoading.value = true;
   try {
-    const data = await api.get<{ items: CoverVod[]; total: number; page: number; page_size: number }>(
-      `/cover-check/${encodeURIComponent(currentHost.value)}/vods`,
-      { page: vodPage.value, page_size: vodPageSize },
-    );
+    const data = await api.post<{ items: CoverVod[]; total: number }>('/cover-check/host-vods', {
+      host: currentHost.value,
+      take: vodPageSize,
+      skip: (vodPage.value - 1) * vodPageSize,
+    });
     vods.value = data.items;
     vodTotal.value = data.total;
   } finally {
@@ -265,7 +278,7 @@ async function runRepair(
   for (let round = 0; round < 500; round++) {
     const result = await api.post<{ fixed: number; failed: number; remaining: number; items: Array<{ ok: boolean }> }>(
       '/cover-check/repair',
-      { host, confirm: true, limit: 20 },
+      { host, limit: 20 },
     );
     fixed += result.fixed;
     failed += result.failed;
@@ -317,6 +330,7 @@ async function repairSelected(): Promise<void> {
   try {
     for (let i = 0; i < targets.length; i++) {
       const row = targets[i];
+      if (!row) continue;
       loading.setText(`正在修复 ${i + 1}/${targets.length}：${row.host}（已替换 ${fixed} 部）`);
       const result = await runRepair(row.host, (hostFixed) => {
         loading.setText(`正在修复 ${i + 1}/${targets.length}：${row.host}（本域名已替换 ${hostFixed} 部）`);
@@ -388,7 +402,7 @@ async function clearCovers(row: HostRow): Promise<void> {
   }
   webfix.value = row.host;
   try {
-    await api.post('/cover-check/clear', { host: row.host, confirm: true });
+    await api.post('/cover-check/clear', { host: row.host });
     ElNotification.success({ title: '已清空', message: `共 ${row.vodCount} 部影片改用占位图` });
     void load();
   } finally {
