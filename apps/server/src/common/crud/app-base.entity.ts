@@ -14,13 +14,13 @@ import { CreateDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'type
  * 它没有 TypeORM 装饰器，因此不会被当作真实列读写；控制器里统一 `softDelete: false`。
  */
 export abstract class AppBaseEntity {
-  @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
+  @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true, comment: '主键' })
   id!: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime', comment: '创建时间' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'datetime' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'datetime', comment: '更新时间' })
   updatedAt!: Date;
 
   /** 仅为满足 nest-crud 的类型约束而存在，不映射数据库列。 */

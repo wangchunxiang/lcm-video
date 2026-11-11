@@ -20,8 +20,9 @@
     "start": "npm run start -w apps/server",
     "typecheck": "tsc --noEmit -p tsconfig.json && turbo run typecheck",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "db:init": "npm run db:init -w apps/server",
+    "db:migrate": "npm run db:migrate -w apps/server",
     "db:seed": "npm run db:seed -w apps/server",
+    "db:reset": "npm run db:reset -w apps/server",
     "lint": "eslint .",
     "test": "vitest run"
   },

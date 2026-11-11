@@ -52,7 +52,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const dataSource = new DataSource({ ...createDataSourceOptions(url), synchronize: false });
+  // 种子里是纯 INSERT，建表交给迁移（`npm run db:migrate` 或应用启动）。
+  const dataSource = new DataSource({ ...createDataSourceOptions(url), migrationsRun: false });
   await dataSource.initialize();
 
   for (const item of plan) {

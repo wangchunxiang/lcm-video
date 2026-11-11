@@ -2,7 +2,7 @@ import { Column, Entity, Index } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 影片主表。 */
-@Entity('lcm_vod')
+@Entity('lcm_vod', { comment: '影片主表' })
 @Index('idx_category_status', ['categoryId', 'status'])
 @Index('idx_pid_status', ['categoryPid', 'status'])
 @Index('idx_category_status_year', ['categoryId', 'status', 'year'])
@@ -13,83 +13,179 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
 @Index('idx_cover_host', ['coverHost'])
 @Index('idx_search', ['status', 'name', 'year', 'collectedAt', 'createdAt'])
 export class VodEntity extends AppBaseEntity {
-  /** 二级分类 id */
-  @Column({ name: 'category_id', type: 'bigint', unsigned: true, default: 0 })
+  @Column({
+    name: 'category_id',
+    type: 'bigint',
+    unsigned: true,
+    default: 0,
+    comment: '二级分类 id',
+  })
   categoryId!: string;
 
-  /** 一级分类 id，冗余字段，按一级分类筛选时避免 join */
-  @Column({ name: 'category_pid', type: 'bigint', unsigned: true, default: 0 })
+  @Column({
+    name: 'category_pid',
+    type: 'bigint',
+    unsigned: true,
+    default: 0,
+    comment: '一级分类 id，冗余字段，按一级分类筛选时避免 join',
+  })
   categoryPid!: string;
 
-  @Column({ type: 'varchar', length: 255, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    default: '',
+    comment: '片名',
+  })
   name!: string;
 
-  /** 规范化片名的 MD5，严格判重用 */
-  @Column({ name: 'name_hash', type: 'char', length: 32, default: '' })
+  @Column({
+    name: 'name_hash',
+    type: 'char',
+    length: 32,
+    default: '',
+    comment: '规范化片名的 MD5，严格判重用',
+  })
   nameHash!: string;
 
-  /** 去掉标点后的 MD5，仅用于后台提示疑似重复 */
-  @Column({ name: 'name_hash_loose', type: 'char', length: 32, default: '' })
+  @Column({
+    name: 'name_hash_loose',
+    type: 'char',
+    length: 32,
+    default: '',
+    comment: '去掉标点后的 MD5，仅用于后台提示疑似重复',
+  })
   nameHashLoose!: string;
 
-  /** 别名 */
-  @Column({ name: 'sub_name', type: 'varchar', length: 500, default: '' })
+  @Column({
+    name: 'sub_name',
+    type: 'varchar',
+    length: 500,
+    default: '',
+    comment: '别名',
+  })
   subName!: string;
 
-  @Column({ type: 'varchar', length: 1000, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    default: '',
+    comment: '封面地址',
+  })
   cover!: string;
 
-  /** 封面域名，写入 cover 时同步维护 */
-  @Column({ name: 'cover_host', type: 'varchar', length: 255, default: '' })
+  @Column({
+    name: 'cover_host',
+    type: 'varchar',
+    length: 255,
+    default: '',
+    comment: '封面域名，写入 cover 时同步维护',
+  })
   coverHost!: string;
 
-  @Column({ type: 'varchar', length: 1000, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    default: '',
+    comment: '主演，逗号分隔',
+  })
   actor!: string;
 
-  @Column({ type: 'varchar', length: 500, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 500,
+    default: '',
+    comment: '导演',
+  })
   director!: string;
 
-  @Column({ type: 'varchar', length: 500, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 500,
+    default: '',
+    comment: '编剧',
+  })
   writer!: string;
 
-  /** 短简介，列表页用 */
-  @Column({ type: 'varchar', length: 1000, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    default: '',
+    comment: '短简介，列表页用',
+  })
   intro!: string;
 
-  /** 长简介，详情页用 */
-  @Column({ type: 'text', nullable: true })
+  @Column({
+    type: 'text',
+    nullable: true,
+    comment: '长简介，详情页用',
+  })
   content!: string | null;
 
-  /** 更新备注 */
-  @Column({ type: 'varchar', length: 255, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    default: '',
+    comment: '更新备注',
+  })
   remarks!: string;
 
-  /** 上映日期，源站原文（Y-m-d / Y） */
-  @Column({ name: 'release_date', type: 'varchar', length: 20, default: '' })
+  @Column({
+    name: 'release_date',
+    type: 'varchar',
+    length: 20,
+    default: '',
+    comment: '上映日期，源站原文（Y-m-d / Y）',
+  })
   releaseDate!: string;
 
-  @Column({ name: 'episode_count', type: 'int', unsigned: true, default: 0 })
+  @Column({
+    name: 'episode_count',
+    type: 'int',
+    unsigned: true,
+    default: 0,
+    comment: '集数',
+  })
   episodeCount!: number;
 
-  @Column({ type: 'varchar', length: 100, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    default: '',
+    comment: '地区',
+  })
   area!: string;
 
-  @Column({ type: 'varchar', length: 100, default: '' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    default: '',
+    comment: '语言',
+  })
   lang!: string;
 
-  @Column({ type: 'int', unsigned: true, default: 0 })
+  @Column({
+    type: 'int',
+    unsigned: true,
+    default: 0,
+    comment: '年份',
+  })
   year!: number;
 
-  /** 1 上架 0 下架 */
-  @Column({ type: 'tinyint', unsigned: true, default: 1 })
+  @Column({
+    type: 'tinyint',
+    unsigned: true,
+    default: 1,
+    comment: '1 上架 0 下架',
+  })
   status!: number;
 
-  /** 最后一次采集时间，列表排序用 */
   @Column({
     name: 'collected_at',
     type: 'datetime',
     precision: 0,
     default: () => 'CURRENT_TIMESTAMP',
+    comment: '最后一次采集时间，列表排序用',
   })
   collectedAt!: Date;
 }

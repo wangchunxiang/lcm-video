@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { configuration } from './config/configuration';
 import { validateEnv } from './config/validation.schema';
 import { createDataSourceOptions } from './config/typeorm.config';
+import { adoptExistingSchema } from './database/schema-bootstrap';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -55,8 +56,12 @@ import { CollectModule } from './modules/collect/collect.module';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) =>
-        createDataSourceOptions(config.getOrThrow<string>('app.databaseUrl')),
+      useFactory: async (config: ConfigService) => {
+        const options = createDataSourceOptions(config.getOrThrow<string>('app.databaseUrl'));
+        // 老库（有表、没有 migrations 记录）先登记为已迁移，避免 baseline 重复建表。
+        await adoptExistingSchema(options);
+        return options;
+      },
     }),
     SettingModule,
     AdminUserModule,
