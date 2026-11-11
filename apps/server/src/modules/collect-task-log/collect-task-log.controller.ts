@@ -3,7 +3,7 @@ import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
 import { IsString, Matches } from 'class-validator';
 import { CollectTaskLogEntity } from './collect-task-log.entity';
 import { CollectTaskLogService } from './collect-task-log.service';
-import type { StartResult } from '../../jobs/collect/runner';
+import type { StartResult } from '../collect/runner';
 import { CreateCollectTaskLogDTO, UpdateCollectTaskLogDTO } from './dto/collect-task-log.dto';
 
 /** 只带记录 id 的入参。 */

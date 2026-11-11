@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Interval } from '@nestjs/schedule';
 import { Not, Repository } from 'typeorm';
 import { matchCron } from '@lcm/shared';
-import { CollectTaskEntity } from '../../modules/collect-task/collect-task.entity';
+import { CollectTaskEntity } from '../collect-task/collect-task.entity';
 import { CollectRunner } from './runner';
 
 /** 任务表按分钟对齐的 cron，每 30 秒扫一次即可覆盖，避免漏掉整点 */

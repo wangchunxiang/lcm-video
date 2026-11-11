@@ -8,7 +8,6 @@ export default tseslint.config(
       '**/node_modules/**',
       '.shots/**',
       'docs/**',
-      'themes/**',
       'tmp/**',
       'logs/**',
       'uploads/**',

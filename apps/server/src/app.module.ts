@@ -28,7 +28,7 @@ import { VodPlayModule } from './modules/vod-play/vod-play.module';
 import { PlayLineModule } from './modules/play-line/play-line.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { SettingModule } from './modules/setting/setting.module';
-import { CollectModule } from './jobs/collect/collect.module';
+import { CollectModule } from './modules/collect/collect.module';
 
 @Module({
   imports: [

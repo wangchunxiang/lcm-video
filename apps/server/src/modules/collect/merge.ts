@@ -1,7 +1,7 @@
 import { hostOf } from '@lcm/shared';
 import type { Repository } from 'typeorm';
-import type { CoverCheckEntity } from '../../modules/cover-check/cover-check.entity';
-import type { SettingEntity } from '../../modules/setting/setting.entity';
+import type { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import type { SettingEntity } from '../setting/setting.entity';
 
 /** 同一条影片被多个采集源命中时，写库前对每个字段做取舍 */
 export type MergeMode = 'off' | 'merge';

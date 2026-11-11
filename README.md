@@ -27,8 +27,7 @@ apps/
       common/          crud 基类、装饰器、过滤器、守卫、拦截器、管道、安全工具
       config/          configuration.ts / validation.schema.ts / typeorm.config.ts
       database/        data-source.ts、migrations/、seeds/
-      jobs/            采集（collect）、广告（ads）、封面体检（covers）
-      modules/         一表一模块，CRUD 由 @Crud() 生成；另有 portal 与 health
+      modules/         一表一模块，CRUD 由 @Crud() 生成；另有 collect、portal、health 等无表模块
     scripts/           init-db.cjs 等运维脚本
     test/              集成测试（e2e）预留；单测与源码同目录，跑 vitest
   admin/               管理后台（dev 3200，build 到 /admin/）
@@ -37,7 +36,6 @@ packages/
   shared/              共享契约：enums/ 枚举、types/ 纯类型、cron / html / vod / url-rule / settings / util
   api-client/          http.ts（统一信封、错误码、Bearer token）+ query-builder.ts（nest-crud 协议）
 docs/                  架构、数据库设计、功能对齐与样式规范
-themes/                老站的模板资源（前台重写前保留）
 ```
 
 ## 快速开始

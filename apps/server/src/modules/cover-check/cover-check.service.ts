@@ -2,8 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { clearHostCovers, repairHostCovers, scanHost } from '../../jobs/covers/repair';
-import type { RepairItem, ScanResult } from '../../jobs/covers/repair';
+import { clearHostCovers, repairHostCovers, scanHost } from './repair';
+import type { RepairItem, ScanResult } from './repair';
 import { CoverCheckEntity } from './cover-check.entity';
 
 /** 域名列表里的一行。 */

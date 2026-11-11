@@ -4,10 +4,10 @@ import { DataSource, Repository } from 'typeorm';
 import { autoMatchCategory } from '@lcm/shared';
 import type { CategoryMatchInfo } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { fetchClassList } from '../../jobs/collect/classes';
-import { CollectRunner } from '../../jobs/collect/runner';
-import type { StartResult } from '../../jobs/collect/runner';
-import type { SourceRuntime } from '../../jobs/collect/types';
+import { fetchClassList } from '../collect/classes';
+import { CollectRunner } from '../collect/runner';
+import type { StartResult } from '../collect/runner';
+import type { SourceRuntime } from '../collect/types';
 import { CollectSourceEntity } from './collect-source.entity';
 
 /** 连通性测试结果。 */

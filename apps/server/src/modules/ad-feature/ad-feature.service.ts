@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { analyzeSource, pickSampleVods } from '../../jobs/ads/analyze';
-import type { FoundFeature, SampleVod } from '../../jobs/ads/analyze';
+import { analyzeSource, pickSampleVods } from './analyze';
+import type { FoundFeature, SampleVod } from './analyze';
 import { AdFeatureEntity } from './ad-feature.entity';
 
 /** 一次分析的结果。 */

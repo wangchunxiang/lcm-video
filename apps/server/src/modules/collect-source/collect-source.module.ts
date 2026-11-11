@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CollectModule } from '../../jobs/collect/collect.module';
+import { CollectModule } from '../collect/collect.module';
 import { CollectSourceEntity } from './collect-source.entity';
 import { CollectSourceController } from './collect-source.controller';
 import { CollectSourceService } from './collect-source.service';

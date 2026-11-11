@@ -12,9 +12,9 @@ import {
   normalizeCover,
   normalizeName,
 } from '@lcm/shared';
-import { SourceRuleEntity } from '../../modules/source-rule/source-rule.entity';
-import { VodPlayEntity } from '../../modules/vod-play/vod-play.entity';
-import { VodEntity } from '../../modules/vod/vod.entity';
+import { SourceRuleEntity } from '../source-rule/source-rule.entity';
+import { VodPlayEntity } from '../vod-play/vod-play.entity';
+import { VodEntity } from '../vod/vod.entity';
 import { mergeVodContent, type MergeConfig, type MergeableVod } from './merge';
 import { splitPlayGroups } from './parser';
 import { ID_NONE, compareId, emptyCounters, hasId } from './types';

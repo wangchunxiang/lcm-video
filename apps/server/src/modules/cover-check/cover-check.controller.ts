@@ -5,7 +5,7 @@ import { Type } from 'class-transformer';
 import { CoverCheckEntity } from './cover-check.entity';
 import { CoverCheckService } from './cover-check.service';
 import type { CoverHostSummary } from './cover-check.service';
-import type { RepairItem, ScanResult } from '../../jobs/covers/repair';
+import type { RepairItem, ScanResult } from './repair';
 import { CreateCoverCheckDTO, UpdateCoverCheckDTO } from './dto/cover-check.dto';
 
 /** 域名入参。 */

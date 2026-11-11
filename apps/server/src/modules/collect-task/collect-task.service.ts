@@ -2,8 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { CollectRunner } from '../../jobs/collect/runner';
-import type { StartResult } from '../../jobs/collect/runner';
+import { CollectRunner } from '../collect/runner';
+import type { StartResult } from '../collect/runner';
 import { CollectTaskEntity } from './collect-task.entity';
 
 /** 采集任务：标准 REST + 立即执行 / 取消。 */

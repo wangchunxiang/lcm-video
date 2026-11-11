@@ -3,7 +3,7 @@ import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
 import { IsString, Matches } from 'class-validator';
 import { CollectTaskEntity } from './collect-task.entity';
 import { CollectTaskService } from './collect-task.service';
-import type { StartResult } from '../../jobs/collect/runner';
+import type { StartResult } from '../collect/runner';
 import { CreateCollectTaskDTO, UpdateCollectTaskDTO } from './dto/collect-task.dto';
 
 /** 只带任务 id 的入参。 */

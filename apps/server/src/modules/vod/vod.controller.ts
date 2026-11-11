@@ -1,21 +1,11 @@
 import { Body, Post } from '@nestjs/common';
 import { Crud, CrudActionsEnum } from '@ackplus/nest-crud';
-import { IsOptional, IsString, Matches } from 'class-validator';
 import { VodEntity } from './vod.entity';
 import { VodService } from './vod.service';
-import { BatchVodDTO, CreateVodDTO, UpdateVodDTO } from './dto/vod.dto';
-
-/** 重新采集单片入参。 */
-class RecollectDTO {
-  @IsString({ message: '影片 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '影片 id 必须是数字' })
-  id!: string;
-
-  @IsOptional()
-  @IsString({ message: '采集源 id 必须是数字' })
-  @Matches(/^\d+$/, { message: '采集源 id 必须是数字' })
-  sourceId?: string;
-}
+import { BatchVodDTO } from './dto/batch-vod.dto';
+import { CreateVodDTO } from './dto/create-vod.dto';
+import { RecollectDTO } from './dto/recollect-vod.dto';
+import { UpdateVodDTO } from './dto/update-vod.dto';
 
 /** 影片管理：标准 REST + 批量改分类/上下架。 */
 @Crud({

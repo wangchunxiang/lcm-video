@@ -4,7 +4,7 @@ import { IsBoolean, IsOptional, IsString, Matches } from 'class-validator';
 import { CollectSourceEntity } from './collect-source.entity';
 import { CollectSourceService } from './collect-source.service';
 import type { CollectSourceTestResult, FetchCategoriesResult } from './collect-source.service';
-import type { StartResult } from '../../jobs/collect/runner';
+import type { StartResult } from '../collect/runner';
 import { CreateCollectSourceDTO, UpdateCollectSourceDTO } from './dto/collect-source.dto';
 
 /** 只带采集源 id 的入参。 */
