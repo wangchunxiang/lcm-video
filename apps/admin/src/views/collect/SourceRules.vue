@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { buildListQuery, likeValue } from '@lcm/api-client';
 import { api, ApiError } from '../../api/client.ts';
@@ -30,6 +30,9 @@ interface ApplyPreview {
 const items = ref<RuleRow[]>([]);
 const sources = ref<SourceOption[]>([]);
 const loading = ref(false);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(20);
 const filters = reactive({ source_id: '', kind: '', status: '', keyword: '' });
 
 const wrapRef = ref<HTMLElement | null>(null);
@@ -69,14 +72,31 @@ async function load(): Promise<void> {
     if (keyword) where['fromUrl'] = { $like: likeValue(keyword) };
     const data = await api.get<{ items: RuleRow[]; total: number }>(
       '/source-rule',
-      buildListQuery({ take: 100, where }),
+      buildListQuery({ take: pageSize.value, skip: (page.value - 1) * pageSize.value, where }),
     );
     items.value = data.items;
+    total.value = data.total;
+    // 删掉最后一页的最后一条后回退一页，避免停在空页
+    if (items.value.length === 0 && total.value > 0 && page.value > 1) {
+      page.value -= 1;
+      await load();
+    }
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '加载失败');
   } finally {
     loading.value = false;
   }
+}
+
+/** 条件变化后从第一页重新查。 */
+function search(): void {
+  page.value = 1;
+  void load();
+}
+
+function onPageChange(value: number): void {
+  page.value = value;
+  void load();
 }
 
 async function loadSources(): Promise<void> {
@@ -96,8 +116,13 @@ function resetFilters(): void {
   filters.kind = '';
   filters.status = '';
   filters.keyword = '';
-  void load();
+  search();
 }
+
+watch(pageSize, () => {
+  page.value = 1;
+  void load();
+});
 
 function openCreate(): void {
   dialogTitle.value = '新增规则';
@@ -230,14 +255,14 @@ onBeforeUnmount(() => {
   <div class="page">
     <el-card shadow="never" class="search-card">
       <div class="search-bar">
-        <el-select v-model="filters.source_id" placeholder="采集源" clearable style="width: 180px" @change="load">
+        <el-select v-model="filters.source_id" placeholder="采集源" clearable style="width: 180px" @change="search">
           <el-option v-for="s in sources" :key="s.id" :label="s.name" :value="s.id" />
         </el-select>
-        <el-select v-model="filters.kind" placeholder="类型" clearable style="width: 120px; margin-left: 8px" @change="load">
+        <el-select v-model="filters.kind" placeholder="类型" clearable style="width: 120px" @change="search">
           <el-option label="播放地址" :value="'1'" />
           <el-option label="图片地址" :value="'2'" />
         </el-select>
-        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 110px; margin-left: 8px" @change="load">
+        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 110px" @change="search">
           <el-option label="启用" :value="'1'" />
           <el-option label="停用" :value="'0'" />
         </el-select>
@@ -245,10 +270,10 @@ onBeforeUnmount(() => {
           v-model="filters.keyword"
           placeholder="原地址关键词"
           clearable
-          style="width: 200px; margin-left: 8px"
-          @keyup.enter="load"
+          style="width: 200px"
+          @keyup.enter="search"
         />
-        <el-button type="primary" style="margin-left: 8px" @click="load">查询</el-button>
+        <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
       </div>
     </el-card>
@@ -288,6 +313,17 @@ onBeforeUnmount(() => {
           </template>
         </el-table>
       </div>
+
+      <el-pagination
+        class="pager"
+        layout="total, sizes, prev, pager, next"
+        :total="total"
+        :page-sizes="[20, 50, 100]"
+        :page-size="pageSize"
+        :current-page="page"
+        @current-change="onPageChange"
+        @size-change="(size: number) => (pageSize = size)"
+      />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" :close-on-click-modal="false">
@@ -357,6 +393,10 @@ onBeforeUnmount(() => {
 .table-wrap {
   flex: 1;
   min-height: 0;
+}
+.pager {
+  margin-top: 12px;
+  justify-content: flex-end;
 }
 .search-bar {
   display: flex;
