@@ -558,10 +558,6 @@ onMounted(() => {
                 :class="{ chosen: member.id === keepId }"
                 @click="keepId = member.id"
               >
-                <el-radio v-model="keepId" :value="member.id" class="member-radio">
-                  <span class="sr-only">保留这条</span>
-                </el-radio>
-
                 <img class="cover" :src="member.cover || COVER_PLACEHOLDER" alt="" @error="onCoverError" />
 
                 <div class="member-main">
@@ -870,19 +866,6 @@ onMounted(() => {
 .member.chosen {
   border-color: var(--el-color-primary-light-5);
   background: var(--el-color-primary-light-9);
-}
-
-.member-radio {
-  flex: none;
-  margin-right: 0;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
 }
 
 .cover {
