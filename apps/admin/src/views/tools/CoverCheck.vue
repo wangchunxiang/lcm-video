@@ -521,6 +521,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex: none;
+  margin-bottom: 12px;
 }
 
 .toolbar-tip {
@@ -541,8 +542,6 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px 16px 16px;
 }
 
 .table-wrap {
@@ -564,5 +563,6 @@ onBeforeUnmount(() => {
 .pager {
   display: flex;
   justify-content: flex-end;
+  margin-top: 12px;
 }
 </style>
