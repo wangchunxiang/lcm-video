@@ -26,7 +26,7 @@
           {{ summary.unverified }} · 未检查 {{ summary.unchecked }}
         </span>
         <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button type="primary" plain :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
+        <el-button type="primary" :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
         <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
       </div>
     </el-card>
@@ -84,7 +84,7 @@
               <el-button link type="primary" @click="openVods(row)">影片</el-button>
               <el-button
                 link
-                :type="row.status === 2 ? 'danger' : row.status === 3 ? 'warning' : 'primary'"
+                type="primary"
                 :disabled="(row.status !== 2 && row.status !== 3) || row.vodCount === 0"
                 :loading="repairing === row.host"
                 @click="repair(row)"
@@ -515,7 +515,7 @@ onBeforeUnmount(() => {
 }
 
 .summary-text {
-  margin-right: 4px;
+  margin-right: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
