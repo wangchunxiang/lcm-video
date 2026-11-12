@@ -376,51 +376,44 @@ onBeforeUnmount(() => {
           :height="tableHeight"
           empty-text="还没有采集记录"
         >
-          <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
-          <el-table-column prop="taskName" label="任务" min-width="140" show-overflow-tooltip>
+          <el-table-column type="index" label="#" width="60" align="center" :index="rowIndex" />
+          <el-table-column prop="taskName" label="任务" min-width="110" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.manual" class="muted">手动采集</span>
               <span v-else-if="row.taskName">{{ row.taskName }}</span>
               <span v-else class="muted">任务已删除</span>
             </template>
           </el-table-column>
-          <el-table-column prop="sourceName" label="采集源" width="130" show-overflow-tooltip>
+          <el-table-column prop="sourceName" label="采集源" width="110" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.sourceName">{{ row.sourceName }}</span>
               <span v-else class="muted">源已删除</span>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="90" align="center">
+          <el-table-column label="状态" width="80" align="center">
             <template #default="{ row }">
               <el-tag :type="statusOf(row).type" size="small">{{ statusOf(row).text }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="采集数" width="90" align="center">
-            <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
-          </el-table-column>
-          <el-table-column label="新增" width="80" align="center">
+          <el-table-column label="新增" width="70" align="center">
             <template #default="{ row }"><span :class="numClass('inserted')">{{ row.inserted }}</span></template>
           </el-table-column>
-          <el-table-column label="更新" width="80" align="center">
+          <el-table-column label="更新" width="70" align="center">
             <template #default="{ row }"><span :class="numClass('updated')">{{ row.updated }}</span></template>
           </el-table-column>
-          <el-table-column label="跳过" width="80" align="center">
+          <el-table-column label="跳过" width="70" align="center">
             <template #default="{ row }"><span :class="numClass('skipped')">{{ row.skipped }}</span></template>
           </el-table-column>
-          <el-table-column label="忽略" width="80" align="center">
+          <el-table-column label="忽略" width="70" align="center">
             <template #default="{ row }"><span :class="numClass('ignored')">{{ row.ignored }}</span></template>
           </el-table-column>
-          <el-table-column label="失败" width="80" align="center">
+          <el-table-column label="失败" width="70" align="center">
             <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
           </el-table-column>
-          <el-table-column label="开始时间" width="165" align="center">
-        <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
-      </el-table-column>
-          <el-table-column label="耗时" width="130" align="center">
-            <template #default="{ row }">{{ liveDuration(row) }}</template>
+          <el-table-column label="开始时间" width="160" align="center">
+            <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
           </el-table-column>
-          <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
-          <el-table-column label="操作" width="170" align="center" fixed="right">
+          <el-table-column label="操作" width="140" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDetail(row)">明细</el-button>
               <el-button

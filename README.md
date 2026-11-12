@@ -53,6 +53,11 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 （目前新增了 `lcm_vod_merge_rule`），已经建好的库只会跳过。
 老库（有表、没有 `migrations` 记录，早期 `db:init` 建的）启动时会被自动登记为已迁移，不会重复建表。
 
+时间列按**北京时间**存（TypeORM `timezone: '+08:00'`），直接查库看到的就是本地时间。
+这要求 MySQL 会话时区也是 `+08:00`：实例上执行 `SET GLOBAL time_zone = '+08:00'`，
+持久化写 my.cnf 的 `default-time-zone='+08:00'`；否则 `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE`
+仍按服务器时区（常见是 UTC）写入，与应用写入的时间差 8 小时。
+
 首次建库后没有管理员账号：`npm run db:seed` 可导入 `apps/server/src/database/seeds/*.sql`，
 但这些种子的内容待校对，建议从已有库 `mysqldump` 出 `lcm_admin_user` / `lcm_category` / `lcm_setting` 三张表替换。
 

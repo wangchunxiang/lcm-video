@@ -12,7 +12,7 @@
  *   状态值重排（log.status、task.last_run_status）、kind 由字符串改数字（merge_ignore）。
  * - `--truncate` 先清空目标表再导入；不加则按主键 upsert（可重复执行）。
  * - `--force` 是写库开关，缺省只做 dry-run，避免误操作。
- * - 旧库的 DATETIME 是北京时间墙钟，导入时统一减 8 小时存成 UTC（见 `LEGACY_OFFSET_HOURS`）。
+ * - 旧库的 DATETIME 是北京时间墙钟，新库同样存本地时间（TypeORM `timezone: '+08:00'`），原样搬即可。
  */
 import mysql from 'mysql2/promise';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
@@ -198,31 +198,6 @@ const BATCH = 5000;
 /** 服务端 INSERT…SELECT 每次搬多少 id 区间（同实例时用，避免把大表搬到 Node 再写回） */
 const ID_SPAN = 20000;
 
-/**
- * 旧库的 DATETIME 存的是北京时间墙钟（v2 的服务端时区是 Asia/Shanghai），
- * 而 MySQL 实例本身跑在 UTC、新库统一按 UTC 存（TypeORM `timezone: 'Z'`）。
- * 直接照搬会让所有时间整体偏 8 小时，所以导入时减掉这个偏移。
- */
-const LEGACY_OFFSET_HOURS = 8;
-const LEGACY_OFFSET_MS = LEGACY_OFFSET_HOURS * 60 * 60 * 1000;
-const DATETIME_COLUMNS = new Set([
-  'created_at',
-  'updated_at',
-  'collected_at',
-  'started_at',
-  'finished_at',
-  'last_run_at',
-  'last_sync_at',
-  'source_updated_at',
-  'last_login_at',
-  'checked_at',
-]);
-
-/** mysql2 把 DATETIME 读成本地时区的 Date，减掉偏移后落库就是同一时刻的 UTC 墙钟 */
-function toUtc(value: unknown): unknown {
-  return value instanceof Date ? new Date(value.getTime() - LEGACY_OFFSET_MS) : value;
-}
-
 interface Args {
   force: boolean;
   dryRun: boolean;
@@ -275,14 +250,7 @@ async function copyServerSide(
   targetDb: string,
 ): Promise<number> {
   const columns = plan.columns.map((column) => `\`${column}\``).join(',');
-  // 时间列在 SQL 里直接减偏移，避免把大表搬进 Node
-  const selected = plan.columns
-    .map((column) =>
-      DATETIME_COLUMNS.has(column)
-        ? `\`${column}\` - INTERVAL ${LEGACY_OFFSET_HOURS} HOUR AS \`${column}\``
-        : `\`${column}\``,
-    )
-    .join(',');
+  const selected = columns;
   const updates = plan.columns
     .filter((column) => column !== 'id')
     .map((column) => `\`${column}\` = VALUES(\`${column}\`)`)
@@ -376,11 +344,7 @@ async function main(): Promise<void> {
           }
           if (mapped.length > 0) {
             const placeholders = mapped.map(() => `(${plan.columns.map(() => '?').join(',')})`).join(',');
-            const values = mapped.flatMap((row) =>
-              plan.columns.map((column) =>
-                DATETIME_COLUMNS.has(column) ? toUtc(row[column]) : row[column],
-              ),
-            );
+            const values = mapped.flatMap((row) => plan.columns.map((column) => row[column]));
             await target.query(
               `INSERT INTO \`${plan.target}\` (${plan.columns.map((c) => `\`${c}\``).join(',')}) VALUES ${placeholders}
                ON DUPLICATE KEY UPDATE ${plan.columns
