@@ -425,7 +425,21 @@ onMounted(() => {
               <el-tag v-if="activeGroup.matchedBy === 'actor'" type="success" size="small" effect="plain">
                 演员一致 {{ Math.round((activeGroup.actorOverlap ?? 0) * 100) }}%
               </el-tag>
-              <span class="sub">{{ detail?.members.length ?? 0 }} 条影片 · {{ detail?.playTotal ?? 0 }} 条线路</span>
+              <span class="head-right">
+                <span class="sub">{{ detail?.members.length ?? 0 }} 条影片 · {{ detail?.playTotal ?? 0 }} 条线路</span>
+                <span class="head-actions">
+                  <el-button size="small" :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :loading="busy"
+                    :disabled="!detail"
+                    @click="mergeCurrent"
+                  >
+                    合并并删除其余 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
+                  </el-button>
+                </span>
+              </span>
             </div>
 
             <div class="detail-body">
@@ -477,16 +491,6 @@ onMounted(() => {
               <div v-if="!detailLoading && (detail?.members.length ?? 0) === 0" class="list-empty">
                 这组影片已经不存在了
               </div>
-            </div>
-
-            <div class="detail-foot">
-              <span class="left">合并后删除 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条</span>
-              <span class="right">
-                <el-button :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
-                <el-button type="primary" :loading="busy" :disabled="!detail" @click="mergeCurrent">
-                  合并并删除其余 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
-                </el-button>
-              </span>
             </div>
           </template>
 
@@ -676,11 +680,31 @@ onMounted(() => {
 }
 
 .detail-head .sub {
-  margin-left: auto;
   flex: none;
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* 行尾：统计文字 + 忽略 / 合并按钮 */
+.head-right {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 窄屏时先让出统计文字的位置，按钮不换行 */
+@media (max-width: 1200px) {
+  .detail-head .sub {
+    display: none;
+  }
 }
 
 .detail-body {
@@ -690,26 +714,6 @@ onMounted(() => {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.detail-foot {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.detail-foot .left {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.detail-foot .right {
-  margin-left: auto;
-  display: flex;
   gap: 10px;
 }
 
