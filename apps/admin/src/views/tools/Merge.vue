@@ -143,6 +143,15 @@ function toggleSelect(group: LightGroup): void {
     : [...selected.value, id];
 }
 
+/** 全选当前筛选结果（不只是已滚动出来的那些） */
+function selectAll(): void {
+  selected.value = filtered.value.map((group) => groupId(group));
+}
+
+function clearSelection(): void {
+  selected.value = [];
+}
+
 const activeGroup = computed(() => rows.value.find((row) => groupId(row) === activeKey.value) ?? null);
 
 const distinctNames = computed(() => new Set((detail.value?.members ?? []).map((item) => item.name)));
@@ -441,6 +450,7 @@ onMounted(() => {
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
+        <span class="count">已筛选 {{ filtered.length }} 组 · 共 {{ rows.length }} 组</span>
         <span class="bar-right">
           <el-button
             type="primary"
@@ -458,7 +468,14 @@ onMounted(() => {
       <div class="split">
         <div class="pane-list">
           <div class="list-head">
-            <span class="list-count">已筛选 {{ filtered.length }} 组 · 共 {{ rows.length }} 组</span>
+            <span class="list-actions-left">
+              <el-button text size="small" :disabled="filtered.length === 0 || busy" @click="selectAll">
+                全选
+              </el-button>
+              <el-button text size="small" :disabled="selected.length === 0 || busy" @click="clearSelection">
+                取消全选
+              </el-button>
+            </span>
             <span class="list-actions">
               <el-button size="small" :disabled="selectedGroups.length === 0 || busy" @click="batchSelected('ignore')">
                 忽略
@@ -732,10 +749,16 @@ onMounted(() => {
   border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
-.list-count {
+.count {
+  margin-left: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.list-actions-left {
+  display: flex;
+  align-items: center;
 }
 
 .list-actions {
