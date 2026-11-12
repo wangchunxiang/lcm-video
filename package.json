@@ -23,6 +23,7 @@
     "db:migrate": "npm run db:migrate -w apps/server",
     "db:seed": "npm run db:seed -w apps/server",
     "db:reset": "npm run db:reset -w apps/server",
+    "db:import-legacy": "npm run db:import-legacy -w apps/server",
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.ts"

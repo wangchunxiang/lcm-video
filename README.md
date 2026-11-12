@@ -56,6 +56,13 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 首次建库后没有管理员账号：`npm run db:seed` 可导入 `apps/server/src/database/seeds/*.sql`，
 但这些种子的内容待校对，建议从已有库 `mysqldump` 出 `lcm_admin_user` / `lcm_category` / `lcm_setting` 三张表替换。
 
+从 v2 旧库搬数据用 `npm run db:import-legacy`：默认连同一实例的 `lcm_video` 库，
+跨实例时设 `LEGACY_DATABASE_URL`。脚本逐表按主键分批搬运，处理了改名
+（`lcm_collect_log` → `lcm_collect_task_log`）、删列（`vod.letter`、`collect_source.api_format`）、
+状态值重排（日志 0/1/2/3 → 1/2/3/4，任务 1/2 → 2/3）、`merge_ignore.kind` 由字符串改数字，
+并把 `lcm_setting.merge_rules` 的 JSON 拆成 `lcm_vod_merge_rule` 的行。先 `-- --dry-run` 看行数，
+确认后加 `-- --force`（目标表已有测试数据时再加 `-- --truncate`）。
+
 ## 脚本
 
 | 命令 | 作用 |
@@ -72,6 +79,7 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 | `npm run db:migrate` | 手动执行未应用的迁移（启动时也会自动执行） |
 | `npm run db:seed` | 导入 `src/database/seeds/*.sql`（`-- --dry-run` 只打印） |
 | `npm run db:reset` | 开发用：DROP 全表后按迁移重建（需 `-- --force`） |
+| `npm run db:import-legacy` | 从 v2 旧库 `lcm_video` 导入数据（`-- --dry-run` 只统计，`-- --force` 写库，`-- --truncate` 先清空目标表） |
 
 ## 环境变量
 
