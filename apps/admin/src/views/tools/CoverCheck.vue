@@ -6,10 +6,10 @@
           v-model="filters.host"
           placeholder="域名"
           clearable
-          style="width: 220px"
+          style="width: 200px"
           @keyup.enter="search"
         />
-        <el-select v-model="filters.status" placeholder="全部状态" style="width: 140px">
+        <el-select v-model="filters.status" placeholder="全部状态" style="width: 120px">
           <el-option label="全部状态" value="" />
           <el-option label="未检查" value="0" />
           <el-option label="正常" value="1" />
@@ -496,22 +496,18 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
 }
 
 .search-extra {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 .summary-text {
