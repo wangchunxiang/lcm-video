@@ -218,9 +218,9 @@ onBeforeUnmount(() => {
 
       <div ref="wrapRef" class="table-wrap">
         <el-table v-loading="loading" :data="rows" row-key="key" border stripe :height="tableHeight">
-          <el-table-column label="字段" min-width="150">
+          <el-table-column prop="label" label="字段" width="120" />
+          <el-table-column label="键名" width="150">
             <template #default="{ row }">
-              <span>{{ row.label }}</span>
               <span class="code">{{ row.key }}</span>
             </template>
           </el-table-column>
@@ -296,12 +296,10 @@ onBeforeUnmount(() => {
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
   margin-bottom: 12px;
 }
 .mode-ctrl {
@@ -314,14 +312,12 @@ onBeforeUnmount(() => {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
   flex: none;
 }
 .strategy {
   width: 100%;
 }
 .code {
-  margin-left: 6px;
   font-family: var(--el-font-family-mono, monospace);
   font-size: 12px;
   color: var(--el-text-color-secondary);
