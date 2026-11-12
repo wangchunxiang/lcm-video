@@ -448,7 +448,7 @@ onMounted(() => {
             :loading="busy"
             @click="mergeAll"
           >
-            一键合并可合并的
+            一键合并
           </el-button>
         </span>
       </div>
