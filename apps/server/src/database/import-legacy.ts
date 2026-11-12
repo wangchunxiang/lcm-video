@@ -79,6 +79,13 @@ const TABLES: readonly TablePlan[] = [
     ],
   },
   {
+    target: 'lcm_collect_source_category',
+    columns: [
+      'id', 'created_at', 'updated_at', 'source_id', 'source_type_id', 'source_type_name',
+      'source_type_pid', 'category_id', 'match_type', 'status',
+    ],
+  },
+  {
     target: 'lcm_collect_task',
     columns: [
       'id', 'created_at', 'updated_at', 'name', 'source_id', 'range_type', 'cron', 'is_enabled',
