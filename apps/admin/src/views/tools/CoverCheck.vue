@@ -57,6 +57,7 @@
           :height="tableHeight"
           @selection-change="onSelectionChange"
         >
+          <el-table-column type="selection" width="44" :selectable="canSelect" />
           <el-table-column prop="host" label="域名" min-width="200" show-overflow-tooltip />
           <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
           <el-table-column label="抽样" width="90" align="center">
