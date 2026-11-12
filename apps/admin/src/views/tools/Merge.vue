@@ -365,7 +365,7 @@ onMounted(() => {
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
         <span class="hint right">
-          共 {{ filtered.length }} 组 · 合并后减少 {{ summary.autoVods }} 条影片
+          共 {{ rows.length }} 组 · 合并后减少 {{ summary.autoVods }} 条影片
           <template v-if="summary.conflictGroups"> · 年份冲突 {{ summary.conflictGroups }} 组已排除</template>
         </span>
         <el-button :loading="loading" @click="load">刷新</el-button>
@@ -384,7 +384,7 @@ onMounted(() => {
       <div class="split">
         <div class="pane-list">
           <div class="list-head">
-            <span class="list-count">已显示 {{ visibleGroups.length }} / {{ filtered.length }} 组</span>
+            <span class="list-count">已筛选 {{ filtered.length }} 组 · 共 {{ rows.length }} 组</span>
           </div>
           <div class="list-body" @scroll.passive="onScroll">
             <div
