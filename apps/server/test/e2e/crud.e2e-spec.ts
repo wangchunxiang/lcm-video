@@ -27,10 +27,11 @@ interface PagePayload<T> {
 describe('CRUD /api/admin/category', () => {
   let app: INestApplication;
   let token: string;
+  let fixtures: Awaited<ReturnType<typeof createTestApp>>['fixtures'];
   const createdAlias = 'e2e-created';
 
   beforeAll(async () => {
-    ({ app } = await createTestApp());
+    ({ app, fixtures } = await createTestApp());
     token = await loginToken(app);
   });
 
@@ -139,5 +140,33 @@ describe('CRUD /api/admin/category', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({});
     expect((options.body as Envelope<unknown[]>).code).toBe(0);
+  });
+
+  it('where 过滤按数据库列名解析，camelCase 属性也能用', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/admin/vod')
+      .query({
+        take: 10,
+        skip: 0,
+        where: JSON.stringify({ categoryId: fixtures.categoryId }),
+      })
+      .set('Authorization', `Bearer ${token}`);
+    const body = response.body as Envelope<PagePayload<{ id: string; categoryId: string }>>;
+
+    expect(body.code).toBe(0);
+    expect(body.data.items.length).toBeGreaterThan(0);
+    expect(body.data.items.every((item) => item.categoryId === fixtures.categoryId)).toBe(true);
+    expect(body.data.items.some((item) => item.id === fixtures.vodId)).toBe(true);
+  });
+
+  it('where 里写不存在的字段仍然被拒绝', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/admin/vod')
+      .query({ take: 10, where: JSON.stringify({ notAColumn: 1 }) })
+      .set('Authorization', `Bearer ${token}`);
+    const body = response.body as Envelope<null>;
+
+    expect(body.code).toBe(1);
+    expect(body.msg).toContain('Invalid filter field');
   });
 });

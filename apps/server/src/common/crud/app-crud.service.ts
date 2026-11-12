@@ -1,3 +1,5 @@
+// 修 nest-crud 的 where 列名解析，必须在任何 CRUD 请求之前生效
+import './nest-crud-where.patch';
 import { CrudService } from '@ackplus/nest-crud';
 import type { Repository } from 'typeorm';
 import type { FindOptionsWhere } from 'typeorm';
