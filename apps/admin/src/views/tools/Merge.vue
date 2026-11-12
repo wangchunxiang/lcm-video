@@ -440,10 +440,10 @@ onMounted(() => {
           v-model="filters.keyword"
           placeholder="片名"
           clearable
-          style="width: 220px"
+          style="width: 200px"
           @keyup.enter="search"
         />
-        <el-select v-model="filters.kind" placeholder="全部类型" clearable style="width: 140px">
+        <el-select v-model="filters.kind" placeholder="全部类型" clearable style="width: 120px">
           <el-option label="可合并" value="auto" />
           <el-option label="疑似重复" value="suspect" />
           <el-option label="同源同 ID" value="same" />
@@ -620,8 +620,8 @@ onMounted(() => {
   gap: 12px;
 }
 
-.search-card :deep(.el-card__body) {
-  padding: 16px;
+.search-card {
+  flex: none;
 }
 
 .search-bar {
