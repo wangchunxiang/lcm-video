@@ -428,9 +428,8 @@ onMounted(() => {
               <span class="head-right">
                 <span class="sub">{{ detail?.members.length ?? 0 }} 条影片 · {{ detail?.playTotal ?? 0 }} 条线路</span>
                 <span class="head-actions">
-                  <el-button size="small" :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
+                  <el-button :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
                   <el-button
-                    size="small"
                     type="primary"
                     :loading="busy"
                     :disabled="!detail"
@@ -668,12 +667,16 @@ onMounted(() => {
   padding: 0 16px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .detail-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -693,11 +696,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  white-space: nowrap;
 }
 
 .head-actions {
   display: flex;
   gap: 8px;
+  flex: none;
 }
 
 /* 窄屏时先让出统计文字的位置，按钮不换行 */
