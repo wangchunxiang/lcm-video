@@ -85,7 +85,7 @@ export interface VodPlay {
   current: number;
 }
 
-export interface ListParams {
+export type ListParams = {
   type?: string;
   year?: string | number;
   sort?: 'time' | 'new';
@@ -93,7 +93,7 @@ export interface ListParams {
   skip?: number;
 }
 
-export interface SearchParams {
+export type SearchParams = {
   wd: string;
   year?: string | number;
   sort?: 'time' | 'new';
