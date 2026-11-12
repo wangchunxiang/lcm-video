@@ -580,9 +580,9 @@ onMounted(() => {
                     <span class="pill">地区 <b>{{ member.area || '—' }}</b></span>
                     <span class="pill">语言 <b>{{ member.lang || '—' }}</b></span>
                     <span class="pill">总集数 <b>{{ member.episodeCount || '—' }}</b></span>
+                    <span class="pill actor-pill">演员 <b>{{ firstActors(member.actor) || '—' }}</b></span>
                     <span class="pill">采集 <b>{{ member.collectedAt }}</b></span>
                   </div>
-                  <div class="member-actor">演员 {{ firstActors(member.actor) || '—' }}</div>
                   <div class="member-lines">
                     <span
                       v-for="line in member.lines"
@@ -949,9 +949,11 @@ onMounted(() => {
   color: var(--el-text-color-primary);
 }
 
-.member-actor {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+/* 演员名单可能很长，超出卡片宽度时省略，不把整行撑破 */
+.actor-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .member-lines {
