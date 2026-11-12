@@ -565,20 +565,24 @@ onMounted(() => {
                 <img class="cover" :src="member.cover || COVER_PLACEHOLDER" alt="" @error="onCoverError" />
 
                 <div class="member-main">
-                  <div class="member-name">
-                    <span v-for="(mark, index) in marks(member.name)" :key="index" :class="mark.cls">{{ mark.ch }}</span>
+                  <div class="member-name-row">
+                    <span class="member-name">
+                      <span v-for="(mark, index) in marks(member.name)" :key="index" :class="mark.cls">{{ mark.ch }}</span>
+                    </span>
+                    <el-tag size="small" effect="plain" type="info">ID {{ member.id }}</el-tag>
+                    <el-tag size="small" effect="plain" :type="member.status === 1 ? 'success' : 'info'">
+                      {{ statusText(member.status) }}
+                    </el-tag>
                   </div>
-                  <div class="member-meta">
-                    <span><i>ID</i> {{ member.id }}</span>
-                    <span><i>年份</i> {{ yearText(member) }}</span>
-                    <span><i>分类</i> {{ member.category || '—' }}</span>
-                    <span><i>地区</i> {{ member.area || '—' }}</span>
-                    <span><i>语言</i> {{ member.lang || '—' }}</span>
-                    <span><i>总集数</i> {{ member.episodeCount || '—' }}</span>
-                    <span><i>状态</i> {{ statusText(member.status) }}</span>
-                    <span><i>演员</i> {{ firstActors(member.actor) || '—' }}</span>
-                    <span class="muted"><i>采集</i> {{ member.collectedAt }}</span>
+                  <div class="member-pills">
+                    <span class="pill">年份 <b>{{ yearText(member) }}</b></span>
+                    <span class="pill">分类 <b>{{ member.category || '—' }}</b></span>
+                    <span class="pill">地区 <b>{{ member.area || '—' }}</b></span>
+                    <span class="pill">语言 <b>{{ member.lang || '—' }}</b></span>
+                    <span class="pill">总集数 <b>{{ member.episodeCount || '—' }}</b></span>
+                    <span class="pill">采集 <b>{{ member.collectedAt }}</b></span>
                   </div>
+                  <div class="member-actor">演员 {{ firstActors(member.actor) || '—' }}</div>
                   <div class="member-lines">
                     <span
                       v-for="line in member.lines"
@@ -855,7 +859,7 @@ onMounted(() => {
 
 .member {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--el-border-color-lighter);
@@ -882,11 +886,11 @@ onMounted(() => {
 }
 
 .cover {
-  width: 48px;
-  height: 64px;
+  width: 72px;
+  height: 96px;
   flex: none;
   border-radius: 4px;
-  object-fit: fill;
+  object-fit: cover;
   background: var(--el-fill-color-light);
 }
 
@@ -898,8 +902,17 @@ onMounted(() => {
   gap: 6px;
 }
 
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .member-name {
-  font-size: 14px;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--el-text-color-primary);
   word-break: break-all;
 }
@@ -914,19 +927,31 @@ onMounted(() => {
   border-radius: 2px;
 }
 
-.member-meta {
+.member-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 14px;
+  gap: 6px;
+}
+
+.pill {
   font-size: 12px;
+  line-height: 20px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
   color: var(--el-text-color-regular);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.member-meta i {
-  font-style: normal;
-  color: var(--el-text-color-placeholder);
-  margin-right: 2px;
+.pill b {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.member-actor {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .member-lines {
@@ -962,6 +987,7 @@ onMounted(() => {
 /* 「保留」在卡片行尾，不跟名称挤在一起 */
 .keep-badge {
   flex: none;
+  align-self: center;
   margin-left: auto;
   font-size: 12px;
   color: var(--el-color-primary);
