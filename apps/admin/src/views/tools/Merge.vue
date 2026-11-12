@@ -469,19 +469,14 @@ onMounted(() => {
         <div class="pane-list">
           <div class="list-head">
             <span class="list-actions-left">
-              <el-button text size="small" :disabled="filtered.length === 0 || busy" @click="selectAll">
-                全选
-              </el-button>
-              <el-button text size="small" :disabled="selected.length === 0 || busy" @click="clearSelection">
-                取消全选
-              </el-button>
+              <el-button :disabled="filtered.length === 0 || busy" @click="selectAll">全选</el-button>
+              <el-button :disabled="selected.length === 0 || busy" @click="clearSelection">取消全选</el-button>
             </span>
             <span class="list-actions">
-              <el-button size="small" :disabled="selectedGroups.length === 0 || busy" @click="batchSelected('ignore')">
+              <el-button :disabled="selectedGroups.length === 0 || busy" @click="batchSelected('ignore')">
                 忽略
               </el-button>
               <el-button
-                size="small"
                 type="primary"
                 :disabled="selectedGroups.length === 0 || busy"
                 :loading="busy"
