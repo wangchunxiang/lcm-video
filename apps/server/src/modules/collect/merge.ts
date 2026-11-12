@@ -22,13 +22,9 @@ export type MergeStrategy =
 export interface MergeFieldDef {
   key: string;
   label: string;
-  /** 后台页面上的分组，仅用于排版 */
-  group: MergeFieldGroup;
   strategies: MergeStrategy[];
   hint: string;
 }
-
-export type MergeFieldGroup = '进度与集数' | '图片' | '文本' | '日期';
 
 export const STRATEGY_LABELS: Record<MergeStrategy, string> = {
   keep: '保留旧值',
@@ -42,21 +38,21 @@ export const STRATEGY_LABELS: Record<MergeStrategy, string> = {
   cover: '旧图为空或已失效才换',
 };
 
-/** 可配置的字段；键名与 lcm_vod 字段一致，progress 同时管 remarks 与 episodeCount。按 group 连续排列，后台表格照这个顺序展示。 */
+/** 可配置的字段；键名与 lcm_vod 字段一致，progress 同时管 remarks 与 episodeCount。数组顺序就是后台表格的展示顺序。 */
 export const MERGE_FIELDS: MergeFieldDef[] = [
-  { key: 'progress', label: '更新进度', group: '进度与集数', strategies: ['progress', 'keep'], hint: '完结 > 连载 > 标记；连载按集数取大，标记之间保留旧值' },
-  { key: 'episodeCount', label: '集数', group: '进度与集数', strategies: ['larger', 'new', 'keep'], hint: '默认取较大值，避免源站数据残缺把集数改小' },
-  { key: 'cover', label: '封面', group: '图片', strategies: ['cover', 'nonempty', 'new', 'keep'], hint: '旧图缺失、旧图域名已失效、或同源更新时替换' },
-  { key: 'subName', label: '副标题', group: '文本', strategies: ['nonempty', 'longer', 'new', 'keep'], hint: '一句话卖点，默认新值非空才覆盖' },
-  { key: 'intro', label: '简介', group: '文本', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
-  { key: 'content', label: '剧情', group: '文本', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
-  { key: 'actor', label: '演员', group: '文本', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多，人数相同保留旧值' },
-  { key: 'director', label: '导演', group: '文本', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
-  { key: 'writer', label: '编剧', group: '文本', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
-  { key: 'area', label: '地区', group: '文本', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
-  { key: 'lang', label: '语言', group: '文本', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
-  { key: 'releaseDate', label: '上映日期', group: '日期', strategies: ['date', 'nonempty', 'new', 'keep'], hint: '旧值空或旧值不是日期、新值是日期时才替换' },
-  { key: 'year', label: '年份', group: '日期', strategies: ['keep', 'new'], hint: '默认旧值有值就保留；选「总是覆盖」时新值非 0 才替换' },
+  { key: 'progress', label: '更新进度', strategies: ['progress', 'keep'], hint: '完结 > 连载 > 标记；连载按集数取大，标记之间保留旧值' },
+  { key: 'episodeCount', label: '集数', strategies: ['larger', 'new', 'keep'], hint: '默认取较大值，避免源站数据残缺把集数改小' },
+  { key: 'cover', label: '封面', strategies: ['cover', 'nonempty', 'new', 'keep'], hint: '旧图缺失、旧图域名已失效、或同源更新时替换' },
+  { key: 'subName', label: '副标题', strategies: ['nonempty', 'longer', 'new', 'keep'], hint: '一句话卖点，默认新值非空才覆盖' },
+  { key: 'intro', label: '简介', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
+  { key: 'content', label: '剧情', strategies: ['longer', 'nonempty', 'new', 'keep'], hint: '默认取较长的一条' },
+  { key: 'actor', label: '演员', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多，人数相同保留旧值' },
+  { key: 'director', label: '导演', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
+  { key: 'writer', label: '编剧', strategies: ['more', 'nonempty', 'new', 'keep'], hint: '按人数取多' },
+  { key: 'area', label: '地区', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
+  { key: 'lang', label: '语言', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
+  { key: 'releaseDate', label: '上映日期', strategies: ['date', 'nonempty', 'new', 'keep'], hint: '旧值空或旧值不是日期、新值是日期时才替换' },
+  { key: 'year', label: '年份', strategies: ['keep', 'new'], hint: '默认旧值有值就保留；选「总是覆盖」时新值非 0 才替换' },
 ];
 
 /** 不参与合并的字段，页面上只做说明 */

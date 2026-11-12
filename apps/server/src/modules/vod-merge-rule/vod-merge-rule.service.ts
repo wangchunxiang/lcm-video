@@ -10,7 +10,7 @@ import {
   loadMergeConfig,
   saveMergeConfig,
 } from '../collect/merge';
-import type { MergeConfig, MergeFieldGroup, MergeMode, MergeStrategy } from '../collect/merge';
+import type { MergeConfig, MergeMode, MergeStrategy } from '../collect/merge';
 import { MergeRuleEntity } from './vod-merge-rule.entity';
 import type { UpdateVodMergeRuleDTO } from './dto/vod-merge-rule.dto';
 
@@ -23,7 +23,6 @@ export interface MergeRuleItemVO {
   key: string;
   label: string;
   /** 表格里的分组，仅用于排版 */
-  group: MergeFieldGroup;
   hint: string;
   value: string;
   options: MergeRuleOptionVO[];
@@ -66,7 +65,6 @@ export class VodMergeRuleService {
         return {
           key: field.key,
           label: field.label,
-          group: field.group,
           hint: field.hint,
           value,
           options: field.strategies.map((strategy) => ({
