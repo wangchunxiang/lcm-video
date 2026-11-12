@@ -392,7 +392,6 @@ export class CollectRunner {
     const merge = await loadMergeConfig(this.mergeRuleRepository, this.settingRepository);
     const brokenCoverHosts = await loadBrokenCoverHosts(this.coverCheckRepository);
     const hours = RANGE_HOURS[context.rangeType];
-    const since = hours === undefined ? undefined : Math.floor(Date.now() / 1000) - hours * 3600;
 
     let pageCount = 0;
     let page = context.resumePage;
@@ -423,7 +422,8 @@ export class CollectRunner {
           ac: 'videolist',
           pg: page,
           pagesize: source.pagesize,
-          ...(since !== undefined ? { t: since } : {}),
+          // 苹果CMS 的 h 是「最近多少小时」；注意 t 是分类 id，传时间戳会被当成不存在的分类
+          ...(hours !== undefined ? { h: hours } : {}),
         })
         .then(
           (raw) => ({ ok: true as const, value: parseVodPage(raw) }),
