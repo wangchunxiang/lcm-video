@@ -321,14 +321,22 @@ function toBody(row: SourceRow, patch: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-/** v3 的手动采集按源站默认时间窗跑，范围由采集任务配置。 */
-async function runSource(row: SourceRow) {
+/** 手动采集的时间窗：1 最近24小时 / 2 最近7天 / 3 最近30天 / 4 全部（与采集引擎的 RANGE_LABELS 一致） */
+const RUN_RANGES = [
+  { value: 1, label: '最近 24 小时' },
+  { value: 2, label: '最近 7 天' },
+  { value: 3, label: '最近 30 天' },
+  { value: 4, label: '全部' },
+] as const;
+
+async function runSource(row: SourceRow, rangeType: number) {
+  const rangeLabel = RUN_RANGES.find((item) => item.value === rangeType)?.label ?? '全部';
   try {
-    await ElMessageBox.confirm(`将开始采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`, '开始采集', {
-      type: 'warning',
-      confirmButtonText: '开始采集',
-      cancelButtonText: '取消',
-    });
+    await ElMessageBox.confirm(
+      `将按「${rangeLabel}」采集「${row.name}」，源站数据量大时可能要跑很久，确定开始吗？`,
+      '开始采集',
+      { type: 'warning', confirmButtonText: '开始采集', cancelButtonText: '取消' },
+    );
   } catch {
     return;
   }
@@ -336,6 +344,7 @@ async function runSource(row: SourceRow) {
   try {
     const result = await api.post<{ ok: boolean; logId?: string; msg?: string }>('/collect-source/run', {
       id: row.id,
+      rangeType,
     });
     if (result.ok) {
       ElMessage.success(`已开始采集「${row.name}」，可在采集记录查看进度`);
@@ -462,7 +471,16 @@ onBeforeUnmount(() => {
         <template #default="{ row }">
           <div class="row-actions">
             <el-button link type="primary" :disabled="testing === row.id" @click="testSource(row)">测试</el-button>
-            <el-button link type="primary" @click="runSource(row)">采集</el-button>
+            <el-dropdown trigger="click" @command="(range: number) => runSource(row, range)">
+              <el-button link type="primary">采集</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="range in RUN_RANGES" :key="range.value" :command="range.value">
+                    采集{{ range.label }}
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </div>

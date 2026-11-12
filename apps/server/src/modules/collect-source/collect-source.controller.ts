@@ -31,6 +31,6 @@ export class CollectSourceController {
   /** 手动采集这个源站（异步启动，立即返回记录 id）。 */
   @Post('run')
   run(@Body() dto: RunDTO): Promise<StartResult> {
-    return this.service.run(dto.id, dto.confirmEmpty === true);
+    return this.service.run(dto.id, dto.confirmEmpty === true, dto.rangeType);
   }
 }

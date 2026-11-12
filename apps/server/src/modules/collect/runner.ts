@@ -152,7 +152,7 @@ export class CollectRunner {
   /** 手动采集一个源站：不需要任务行，记录里 taskId 记 0 */
   async startSourceRun(
     sourceId: string,
-    options: { confirmEmpty: boolean; trigger?: RunTrigger },
+    options: { confirmEmpty: boolean; trigger?: RunTrigger; rangeType?: number },
   ): Promise<StartResult> {
     const source = await this.sourceRepository.findOne({
       where: { id: sourceId },
@@ -187,7 +187,7 @@ export class CollectRunner {
       taskName: `${MANUAL_NAME}·${source.name}`,
       trigger: options.trigger ?? 'manual',
       resumePage: 0,
-      rangeType: 4,
+      rangeType: options.rangeType ?? 4,
       resumeCount: 0,
     });
   }

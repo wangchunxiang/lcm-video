@@ -39,9 +39,9 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
     super(repository);
   }
 
-  /** 手动采集这个源站：confirmEmpty=false 时只做空数据预检。 */
-  async run(id: string, confirmEmpty: boolean): Promise<StartResult> {
-    return this.runner.startSourceRun(id, { confirmEmpty, trigger: 'manual' });
+  /** 手动采集这个源站：confirmEmpty=false 时只做空数据预检；rangeType 决定时间窗，缺省全部。 */
+  async run(id: string, confirmEmpty: boolean, rangeType?: number): Promise<StartResult> {
+    return this.runner.startSourceRun(id, { confirmEmpty, trigger: 'manual', rangeType });
   }
 
   /** 把实体转成采集引擎要的运行时配置。 */

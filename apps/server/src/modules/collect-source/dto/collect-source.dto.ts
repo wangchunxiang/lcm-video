@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsDate, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { IdDTO } from '../../../common/dto/id.dto';
 
 /** 新建CollectSource。 */
@@ -138,9 +138,14 @@ export class UpdateCollectSourceDTO {
   playFrom?: string;
 }
 
-/** 采集入参：confirmEmpty=true 表示空数据也照跑。 */
+/** 采集入参：confirmEmpty=true 表示空数据也照跑；rangeType 是时间窗（1 最近24小时 / 2 最近7天 / 3 最近30天 / 4 全部）。 */
 export class RunDTO extends IdDTO {
   @IsOptional()
   @IsBoolean({ message: 'confirmEmpty 必须是布尔值' })
   confirmEmpty?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsIn([1, 2, 3, 4], { message: 'rangeType 取值 1~4' })
+  rangeType?: number;
 }
