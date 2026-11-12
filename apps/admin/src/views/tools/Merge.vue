@@ -576,8 +576,10 @@ onMounted(() => {
                     <span class="pill">地区 <b>{{ member.area || '—' }}</b></span>
                     <span class="pill">语言 <b>{{ member.lang || '—' }}</b></span>
                     <span class="pill">总集数 <b>{{ member.episodeCount || '—' }}</b></span>
-                    <span class="pill actor-pill">演员 <b>{{ firstActors(member.actor) || '—' }}</b></span>
                     <span class="pill">采集 <b>{{ member.collectedAt }}</b></span>
+                  </div>
+                  <div class="member-actor">
+                    <span class="pill actor-pill">演员 <b>{{ firstActors(member.actor) || '—' }}</b></span>
                   </div>
                   <div class="member-lines">
                     <span
@@ -937,6 +939,12 @@ onMounted(() => {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 演员单独占第三行 */
+.member-actor {
+  display: flex;
+  min-width: 0;
 }
 
 .member-lines {
