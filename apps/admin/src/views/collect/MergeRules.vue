@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
           </el-radio-group>
         </div>
         <div class="toolbar-right">
-          <el-tag v-if="dirtyCount > 0" type="warning" effect="plain">{{ dirtyCount }} 项未保存</el-tag>
+          <span v-if="dirtyCount > 0" class="dirty-text">{{ dirtyCount }} 项未保存</span>
           <el-button @click="resetAll">恢复默认</el-button>
           <el-button type="primary" :loading="saving" @click="save">保存</el-button>
         </div>
@@ -236,10 +236,12 @@ onBeforeUnmount(() => {
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="默认" width="180">
+          <el-table-column label="默认" width="240">
             <template #default="{ row }">
-              <span>{{ labelOf(row, defaultOf(row)) }}</span>
-              <el-tag v-if="changedFromDefault(row)" type="warning" size="small" effect="plain">已改</el-tag>
+              <div class="default-cell">
+                <span>{{ labelOf(row, defaultOf(row)) }}</span>
+                <el-tag v-if="changedFromDefault(row)" type="warning" size="small" effect="plain">已改</el-tag>
+              </div>
             </template>
           </el-table-column>
           <el-table-column prop="hint" label="说明" min-width="280" show-overflow-tooltip />
@@ -313,6 +315,17 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   flex: none;
+}
+.dirty-text {
+  margin-right: 12px;
+  font-size: 13px;
+  color: var(--el-color-warning);
+}
+.default-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 .strategy {
   width: 100%;
