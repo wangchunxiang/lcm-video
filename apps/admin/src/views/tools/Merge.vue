@@ -702,7 +702,7 @@ onMounted(() => {
 
 .head-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
   flex: none;
 }
 
