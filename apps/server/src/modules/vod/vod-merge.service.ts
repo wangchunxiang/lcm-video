@@ -589,6 +589,8 @@ export class VodMergeService {
       .filter((group) => this.actorMatched(group))
       .map((group) => ({
         ...group,
+        // 升级进 auto 的分组要把 kind 一起改掉，否则前端按 kind 渲染会显示成「疑似重复」
+        kind: 'auto' as const,
         matchedBy: 'actor' as const,
         actorOverlap: actorOverlap(group.members),
       }));
