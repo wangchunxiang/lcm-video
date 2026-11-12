@@ -428,14 +428,15 @@ onMounted(() => {
               <span class="head-right">
                 <span class="sub">{{ detail?.members.length ?? 0 }} 条影片 · {{ detail?.playTotal ?? 0 }} 条线路</span>
                 <span class="head-actions">
-                  <el-button :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
+                  <el-button :disabled="busy" @click="ignoreCurrent">忽略</el-button>
                   <el-button
                     type="primary"
                     :loading="busy"
                     :disabled="!detail"
+                    :title="`合并并删除其余 ${Math.max((detail?.members.length ?? 1) - 1, 0)} 条`"
                     @click="mergeCurrent"
                   >
-                    合并并删除其余 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
+                    合并 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
                   </el-button>
                 </span>
               </span>
