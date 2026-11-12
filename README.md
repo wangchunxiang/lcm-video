@@ -62,6 +62,9 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 状态值重排（日志 0/1/2/3 → 1/2/3/4，任务 1/2 → 2/3）、`merge_ignore.kind` 由字符串改数字，
 并把 `lcm_setting.merge_rules` 的 JSON 拆成 `lcm_vod_merge_rule` 的行。先 `-- --dry-run` 看行数，
 确认后加 `-- --force`（目标表已有测试数据时再加 `-- --truncate`）。
+大表逐批拉到 Node 再写回很慢，所以另外提供了 `-- --fast-copy`：旧库与新库在同一个 MySQL 实例时，
+让服务端直接 `INSERT … SELECT` 复制（30 万行线路约 30 秒）；需要逐行转换的表（影片的上映日期、
+日志状态、配置键过滤）仍走 Node 路径。只补某几张表用 `-- --tables=lcm_vod_play,lcm_setting`。
 
 ## 脚本
 
@@ -79,7 +82,7 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 | `npm run db:migrate` | 手动执行未应用的迁移（启动时也会自动执行） |
 | `npm run db:seed` | 导入 `src/database/seeds/*.sql`（`-- --dry-run` 只打印） |
 | `npm run db:reset` | 开发用：DROP 全表后按迁移重建（需 `-- --force`） |
-| `npm run db:import-legacy` | 从 v2 旧库 `lcm_video` 导入数据（`-- --dry-run` 只统计，`-- --force` 写库，`-- --truncate` 先清空目标表） |
+| `npm run db:import-legacy` | 从 v2 旧库 `lcm_video` 导入数据（`-- --dry-run` 只统计，`-- --force` 写库，`-- --truncate` 先清空，`-- --fast-copy` 同实例服务端复制，`-- --tables=a,b` 只搬指定表） |
 
 ## 环境变量
 

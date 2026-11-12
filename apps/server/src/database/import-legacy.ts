@@ -14,7 +14,7 @@
  * - `--force` 是写库开关，缺省只做 dry-run，避免误操作。
  */
 import mysql from 'mysql2/promise';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 type Row = Record<string, unknown>;
 
@@ -27,6 +27,8 @@ interface TablePlan {
   columns: readonly string[];
   /** 旧行 → 目标行；返回 null 表示跳过 */
   map?: (row: Row, ctx: Context) => Row | null;
+  /** 分批游标列，默认主键 id；旧表没有 id 的（如 lcm_vod_merge_ignore）要指定 */
+  cursor?: string;
 }
 
 interface Context {
@@ -128,9 +130,11 @@ const TABLES: readonly TablePlan[] = [
     map: (row, ctx) => {
       const taskId = Number(row.task_id ?? 0);
       const sourceId = Number(row.source_id ?? 0);
-      // 任务可能已被删除，用快照列记住当时的任务名
+      // 旧表没有 task_name 快照：任务还在就用现名，已被删的只能标出原始 id
       const taskName =
-        ctx.tasks.get(taskId) ?? (sourceId > 0 ? `手动采集·${ctx.sources.get(sourceId) ?? '未知源站'}` : '手动采集');
+        taskId === 0
+          ? `手动采集·${ctx.sources.get(sourceId) ?? '未知源站'}`
+          : (ctx.tasks.get(taskId) ?? `任务 #${taskId}（已删除）`);
       return {
         ...row,
         status: statusOfLog(Number(row.status ?? 0)),
@@ -162,8 +166,10 @@ const TABLES: readonly TablePlan[] = [
   {
     target: 'lcm_vod_merge_ignore',
     columns: ['id', 'created_at', 'updated_at', 'merge_key', 'kind'],
+    // 旧表没有 id（主键就是 merge_key），按 merge_key 分批，id 交给自增
+    cursor: 'merge_key',
     map: (row) => ({
-      id: row.id,
+      id: null,
       created_at: row.created_at,
       updated_at: row.created_at,
       merge_key: row.merge_key,
@@ -192,14 +198,44 @@ const TABLES: readonly TablePlan[] = [
   },
 ];
 
-const BATCH = 2000;
+const BATCH = 5000;
+/** 服务端 INSERT…SELECT 每次搬多少 id 区间（同实例时用，避免把大表搬到 Node 再写回） */
+const ID_SPAN = 20000;
 
-function parseArgs(argv: string[]): { force: boolean; dryRun: boolean; truncate: boolean } {
+interface Args {
+  force: boolean;
+  dryRun: boolean;
+  truncate: boolean;
+  /** 只搬这几张目标表，逗号分隔；缺省搬全部 */
+  tables: string[] | null;
+  /** 旧库与新库在同一实例时，用 INSERT…SELECT 让服务端直接搬（大表快得多） */
+  fastCopy: boolean;
+}
+
+function parseArgs(argv: string[]): Args {
+  const tables = argv.find((arg) => arg.startsWith('--tables='));
   return {
     force: argv.includes('--force'),
     dryRun: argv.includes('--dry-run'),
     truncate: argv.includes('--truncate'),
+    tables: tables ? tables.slice('--tables='.length).split(',').map((name) => name.trim()).filter(Boolean) : null,
+    fastCopy: argv.includes('--fast-copy'),
   };
+}
+
+function parseUrl(url: string): URL {
+  return new URL(url);
+}
+
+function dbName(url: string): string {
+  return decodeURIComponent(parseUrl(url).pathname.replace(/^\//, ''));
+}
+
+/** 两个连接串是否指向同一个 MySQL 实例（库名可以不同） */
+function sameInstance(left: string, right: string): boolean {
+  const a = parseUrl(left);
+  const b = parseUrl(right);
+  return a.hostname === b.hostname && (a.port || '3306') === (b.port || '3306');
 }
 
 /** 旧库默认与新库同实例、库名 lcm_video；跨实例时用 LEGACY_DATABASE_URL 覆盖 */
@@ -207,6 +243,37 @@ function deriveLegacyUrl(targetUrl: string): string {
   const parsed = new URL(targetUrl);
   parsed.pathname = '/lcm_video';
   return parsed.toString();
+}
+
+/** 同实例时由服务端直接 INSERT…SELECT：不经过 Node，大表能快一个量级 */
+async function copyServerSide(
+  target: mysql.Connection,
+  plan: TablePlan,
+  source: string,
+  legacyDb: string,
+  targetDb: string,
+): Promise<number> {
+  const columns = plan.columns.map((column) => `\`${column}\``).join(',');
+  const updates = plan.columns
+    .filter((column) => column !== 'id')
+    .map((column) => `\`${column}\` = VALUES(\`${column}\`)`)
+    .join(',');
+  const [maxRows] = await target.query<RowDataPacket[]>(
+    `SELECT COALESCE(MAX(id), 0) AS maxId FROM \`${legacyDb}\`.\`${source}\``,
+  );
+  const maxId = Number(maxRows[0]?.maxId ?? 0);
+  let copied = 0;
+  for (let start = 0; start <= maxId; start += ID_SPAN) {
+    const [result] = await target.query<ResultSetHeader>(
+      `INSERT INTO \`${targetDb}\`.\`${plan.target}\` (${columns})
+       SELECT ${columns} FROM \`${legacyDb}\`.\`${source}\`
+        WHERE id > ? AND id <= ?
+       ON DUPLICATE KEY UPDATE ${updates}`,
+      [start, start + ID_SPAN],
+    );
+    copied += result.affectedRows;
+  }
+  return copied;
 }
 
 async function main(): Promise<void> {
@@ -229,12 +296,14 @@ async function main(): Promise<void> {
 
     if (args.truncate && write) {
       for (const plan of [...TABLES].reverse()) {
-        await target.query(`DELETE FROM \`${plan.target}\``);
+        // 表之间没有物理外键，TRUNCATE 比 DELETE 快得多
+        await target.query(`TRUNCATE TABLE \`${plan.target}\``);
       }
       console.log('[import] 已清空目标表');
     }
 
     for (const plan of TABLES) {
+      if (args.tables && !args.tables.includes(plan.target)) continue;
       const source = plan.source ?? plan.target;
       const [countRows] = await legacy.query<RowDataPacket[]>(`SELECT COUNT(*) AS n FROM \`${source}\``);
       const total = Number(countRows[0]?.n ?? 0);
@@ -243,39 +312,58 @@ async function main(): Promise<void> {
         continue;
       }
 
+      // 同实例 + 不需要逐行转换：交给服务端 INSERT…SELECT，避免大表在 Node 里过一遍
+      if (args.fastCopy && !plan.map && sameInstance(legacyUrl, targetUrl)) {
+        const started = Date.now();
+        const copied = await copyServerSide(target, plan, source, dbName(legacyUrl), dbName(targetUrl));
+        console.log(
+          `[import] ${source} → ${plan.target}: ${copied} 行（服务端复制，${((Date.now() - started) / 1000).toFixed(1)}s）`,
+        );
+        continue;
+      }
+
       let copied = 0;
       let skipped = 0;
-      let lastId = 0;
-      for (;;) {
-        const [rows] = await legacy.query<RowDataPacket[]>(
-          `SELECT * FROM \`${source}\` WHERE id > ? ORDER BY id ASC LIMIT ?`,
-          [lastId, BATCH],
-        );
-        if (rows.length === 0) break;
-        const mapped: Row[] = [];
-        for (const row of rows) {
-          lastId = Number(row.id);
-          const next = plan.map ? plan.map(row, ctx) : row;
-          if (!next) {
-            skipped += 1;
-            continue;
-          }
-          mapped.push(Object.fromEntries(plan.columns.map((column) => [column, next[column] ?? null])));
-        }
-        if (mapped.length > 0) {
-          const placeholders = mapped.map(() => `(${plan.columns.map(() => '?').join(',')})`).join(',');
-          const values = mapped.flatMap((row) => plan.columns.map((column) => row[column]));
-          await target.query(
-            `INSERT INTO \`${plan.target}\` (${plan.columns.map((c) => `\`${c}\``).join(',')}) VALUES ${placeholders}
-             ON DUPLICATE KEY UPDATE ${plan.columns
-               .filter((column) => column !== 'id')
-               .map((column) => `\`${column}\` = VALUES(\`${column}\`)`)
-               .join(',')}`,
-            values,
+      const cursor = plan.cursor ?? 'id';
+      let lastCursor: string | number = plan.cursor ? '' : 0;
+      // 整表一个事务：每批 INSERT 只提交一次，比逐批自动提交快一个量级
+      await target.beginTransaction();
+      try {
+        for (;;) {
+          const [rows] = await legacy.query<RowDataPacket[]>(
+            `SELECT * FROM \`${source}\` WHERE \`${cursor}\` > ? ORDER BY \`${cursor}\` ASC LIMIT ?`,
+            [lastCursor, BATCH],
           );
+          if (rows.length === 0) break;
+          const mapped: Row[] = [];
+          for (const row of rows) {
+            lastCursor = row[cursor] as string | number;
+            const next = plan.map ? plan.map(row, ctx) : row;
+            if (!next) {
+              skipped += 1;
+              continue;
+            }
+            mapped.push(Object.fromEntries(plan.columns.map((column) => [column, next[column] ?? null])));
+          }
+          if (mapped.length > 0) {
+            const placeholders = mapped.map(() => `(${plan.columns.map(() => '?').join(',')})`).join(',');
+            const values = mapped.flatMap((row) => plan.columns.map((column) => row[column]));
+            await target.query(
+              `INSERT INTO \`${plan.target}\` (${plan.columns.map((c) => `\`${c}\``).join(',')}) VALUES ${placeholders}
+               ON DUPLICATE KEY UPDATE ${plan.columns
+                 .filter((column) => column !== 'id')
+                 .map((column) => `\`${column}\` = VALUES(\`${column}\`)`)
+                 .join(',')}`,
+              values,
+            );
+          }
+          copied += mapped.length;
+          if (rows.length < BATCH) break;
         }
-        copied += mapped.length;
-        if (rows.length < BATCH) break;
+        await target.commit();
+      } catch (error) {
+        await target.rollback();
+        throw error;
       }
       console.log(`[import] ${source} → ${plan.target}: ${copied} 行${skipped ? `，跳过 ${skipped} 行` : ''}`);
     }
