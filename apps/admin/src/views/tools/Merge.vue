@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 
@@ -85,14 +85,10 @@ const busy = ref(false);
 const preview = ref<Preview | null>(null);
 
 const page = ref(1);
-const pageSize = ref(20);
-const filters = reactive({ keyword: '', kind: '' as '' | Kind, year: '' });
+const pageSize = 20;
+const filters = reactive({ keyword: '', kind: '' as '' | Kind });
 /** 点「查询」时把条件拍下来，输入框改动不会立刻改列表 */
-const applied = reactive({ keyword: '', kind: '' as '' | Kind, year: '' });
-
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
+const applied = reactive({ keyword: '', kind: '' as '' | Kind });
 
 const summary = computed(
   () =>
@@ -106,7 +102,7 @@ const summary = computed(
     },
 );
 
-/** 三类分组拉平成一张表：类型列区分来源，排序按「可合并 → 疑似 → 同源」 */
+/** 三类分组拉平成一份列表：类型列区分来源，顺序是「可合并 → 疑似 → 同源」 */
 const rows = computed<LightGroup[]>(() => {
   const data = preview.value;
   if (!data) return [];
@@ -115,29 +111,26 @@ const rows = computed<LightGroup[]>(() => {
 
 const filtered = computed(() => {
   const word = applied.keyword.trim();
-  const year = applied.year.trim();
   return rows.value.filter((row) => {
     if (applied.kind && row.kind !== applied.kind) return false;
     if (word && !row.name.includes(word)) return false;
-    if (year && String(row.year) !== year) return false;
     return true;
   });
 });
 
-const paged = computed(() => {
-  const start = (page.value - 1) * pageSize.value;
-  return filtered.value.slice(start, start + pageSize.value);
+const pagedGroups = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return filtered.value.slice(start, start + pageSize);
 });
-
-const checked = ref<LightGroup[]>([]);
 
 const groupId = (group: LightGroup): string => `${group.kind}:${group.key}`;
 
-const drawerVisible = ref(false);
-const activeGroup = ref<LightGroup | null>(null);
+const activeKey = ref('');
 const detail = ref<GroupDetail | null>(null);
 const detailLoading = ref(false);
 const keepId = ref('');
+
+const activeGroup = computed(() => rows.value.find((row) => groupId(row) === activeKey.value) ?? null);
 
 const distinctNames = computed(() => new Set((detail.value?.members ?? []).map((item) => item.name)));
 
@@ -199,15 +192,34 @@ const maxEpisodes = computed(() => {
   return max;
 });
 
+async function loadDetail(group: LightGroup): Promise<void> {
+  detailLoading.value = true;
+  detail.value = null;
+  keepId.value = '';
+  try {
+    const data = await api.post<GroupDetail>('/vod-merge/group', { key: group.key, kind: group.kind });
+    detail.value = data;
+    const sorted = [...data.members].sort((a, b) => b.playCount - a.playCount || compareId(a.id, b.id));
+    keepId.value = sorted[0]?.id ?? '';
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '加载失败');
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   try {
     preview.value = await api.post<Preview>('/vod-merge/preview');
-    checked.value = [];
-    if (activeGroup.value) {
-      // 合并/忽略之后这组可能已经不存在，抽屉关掉避免停在旧数据上
-      const alive = rows.value.some((row) => groupId(row) === groupId(activeGroup.value!));
-      if (!alive) closeDrawer();
+    const alive = rows.value.find((row) => groupId(row) === activeKey.value);
+    const next = alive ?? pagedGroups.value[0] ?? filtered.value[0];
+    if (next) {
+      activeKey.value = groupId(next);
+      await loadDetail(next);
+    } else {
+      activeKey.value = '';
+      detail.value = null;
     }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载失败');
@@ -219,54 +231,19 @@ async function load(): Promise<void> {
 function search(): void {
   applied.keyword = filters.keyword;
   applied.kind = filters.kind;
-  applied.year = filters.year;
   page.value = 1;
 }
 
 function reset(): void {
   filters.keyword = '';
   filters.kind = '';
-  filters.year = '';
   search();
 }
 
-function onPageChange(value: number): void {
-  page.value = value;
-}
-
-function onSizeChange(size: number): void {
-  pageSize.value = size;
-  page.value = 1;
-}
-
-function onSelectionChange(list: LightGroup[]): void {
-  checked.value = list;
-}
-
-function closeDrawer(): void {
-  drawerVisible.value = false;
-  activeGroup.value = null;
-  detail.value = null;
-  keepId.value = '';
-}
-
-async function open(group: LightGroup): Promise<void> {
-  activeGroup.value = group;
-  detail.value = null;
-  keepId.value = '';
-  drawerVisible.value = true;
-  detailLoading.value = true;
-  try {
-    const data = await api.post<GroupDetail>('/vod-merge/group', { key: group.key, kind: group.kind });
-    detail.value = data;
-    const sorted = [...data.members].sort((a, b) => b.playCount - a.playCount || compareId(a.id, b.id));
-    keepId.value = sorted[0]?.id ?? '';
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '加载失败');
-    closeDrawer();
-  } finally {
-    detailLoading.value = false;
-  }
+function pick(group: LightGroup): void {
+  if (groupId(group) === activeKey.value) return;
+  activeKey.value = groupId(group);
+  void loadDetail(group);
 }
 
 async function mergeCurrent(): Promise<void> {
@@ -292,7 +269,6 @@ async function mergeCurrent(): Promise<void> {
       keepId: keep.id,
     });
     ElMessage.success(`已合并 ${res.merged} 条`);
-    closeDrawer();
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '合并失败');
@@ -301,7 +277,10 @@ async function mergeCurrent(): Promise<void> {
   }
 }
 
-async function ignoreOne(group: LightGroup): Promise<void> {
+async function ignoreCurrent(): Promise<void> {
+  const group = activeGroup.value;
+  if (!group) return;
+
   try {
     await ElMessageBox.confirm('把这组标记为「不是重复」，以后不再出现在列表里，确定吗？', '忽略这组', {
       type: 'info',
@@ -316,7 +295,6 @@ async function ignoreOne(group: LightGroup): Promise<void> {
   try {
     await api.post('/vod-merge/ignore', { key: group.key, kind: group.kind, ignored: true });
     ElMessage.success('已忽略这组');
-    if (activeGroup.value && groupId(activeGroup.value) === groupId(group)) closeDrawer();
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '操作失败');
@@ -349,91 +327,9 @@ async function mergeAll(): Promise<void> {
   try {
     const res = await api.post<{ groups: number; merged: number }>('/vod-merge/batch', { confirm: true });
     ElMessage.success(`已合并 ${res.groups} 组，删除 ${res.merged} 条`);
-    closeDrawer();
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '合并失败');
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function batchMerge(): Promise<void> {
-  const keys = checked.value.map((group) => ({ key: group.key, kind: group.kind }));
-  if (keys.length === 0) return;
-
-  let plan: { groups: number; vods: number; skipped: number };
-  try {
-    plan = await api.post<{ groups: number; vods: number; skipped: number }>('/vod-merge/batch-keys', {
-      keys,
-      action: 'merge',
-      confirm: false,
-    });
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '操作失败');
-    return;
-  }
-
-  if (plan.groups === 0) {
-    ElMessage.warning(`所选 ${keys.length} 组的年份都冲突，不能自动合并`);
-    return;
-  }
-
-  const skipText = plan.skipped > 0 ? `，另有 ${plan.skipped} 组年份冲突会跳过` : '';
-  try {
-    await ElMessageBox.confirm(
-      `将合并 ${plan.groups} 组、删除 ${plan.vods} 条重复影片${skipText}，确定继续吗？`,
-      '合并所选',
-      { type: 'warning', confirmButtonText: '合并', cancelButtonText: '取消' },
-    );
-  } catch {
-    return;
-  }
-
-  busy.value = true;
-  try {
-    const res = await api.post<{ groups: number; merged: number; skipped: number }>('/vod-merge/batch-keys', {
-      keys,
-      action: 'merge',
-      confirm: true,
-    });
-    const after = res.skipped > 0 ? `，跳过 ${res.skipped} 组` : '';
-    ElMessage.success(`已合并 ${res.groups} 组，删除 ${res.merged} 条${after}`);
-    closeDrawer();
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '合并失败');
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function batchIgnore(): Promise<void> {
-  const keys = checked.value.map((group) => ({ key: group.key, kind: group.kind }));
-  if (keys.length === 0) return;
-
-  try {
-    await ElMessageBox.confirm(
-      `把这 ${keys.length} 组标记为「不是重复」，之后不再出现在列表里，确定吗？`,
-      '忽略所选',
-      { type: 'warning', confirmButtonText: '忽略', cancelButtonText: '取消' },
-    );
-  } catch {
-    return;
-  }
-
-  busy.value = true;
-  try {
-    const res = await api.post<{ ignored: number }>('/vod-merge/batch-keys', {
-      keys,
-      action: 'ignore',
-      confirm: true,
-    });
-    ElMessage.success(`已忽略 ${res.ignored} 组`);
-    closeDrawer();
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '忽略失败');
   } finally {
     busy.value = false;
   }
@@ -441,18 +337,6 @@ async function batchIgnore(): Promise<void> {
 
 onMounted(() => {
   void load();
-  if (wrapRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-    });
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 </script>
 
@@ -472,23 +356,13 @@ onBeforeUnmount(() => {
           <el-option label="疑似重复" value="suspect" />
           <el-option label="同源同 ID" value="same" />
         </el-select>
-        <el-input
-          v-model="filters.year"
-          placeholder="年份"
-          clearable
-          style="width: 110px"
-          @keyup.enter="search"
-        />
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
-      </div>
-    </el-card>
-
-    <el-card shadow="never" class="table-card">
-      <div class="toolbar">
+        <span class="hint right">
+          共 {{ filtered.length }} 组 · 合并后减少 {{ summary.autoVods }} 条影片
+          <template v-if="summary.conflictGroups"> · 年份冲突 {{ summary.conflictGroups }} 组已排除</template>
+        </span>
         <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button :disabled="checked.length === 0 || busy" @click="batchMerge">合并所选</el-button>
-        <el-button :disabled="checked.length === 0 || busy" @click="batchIgnore">忽略所选</el-button>
         <el-button
           type="primary"
           :disabled="summary.autoGroups === 0 || busy"
@@ -497,160 +371,134 @@ onBeforeUnmount(() => {
         >
           一键合并可合并的
         </el-button>
-        <span class="hint right">
-          共 {{ filtered.length }} 组 · 合并后减少 {{ summary.autoVods }} 条影片
-          <template v-if="summary.conflictGroups"> · 年份冲突 {{ summary.conflictGroups }} 组已排除</template>
-          <template v-if="summary.ignored"> · 已忽略 {{ summary.ignored }} 组</template>
-        </span>
       </div>
-
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="paged"
-          border
-          stripe
-          :height="tableHeight"
-          row-key="key"
-          @selection-change="onSelectionChange"
-        >
-          <el-table-column type="selection" width="44" />
-          <el-table-column label="片名" min-width="260" show-overflow-tooltip>
-            <template #default="{ row }">
-              <span class="name">{{ row.name }}</span>
-              <el-tag
-                v-if="row.matchedBy === 'actor'"
-                type="success"
-                size="small"
-                effect="plain"
-                class="name-tag"
-              >
-                演员一致 {{ Math.round((row.actorOverlap ?? 0) * 100) }}%
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="年份" width="90" align="center">
-            <template #default="{ row }">{{ row.year > 0 ? row.year : '未知' }}</template>
-          </el-table-column>
-          <el-table-column label="类型" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag :type="kindTagType(row.kind)" size="small" effect="plain">
-                {{ kindText(row.kind) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="count" label="条数" width="80" align="center" />
-          <el-table-column prop="playTotal" label="线路" width="80" align="center" />
-          <el-table-column label="操作" width="150" align="center">
-            <template #default="{ row }">
-              <el-button link type="primary" @click="open(row)">查看</el-button>
-              <el-button link type="danger" :disabled="busy" @click="ignoreOne(row)">忽略</el-button>
-            </template>
-          </el-table-column>
-          <template #empty>
-            <div class="empty">没有待处理的重复影片</div>
-          </template>
-        </el-table>
-      </div>
-
-      <el-pagination
-        class="pager"
-        layout="total, sizes, prev, pager, next"
-        :total="filtered.length"
-        :page-size="pageSize"
-        :current-page="page"
-        :page-sizes="[20, 50, 100]"
-        @current-change="onPageChange"
-        @size-change="onSizeChange"
-      />
     </el-card>
 
-    <el-drawer v-model="drawerVisible" size="620px" :before-close="closeDrawer" destroy-on-close>
-      <template #header>
-        <div class="drawer-head">
-          <span class="drawer-title">{{ activeGroup?.name }}</span>
-          <el-tag v-if="activeGroup" :type="kindTagType(activeGroup.kind)" size="small" effect="plain">
-            {{ kindText(activeGroup.kind) }}
-          </el-tag>
-          <el-tag
-            v-if="activeGroup?.matchedBy === 'actor'"
-            type="success"
-            size="small"
-            effect="plain"
-          >
-            演员一致 {{ Math.round((activeGroup.actorOverlap ?? 0) * 100) }}%
-          </el-tag>
-        </div>
-      </template>
-
-      <div v-loading="detailLoading" class="drawer-body">
-        <p class="drawer-hint">勾选要保留的那条，其余并入后删除（线路会搬过来）。</p>
-
-        <div class="members">
-          <label
-            v-for="member in detail?.members ?? []"
-            :key="member.id"
-            class="member"
-            :class="{ chosen: member.id === keepId }"
-          >
-            <el-radio v-model="keepId" :value="member.id" class="member-radio">
-              <span class="sr-only">保留这条</span>
-            </el-radio>
-
-            <img class="cover" :src="member.cover || COVER_PLACEHOLDER" alt="" @error="onCoverError" />
-
-            <div class="member-main">
-              <div class="member-name">
-                <span v-for="(mark, index) in marks(member.name)" :key="index" :class="mark.cls">{{ mark.ch }}</span>
+    <el-card shadow="never" class="table-card">
+      <div class="split">
+        <div class="pane-list">
+          <div class="list-body">
+            <div
+              v-for="group in pagedGroups"
+              :key="groupId(group)"
+              class="group"
+              :class="{ on: groupId(group) === activeKey }"
+              @click="pick(group)"
+            >
+              <div class="group-name">
+                <span class="g-name">{{ group.name }}</span>
+                <el-tag :type="kindTagType(group.kind)" size="small" effect="plain" class="g-tag">
+                  {{ kindText(group.kind) }}
+                </el-tag>
               </div>
-              <div class="member-meta">
-                <span><i>ID</i> {{ member.id }}</span>
-                <span><i>年份</i> {{ yearText(member) }}</span>
-                <span><i>分类</i> {{ member.category || '—' }}</span>
-                <span><i>地区</i> {{ member.area || '—' }}</span>
-                <span><i>语言</i> {{ member.lang || '—' }}</span>
-                <span><i>总集数</i> {{ member.episodeCount || '—' }}</span>
-                <span><i>状态</i> {{ statusText(member.status) }}</span>
-                <span><i>演员</i> {{ firstActors(member.actor) || '—' }}</span>
-                <span class="muted"><i>采集</i> {{ member.collectedAt }}</span>
-              </div>
-              <div class="member-lines">
-                <span
-                  v-for="line in member.lines"
-                  :key="`${line.sourceId}-${line.sourceFrom}`"
-                  class="line-chip"
-                  :class="{ best: (line.episodes ?? 0) > 0 && line.episodes === maxEpisodes }"
-                >
-                  {{ line.sourceName }} · {{ line.sourceFrom }} · <b>{{ line.episodes ?? 0 }}</b> 集
-                  <template v-if="line.updatedAt"> · 更新 {{ line.updatedAt.slice(5) }}</template>
+              <div class="group-meta">
+                <span>{{ group.count }} 条</span>
+                <span>{{ group.playTotal }} 条线路</span>
+                <span v-if="group.matchedBy === 'actor'" class="actor">
+                  演员一致 {{ Math.round((group.actorOverlap ?? 0) * 100) }}%
                 </span>
-                <span v-if="member.lines.length === 0" class="muted">没有线路</span>
+              </div>
+            </div>
+            <div v-if="pagedGroups.length === 0" class="list-empty">没有待处理的重复影片</div>
+          </div>
+
+          <div class="list-foot">
+            <span>共 {{ filtered.length }} 组</span>
+            <el-pagination
+              v-model:current-page="page"
+              class="mini-pager"
+              layout="prev, pager, next"
+              :page-size="pageSize"
+              :total="filtered.length"
+              small
+            />
+          </div>
+        </div>
+
+        <div v-loading="detailLoading" class="pane-detail">
+          <template v-if="activeGroup">
+            <div class="detail-head">
+              <span class="detail-title">{{ activeGroup.name }}</span>
+              <el-tag :type="kindTagType(activeGroup.kind)" size="small" effect="plain">
+                {{ kindText(activeGroup.kind) }}
+              </el-tag>
+              <el-tag v-if="activeGroup.matchedBy === 'actor'" type="success" size="small" effect="plain">
+                演员一致 {{ Math.round((activeGroup.actorOverlap ?? 0) * 100) }}%
+              </el-tag>
+              <span class="sub">{{ detail?.members.length ?? 0 }} 条影片 · {{ detail?.playTotal ?? 0 }} 条线路</span>
+            </div>
+
+            <div class="detail-body">
+              <div
+                v-for="member in detail?.members ?? []"
+                :key="member.id"
+                class="member"
+                :class="{ chosen: member.id === keepId }"
+                @click="keepId = member.id"
+              >
+                <el-radio v-model="keepId" :value="member.id" class="member-radio">
+                  <span class="sr-only">保留这条</span>
+                </el-radio>
+
+                <img class="cover" :src="member.cover || COVER_PLACEHOLDER" alt="" @error="onCoverError" />
+
+                <div class="member-main">
+                  <div class="member-name">
+                    <span v-for="(mark, index) in marks(member.name)" :key="index" :class="mark.cls">{{ mark.ch }}</span>
+                  </div>
+                  <div class="member-meta">
+                    <span><i>ID</i> {{ member.id }}</span>
+                    <span><i>年份</i> {{ yearText(member) }}</span>
+                    <span><i>分类</i> {{ member.category || '—' }}</span>
+                    <span><i>地区</i> {{ member.area || '—' }}</span>
+                    <span><i>语言</i> {{ member.lang || '—' }}</span>
+                    <span><i>总集数</i> {{ member.episodeCount || '—' }}</span>
+                    <span><i>状态</i> {{ statusText(member.status) }}</span>
+                    <span><i>演员</i> {{ firstActors(member.actor) || '—' }}</span>
+                    <span class="muted"><i>采集</i> {{ member.collectedAt }}</span>
+                  </div>
+                  <div class="member-lines">
+                    <span
+                      v-for="line in member.lines"
+                      :key="`${line.sourceId}-${line.sourceFrom}`"
+                      class="line-chip"
+                      :class="{ best: (line.episodes ?? 0) > 0 && line.episodes === maxEpisodes }"
+                    >
+                      {{ line.sourceName }} · {{ line.sourceFrom }} · <b>{{ line.episodes ?? 0 }}</b> 集
+                      <template v-if="line.updatedAt"> · 更新 {{ line.updatedAt.slice(5) }}</template>
+                    </span>
+                    <span v-if="member.lines.length === 0" class="muted">没有线路</span>
+                  </div>
+                </div>
+
+                <span v-if="member.id === keepId" class="keep-badge">保留</span>
+              </div>
+
+              <div v-if="!detailLoading && (detail?.members.length ?? 0) === 0" class="list-empty">
+                这组影片已经不存在了
               </div>
             </div>
 
-            <span v-if="member.id === keepId" class="keep-badge">保留</span>
-          </label>
-        </div>
+            <div class="detail-foot">
+              <span class="left">合并后删除 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条</span>
+              <span class="right">
+                <el-button :disabled="busy" @click="ignoreCurrent">不是重复，忽略</el-button>
+                <el-button type="primary" :loading="busy" :disabled="!detail" @click="mergeCurrent">
+                  合并并删除其余 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
+                </el-button>
+              </span>
+            </div>
+          </template>
 
-        <p v-if="!detailLoading && (detail?.members.length ?? 0) === 0" class="empty">这组影片已经不存在了</p>
+          <div v-else class="list-empty center">左侧没有待处理的重复影片</div>
+        </div>
       </div>
-
-      <template #footer>
-        <div class="drawer-footer">
-          <el-button :disabled="busy || !activeGroup" @click="activeGroup && ignoreOne(activeGroup)">
-            不是重复，忽略
-          </el-button>
-          <el-button type="primary" :loading="busy" :disabled="!detail" @click="mergeCurrent">
-            合并并删除其余 {{ Math.max((detail?.members.length ?? 1) - 1, 0) }} 条
-          </el-button>
-        </div>
-      </template>
-    </el-drawer>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
-/* 版式与采集源站一致：查询卡片 + 表格卡片 + 分页，各自持有样式，不抽公共模板 */
+/* 版式：查询卡片 + 一块卡片内左右分栏（左分组列表 / 右成员详情），样式只在本页，不抽公共模板 */
 .page {
   height: 100%;
   display: flex;
@@ -667,6 +515,16 @@ onBeforeUnmount(() => {
   align-items: center;
 }
 
+.hint {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.search-bar .right {
+  margin-left: auto;
+  margin-right: 4px;
+}
+
 .table-card {
   flex: 1;
   min-height: 0;
@@ -679,56 +537,128 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 0;
 }
 
-.toolbar {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.hint {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.toolbar .right {
-  margin-left: auto;
-}
-
-.table-wrap {
+.split {
   flex: 1;
   min-height: 0;
+  display: flex;
 }
 
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
+.pane-list {
+  width: 330px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--el-border-color-lighter);
 }
 
-.name {
-  color: var(--el-text-color-primary);
+.list-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
-.name-tag {
-  margin-left: 8px;
+.group {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.empty {
-  color: var(--el-text-color-secondary);
-  font-size: 13px;
+.group:hover {
+  background: var(--el-fill-color-light);
 }
 
-.drawer-head {
+.group.on {
+  background: var(--el-color-primary-light-9);
+  box-shadow: inset 3px 0 0 var(--el-color-primary);
+}
+
+/* 标题与第二行都从同一个左边距起排，标签推到行尾 */
+.group-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
-.drawer-title {
-  font-size: 16px;
+.g-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--el-text-color-primary);
+}
+
+.g-tag {
+  margin-left: auto;
+  flex: none;
+}
+
+.group-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.actor {
+  color: var(--el-color-success);
+}
+
+.list-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.mini-pager {
+  margin-left: auto;
+}
+
+.list-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.list-empty.center {
+  margin: auto;
+}
+
+.pane-detail {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  min-width: 0;
+}
+
+.detail-title {
+  font-size: 15px;
   font-weight: 600;
   color: var(--el-text-color-primary);
   overflow: hidden;
@@ -736,19 +666,41 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
 }
 
-.drawer-body {
-  min-height: 160px;
+.detail-head .sub {
+  margin-left: auto;
+  flex: none;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-.drawer-hint {
-  margin: 0 0 12px;
-  font-size: 13px;
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+.detail-foot .left {
+  font-size: 12px;
   color: var(--el-text-color-secondary);
 }
 
-.members {
+.detail-foot .right {
+  margin-left: auto;
   display: flex;
-  flex-direction: column;
   gap: 10px;
 }
 
@@ -858,18 +810,15 @@ onBeforeUnmount(() => {
   color: var(--el-color-primary);
 }
 
+/* 「保留」在卡片行尾，不跟名称挤在一起 */
 .keep-badge {
   flex: none;
+  margin-left: auto;
   font-size: 12px;
   color: var(--el-color-primary);
 }
 
 .muted {
   color: var(--el-text-color-secondary);
-}
-
-.drawer-footer {
-  display: flex;
-  justify-content: flex-end;
 }
 </style>
