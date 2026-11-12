@@ -17,6 +17,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdFeatureModule } from './modules/ad-feature/ad-feature.module';
 import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignore.module';
+import { VodMergeRuleModule } from './modules/vod-merge-rule/vod-merge-rule.module';
 import { SourceRuleModule } from './modules/source-rule/source-rule.module';
 import { CoverCheckModule } from './modules/cover-check/cover-check.module';
 import { CollectTaskModule } from './modules/collect-task/collect-task.module';
@@ -75,6 +76,7 @@ import { CollectModule } from './modules/collect/collect.module';
     PlayLineModule,
     AdFeatureModule,
     VodMergeIgnoreModule,
+    VodMergeRuleModule,
     SourceRuleModule,
     CoverCheckModule,
     CollectTaskModule,

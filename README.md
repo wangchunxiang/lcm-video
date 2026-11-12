@@ -49,7 +49,8 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ```
 
 空库不用手工建表：服务端启动时自动执行未应用的迁移（`migrationsRun: true`），
-首个迁移是 baseline，按实体建出 15 张表并带上表注释与字段注释；已经建好的库只会跳过。
+首个迁移是 baseline，按实体建出 15 张表并带上表注释与字段注释；之后按需增量迁移
+（目前新增了 `lcm_vod_merge_rule`），已经建好的库只会跳过。
 老库（有表、没有 `migrations` 记录，早期 `db:init` 建的）启动时会被自动登记为已迁移，不会重复建表。
 
 首次建库后没有管理员账号：`npm run db:seed` 可导入 `apps/server/src/database/seeds/*.sql`，

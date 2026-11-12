@@ -1,7 +1,9 @@
+import { Logger } from '@nestjs/common';
 import { hostOf } from '@lcm/shared';
 import type { Repository } from 'typeorm';
 import type { CoverCheckEntity } from '../cover-check/cover-check.entity';
 import type { SettingEntity } from '../setting/setting.entity';
+import type { MergeRuleEntity } from '../vod-merge-rule/vod-merge-rule.entity';
 
 /** 同一条影片被多个采集源命中时，写库前对每个字段做取舍 */
 export type MergeMode = 'off' | 'merge';
@@ -50,13 +52,13 @@ export const MERGE_FIELDS: MergeFieldDef[] = [
   { key: 'area', label: '地区', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
   { key: 'lang', label: '语言', strategies: ['nonempty', 'new', 'keep'], hint: '默认旧值空才补' },
   { key: 'releaseDate', label: '上映日期', strategies: ['date', 'nonempty', 'new', 'keep'], hint: '旧值空或旧值不是日期、新值是日期时才替换' },
+  { key: 'year', label: '年份', strategies: ['keep', 'new'], hint: '默认旧值有值就保留；选「总是覆盖」时新值非 0 才替换' },
 ];
 
 /** 不参与合并的字段，页面上只做说明 */
 export const FIXED_FIELDS = [
   { label: '片名 / 判重键', hint: 'name、nameHash、nameHashLoose' },
   { label: '分类 / 状态', hint: 'categoryId、categoryPid、status、createdAt' },
-  { label: '年份', hint: '旧值有值就保留，旧值为 0 才补' },
 ];
 
 export interface MergeConfig {
@@ -69,14 +71,19 @@ export const DEFAULT_MERGE_CONFIG: MergeConfig = {
   fields: Object.fromEntries(MERGE_FIELDS.map((field) => [field.key, field.strategies[0]])) as Record<string, MergeStrategy>,
 };
 
-/** 采集入库规则在 lcm_setting 里的键名 */
+/** 旧版整份规则在 lcm_setting 里的键名；只读兜底，新数据一律写 lcm_vod_merge_rule */
 export const MERGE_CONFIG_KEY = 'merge_rules';
+
+/** 整表开关在规则表里的键名 */
+export const MERGE_MODE_KEY = 'mode';
+
+const logger = new Logger('MergeRule');
 
 const fieldOf = (key: string): MergeFieldDef | undefined => MERGE_FIELDS.find((field) => field.key === key);
 
 export type NormalizedMerge = { ok: true; config: MergeConfig } | { ok: false; msg: string };
 
-/** 校验并补全一份配置（接口入参、库里读出的 JSON 都走这里） */
+/** 校验并补全一份配置（接口入参、旧版 JSON 迁移都走这里） */
 export function normalizeMergeConfig(raw: unknown): NormalizedMerge {
   const config: MergeConfig = {
     mode: DEFAULT_MERGE_CONFIG.mode,
@@ -106,8 +113,36 @@ export function normalizeMergeConfig(raw: unknown): NormalizedMerge {
   return { ok: true, config };
 }
 
-/** 读一次入库规则；库里没有或解析失败时回落到默认配置 */
-export async function loadMergeConfig(settingRepository: Repository<SettingEntity>): Promise<MergeConfig> {
+/** 把库里的行拼成一份配置：缺行用默认值，非法行忽略并告警，未知行跳过。 */
+export function configFromRows(
+  rows: Array<Pick<MergeRuleEntity, 'ruleKey' | 'ruleValue'>>,
+): MergeConfig {
+  const config: MergeConfig = {
+    mode: DEFAULT_MERGE_CONFIG.mode,
+    fields: { ...DEFAULT_MERGE_CONFIG.fields },
+  };
+  for (const row of rows) {
+    if (row.ruleKey === MERGE_MODE_KEY) {
+      if (row.ruleValue === 'off' || row.ruleValue === 'merge') config.mode = row.ruleValue;
+      else logger.warn(`入库规则 mode 的取值不合法（${row.ruleValue}），已回落默认值`);
+      continue;
+    }
+    const field = fieldOf(row.ruleKey);
+    if (field === undefined) {
+      logger.warn(`入库规则出现未知字段 ${row.ruleKey}，已忽略`);
+      continue;
+    }
+    if (!field.strategies.includes(row.ruleValue as MergeStrategy)) {
+      logger.warn(`入库规则 ${field.key} 的取值不合法（${row.ruleValue}），已回落默认值`);
+      continue;
+    }
+    config.fields[field.key] = row.ruleValue as MergeStrategy;
+  }
+  return config;
+}
+
+/** 旧版整份 JSON：解析成功就迁移一次，失败只告警、不阻塞采集。 */
+async function loadLegacyConfig(settingRepository: Repository<SettingEntity>): Promise<MergeConfig> {
   const row = await settingRepository.findOne({
     where: { key: MERGE_CONFIG_KEY },
     select: { value: true },
@@ -116,19 +151,50 @@ export async function loadMergeConfig(settingRepository: Repository<SettingEntit
   if (raw.trim() === '') return DEFAULT_MERGE_CONFIG;
   try {
     const parsed = normalizeMergeConfig(JSON.parse(raw));
-    return parsed.ok ? parsed.config : DEFAULT_MERGE_CONFIG;
+    if (!parsed.ok) {
+      logger.warn(`lcm_setting.${MERGE_CONFIG_KEY} 不合法（${parsed.msg}），已使用默认入库规则`);
+      return DEFAULT_MERGE_CONFIG;
+    }
+    return parsed.config;
   } catch {
+    logger.warn(`lcm_setting.${MERGE_CONFIG_KEY} 不是合法 JSON，已使用默认入库规则`);
     return DEFAULT_MERGE_CONFIG;
   }
 }
 
+/**
+ * 读一次入库规则。
+ *
+ * 表为空时（新库或刚升级）按默认值落库；升级前存在 `lcm_setting.merge_rules` 的，
+ * 解析一次后迁移成行再返回。之后所有读取都只走 `lcm_vod_merge_rule`。
+ */
+export async function loadMergeConfig(
+  ruleRepository: Repository<MergeRuleEntity>,
+  settingRepository?: Repository<SettingEntity>,
+): Promise<MergeConfig> {
+  const rows = await ruleRepository.find({ select: { ruleKey: true, ruleValue: true } });
+  if (rows.length === 0) {
+    const initial =
+      settingRepository === undefined ? DEFAULT_MERGE_CONFIG : await loadLegacyConfig(settingRepository);
+    await saveMergeConfig(ruleRepository, initial);
+    return initial;
+  }
+  return configFromRows(rows);
+}
+
+/** 整份写回：一次 upsert，`rule_key` 是唯一键。 */
 export async function saveMergeConfig(
-  settingRepository: Repository<SettingEntity>,
+  ruleRepository: Repository<MergeRuleEntity>,
   config: MergeConfig,
 ): Promise<void> {
-  const value = JSON.stringify({ mode: config.mode, fields: config.fields });
-  // lcm_setting 上 `name` 有唯一索引：走 ON DUPLICATE KEY UPDATE，和原来的 upsert 等价且是原子的
-  await settingRepository.upsert({ key: MERGE_CONFIG_KEY, value, updatedAt: new Date() }, ['key']);
+  const rows: Array<Pick<MergeRuleEntity, 'ruleKey' | 'ruleValue'>> = [
+    { ruleKey: MERGE_MODE_KEY, ruleValue: config.mode },
+    ...MERGE_FIELDS.map((field) => ({
+      ruleKey: field.key,
+      ruleValue: config.fields[field.key] ?? field.strategies[0] ?? 'keep',
+    })),
+  ];
+  await ruleRepository.upsert(rows, ['ruleKey']);
 }
 
 /** 图片体检判定为失效的封面域名，采集时会顺带换掉这些封面 */
@@ -316,7 +382,11 @@ export function mergeVodContent(
     if (!oldIsDate || dateStrategy === 'nonempty') set('releaseDate', next.releaseDate);
   }
 
-  set('year', old.year > 0 ? old.year : next.year);
+  const yearStrategy = config.fields.year ?? 'keep';
+  set(
+    'year',
+    yearStrategy === 'new' ? (next.year > 0 ? next.year : old.year) : old.year > 0 ? old.year : next.year,
+  );
 
   return patch;
 }

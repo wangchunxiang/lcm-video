@@ -14,6 +14,7 @@ import { parseVodPage } from '../collect/parser';
 import { processPage } from '../collect/writer';
 import type { CategoryInfo, FailItem, MappingInfo, SourceVod } from '../collect/types';
 import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { MergeRuleEntity } from '../vod-merge-rule/vod-merge-rule.entity';
 import { SettingEntity } from '../setting/setting.entity';
 
 /** 列表行：影片 + 分类名 + 线路统计。 */
@@ -41,6 +42,7 @@ export class VodService extends AppCrudService<VodEntity> {
     @InjectRepository(VodEntity) repository: Repository<VodEntity>,
     @InjectRepository(CategoryEntity) private readonly categoryRepository: Repository<CategoryEntity>,
     @InjectRepository(SettingEntity) private readonly settingRepository: Repository<SettingEntity>,
+    @InjectRepository(MergeRuleEntity) private readonly mergeRuleRepository: Repository<MergeRuleEntity>,
     @InjectRepository(CoverCheckEntity) private readonly coverCheckRepository: Repository<CoverCheckEntity>,
     private readonly dataSource: DataSource,
   ) {
@@ -261,7 +263,7 @@ export class VodService extends AppCrudService<VodEntity> {
       categories: await this.loadCategoryMap(),
       forceVodId: dto.id,
       keepCollectedAt: true,
-      merge: await loadMergeConfig(this.settingRepository),
+      merge: await loadMergeConfig(this.mergeRuleRepository, this.settingRepository),
       brokenCoverHosts: await loadBrokenCoverHosts(this.coverCheckRepository),
     });
 

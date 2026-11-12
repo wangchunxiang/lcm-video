@@ -8,6 +8,7 @@ import { CollectTaskLogDetailEntity } from '../collect-task-log-detail/collect-t
 import { CollectTaskLogEntity } from '../collect-task-log/collect-task-log.entity';
 import { CollectTaskEntity } from '../collect-task/collect-task.entity';
 import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { MergeRuleEntity } from '../vod-merge-rule/vod-merge-rule.entity';
 import { SettingEntity } from '../setting/setting.entity';
 import { CollectClient } from './client';
 import { parseClassList, parseVodPage } from './parser';
@@ -89,6 +90,8 @@ export class CollectRunner {
     private readonly settingRepository: Repository<SettingEntity>,
     @InjectRepository(CoverCheckEntity)
     private readonly coverCheckRepository: Repository<CoverCheckEntity>,
+    @InjectRepository(MergeRuleEntity)
+    private readonly mergeRuleRepository: Repository<MergeRuleEntity>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
@@ -386,7 +389,7 @@ export class CollectRunner {
 
     const mapping = await this.loadMapping(context.sourceId);
     const categories = await this.loadCategories();
-    const merge = await loadMergeConfig(this.settingRepository);
+    const merge = await loadMergeConfig(this.mergeRuleRepository, this.settingRepository);
     const brokenCoverHosts = await loadBrokenCoverHosts(this.coverCheckRepository);
     const hours = RANGE_HOURS[context.rangeType];
     const since = hours === undefined ? undefined : Math.floor(Date.now() / 1000) - hours * 3600;

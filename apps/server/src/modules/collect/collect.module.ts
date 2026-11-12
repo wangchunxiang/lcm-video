@@ -7,6 +7,7 @@ import { CollectTaskLogDetailEntity } from '../collect-task-log-detail/collect-t
 import { CollectTaskLogEntity } from '../collect-task-log/collect-task-log.entity';
 import { CollectTaskEntity } from '../collect-task/collect-task.entity';
 import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { MergeRuleEntity } from '../vod-merge-rule/vod-merge-rule.entity';
 import { PlayLineEntity } from '../play-line/play-line.entity';
 import { SettingEntity } from '../setting/setting.entity';
 import { SourceRuleEntity } from '../source-rule/source-rule.entity';
@@ -27,6 +28,7 @@ import { CollectScheduler } from './scheduler';
       CategoryEntity,
       SettingEntity,
       CoverCheckEntity,
+      MergeRuleEntity,
       SourceRuleEntity,
       PlayLineEntity,
       VodEntity,
