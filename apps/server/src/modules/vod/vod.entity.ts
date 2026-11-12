@@ -133,9 +133,9 @@ export class VodEntity extends AppBaseEntity {
   @Column({
     name: 'release_date',
     type: 'varchar',
-    length: 20,
+    length: 255,
     default: '',
-    comment: '上映日期，源站原文（Y-m-d / Y）',
+    comment: '上映日期，源站原文，不做规范化',
   })
   releaseDate!: string;
 

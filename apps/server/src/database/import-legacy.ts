@@ -65,19 +65,6 @@ const statusOfTask = (value: number): number => {
   }
 };
 
-/** 上映日期旧列是 varchar(255)，新列 varchar(20)：能认出年月日就规范化，否则截断 */
-export function normalizeReleaseDate(value: unknown): string {
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-  const match = text.match(/(\d{4})\s*[-./年]\s*(\d{1,2})\s*[-./月]\s*(\d{1,2})/);
-  if (match) {
-    return `${match[1]}-${match[2]!.padStart(2, '0')}-${match[3]!.padStart(2, '0')}`;
-  }
-  const yearOnly = text.match(/^(\d{4})$/);
-  if (yearOnly) return yearOnly[1]!;
-  return text.slice(0, 20);
-}
-
 const TABLES: readonly TablePlan[] = [
   {
     target: 'lcm_category',
@@ -108,8 +95,9 @@ const TABLES: readonly TablePlan[] = [
       'collected_at',
     ],
     map: (row) => {
+      // 只丢掉新库没有的 letter 列；上映日期按源站原文搬，不做规范化
       const { letter: _letter, ...rest } = row;
-      return { ...rest, release_date: normalizeReleaseDate(row.release_date) };
+      return rest;
     },
   },
   {

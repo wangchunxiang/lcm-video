@@ -62,7 +62,7 @@ export class CreateVodDTO {
 
   @IsOptional()
   @IsString()
-  @MaxLength(20, { message: '上映日期最长 20 个字符' })
+  @MaxLength(255, { message: '上映日期最长 255 个字符' })
   releaseDate?: string;
 
   @IsOptional()
@@ -145,7 +145,7 @@ export class UpdateVodDTO {
 
   @IsOptional()
   @IsString()
-  @MaxLength(20)
+  @MaxLength(255)
   releaseDate?: string;
 
   @IsOptional()
