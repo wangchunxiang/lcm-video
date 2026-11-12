@@ -128,6 +128,21 @@ const detail = ref<GroupDetail | null>(null);
 const detailLoading = ref(false);
 const keepId = ref('');
 
+/** 左栏多选：存 `kind:key`，批量忽略/合并用 */
+const selected = ref<string[]>([]);
+const selectedGroups = computed(() => rows.value.filter((row) => selected.value.includes(groupId(row))));
+
+function isSelected(group: LightGroup): boolean {
+  return selected.value.includes(groupId(group));
+}
+
+function toggleSelect(group: LightGroup): void {
+  const id = groupId(group);
+  selected.value = selected.value.includes(id)
+    ? selected.value.filter((item) => item !== id)
+    : [...selected.value, id];
+}
+
 const activeGroup = computed(() => rows.value.find((row) => groupId(row) === activeKey.value) ?? null);
 
 const distinctNames = computed(() => new Set((detail.value?.members ?? []).map((item) => item.name)));
@@ -210,6 +225,9 @@ async function load(): Promise<void> {
   loading.value = true;
   try {
     preview.value = await api.post<Preview>('/vod-merge/preview');
+    // 数据刷新后清掉已经不存在的勾选，避免批量操作打到旧分组上
+    const aliveKeys = new Set(rows.value.map((row) => groupId(row)));
+    selected.value = selected.value.filter((id) => aliveKeys.has(id));
     const alive = rows.value.find((row) => groupId(row) === activeKey.value);
     const next = alive ?? visibleGroups.value[0] ?? filtered.value[0];
     if (next) {
@@ -311,6 +329,63 @@ async function ignoreCurrent(): Promise<void> {
   }
 }
 
+/** batch-keys 的返回：confirm=false 时是计划，confirm=true 时是执行结果 */
+interface BatchPlan {
+  needConfirm: boolean;
+  action: 'merge' | 'ignore';
+  groups: number;
+  vods: number;
+  merged: number;
+  skipped: number;
+  ignored: number;
+}
+
+/** 对左栏勾选的分组批量合并 / 忽略 */
+async function batchSelected(action: 'merge' | 'ignore'): Promise<void> {
+  const groups = selectedGroups.value;
+  if (groups.length === 0) return;
+  const keys = groups.map((group) => ({ key: group.key, kind: group.kind }));
+
+  let plan: BatchPlan;
+  try {
+    plan = await api.post<BatchPlan>('/vod-merge/batch-keys', { keys, action, confirm: false });
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+    return;
+  }
+
+  const text =
+    action === 'merge'
+      ? `将合并 ${plan.groups} 组、删除 ${plan.vods} 条重复影片${
+          plan.skipped > 0 ? `，另有 ${plan.skipped} 组年份不一致会跳过` : ''
+        }，确定吗？`
+      : `把这 ${plan.groups} 组标记为「不是重复」，以后不再出现在列表里，确定吗？`;
+
+  try {
+    await ElMessageBox.confirm(text, action === 'merge' ? '合并所选分组' : '忽略所选分组', {
+      type: action === 'merge' ? 'warning' : 'info',
+      confirmButtonText: action === 'merge' ? '合并' : '忽略',
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+
+  busy.value = true;
+  try {
+    const res = await api.post<BatchPlan>('/vod-merge/batch-keys', { keys, action, confirm: true });
+    ElMessage.success(
+      action === 'merge' ? `已合并 ${res.groups} 组，删除 ${res.merged} 条` : `已忽略 ${res.ignored} 组`,
+    );
+    selected.value = [];
+    await load();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '操作失败');
+  } finally {
+    busy.value = false;
+  }
+}
+
 async function mergeAll(): Promise<void> {
   if (summary.value.autoGroups === 0) return;
   let plan: { groups: number; vods: number };
@@ -384,6 +459,20 @@ onMounted(() => {
         <div class="pane-list">
           <div class="list-head">
             <span class="list-count">已筛选 {{ filtered.length }} 组 · 共 {{ rows.length }} 组</span>
+            <span class="list-actions">
+              <el-button size="small" :disabled="selectedGroups.length === 0 || busy" @click="batchSelected('ignore')">
+                忽略
+              </el-button>
+              <el-button
+                size="small"
+                type="primary"
+                :disabled="selectedGroups.length === 0 || busy"
+                :loading="busy"
+                @click="batchSelected('merge')"
+              >
+                合并
+              </el-button>
+            </span>
           </div>
           <div class="list-body" @scroll.passive="onScroll">
             <div
@@ -393,18 +482,26 @@ onMounted(() => {
               :class="{ on: groupId(group) === activeKey }"
               @click="pick(group)"
             >
-              <div class="group-name">
-                <span class="g-name">{{ group.name }}</span>
-                <el-tag :type="kindTagType(group.kind)" size="small" effect="plain" class="g-tag">
-                  {{ kindText(group.kind) }}
-                </el-tag>
-              </div>
-              <div class="group-meta">
-                <span>{{ group.count }} 条</span>
-                <span>{{ group.playTotal }} 条线路</span>
-                <span v-if="group.matchedBy === 'actor'" class="actor">
-                  演员一致 {{ Math.round((group.actorOverlap ?? 0) * 100) }}%
-                </span>
+              <el-checkbox
+                class="g-check"
+                :model-value="isSelected(group)"
+                @click.stop
+                @change="toggleSelect(group)"
+              />
+              <div class="group-main">
+                <div class="group-name">
+                  <span class="g-name">{{ group.name }}</span>
+                  <el-tag :type="kindTagType(group.kind)" size="small" effect="plain" class="g-tag">
+                    {{ kindText(group.kind) }}
+                  </el-tag>
+                </div>
+                <div class="group-meta">
+                  <span>{{ group.count }} 条</span>
+                  <span>{{ group.playTotal }} 条线路</span>
+                  <span v-if="group.matchedBy === 'actor'" class="actor">
+                    演员一致 {{ Math.round((group.actorOverlap ?? 0) * 100) }}%
+                  </span>
+                </div>
               </div>
             </div>
             <div v-if="filtered.length === 0" class="list-empty">没有待处理的重复影片</div>
@@ -564,6 +661,20 @@ onMounted(() => {
   border-bottom: 1px solid var(--el-border-color-lighter);
   cursor: pointer;
   display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.g-check {
+  flex: none;
+  height: 22px;
+  margin-right: 0;
+}
+
+.group-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 4px;
 }
@@ -625,6 +736,12 @@ onMounted(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+.list-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .list-more {
