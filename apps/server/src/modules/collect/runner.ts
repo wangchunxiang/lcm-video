@@ -152,7 +152,7 @@ export class CollectRunner {
   /** 手动采集一个源站：不需要任务行，记录里 taskId 记 0 */
   async startSourceRun(
     sourceId: string,
-    options: { confirmEmpty: boolean; trigger?: RunTrigger; rangeType?: number },
+    options: { trigger?: RunTrigger; rangeType?: number },
   ): Promise<StartResult> {
     const source = await this.sourceRepository.findOne({
       where: { id: sourceId },
@@ -167,18 +167,6 @@ export class CollectRunner {
     const mappingCount = await this.sourceCategoryRepository.count({ where: { sourceId } });
     if (mappingCount === 0) {
       return { ok: false, msg: '该采集源还没有分类映射，请先到「分类映射」里配置' };
-    }
-
-    if (!options.confirmEmpty) {
-      // 预览：按最近一次成功的记录估算会写多少条，避免参数写错把空数据跑满一遍
-      const last = await this.logRepository.findOne({
-        where: { sourceId, status: 2 },
-        order: { id: 'DESC' },
-        select: { total: true, totalPages: true },
-      });
-      if (last !== null && last.total === 0) {
-        return { ok: false, msg: '上一次采集一条数据都没拿到，确认要重新采集吗？' };
-      }
     }
 
     return this.begin({
