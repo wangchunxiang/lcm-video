@@ -69,6 +69,17 @@ interface TreeRow extends SourceCategoryRow {
   children?: TreeRow[];
 }
 
+/**
+ * 源站分类 id 是数字字符串，按数值排才能和源站自己的菜单顺序一致；
+ * 服务端返回的顺序是分类名（数据库排序规则按码点，中文等于乱序）。
+ */
+function bySourceOrder(a: TreeRow, b: TreeRow): number {
+  const left = Number(a.sourceTypeId);
+  const right = Number(b.sourceTypeId);
+  if (Number.isFinite(left) && Number.isFinite(right) && left !== right) return left - right;
+  return a.sourceTypeName.localeCompare(b.sourceTypeName, 'zh-Hans-CN');
+}
+
 const treeRows = computed<TreeRow[]>(() => {
   const byId = new Map<string, TreeRow>();
   for (const row of filteredRows.value) {
@@ -83,6 +94,7 @@ const treeRows = computed<TreeRow[]>(() => {
     else roots.push(node);
   }
   const strip = (nodes: TreeRow[]) => {
+    nodes.sort(bySourceOrder);
     for (const node of nodes) {
       if (node.children && node.children.length > 0) strip(node.children);
       else delete node.children;
