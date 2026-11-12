@@ -383,6 +383,9 @@ onMounted(() => {
     <el-card shadow="never" class="table-card">
       <div class="split">
         <div class="pane-list">
+          <div class="list-head">
+            <span class="list-count">已显示 {{ visibleGroups.length }} / {{ filtered.length }} 组</span>
+          </div>
           <div class="list-body" @scroll.passive="onScroll">
             <div
               v-for="group in visibleGroups"
@@ -409,10 +412,6 @@ onMounted(() => {
             <div v-else-if="visibleGroups.length < filtered.length" class="list-more">
               继续向下滚动加载更多
             </div>
-          </div>
-
-          <div class="list-foot">
-            <span>已显示 {{ visibleGroups.length }} / {{ filtered.length }} 组</span>
           </div>
         </div>
 
@@ -614,15 +613,20 @@ onMounted(() => {
   color: var(--el-color-success);
 }
 
-.list-foot {
+/* 与右侧 .detail-head 同高，两栏顶部对齐 */
+.list-head {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--el-border-color-lighter);
+  height: 52px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.list-count {
   font-size: 12px;
   color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .list-more {
@@ -656,7 +660,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 16px;
+  height: 52px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   min-width: 0;
 }
