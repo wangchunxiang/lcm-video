@@ -1,64 +1,56 @@
 <template>
   <div class="page">
-    <el-card shadow="never">
-      <div class="summary">
-        <div class="stat">
-          <span class="num">{{ summary.hosts }}</span>
-          <span class="label">图片域名</span>
-        </div>
-        <div class="stat">
-          <span class="num ok">{{ summary.ok }}</span>
-          <span class="label">正常</span>
-        </div>
-        <div class="stat">
-          <span class="num bad">{{ summary.bad }}</span>
-          <span class="label">失效</span>
-        </div>
-        <div class="stat">
-          <span class="num warn">{{ summary.unverified }}</span>
-          <span class="label">无法验证</span>
-        </div>
-        <div class="stat">
-          <span class="num">{{ summary.unchecked }}</span>
-          <span class="label">未检查</span>
-        </div>
-        <div class="summary-actions">
-          <el-button type="primary" :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
-          <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
-          <el-button :loading="loading" @click="load">刷新</el-button>
-        </div>
+    <el-card shadow="never" class="search-card">
+      <div class="search-bar">
+        <el-input
+          v-model="filters.host"
+          placeholder="域名"
+          clearable
+          style="width: 220px"
+          @keyup.enter="search"
+        />
+        <el-select v-model="filters.status" placeholder="全部状态" style="width: 140px">
+          <el-option label="全部状态" value="" />
+          <el-option label="未检查" value="0" />
+          <el-option label="正常" value="1" />
+          <el-option label="失效" value="2" />
+          <el-option label="无法验证" value="3" />
+        </el-select>
+        <el-button type="primary" @click="search">查询</el-button>
+        <el-button @click="reset">重置</el-button>
+      </div>
+
+      <div class="search-extra">
+        <span class="summary-text">
+          共 {{ summary.hosts }} 个域名 · 正常 {{ summary.ok }} · 失效 {{ summary.bad }} · 无法验证
+          {{ summary.unverified }} · 未检查 {{ summary.unchecked }}
+        </span>
+        <el-button :loading="loading" @click="load">刷新</el-button>
+        <el-button type="primary" plain :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
+        <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
       </div>
     </el-card>
 
     <el-card shadow="never" class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>图片域名</span>
-          <div class="header-tools">
-            <el-radio-group v-model="statusFilter" size="default">
-              <el-radio-button value="all">全部</el-radio-button>
-              <el-radio-button value="0">未检查</el-radio-button>
-              <el-radio-button value="1">正常</el-radio-button>
-              <el-radio-button value="2">失效</el-radio-button>
-              <el-radio-button value="3">无法验证</el-radio-button>
-            </el-radio-group>
-            <el-button
-              type="danger"
-              plain
-              :disabled="selectedHosts.length === 0"
-              :loading="batchRunning"
-              @click="repairSelected"
-            >
-              批量修复{{ selectedHosts.length ? `（${selectedHosts.length}）` : '' }}
-            </el-button>
-          </div>
-        </div>
-      </template>
+      <div class="toolbar">
+        <el-button
+          type="danger"
+          plain
+          :disabled="selectedHosts.length === 0"
+          :loading="batchRunning"
+          @click="repairSelected"
+        >
+          批量修复{{ selectedHosts.length ? `（${selectedHosts.length}）` : '' }}
+        </el-button>
+        <span class="toolbar-tip">
+          {{ selectedHosts.length ? `已选 ${selectedHosts.length} 个域名` : '勾选域名后可批量修复' }}
+        </span>
+      </div>
 
       <div ref="wrapRef" class="table-wrap">
         <el-table
           v-loading="loading"
-          :data="visibleRows"
+          :data="pagedRows"
           border
           stripe
           :height="tableHeight"
@@ -83,7 +75,7 @@
           </el-table-column>
           <el-table-column prop="message" label="结论" min-width="200" show-overflow-tooltip />
           <el-table-column label="检查时间" width="170" align="center">
-            <template #default="{ row }">{{ row.checkedAt || '—' }}</template>
+            <template #default="{ row }">{{ formatTime(row.checkedAt) }}</template>
           </el-table-column>
           <el-table-column label="操作" width="250" align="center" fixed="right">
             <template #default="{ row }">
@@ -111,6 +103,17 @@
           </el-table-column>
           <template #empty>没有图片域名</template>
         </el-table>
+      </div>
+
+      <div class="pager">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[20, 50, 100]"
+          :total="filtered.length"
+          @size-change="onSizeChange"
+        />
       </div>
     </el-card>
 
@@ -167,7 +170,10 @@ const repairing = ref('');
 const webfix = ref('');
 const batchRunning = ref(false);
 const selectedHosts = ref<string[]>([]);
-const statusFilter = ref<'all' | '0' | '1' | '2' | '3'>('all');
+const filters = ref({ host: '', status: '' });
+const applied = ref({ host: '', status: '' });
+const page = ref(1);
+const pageSize = ref(20);
 const summary = ref({ hosts: 0, ok: 0, bad: 0, unverified: 0, unchecked: 0 });
 
 const wrapRef = ref<HTMLElement | null>(null);
@@ -185,9 +191,39 @@ const drawerWrapRef = ref<HTMLElement | null>(null);
 const drawerTableHeight = ref(400);
 let drawerObserver: ResizeObserver | null = null;
 
-const visibleRows = computed(() =>
-  statusFilter.value === 'all' ? rows.value : rows.value.filter((row) => String(row.status) === statusFilter.value),
+const filtered = computed(() =>
+  rows.value.filter((row) => {
+    if (applied.value.host && !row.host.toLowerCase().includes(applied.value.host.trim().toLowerCase())) {
+      return false;
+    }
+    return applied.value.status === '' || String(row.status) === applied.value.status;
+  }),
 );
+
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filtered.value.slice(start, start + pageSize.value);
+});
+
+function search(): void {
+  applied.value = { ...filters.value };
+  page.value = 1;
+}
+
+function reset(): void {
+  filters.value = { host: '', status: '' };
+  search();
+}
+
+function onSizeChange(): void {
+  page.value = 1;
+}
+
+/** 服务端返回 ISO 时间，表格里只显示到秒 */
+function formatTime(value: string | null): string {
+  if (!value) return '—';
+  return value.replace('T', ' ').slice(0, 19);
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -431,7 +467,11 @@ function observeDrawer(): void {
   drawerTableHeight.value = Math.max(160, drawerWrapRef.value.clientHeight - 44);
 }
 
-watch(statusFilter, () => nextTick(() => measure()));
+watch(filtered, () => {
+  const maxPage = Math.max(1, Math.ceil(filtered.value.length / pageSize.value));
+  if (page.value > maxPage) page.value = maxPage;
+  nextTick(() => measure());
+});
 
 onMounted(() => {
   void load();
@@ -452,52 +492,45 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
-.header-tools {
+.search-card :deep(.el-card__body) {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.summary {
-  display: flex;
-  align-items: center;
-  gap: 32px;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stat .num {
-  font-size: 20px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--el-text-color-primary);
-}
-
-.stat .num.ok {
-  color: var(--el-color-success);
-}
-
-.stat .num.bad {
-  color: var(--el-color-danger);
-}
-
-.stat .num.warn {
-  color: var(--el-color-warning);
-}
-
-.stat .label {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.summary-actions {
+.search-extra {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.summary-text {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.toolbar-tip {
+  margin-left: 12px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .table-card {
@@ -510,17 +543,15 @@ onBeforeUnmount(() => {
 .table-card :deep(.el-card__body) {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 12px 16px 16px;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .table-wrap {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .muted {
