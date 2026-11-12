@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import { formatDateTime } from '../../utils/datetime.ts';
 import CronEditor from '../../components/CronEditor.vue';
 
 interface TaskRow {
@@ -73,7 +74,7 @@ function decorate(rows: TaskRow[]): TaskRow[] {
     ...row,
     sourceName: nameById.get(row.sourceId) ?? null,
     runningLogId: row.lastRunStatus === 1 ? row.id : null,
-    nextRunAt: row.cron && isValidCron(row.cron) === null ? formatRunTime(nextRunAt(row.cron, now) ?? now) : null,
+    nextRunAt: row.cron && isValidCron(row.cron) === null ? (nextRunAt(row.cron, now)?.toISOString() ?? null) : null,
   }));
 }
 
@@ -423,52 +424,43 @@ onUnmounted(() => {
           @selection-change="onSelectionChange"
         >
           <el-table-column type="selection" width="44" fixed="left" />
-          <el-table-column prop="name" label="任务名称" min-width="140" show-overflow-tooltip />
-          <el-table-column prop="sourceName" label="采集源" width="140" show-overflow-tooltip />
-          <el-table-column label="采集范围" width="110" align="center">
+          <el-table-column prop="name" label="任务名称" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="sourceName" label="采集源" width="110" show-overflow-tooltip />
+          <el-table-column label="采集范围" width="100" align="center">
             <template #default="{ row }">{{ rangeLabel(row.rangeType) }}</template>
           </el-table-column>
-          <el-table-column label="定时" width="150" align="center">
+          <el-table-column label="定时" width="130" align="center">
             <template #default="{ row }">
               <span v-if="row.cron" :title="row.cron">{{ describeCron(row.cron) }}</span>
               <span v-else class="muted">仅手动</span>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="80" align="center">
+          <el-table-column label="状态" width="70" align="center">
             <template #default="{ row }">
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="执行状态" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.lastRunStatus === 1" type="primary" size="small" effect="light">运行中</el-tag>
-              <span v-else class="muted">空闲</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="上次执行" width="165" align="center">
-            <template #default="{ row }">
-              <span v-if="row.lastRunAt">{{ row.lastRunAt }}</span>
-              <span v-else class="muted">—</span>
-            </template>
-          </el-table-column>
           <el-table-column label="结果" width="90" align="center">
             <template #default="{ row }">
-              <el-tag size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
+              <el-tag v-if="row.lastRunStatus === 1" type="primary" size="small" effect="light">运行中</el-tag>
+              <el-tag v-else size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="说明" min-width="180" show-overflow-tooltip>
+          <el-table-column label="执行时间" width="190" align="center">
+            <template #default="{ row }">
+              <div class="run-times">
+                <div><span class="muted">上次</span> {{ formatDateTime(row.lastRunAt) || '—' }}</div>
+                <div><span class="muted">下次</span> {{ formatDateTime(row.nextRunAt) || '—' }}</div>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="100" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.lastRunMsg">{{ row.lastRunMsg }}</span>
               <span v-else class="muted">—</span>
             </template>
           </el-table-column>
-          <el-table-column label="下次执行" width="165" align="center">
-            <template #default="{ row }">
-              <span v-if="row.nextRunAt">{{ row.nextRunAt }}</span>
-              <span v-else class="muted">—</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="170" align="center" fixed="right">
+          <el-table-column label="操作" width="160" align="center" fixed="right">
             <template #default="{ row }">
               <el-button v-if="row.lastRunStatus !== 1" link type="primary" @click="run(row)">执行</el-button>
               <el-button v-else link type="warning" @click="cancel(row)">取消</el-button>
@@ -588,6 +580,14 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+.run-times {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 .cron-input :deep(.el-input__inner) {
   font-family: Consolas, Monaco, monospace;
