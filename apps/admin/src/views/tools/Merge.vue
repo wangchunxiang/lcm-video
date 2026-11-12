@@ -226,10 +226,12 @@ async function load(): Promise<void> {
   }
 }
 
+/** 查询：应用筛选条件，同时重新拉一次服务端数据（原来的「刷新」按钮已去掉） */
 function search(): void {
   applied.keyword = filters.keyword;
   applied.kind = filters.kind;
   visibleCount.value = PAGE;
+  void load();
 }
 
 function reset(): void {
@@ -364,19 +366,16 @@ onMounted(() => {
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
         <el-button @click="reset">重置</el-button>
-        <span class="hint right">
-          共 {{ rows.length }} 组 · 合并后减少 {{ summary.autoVods }} 条影片
-          <template v-if="summary.conflictGroups"> · 年份冲突 {{ summary.conflictGroups }} 组已排除</template>
+        <span class="bar-right">
+          <el-button
+            type="primary"
+            :disabled="summary.autoGroups === 0 || busy"
+            :loading="busy"
+            @click="mergeAll"
+          >
+            一键合并可合并的
+          </el-button>
         </span>
-        <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button
-          type="primary"
-          :disabled="summary.autoGroups === 0 || busy"
-          :loading="busy"
-          @click="mergeAll"
-        >
-          一键合并可合并的
-        </el-button>
       </div>
     </el-card>
 
@@ -519,14 +518,9 @@ onMounted(() => {
   align-items: center;
 }
 
-.hint {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-
-.search-bar .right {
+.bar-right {
   margin-left: auto;
-  margin-right: 4px;
+  display: flex;
 }
 
 .table-card {
