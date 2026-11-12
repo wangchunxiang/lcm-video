@@ -84,8 +84,9 @@ const loading = ref(false);
 const busy = ref(false);
 const preview = ref<Preview | null>(null);
 
-const page = ref(1);
-const pageSize = 20;
+/** 左侧列表滚动加载：一次追加 20 组，到底自动再要一批 */
+const PAGE = 20;
+const visibleCount = ref(PAGE);
 const filters = reactive({ keyword: '', kind: '' as '' | Kind });
 /** 点「查询」时把条件拍下来，输入框改动不会立刻改列表 */
 const applied = reactive({ keyword: '', kind: '' as '' | Kind });
@@ -118,10 +119,7 @@ const filtered = computed(() => {
   });
 });
 
-const pagedGroups = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filtered.value.slice(start, start + pageSize);
-});
+const visibleGroups = computed(() => filtered.value.slice(0, visibleCount.value));
 
 const groupId = (group: LightGroup): string => `${group.kind}:${group.key}`;
 
@@ -213,7 +211,7 @@ async function load(): Promise<void> {
   try {
     preview.value = await api.post<Preview>('/vod-merge/preview');
     const alive = rows.value.find((row) => groupId(row) === activeKey.value);
-    const next = alive ?? pagedGroups.value[0] ?? filtered.value[0];
+    const next = alive ?? visibleGroups.value[0] ?? filtered.value[0];
     if (next) {
       activeKey.value = groupId(next);
       await loadDetail(next);
@@ -231,7 +229,7 @@ async function load(): Promise<void> {
 function search(): void {
   applied.keyword = filters.keyword;
   applied.kind = filters.kind;
-  page.value = 1;
+  visibleCount.value = PAGE;
 }
 
 function reset(): void {
@@ -244,6 +242,14 @@ function pick(group: LightGroup): void {
   if (groupId(group) === activeKey.value) return;
   activeKey.value = groupId(group);
   void loadDetail(group);
+}
+
+/** 滚到接近底部时再放一批，组多的时候不用点分页 */
+function onScroll(event: Event): void {
+  const el = event.target as HTMLElement;
+  if (el.scrollTop + el.clientHeight < el.scrollHeight - 40) return;
+  if (visibleCount.value >= filtered.value.length) return;
+  visibleCount.value += PAGE;
 }
 
 async function mergeCurrent(): Promise<void> {
@@ -377,9 +383,9 @@ onMounted(() => {
     <el-card shadow="never" class="table-card">
       <div class="split">
         <div class="pane-list">
-          <div class="list-body">
+          <div class="list-body" @scroll.passive="onScroll">
             <div
-              v-for="group in pagedGroups"
+              v-for="group in visibleGroups"
               :key="groupId(group)"
               class="group"
               :class="{ on: groupId(group) === activeKey }"
@@ -399,19 +405,14 @@ onMounted(() => {
                 </span>
               </div>
             </div>
-            <div v-if="pagedGroups.length === 0" class="list-empty">没有待处理的重复影片</div>
+            <div v-if="filtered.length === 0" class="list-empty">没有待处理的重复影片</div>
+            <div v-else-if="visibleGroups.length < filtered.length" class="list-more">
+              继续向下滚动加载更多
+            </div>
           </div>
 
           <div class="list-foot">
-            <span>共 {{ filtered.length }} 组</span>
-            <el-pagination
-              v-model:current-page="page"
-              class="mini-pager"
-              layout="prev, pager, next"
-              :page-size="pageSize"
-              :total="filtered.length"
-              small
-            />
+            <span>已显示 {{ visibleGroups.length }} / {{ filtered.length }} 组</span>
           </div>
         </div>
 
@@ -624,8 +625,11 @@ onMounted(() => {
   color: var(--el-text-color-secondary);
 }
 
-.mini-pager {
-  margin-left: auto;
+.list-more {
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
 }
 
 .list-empty {
