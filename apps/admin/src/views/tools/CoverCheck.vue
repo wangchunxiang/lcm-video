@@ -75,8 +75,8 @@
             </template>
           </el-table-column>
           <el-table-column prop="message" label="结论" min-width="160" show-overflow-tooltip />
-          <el-table-column label="检查时间" width="150" align="center">
-            <template #default="{ row }">{{ formatTime(row.checkedAt) }}</template>
+          <el-table-column label="检查时间" width="170" align="center">
+            <template #default="{ row }">{{ formatDateTime(row.checkedAt) || '—' }}</template>
           </el-table-column>
           <el-table-column label="操作" width="240" align="center" fixed="right">
             <template #default="{ row }">
@@ -134,6 +134,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ElLoading, ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { api } from '../../api/client';
+import { formatDateTime } from '../../utils/datetime';
 
 interface HostRow {
   host: string;
@@ -218,12 +219,6 @@ function bindScroll(): void {
   scroller?.removeEventListener('scroll', onScroll);
   scroller = el;
   scroller.addEventListener('scroll', onScroll, { passive: true });
-}
-
-/** 服务端返回 ISO 时间，表格里只显示到分钟（秒在这里没有意义，列宽也放不下） */
-function formatTime(value: string | null): string {
-  if (!value) return '—';
-  return value.replace('T', ' ').slice(0, 16);
 }
 
 async function load(): Promise<void> {

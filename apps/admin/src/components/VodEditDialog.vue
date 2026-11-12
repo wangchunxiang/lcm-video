@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../api/client.ts';
+import { formatDateTime } from '../utils/datetime.ts';
 
 interface VodDetail {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -337,13 +338,13 @@ function lineTitle(line: PlayLine): string {
                   <el-tag size="small" type="info" effect="light">入库日期</el-tag>
                 </li>
                 <li class="dim">
-                  <el-tag size="small" type="info" effect="plain">{{ form.createdAt || '—' }}</el-tag>
+                  <el-tag size="small" type="info" effect="plain">{{ formatDateTime(form.createdAt) || '—' }}</el-tag>
                 </li>
                 <li>
                   <el-tag size="small" type="success" effect="light">最后采集</el-tag>
                 </li>
                 <li class="dim">
-                  <el-tag size="small" type="success" effect="plain">{{ form.collectedAt || '—' }}</el-tag>
+                  <el-tag size="small" type="success" effect="plain">{{ formatDateTime(form.collectedAt) || '—' }}</el-tag>
                 </li>
               </ul>
             </div>

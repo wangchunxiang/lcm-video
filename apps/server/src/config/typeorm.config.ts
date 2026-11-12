@@ -25,7 +25,8 @@ export function parseDatabaseUrl(url: string): {
 /**
  * Nest 与 CLI 共用的连接参数（MySQL / MariaDB）。
  *
- * - `timezone: 'Z'`：DateTime 列按 UTC 解释，与旧库写入的值一致。
+ * - `timezone: 'Z'`：DateTime 列一律按 UTC 解释与写入，接口再把 Date 序列化成带 `Z` 的 ISO，
+ *   浏览器按本地时区展示。旧库（v2）存的是北京时间墙钟，导入时已整体减 8 小时（见 `import-legacy.ts`）。
  * - `synchronize: false`：结构变更一律走迁移，禁止按实体差异自动改表。
  * - `migrationsRun: true`：启动时自动执行未应用的迁移。空库因此会直接建出全部表
  *   （表注释、字段注释都在迁移 SQL 里），已经建过的库只跳过、不会重复执行。

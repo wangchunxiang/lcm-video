@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import { formatDateTime } from '../../utils/datetime.ts';
 
 interface LogRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -301,7 +302,9 @@ function onDetailSizeChange(size: number) {
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(async () => {
-  await Promise.all([load(), loadSources()]);
+  // 先取源站列表再取记录：decorate() 要用它把 sourceId 翻译成名字
+  await loadSources();
+  await load();
   tickTimer = setInterval(() => {
     nowTick.value = Date.now();
   }, 1000);
@@ -410,7 +413,9 @@ onBeforeUnmount(() => {
           <el-table-column label="失败" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
           </el-table-column>
-          <el-table-column prop="startedAt" label="开始时间" width="165" align="center" />
+          <el-table-column label="开始时间" width="165" align="center">
+        <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
+      </el-table-column>
           <el-table-column label="耗时" width="130" align="center">
             <template #default="{ row }">{{ liveDuration(row) }}</template>
           </el-table-column>
@@ -456,7 +461,7 @@ onBeforeUnmount(() => {
     <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="42%">
       <div v-if="currentLog" class="log-head">
         <el-tag :type="statusOf(currentLog).type">{{ statusOf(currentLog).text }}</el-tag>
-        <span>{{ currentLog.startedAt }} 开始，耗时 {{ actualDuration }}</span>
+        <span>{{ formatDateTime(currentLog.startedAt) }} 开始，耗时 {{ actualDuration }}</span>
         <div class="progress">
           <span class="progress-text">
             进度 {{ detailTotal }}<template v-if="currentLog.totalPages > 0"> / {{ currentLog.totalPages }}</template> 页
@@ -481,7 +486,7 @@ onBeforeUnmount(() => {
         <el-descriptions-item label="失败">
           <span :class="currentLog.failed > 0 ? 'danger' : ''">{{ currentLog.failed }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="结束时间">{{ currentLog.finishedAt || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="结束时间">{{ formatDateTime(currentLog.finishedAt) || '—' }}</el-descriptions-item>
         <el-descriptions-item label="信息" :span="3">{{ currentLog.message || '—' }}</el-descriptions-item>
       </el-descriptions>
 

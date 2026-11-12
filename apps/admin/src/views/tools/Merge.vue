@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import { formatDateTime, formatShortTime } from '../../utils/datetime.ts';
 
 type Kind = 'auto' | 'suspect' | 'same';
 
@@ -576,7 +577,7 @@ onMounted(() => {
                     <span class="pill">地区 <b>{{ member.area || '—' }}</b></span>
                     <span class="pill">语言 <b>{{ member.lang || '—' }}</b></span>
                     <span class="pill">总集数 <b>{{ member.episodeCount || '—' }}</b></span>
-                    <span class="pill">采集 <b>{{ member.collectedAt }}</b></span>
+                    <span class="pill">采集 <b>{{ formatDateTime(member.collectedAt) || '—' }}</b></span>
                   </div>
                   <div class="member-actor">
                     <span class="pill actor-pill">演员 <b>{{ firstActors(member.actor) || '—' }}</b></span>
@@ -589,7 +590,7 @@ onMounted(() => {
                       :class="{ best: (line.episodes ?? 0) > 0 && line.episodes === maxEpisodes }"
                     >
                       {{ line.sourceName || line.sourceFrom }} · <b>{{ line.episodes ?? 0 }}</b> 集
-                      <template v-if="line.updatedAt"> · 更新 {{ line.updatedAt.slice(5) }}</template>
+                      <template v-if="line.updatedAt"> · 更新 {{ formatShortTime(line.updatedAt) }}</template>
                     </span>
                     <span v-if="member.lines.length === 0" class="muted">没有线路</span>
                   </div>

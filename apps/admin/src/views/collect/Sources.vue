@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import { formatDateTime } from '../../utils/datetime.ts';
 
 interface SourceRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -452,7 +453,7 @@ onBeforeUnmount(() => {
       <el-table-column label="最后同步" width="165" align="center">
         <template #default="{ row }">
           <span v-if="row.lastSyncStatus !== 0" :class="row.lastSyncStatus === 2 ? 'danger' : ''">
-            {{ row.lastSyncAt || '—' }}
+            {{ formatDateTime(row.lastSyncAt) || '—' }}
           </span>
           <span v-else class="muted">未同步</span>
         </template>

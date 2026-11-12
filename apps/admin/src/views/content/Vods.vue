@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 import { buildListQuery } from '@lcm/api-client';
 import VodEditDialog from '../../components/VodEditDialog.vue';
+import { formatDateTime } from '../../utils/datetime.ts';
 
 interface VodRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -350,7 +351,9 @@ onBeforeUnmount(() => {
           <el-switch :model-value="row.status === 1" @change="toggleStatus(row)" />
         </template>
       </el-table-column>
-      <el-table-column prop="collectedAt" label="更新时间" width="165" align="center" />
+      <el-table-column label="更新时间" width="165" align="center">
+        <template #default="{ row }">{{ formatDateTime(row.collectedAt) || '—' }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="186" align="center" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">

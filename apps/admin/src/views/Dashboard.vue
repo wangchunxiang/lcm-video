@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { api } from '../api/client.ts';
+import { formatDateTime } from '../utils/datetime.ts';
 
 interface LogRow {
   id: number;
@@ -126,7 +127,7 @@ onMounted(load);
             <el-table-column prop="updated" label="更新" width="70" />
             <el-table-column prop="failed" label="失败" width="70" />
             <el-table-column label="开始时间" width="160">
-              <template #default="{ row }">{{ row.startedAt ?? '—' }}</template>
+              <template #default="{ row }">{{ formatDateTime(row.startedAt) || '—' }}</template>
             </el-table-column>
           </el-table>
         </el-card>
