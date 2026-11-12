@@ -45,21 +45,21 @@
         <span class="toolbar-tip">
           {{ selectedHosts.length ? `已选 ${selectedHosts.length} 个域名` : '勾选域名后可批量修复' }}
         </span>
+        <span class="toolbar-count">已显示 {{ visibleRows.length }} / {{ filtered.length }} 个域名</span>
       </div>
 
       <div ref="wrapRef" class="table-wrap">
         <el-table
           v-loading="loading"
-          :data="pagedRows"
+          :data="visibleRows"
           border
           stripe
           :height="tableHeight"
           @selection-change="onSelectionChange"
         >
-          <el-table-column type="selection" width="44" :selectable="canSelect" />
-          <el-table-column prop="host" label="域名" min-width="240" show-overflow-tooltip />
-          <el-table-column prop="vodCount" label="影片数" width="100" align="center" />
-          <el-table-column label="抽样" width="100" align="center">
+          <el-table-column prop="host" label="域名" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
+          <el-table-column label="抽样" width="90" align="center">
             <template #default="{ row }">
               <span v-if="row.status === 0" class="muted">—</span>
               <span v-else>{{ row.sampleOk }} / {{ row.sampleOk + row.sampleFail }}</span>
@@ -73,11 +73,11 @@
               <el-tag v-else type="info" effect="plain">未检查</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="message" label="结论" min-width="200" show-overflow-tooltip />
-          <el-table-column label="检查时间" width="170" align="center">
+          <el-table-column prop="message" label="结论" min-width="160" show-overflow-tooltip />
+          <el-table-column label="检查时间" width="150" align="center">
             <template #default="{ row }">{{ formatTime(row.checkedAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="250" align="center" fixed="right">
+          <el-table-column label="操作" width="240" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" :loading="checking === row.host" @click="checkOne(row)">检查</el-button>
               <el-button link type="primary" @click="openVods(row)">影片</el-button>
@@ -103,17 +103,6 @@
           </el-table-column>
           <template #empty>没有图片域名</template>
         </el-table>
-      </div>
-
-      <div class="pager">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          layout="total, sizes, prev, pager, next"
-          :page-sizes="[20, 50, 100]"
-          :total="filtered.length"
-          @size-change="onSizeChange"
-        />
       </div>
     </el-card>
 
@@ -172,8 +161,8 @@ const batchRunning = ref(false);
 const selectedHosts = ref<string[]>([]);
 const filters = ref({ host: '', status: '' });
 const applied = ref({ host: '', status: '' });
-const page = ref(1);
-const pageSize = ref(20);
+const PAGE = 20;
+const visibleCount = ref(PAGE);
 const summary = ref({ hosts: 0, ok: 0, bad: 0, unverified: 0, unchecked: 0 });
 
 const wrapRef = ref<HTMLElement | null>(null);
@@ -200,14 +189,11 @@ const filtered = computed(() =>
   }),
 );
 
-const pagedRows = computed(() => {
-  const start = (page.value - 1) * pageSize.value;
-  return filtered.value.slice(start, start + pageSize.value);
-});
+const visibleRows = computed(() => filtered.value.slice(0, visibleCount.value));
 
 function search(): void {
   applied.value = { ...filters.value };
-  page.value = 1;
+  visibleCount.value = PAGE;
 }
 
 function reset(): void {
@@ -215,14 +201,28 @@ function reset(): void {
   search();
 }
 
-function onSizeChange(): void {
-  page.value = 1;
+/** el-table 自带固定高度，滚动条在内部的 .el-scrollbar__wrap 上 */
+let scroller: HTMLElement | null = null;
+
+function onScroll(): void {
+  if (!scroller) return;
+  if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 40) return;
+  if (visibleCount.value >= filtered.value.length) return;
+  visibleCount.value += PAGE;
 }
 
-/** 服务端返回 ISO 时间，表格里只显示到秒 */
+function bindScroll(): void {
+  const el = wrapRef.value?.querySelector<HTMLElement>('.el-scrollbar__wrap') ?? null;
+  if (!el || el === scroller) return;
+  scroller?.removeEventListener('scroll', onScroll);
+  scroller = el;
+  scroller.addEventListener('scroll', onScroll, { passive: true });
+}
+
+/** 服务端返回 ISO 时间，表格里只显示到分钟（秒在这里没有意义，列宽也放不下） */
 function formatTime(value: string | null): string {
   if (!value) return '—';
-  return value.replace('T', ' ').slice(0, 19);
+  return value.replace('T', ' ').slice(0, 16);
 }
 
 async function load(): Promise<void> {
@@ -455,6 +455,7 @@ function observe(): void {
   observer = new ResizeObserver(() => measure());
   observer.observe(wrapRef.value);
   measure();
+  nextTick(() => bindScroll());
 }
 
 function observeDrawer(): void {
@@ -468,9 +469,10 @@ function observeDrawer(): void {
 }
 
 watch(filtered, () => {
-  const maxPage = Math.max(1, Math.ceil(filtered.value.length / pageSize.value));
-  if (page.value > maxPage) page.value = maxPage;
-  nextTick(() => measure());
+  nextTick(() => {
+    measure();
+    bindScroll();
+  });
 });
 
 onMounted(() => {
@@ -479,6 +481,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  scroller?.removeEventListener('scroll', onScroll);
   observer?.disconnect();
   drawerObserver?.disconnect();
 });
@@ -528,6 +531,13 @@ onBeforeUnmount(() => {
   margin-left: 12px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.toolbar-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .table-card {
