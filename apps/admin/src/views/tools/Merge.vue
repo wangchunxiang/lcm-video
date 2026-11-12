@@ -731,6 +731,7 @@ onMounted(() => {
 }
 
 .actor {
+  margin-left: auto;
   color: var(--el-color-success);
 }
 
