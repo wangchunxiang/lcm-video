@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
 import { PortalService } from './portal.service';
-import type { CategoryNode, EpisodeItem, PlayLine, VodCard, VodRow } from './portal.service';
+import type { CategoryNode, EpisodeItem, PlayLine, SiteConfig, VodCard, VodRow } from './portal.service';
 
 /** 前台只读接口：全部公开，不需要登录。 */
 @Controller('api/site')
@@ -19,6 +19,12 @@ export class PortalController {
   @Get('categories')
   categories(): Promise<CategoryNode[]> {
     return this.portal.categories();
+  }
+
+  /** 前台公共配置：站点信息与播放器开关。 */
+  @Get('config')
+  config(): Promise<SiteConfig> {
+    return this.portal.config();
   }
 
   /** 列表页：`/list/:alias`，别名用 `all` 表示全部。 */

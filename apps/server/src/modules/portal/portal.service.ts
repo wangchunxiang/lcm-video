@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { countEpisodes, parsePlayUrl } from '@lcm/shared';
+import { SettingService } from '../setting/setting.service';
 
 
 /** 卡片：列表/首页统一的最小影片信息。 */
@@ -28,10 +29,14 @@ export interface CategoryNode {
 
 /** 播放线路。 */
 export interface PlayLine {
+  /** `lcm_vod_play.id`，播放页 URL 用它定位线路 */
+  id: string;
   sourceId: string;
   sourceFrom: string;
   name: string;
   episodes: number;
+  /** 采集源的解析接口；空串表示直链播放 */
+  parseUrl: string;
 }
 
 /** 一行卡片（首页分区）。 */
@@ -46,6 +51,24 @@ export interface EpisodeItem {
   index: number;
   name: string;
   url: string;
+}
+
+/** 前台公开配置：站点信息 + 播放器开关。 */
+export interface SiteConfig {
+  siteName: string;
+  siteSubtitle: string;
+  siteDisclaimer: string;
+  siteStatsCode: string;
+  listPageSize: number;
+  player: {
+    autoplay: boolean;
+    autonext: boolean;
+    resume: boolean;
+    screenshot: boolean;
+    fullscreen: boolean;
+    webfullscreen: boolean;
+    setting: boolean;
+  };
 }
 
 const PAGE_LIMIT = 100;
@@ -64,7 +87,50 @@ function toInt(value: string | undefined, fallback: number, min: number, max: nu
  */
 @Injectable()
 export class PortalService {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly setting: SettingService,
+  ) {}
+
+  /** 前台公开配置：站点信息 + 播放器开关。后台配置项不在这里暴露。 */
+  async config(): Promise<SiteConfig> {
+    const [
+      siteName,
+      siteSubtitle,
+      siteDisclaimer,
+      siteStatsCode,
+      listPageSize,
+      autoplay,
+      autonext,
+      resume,
+      screenshot,
+      fullscreen,
+      webfullscreen,
+      setting,
+    ] = await Promise.all([
+      this.setting.get('site_name', '蓝草莓影视'),
+      this.setting.get('site_subtitle', '高清影视在线观看'),
+      this.setting.get('site_disclaimer', ''),
+      this.setting.get('site_stats_code', ''),
+      this.setting.number('list_page_size', 24),
+      this.setting.flag('player_autoplay', false),
+      this.setting.flag('player_autonext', true),
+      this.setting.flag('player_resume', true),
+      this.setting.flag('player_screenshot', true),
+      this.setting.flag('player_fullscreen', true),
+      this.setting.flag('player_webfullscreen', false),
+      this.setting.flag('player_setting', true),
+    ]);
+
+    return {
+      siteName,
+      siteSubtitle,
+      siteDisclaimer,
+      siteStatsCode,
+      listPageSize: Math.min(60, Math.max(12, listPageSize)),
+      player: { autoplay, autonext, resume, screenshot, fullscreen, webfullscreen, setting },
+    };
+  }
 
   /** 首页：分类树 + 最新 + 今日更新 + 推荐。 */
   async home(): Promise<{ categories: CategoryNode[]; rows: VodRow[] }> {
@@ -327,9 +393,12 @@ export class PortalService {
         lineSort: number | null;
         lineEnabled: number | null;
         sourceName: string | null;
+        id: string;
+        parseUrl: string | null;
       }>
     >(
-      `SELECT p.source_id AS sourceId, p.source_from AS sourceFrom, p.play_url AS playUrl,
+      `SELECT p.id AS id, p.source_id AS sourceId, p.source_from AS sourceFrom, p.play_url AS playUrl,
+              s.parse_url AS parseUrl,
               l.name AS lineName, l.sort AS lineSort, l.is_enabled AS lineEnabled,
               s.name AS sourceName
          FROM lcm_vod_play p
@@ -343,6 +412,7 @@ export class PortalService {
     return rows
       .filter((row) => row.lineEnabled !== 0)
       .map((row) => ({
+        id: String(row.id),
         sourceId: row.sourceId ?? '',
         sourceFrom: row.sourceFrom,
         name:
@@ -352,6 +422,7 @@ export class PortalService {
               ? String(row.sourceName)
               : row.sourceFrom,
         episodes: countEpisodes(row.playUrl),
+        parseUrl: row.parseUrl ?? '',
       }))
       .filter((row) => row.episodes > 0);
   }

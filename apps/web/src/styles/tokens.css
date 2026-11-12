@@ -1,0 +1,59 @@
+/*
+ * 设计令牌：颜色、字号、间距、圆角只在这里声明一次。
+ * 页面样式一律引用变量，不写裸色值与裸字号（见 docs/样式规范.md、技术方案 7.6）。
+ */
+:root {
+  color-scheme: light;
+
+  /* 品牌与文字 */
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-weak: #e8f0ff;
+  --primary-line: #c9dbff;
+  --text: #1b2430;
+  --text-2: #5b6472;
+  --text-3: #8b95a5;
+  --danger: #d64545;
+
+  /* 背景与描边 */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f4f8;
+  --line: #e8ebf0;
+
+  /* 圆角与阴影 */
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  --shadow-hover: 0 14px 30px rgba(15, 23, 42, 0.14);
+
+  /* 布局 */
+  --container: min(1800px, 100% - 120px);
+  --header-h: 64px;
+
+  /* 间距刻度：4 的倍数 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  /* 页面级语义间距 */
+  --gap-block: var(--space-4);
+  --gap-grid-x: var(--space-4);
+  --gap-grid-y: var(--space-4);
+  --pad-card: var(--space-5);
+
+  /* 字号层级 */
+  --fs-caption: 12px;
+  --fs-small: 13px;
+  --fs-body: 14px;
+  --fs-emphasis: 15px;
+  --fs-title: 18px;
+  --fs-logo: 20px;
+  --fs-page-title: 21px;
+  --fs-display: 64px;
+}

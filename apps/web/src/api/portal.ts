@@ -30,10 +30,14 @@ export interface CategoryNode {
 }
 
 export interface PlayLine {
+  /** `lcm_vod_play.id`，播放页 URL 的第二段 */
+  id: string;
   sourceId: string;
   sourceFrom: string;
   name: string;
   episodes: number;
+  /** 采集源的解析接口；空串表示直链播放 */
+  parseUrl: string;
 }
 
 export interface VodRow {
@@ -97,9 +101,27 @@ export interface SearchParams {
   skip?: number;
 }
 
+export interface SiteConfig {
+  siteName: string;
+  siteSubtitle: string;
+  siteDisclaimer: string;
+  siteStatsCode: string;
+  listPageSize: number;
+  player: {
+    autoplay: boolean;
+    autonext: boolean;
+    resume: boolean;
+    screenshot: boolean;
+    fullscreen: boolean;
+    webfullscreen: boolean;
+    setting: boolean;
+  };
+}
+
 export const portal = {
   home: () => http.get<HomeResult>('/home'),
   categories: () => http.get<CategoryNode[]>('/categories'),
+  config: () => http.get<SiteConfig>('/config'),
   list: (alias: string, params: ListParams = {}) =>
     http.get<VodListPage>(`/list/${encodeURIComponent(alias)}`, params),
   detail: (id: string) => http.get<VodDetail>(`/detail/${id}`),
