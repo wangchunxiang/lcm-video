@@ -45,6 +45,17 @@ interface VodRow {
   year: number;
 }
 
+/** 一页里待写入的一条：已解析好分类与哈希，判重时只需要它 */
+interface Candidate {
+  item: SourceVod;
+  categoryId: string;
+  categoryPid: string;
+  name: string;
+  hash: string;
+  looseHash: string;
+  year: number;
+}
+
 interface PlayRow {
   id: string;
   vodId: string;
@@ -77,15 +88,7 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
   const playRules = rules.filter((rule) => rule.kind === 1);
   const coverRules = rules.filter((rule) => rule.kind === 2);
 
-  const candidates: Array<{
-    item: SourceVod;
-    categoryId: string;
-    categoryPid: string;
-    name: string;
-    hash: string;
-    looseHash: string;
-    year: number;
-  }> = [];
+  const candidates: Candidate[] = [];
 
   for (const item of input.items) {
     counters.total += 1;
@@ -172,28 +175,24 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
         }
       }
 
-      // 3. 内存判重（年份相等或任一方为 0），多条命中取 id 最小
+      // 3. 判重（年份相等或任一方为 0），多条命中取 id 最小；同一源里优先用 source_vod_id
       const forced = input.forceVodId ?? ID_NONE;
       const forcedOn = hasId(forced);
-      const matchedIds: string[] = [];
-      const decisions = candidates.map((candidate) => {
-        if (forcedOn) {
-          matchedIds.push(forced);
-          return { candidate, vodId: forced };
-        }
+      const matchVodId = (candidate: Candidate): string => {
+        if (forcedOn) return forced;
         const known = bySourceVodId.get(candidate.item.vodId);
-        if (known !== undefined) {
-          matchedIds.push(known);
-          return { candidate, vodId: known };
-        }
+        if (known !== undefined) return known;
         const hits = (index.get(candidate.hash) ?? []).filter(
           (row) => row.year === candidate.year || row.year === 0 || candidate.year === 0,
         );
         hits.sort((a, b) => compareId(a.id, b.id));
-        const vodId = hits[0]?.id ?? ID_NONE;
+        return hits[0]?.id ?? ID_NONE;
+      };
+      const matchedIds: string[] = [];
+      for (const candidate of candidates) {
+        const vodId = matchVodId(candidate);
         if (hasId(vodId)) matchedIds.push(vodId);
-        return { candidate, vodId };
-      });
+      }
 
       // 4. 批量取这些影片已有的线路
       const uniqueVodIds = [...new Set(matchedIds)];
@@ -223,9 +222,12 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
         : [];
       const oldById = new Map(oldRows.map((row) => [row.id, row]));
 
-      // 5. 逐条写库
-      for (const { candidate, vodId: matchedId } of decisions) {
+      // 5. 逐条写库。判重放在循环里做：同一页里先后出现的同名影片能判到刚插入的那条，
+      //    不会因为「两条都在预扫时没命中」而各插一行。
+      const insertedNowIds = new Set<string>();
+      for (const candidate of candidates) {
         const { item, name, hash, looseHash: loose, categoryId, categoryPid, year } = candidate;
+        const matchedId = matchVodId(candidate);
         const groups = splitPlayGroups(item.playFrom, item.playUrl).map((group) => ({
           ...group,
           url: applyPlayUrlRules(group.url, playRules),
@@ -287,6 +289,10 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
             const row = { id: vodId, year };
             if (list) list.push(row);
             else index.set(hash, [row]);
+            insertedNowIds.add(vodId);
+            bySourceVodId.set(item.vodId, vodId);
+          } else if (insertedNowIds.has(vodId)) {
+            // 同一页里同名影片的第二条：字段保留先插入那条，只并线路
           } else if (mergeOn) {
             const old = oldById.get(vodId);
             const patch: Partial<VodEntity> = old
