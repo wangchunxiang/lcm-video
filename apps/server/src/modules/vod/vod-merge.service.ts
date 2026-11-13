@@ -59,6 +59,36 @@ interface SameSourceGroup {
   vodIds: string[];
 }
 
+/** 预览用的轻量分组：只带列表要展示的字段，不含成员行（12 万部影片的库里有 1 万组） */
+export interface LightGroup {
+  key: string;
+  kind: VodMergeKind;
+  name: string;
+  year: number;
+  count: number;
+  playTotal: number;
+  matchedBy?: 'strict' | 'actor';
+  actorOverlap?: number;
+}
+
+/** 预览结果的缓存时长：合并 / 忽略 / 采集完成后都会主动失效 */
+const PREVIEW_CACHE_MS = 30_000;
+
+/** 预览返回体 */
+export interface MergePreview {
+  auto: LightGroup[];
+  suspects: LightGroup[];
+  same: Array<Record<string, unknown>>;
+  summary: {
+    autoGroups: number;
+    autoVods: number;
+    suspectGroups: number;
+    sameGroups: number;
+    conflictGroups: number;
+    ignored: number;
+  };
+}
+
 type Column = 'name_hash' | 'name_hash_loose';
 
 /** 演员判定阈值：短名单里有 60% 出现在对方名单里 */
@@ -158,6 +188,9 @@ function actorOverlap(members: MergeMember[]): number {
 export class VodMergeService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
+  /** 预览缓存：1 万组要算 2 秒，页面来回切换不必重算 */
+  private previewCache: { at: number; value: MergePreview } | null = null;
+
   /** 被忽略的分组键集合 */
   private async loadIgnored(): Promise<Set<string>> {
     const rows = await this.dataSource.query<Array<{ mergeKey: string }>>(
@@ -186,6 +219,123 @@ export class VodMergeService {
       });
     }
     return stats;
+  }
+
+  /**
+   * 严格键分组的轻量统计，只返回「年份相容」的组。
+   *
+   * 老库里同名不同年的组极多（1 万组里 1 万组年份都不相容），它们只会被算进
+   * 「年份冲突」计数、不会出现在列表里，所以直接在 SQL 里用 HAVING 过滤掉，
+   * 避免把 2 万条成员行搬到 Node 再筛掉。两条 SQL 并行，共约 1.2 秒。
+   */
+  private async loadStrictLight(): Promise<{ auto: LightGroup[]; conflictCount: number }> {
+    const [rows, totals] = await Promise.all([
+      this.dataSource.query<
+        Array<{ k: string; c: string; name: string | null; y: number | null; plays: string }>
+      >(
+        `SELECT v.name_hash AS k, COUNT(DISTINCT v.id) AS c, MIN(v.name) AS name,
+            MIN(NULLIF(v.year, 0)) AS y, COUNT(p.vod_id) AS plays
+          FROM (SELECT name_hash AS h FROM lcm_vod WHERE name_hash <> ''
+                  GROUP BY name_hash HAVING COUNT(*) > 1
+                    AND MIN(NULLIF(year, 0)) <=> MAX(NULLIF(year, 0))) d
+          JOIN lcm_vod v ON v.name_hash = d.h
+          LEFT JOIN lcm_vod_play p ON p.vod_id = v.id
+          GROUP BY d.h`,
+      ),
+      this.dataSource.query<Array<{ total: string }>>(
+        `SELECT COUNT(*) AS total FROM (SELECT name_hash AS h FROM lcm_vod WHERE name_hash <> ''
+            GROUP BY name_hash HAVING COUNT(*) > 1) x`,
+      ),
+    ]);
+
+    const auto: LightGroup[] = rows.map((row) => ({
+      key: row.k,
+      kind: 'auto' as const,
+      name: row.name ?? '',
+      year: row.y === null ? 0 : Number(row.y),
+      count: Number(row.c) || 0,
+      playTotal: Number(row.plays) || 0,
+    }));
+    const total = Number(totals[0]?.total ?? 0) || 0;
+    return { auto, conflictCount: Math.max(total - auto.length, 0) };
+  }
+
+  /**
+   * 疑似重复分组：去标点后同名，但组内严格键不止一种。
+   * 两步走——先用 idx_merge_loose 数出组内有几种严格键（通常一两百组），
+   * 再只给这些组拉成员行与演员，避免把 2 万条成员全读出来。
+   */
+  private async loadSuspectGroups(): Promise<MergeGroup[]> {
+    const keyRows = await this.dataSource.query<Array<{ k: string }>>(
+      `SELECT v.name_hash_loose AS k, COUNT(DISTINCT v.name_hash) AS sc
+        FROM lcm_vod v
+        JOIN (SELECT name_hash_loose AS h FROM lcm_vod WHERE name_hash_loose <> ''
+                GROUP BY name_hash_loose HAVING COUNT(*) > 1) d
+          ON d.h = v.name_hash_loose
+        GROUP BY v.name_hash_loose HAVING sc > 1`,
+    );
+    const keys = keyRows.map((row) => row.k);
+    if (keys.length === 0) return [];
+
+    const rows = await this.dataSource.query<
+      Array<{
+        id: string;
+        name: string;
+        year: number;
+        status: number;
+        strictKey: string;
+        k: string;
+        collectedAt: Date | string | null;
+      }>
+    >(
+      `SELECT v.id, v.name, v.year, v.status, v.name_hash AS strictKey,
+          v.name_hash_loose AS k, v.collected_at AS collectedAt
+        FROM lcm_vod v WHERE v.name_hash_loose IN (?)`,
+      [keys],
+    );
+
+    const ids = rows.map((row) => String(row.id));
+    const [playStats, actorRows] = await Promise.all([
+      this.loadPlayStats(ids),
+      this.dataSource.query<Array<{ id: string; actor: string | null }>>(
+        'SELECT id, actor FROM lcm_vod WHERE id IN (?)',
+        [ids],
+      ),
+    ]);
+    const actorById = new Map(actorRows.map((row) => [String(row.id), row.actor ?? '']));
+
+    const byKey = new Map<string, MergeMember[]>();
+    for (const row of rows) {
+      const list = byKey.get(row.k) ?? [];
+      list.push({
+        id: String(row.id),
+        name: row.name,
+        year: Number(row.year) || 0,
+        status: Number(row.status) || 0,
+        cover: '',
+        playCount: playStats.get(String(row.id))?.count ?? 0,
+        episodeTotal: playStats.get(String(row.id))?.episodes ?? 0,
+        collectedAt: formatStamp(row.collectedAt),
+        strictKey: row.strictKey,
+        lines: [],
+        actor: actorById.get(String(row.id)) ?? '',
+      });
+      byKey.set(row.k, list);
+    }
+
+    const groups: MergeGroup[] = [];
+    for (const [key, members] of byKey) {
+      members.sort((a, b) => compareId(a.id, b.id));
+      groups.push({
+        key,
+        kind: 'suspect',
+        name: members[0]?.name ?? '',
+        year: members.find((item) => item.year > 0)?.year ?? 0,
+        members,
+        playTotal: members.reduce((sum, item) => sum + item.playCount, 0),
+      });
+    }
+    return groups;
   }
 
   /** 按指定哈希列取重复分组 */
@@ -614,38 +764,71 @@ export class VodMergeService {
   }
 
   /** 预览：分组的轻量列表（不含线路明细） */
-  async preview(): Promise<{
-    auto: Array<Record<string, unknown>>;
-    suspects: Array<Record<string, unknown>>;
-    same: Array<Record<string, unknown>>;
-    summary: {
-      autoGroups: number;
-      autoVods: number;
-      suspectGroups: number;
-      sameGroups: number;
-      conflictGroups: number;
-      ignored: number;
-    };
-  }> {
-    const [candidates, sameSource] = await Promise.all([this.loadMergeCandidates(), this.loadSameSourceGroups()]);
-    const { auto, conflict, suspects, ignored } = candidates;
+  async preview(): Promise<MergePreview> {
+    const cached = this.previewCache;
+    if (cached !== null && Date.now() - cached.at < PREVIEW_CACHE_MS) return cached.value;
 
-    const light = (group: MergeGroup): Record<string, unknown> => ({
-      key: group.key,
-      kind: group.kind,
-      name: group.name,
-      year: group.year,
-      count: group.members.length,
-      playTotal: group.playTotal,
-      matchedBy: group.matchedBy,
-      actorOverlap: group.actorOverlap,
-    });
+    // 三条统计互相独立，并行跑；最慢的严格键分组约 2 秒
+    const [strict, looseGroups, sameSource, ignored] = await Promise.all([
+      this.loadStrictLight(),
+      this.loadSuspectGroups(),
+      this.loadSameSourceGroups(),
+      this.loadIgnored(),
+    ]);
+
+    const strictAuto: LightGroup[] = strict.auto
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
+      .map((group) => ({ ...group, matchedBy: 'strict' as const }));
+
+    // 疑似：去掉标点后同名，但严格键不止一种（标点差异，不是空格差异）
+    const looseSuspects = looseGroups
+      .flatMap(splitByYear)
+      .filter((group) => group.members.length > 1)
+      .filter((group) => new Set(group.members.map((item) => item.strictKey)).size > 1)
+      .filter((group) => !ignored.has(ignoreKey('suspect', group.key)));
+
+    // 宽松键 + 年份相容 + 演员高度重合 → 升级为可合并
+    const upgraded: LightGroup[] = looseSuspects
+      .filter((group) => !ignored.has(ignoreKey('auto', group.key)))
+      .filter((group) => this.actorMatched(group))
+      .map((group) => ({
+        key: group.key,
+        kind: 'auto' as const,
+        name: group.name,
+        year: group.year,
+        count: group.members.length,
+        playTotal: group.playTotal,
+        matchedBy: 'actor' as const,
+        actorOverlap: actorOverlap(group.members),
+      }));
+    const upgradedKeys = new Set(upgraded.map((group) => group.key));
+
+    // 严格键与宽松键在「名称里只有标点差异」时会算出同一个哈希：
+    // 两个分组同键但成员数不同，保留成员多的那个（演员升级后的那组是超集），
+    // 否则前端按 key 取到的是只含 2 条的严格组，合并会漏人。
+    const autoByKey = new Map<string, LightGroup>();
+    for (const group of [...strictAuto, ...upgraded]) {
+      const prev = autoByKey.get(group.key);
+      if (prev === undefined || group.count > prev.count) autoByKey.set(group.key, group);
+    }
+    const auto = [...autoByKey.values()];
+
+    const suspects: LightGroup[] = looseSuspects
+      .filter((group) => !upgradedKeys.has(group.key))
+      .map((group) => ({
+        key: group.key,
+        kind: 'suspect' as const,
+        name: group.name,
+        year: group.year,
+        count: group.members.length,
+        playTotal: group.playTotal,
+      }));
 
     const same = sameSource.filter((group) => !ignored.has(ignoreKey('same', group.key)));
 
-    return {
-      auto: auto.map(light),
-      suspects: suspects.map(light),
+    const value = {
+      auto,
+      suspects,
       same: same.map((group) => ({
         key: group.key,
         kind: 'same' as const,
@@ -656,13 +839,15 @@ export class VodMergeService {
       })),
       summary: {
         autoGroups: auto.length,
-        autoVods: auto.reduce((sum, group) => sum + group.members.length - 1, 0),
+        autoVods: auto.reduce((sum, group) => sum + group.count - 1, 0),
         suspectGroups: suspects.length,
         sameGroups: same.length,
-        conflictGroups: conflict.length,
+        conflictGroups: strict.conflictCount,
         ignored: ignored.size,
       },
     };
+    this.previewCache = { at: Date.now(), value };
+    return value;
   }
 
   /** 单组详情：成员与线路来源 */
@@ -679,6 +864,7 @@ export class VodMergeService {
   async merge(dto: VodMergeMergeDTO): Promise<{ merged: number }> {
     const ids = [...new Set(dto.ids)].filter((id) => BigInt(id) > 0n);
     if (ids.length < 2) throw new BadRequestException('请至少选择两条影片');
+    this.previewCache = null;
 
     const rows = await this.dataSource.query<
       Array<{
@@ -738,11 +924,13 @@ export class VodMergeService {
     const valid = kind === 'same' ? isSameKey(dto.key) : isHashKey(dto.key);
     if (!valid) throw new BadRequestException('分组标识不正确');
     const ignoreKind = kind === 'same' ? 2 : kind === 'suspect' ? 2 : 1;
+    this.previewCache = null;
     return this.setIgnored(ignoreKey(kind, dto.key), ignoreKind, dto.ignored ?? true);
   }
 
   /** 一键合并全部可自动合并的分组 */
   async batch(dto: VodMergeBatchDTO): Promise<{ needConfirm: boolean; groups: number; vods: number; merged: number }> {
+    this.previewCache = null;
     const { auto } = await this.loadMergeCandidates();
     const vods = auto.reduce((sum, group) => sum + group.members.length - 1, 0);
     if (dto.confirm !== true) {
@@ -766,6 +954,7 @@ export class VodMergeService {
     const action = dto.action ?? 'merge';
     const valid = dto.keys.filter((item) => ((item.kind ?? 'auto') === 'same' ? isSameKey(item.key) : isHashKey(item.key)));
     if (valid.length === 0) throw new BadRequestException('请先选择分组');
+    this.previewCache = null;
 
     const groups: MergeGroup[] = [];
     for (const item of valid) {

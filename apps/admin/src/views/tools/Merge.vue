@@ -467,7 +467,7 @@ onMounted(() => {
 
     <el-card shadow="never" class="table-card">
       <div class="split">
-        <div class="pane-list">
+        <div v-loading="loading" element-loading-text="正在扫描重复影片…" class="pane-list">
           <div class="list-head">
             <span class="list-actions-left">
               <el-button :disabled="filtered.length === 0 || busy" @click="selectAll">全选</el-button>
@@ -517,7 +517,7 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <div v-if="filtered.length === 0" class="list-empty">没有待处理的重复影片</div>
+            <div v-if="!loading && filtered.length === 0" class="list-empty">没有待处理的重复影片</div>
             <div v-else-if="visibleGroups.length < filtered.length" class="list-more">
               继续向下滚动加载更多
             </div>
@@ -605,7 +605,7 @@ onMounted(() => {
             </div>
           </template>
 
-          <div v-else class="list-empty center">左侧没有待处理的重复影片</div>
+          <div v-else-if="!loading" class="list-empty center">左侧没有待处理的重复影片</div>
         </div>
       </div>
     </el-card>

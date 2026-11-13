@@ -12,6 +12,10 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
 @Index('idx_status_collected', ['status', 'collectedAt'])
 @Index('idx_cover_host', ['coverHost'])
 @Index('idx_search', ['status', 'name', 'year', 'collectedAt', 'createdAt'])
+// 重复影片页的覆盖索引：按 name_hash 分组后只读窄列，避免回表读 238MB 的宽表
+@Index('idx_merge_preview', ['nameHash', 'name', 'year', 'status', 'collectedAt'])
+// 疑似重复：按 name_hash_loose 分组时顺带数出组内有几种严格键
+@Index('idx_merge_loose', ['nameHashLoose', 'nameHash'])
 export class VodEntity extends AppBaseEntity {
   @Column({
     name: 'category_id',
