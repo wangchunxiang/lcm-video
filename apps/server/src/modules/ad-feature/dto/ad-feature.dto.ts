@@ -62,3 +62,14 @@ export class UpdateAdFeatureDTO {
   @IsArray({ message: '必须是数组' })
   sample?: unknown[];
 }
+
+/** 分析请求：sourceId 必填，sample 可选（页面回传抽好的样片）。 */
+export class AnalyzeDTO {
+  @IsString({ message: '必须是数字 id（字符串）' })
+  @Matches(/^\d+$/, { message: '必须是数字 id' })
+  sourceId!: string;
+
+  @IsOptional()
+  @IsArray({ message: '必须是数组' })
+  sample?: unknown[];
+}

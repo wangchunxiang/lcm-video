@@ -344,7 +344,16 @@ async function startAnalyze() {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ sourceId: adsSourceId.value }),
+      // 用页面上抽好的这几部，服务端不再重新随机（否则分析用的样片与列表对不上）
+      body: JSON.stringify({
+        sourceId: adsSourceId.value,
+        sample: sampleVods.value.map((item) => ({
+          id: item.id,
+          name: item.name,
+          episode: item.episode,
+          url: item.url,
+        })),
+      }),
     });
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
     const reader = res.body.getReader();

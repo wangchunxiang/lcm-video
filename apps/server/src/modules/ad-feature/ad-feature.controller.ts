@@ -6,7 +6,7 @@ import { SourceIdDTO } from '../../common/dto/id.dto';
 import { AdFeatureEntity } from './ad-feature.entity';
 import { AdFeatureService } from './ad-feature.service';
 import type { AdAnalyzeResult } from './ad-feature.service';
-import { CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-feature.dto';
+import { AnalyzeDTO, CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-feature.dto';
 
 /** 广告特征：标准 REST + 抽样预览 / 流式分析。 */
 @AppCrud({
@@ -25,8 +25,8 @@ export class AdFeatureController {
 
   /** 一次性分析，返回完整结果（后台脚本/测试用）。 */
   @Post('analyze')
-  analyze(@Body() dto: SourceIdDTO): Promise<AdAnalyzeResult> {
-    return this.service.analyze(dto.sourceId, () => undefined);
+  analyze(@Body() dto: AnalyzeDTO): Promise<AdAnalyzeResult> {
+    return this.service.analyze(dto.sourceId, () => undefined, AdFeatureService.toSamples(dto.sample));
   }
 
   /**
@@ -35,7 +35,7 @@ export class AdFeatureController {
    */
   @Post('analyze-stream')
   @Raw()
-  async analyzeStream(@Body() dto: SourceIdDTO, @Res() res: Response): Promise<void> {
+  async analyzeStream(@Body() dto: AnalyzeDTO, @Res() res: Response): Promise<void> {
     res.setHeader('content-type', 'application/x-ndjson; charset=utf-8');
     res.setHeader('cache-control', 'no-store');
     let closed = false;
@@ -47,7 +47,7 @@ export class AdFeatureController {
       res.write(`${JSON.stringify(line)}\n`);
     };
     try {
-      const result = await this.service.analyze(dto.sourceId, (line) => write({ type: 'log', msg: line }));
+      const result = await this.service.analyze(dto.sourceId, (line) => write({ type: 'log', msg: line }), AdFeatureService.toSamples(dto.sample));
       write({ type: 'result', ...result });
     } catch (error) {
       write({ type: 'error', msg: error instanceof Error ? error.message : String(error) });

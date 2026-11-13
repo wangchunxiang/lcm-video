@@ -122,8 +122,11 @@ export function signatureOf(durs: number[]): string {
  * 从该源随机抽 N 个有播放地址的作品。
  *
  * 不用 `ORDER BY RAND()`：那要全表扫 vod 再 filesort，还得把动辄几十 KB 的
- * play_url 塞进排序缓冲。改为「按主键区间取一小段 → 内存洗牌 → 再按主键回表取
- * play_url」，三次往返即可。
+ * play_url 塞进排序缓冲。改为「随机起点向后取一段 → 内存洗牌 → 按主键回表取
+ * play_url」，几次往返即可。
+ *
+ * 起点向后取（而不是「随机开一个固定宽度的窗口」）：各源的线路 id 分布很不均匀，
+ * 固定窗口会大量落在空档里，抽不满 N 个。撞到尾段时从最小 id 再补一次。
  *
  * 主键是 BIGINT UNSIGNED（驱动按字符串返回）：区间计算用 Number()，回传 SQL 前
  * 一律 String()。
@@ -136,7 +139,20 @@ export async function pickSampleVods(
   const picked: Array<{ id: string; vodId: string; name: string }> = [];
   const seen = new Set<string>();
 
-  for (let attempt = 0; attempt < 6 && picked.length < size; attempt += 1) {
+  /** 从 from 起向后取一段行（不带 play_url，省 IO） */
+  const fetchFrom = (from: number): Promise<Array<{ id: string; vodId: string }>> =>
+    dataSource.query<Array<{ id: string; vodId: string }>>(
+      `SELECT id, vod_id AS vodId
+         FROM lcm_vod_play
+        WHERE source_id = ?
+          AND play_url <> ''
+          AND id >= ?
+        ORDER BY id ASC
+        LIMIT 120`,
+      [sourceId, String(from)],
+    );
+
+  for (let attempt = 0; attempt < 8 && picked.length < size * 3; attempt += 1) {
     const [range] = await dataSource.query<Array<{ low: string; high: string }>>(
       `SELECT COALESCE(CAST(MIN(id) AS CHAR), '0') AS low,
               COALESCE(CAST(MAX(id) AS CHAR), '0') AS high
@@ -146,24 +162,15 @@ export async function pickSampleVods(
     );
     const low = Number(range?.low ?? 0);
     const high = Number(range?.high ?? 0);
-    if (high <= 0 || high <= low) break;
+    if (high <= 0) break;
 
-    /* 随机开一个窗口，取窗口内的一小段行（不带 play_url） */
-    const width = Math.max(2000, Math.ceil((high - low) / 50));
-    const start = low + Math.floor(Math.random() * Math.max(1, high - low - width));
-    const rows = await dataSource.query<Array<{ id: string; vodId: string }>>(
-      `SELECT id, vod_id AS vodId
-         FROM lcm_vod_play
-        WHERE source_id = ?
-          AND play_url <> ''
-          AND id BETWEEN ? AND ?
-        ORDER BY id ASC
-        LIMIT 120`,
-      [sourceId, String(start), String(start + width)],
-    );
+    /* 随机起点向后取 120 行；不足 60 行说明撞到尾段，再从最小 id 补一次（绕回） */
+    const start = low + Math.floor(Math.random() * Math.max(1, high - low + 1));
+    const rows = await fetchFrom(start);
+    if (rows.length < 60) rows.push(...(await fetchFrom(low)));
     if (!rows.length) continue;
 
-    // 没有物理外键也没有 relation，状态过滤要单独查一次（120 个 id，代价很小）
+    // 没有物理外键也没有 relation，状态过滤要单独查一次（最多 240 个 id，代价很小）
     const vods = await dataSource.query<Array<{ id: string; name: string }>>(
       'SELECT id, name FROM lcm_vod WHERE status = 1 AND id IN (?)',
       [[...new Set(rows.map((row) => row.vodId))]],
@@ -183,23 +190,23 @@ export async function pickSampleVods(
 
   if (!picked.length) return [];
 
-  /* 洗牌后取前 size 个，再回表拿 play_url */
+  /* 洗牌后逐个取，直到凑够 size 个「有播放地址」的；地址为空的跳过，不占名额 */
   for (let i = picked.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     const tmp = picked[i]!;
     picked[i] = picked[j]!;
     picked[j] = tmp;
   }
-  const chosen = picked.slice(0, size);
   const urls = await dataSource.query<Array<{ id: string; playUrl: string | null }>>(
     'SELECT id, play_url AS playUrl FROM lcm_vod_play WHERE id IN (?)',
-    [chosen.map((row) => row.id)],
+    [picked.map((row) => row.id)],
   );
   const urlMap = new Map<string, string>();
   for (const row of urls) urlMap.set(row.id, row.playUrl ?? '');
 
   const out: SampleVod[] = [];
-  for (const row of chosen) {
+  for (const row of picked) {
+    if (out.length >= size) break;
     const playUrl = urlMap.get(row.id) ?? '';
     const first = playUrl.split('#')[0] ?? '';
     const url = first.split('$').pop() ?? '';
@@ -217,9 +224,15 @@ export async function analyzeSource(
   dataSource: DataSource,
   sourceId: string,
   log: (line: string) => void,
+  provided?: SampleVod[],
 ): Promise<{ features: FoundFeature[]; sampled: number }> {
-  const samples = await pickSampleVods(dataSource, sourceId);
-  log(`随机抽取 ${samples.length} 部作品用于提取特征`);
+  const samples =
+    provided && provided.length > 0 ? provided : await pickSampleVods(dataSource, sourceId);
+  log(
+    provided && provided.length > 0
+      ? `使用页面选定的 ${samples.length} 部作品`
+      : `随机抽取 ${samples.length} 部作品用于提取特征`,
+  );
   if (!samples.length) return { features: [], sampled: 0 };
 
   const map = new Map<
