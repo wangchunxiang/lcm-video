@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Put, Req } from '@nestjs/common';
+import { ADMIN_API_PREFIX } from '../../common/http/api-prefix';
 import type { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
@@ -12,7 +13,7 @@ import type { LoginVO } from './dto/admin-user.dto';
  * 会话与自助操作。
  * 只有登录是 `@Public()`；其余要求已登录（全局守卫兜底）。
  */
-@Controller('api/admin/auth')
+@Controller(`${ADMIN_API_PREFIX}/auth`)
 export class AuthController {
   constructor(private readonly adminUserService: AdminUserService) {}
 

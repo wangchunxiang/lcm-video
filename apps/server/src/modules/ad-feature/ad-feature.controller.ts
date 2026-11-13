@@ -11,7 +11,7 @@ import { AnalyzeDTO, CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-fea
 /** 广告特征：标准 REST + 抽样预览 / 流式分析。 */
 @AppCrud({
   entity: AdFeatureEntity,
-  path: 'api/admin/ad-feature',
+  path: 'ad-feature',
   dto: { create: CreateAdFeatureDTO, update: UpdateAdFeatureDTO },
 })
 export class AdFeatureController {

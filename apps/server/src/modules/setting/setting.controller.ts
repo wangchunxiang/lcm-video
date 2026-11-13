@@ -13,7 +13,7 @@ import { CreateSettingDTO, UpdateSettingDTO } from './dto/setting.dto';
  */
 @AppCrud({
   entity: SettingEntity,
-  path: 'api/admin/setting',
+  path: 'setting',
   dto: { create: CreateSettingDTO, update: UpdateSettingDTO },
 })
 export class SettingController {

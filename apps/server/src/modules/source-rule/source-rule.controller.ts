@@ -8,7 +8,7 @@ import { ApplyDTO, CreateSourceRuleDTO, UpdateSourceRuleDTO } from './dto/source
 /** 地址替换规则：标准 REST + 历史数据重刷。 */
 @AppCrud({
   entity: SourceRuleEntity,
-  path: 'api/admin/source-rule',
+  path: 'source-rule',
   dto: { create: CreateSourceRuleDTO, update: UpdateSourceRuleDTO },
 })
 export class SourceRuleController {

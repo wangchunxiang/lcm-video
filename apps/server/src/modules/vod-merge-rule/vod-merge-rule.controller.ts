@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
+import { ADMIN_API_PREFIX } from '../../common/http/api-prefix';
 import { UpdateVodMergeRuleDTO } from './dto/vod-merge-rule.dto';
 import { VodMergeRuleService } from './vod-merge-rule.service';
 import type { MergeRuleView } from './vod-merge-rule.service';
@@ -9,7 +10,7 @@ import type { MergeRuleView } from './vod-merge-rule.service';
  * 规则是「一个字段一行」，但后台只有一个保存按钮，所以 PUT 收整份提交、
  * 服务端按白名单逐项校验后一次性 upsert。
  */
-@Controller('api/admin/vod-merge-rule')
+@Controller(`${ADMIN_API_PREFIX}/vod-merge-rule`)
 export class VodMergeRuleController {
   constructor(private readonly service: VodMergeRuleService) {}
 

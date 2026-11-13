@@ -18,7 +18,7 @@ import {
  */
 @AppCrud({
   entity: PlayLineEntity,
-  path: 'api/admin/play-line',
+  path: 'play-line',
   dto: { create: CreatePlayLineDTO, update: UpdatePlayLineDTO },
 })
 export class PlayLineController {

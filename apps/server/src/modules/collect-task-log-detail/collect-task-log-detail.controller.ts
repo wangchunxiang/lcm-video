@@ -5,7 +5,7 @@ import { CreateCollectTaskLogDetailDTO, UpdateCollectTaskLogDetailDTO } from './
 
 @AppCrud({
   entity: CollectTaskLogDetailEntity,
-  path: 'api/admin/collect-task-log-detail',
+  path: 'collect-task-log-detail',
   dto: { create: CreateCollectTaskLogDetailDTO, update: UpdateCollectTaskLogDetailDTO },
 })
 export class CollectTaskLogDetailController {

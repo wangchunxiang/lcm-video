@@ -7,7 +7,7 @@ import { BatchVodDTO, CreateVodDTO, RecollectDTO, UpdateVodDTO } from './dto/vod
 /** 影片管理：标准 REST + 批量改分类/上下架。 */
 @AppCrud({
   entity: VodEntity,
-  path: 'api/admin/vod',
+  path: 'vod',
   dto: { create: CreateVodDTO, update: UpdateVodDTO },
 })
 export class VodController {

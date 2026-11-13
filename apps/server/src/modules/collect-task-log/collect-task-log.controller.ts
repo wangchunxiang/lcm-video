@@ -9,7 +9,7 @@ import { CreateCollectTaskLogDTO, UpdateCollectTaskLogDTO } from './dto/collect-
 /** 采集记录：标准 REST + 续采 / 停止。 */
 @AppCrud({
   entity: CollectTaskLogEntity,
-  path: 'api/admin/collect-task-log',
+  path: 'collect-task-log',
   dto: { create: CreateCollectTaskLogDTO, update: UpdateCollectTaskLogDTO },
 })
 export class CollectTaskLogController {

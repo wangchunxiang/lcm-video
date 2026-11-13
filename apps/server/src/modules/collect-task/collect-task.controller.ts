@@ -9,7 +9,7 @@ import { CreateCollectTaskDTO, UpdateCollectTaskDTO } from './dto/collect-task.d
 /** 采集任务：标准 REST + 立即执行 / 停止。 */
 @AppCrud({
   entity: CollectTaskEntity,
-  path: 'api/admin/collect-task',
+  path: 'collect-task',
   dto: { create: CreateCollectTaskDTO, update: UpdateCollectTaskDTO },
 })
 export class CollectTaskController {

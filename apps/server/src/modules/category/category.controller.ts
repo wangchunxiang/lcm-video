@@ -10,7 +10,7 @@ import { CreateCategoryDTO, UpdateCategoryDTO } from './dto/category.dto';
  */
 @AppCrud({
   entity: CategoryEntity,
-  path: 'api/admin/category',
+  path: 'category',
   dto: { create: CreateCategoryDTO, update: UpdateCategoryDTO },
 })
 export class CategoryController {

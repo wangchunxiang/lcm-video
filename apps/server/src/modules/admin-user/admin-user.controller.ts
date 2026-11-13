@@ -9,7 +9,7 @@ import { CreateAdminUserDTO, UpdateAdminUserDTO } from './dto/admin-user.dto';
  */
 @AppCrud({
   entity: AdminUserEntity,
-  path: 'api/admin/admin-user',
+  path: 'admin-user',
   dto: { create: CreateAdminUserDTO, update: UpdateAdminUserDTO },
   // 密码哈希绝不能出现在响应里
   hiddenFields: ['password', 'passwordVersion'],

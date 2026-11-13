@@ -13,7 +13,7 @@ import {
 /** 播放线路：标准 REST + `by-vod`/`delete-many`（带「最后一条线路」保护）。 */
 @AppCrud({
   entity: VodPlayEntity,
-  path: 'api/admin/vod-play',
+  path: 'vod-play',
   dto: { create: CreateVodPlayDTO, update: UpdateVodPlayDTO },
 })
 export class VodPlayController {

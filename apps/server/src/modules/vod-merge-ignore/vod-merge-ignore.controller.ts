@@ -12,7 +12,7 @@ import {
 /** 重复影片忽略名单：标准 REST + 幂等开关 + 批量查询。 */
 @AppCrud({
   entity: VodMergeIgnoreEntity,
-  path: 'api/admin/vod-merge-ignore',
+  path: 'vod-merge-ignore',
   dto: { create: CreateVodMergeIgnoreDTO, update: UpdateVodMergeIgnoreDTO },
 })
 export class VodMergeIgnoreController {

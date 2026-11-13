@@ -14,7 +14,7 @@ import {
 /** 源站分类映射：标准 REST + 按源查询 / 批量映射 / 自动匹配 / 重刷影片。 */
 @AppCrud({
   entity: CollectSourceCategoryEntity,
-  path: 'api/admin/collect-source-category',
+  path: 'collect-source-category',
   dto: {
     create: CreateCollectSourceCategoryDTO,
     update: UpdateCollectSourceCategoryDTO,

@@ -10,7 +10,7 @@ import { CreateCollectSourceDTO, RunDTO, UpdateCollectSourceDTO } from './dto/co
 /** 采集源站：标准 REST + 连通性测试 + 拉取分类。 */
 @AppCrud({
   entity: CollectSourceEntity,
-  path: 'api/admin/collect-source',
+  path: 'collect-source',
   dto: { create: CreateCollectSourceDTO, update: UpdateCollectSourceDTO },
 })
 export class CollectSourceController {

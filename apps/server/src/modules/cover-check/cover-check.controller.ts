@@ -15,7 +15,7 @@ import {
 /** 封面体检：标准 REST + 域名概览 / 扫描 / 清空 / 修复。 */
 @AppCrud({
   entity: CoverCheckEntity,
-  path: 'api/admin/cover-check',
+  path: 'cover-check',
   dto: { create: CreateCoverCheckDTO, update: UpdateCoverCheckDTO },
 })
 export class CoverCheckController {

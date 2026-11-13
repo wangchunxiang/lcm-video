@@ -1,4 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { ADMIN_API_PREFIX } from '../../common/http/api-prefix';
 
 import {
   VodMergeBatchDTO,
@@ -13,7 +14,7 @@ import { VodMergeService } from './vod-merge.service';
  * 重复影片合并工具。
  * 归属在 vod 表下（这些操作本来就是 vod 的批量行为），单独一个 controller 只为不让 vod.controller 膨胀。
  */
-@Controller('api/admin/vod-merge')
+@Controller(`${ADMIN_API_PREFIX}/vod-merge`)
 export class VodMergeController {
   constructor(private readonly merge: VodMergeService) {}
 
