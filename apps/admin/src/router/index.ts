@@ -22,20 +22,20 @@ import PlayLines from '../views/playback/Lines.vue';
 import PlaybackSetting from '../views/playback/Config.vue';
 
 const implemented: Record<string, Component> = {
-  '/collect/sources': Sources,
-  '/collect/rules': SourceRules,
-  '/collect/mapping': Mappings,
-  '/collect/merge': MergeRules,
-  '/collect/tasks': Tasks,
-  '/collect/logs': Logs,
-  '/content/vods': Vods,
-  '/content/categories': Categories,
-  '/setting/site': SiteSetting,
-  '/setting/account': AccountSetting,
-  '/tools/merge': MergeTools,
-  '/tools/cover-check': CoverCheck,
-  '/playback/lines': PlayLines,
-  '/playback/config': PlaybackSetting,
+  '/sources': Sources,
+  '/source-rules': SourceRules,
+  '/mappings': Mappings,
+  '/merge-rules': MergeRules,
+  '/tasks': Tasks,
+  '/logs': Logs,
+  '/vods': Vods,
+  '/categories': Categories,
+  '/site': SiteSetting,
+  '/account': AccountSetting,
+  '/merge': MergeTools,
+  '/cover-check': CoverCheck,
+  '/play-lines': PlayLines,
+  '/player-settings': PlaybackSetting,
 };
 
 const implementedRoutes = Object.entries(implemented).map(([path, component]) => ({
@@ -64,7 +64,6 @@ const routes = [
     component: AdminLayout,
     children: [
       { path: '', redirect: '/dashboard' },
-      { path: 'setting', redirect: '/setting/site' },
       { path: 'dashboard', component: Dashboard, meta: { title: '数据概览' } },
       ...implementedRoutes,
       ...placeholderRoutes,

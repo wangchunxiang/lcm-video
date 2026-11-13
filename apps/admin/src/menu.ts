@@ -5,6 +5,10 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
+/**
+ * 后台菜单。侧边栏按分组展示，但**路由是拍平的**：
+ * 分组节点只作为 el-sub-menu 的 index（不是路由），叶子节点的 path 就是页面地址。
+ */
 export const menus: MenuItem[] = [
   { path: '/dashboard', title: '数据概览', icon: 'DataBoard' },
   {
@@ -12,12 +16,12 @@ export const menus: MenuItem[] = [
     title: '采集管理',
     icon: 'Download',
     children: [
-      { path: '/collect/sources', title: '采集源站', icon: 'Link' },
-      { path: '/collect/rules', title: '替换规则', icon: 'Switch' },
-      { path: '/collect/mapping', title: '分类映射', icon: 'Share' },
-      { path: '/collect/merge', title: '入库规则', icon: 'Operation' },
-      { path: '/collect/tasks', title: '采集任务', icon: 'AlarmClock' },
-      { path: '/collect/logs', title: '采集记录', icon: 'Tickets' },
+      { path: '/sources', title: '采集源站', icon: 'Link' },
+      { path: '/source-rules', title: '替换规则', icon: 'Switch' },
+      { path: '/mappings', title: '分类映射', icon: 'Share' },
+      { path: '/merge-rules', title: '入库规则', icon: 'Operation' },
+      { path: '/tasks', title: '采集任务', icon: 'AlarmClock' },
+      { path: '/logs', title: '采集记录', icon: 'Tickets' },
     ],
   },
   {
@@ -25,8 +29,8 @@ export const menus: MenuItem[] = [
     title: '内容管理',
     icon: 'Film',
     children: [
-      { path: '/content/vods', title: '影视管理', icon: 'VideoCamera' },
-      { path: '/content/categories', title: '分类管理', icon: 'CollectionTag' },
+      { path: '/vods', title: '影视管理', icon: 'VideoCamera' },
+      { path: '/categories', title: '分类管理', icon: 'CollectionTag' },
     ],
   },
   {
@@ -34,8 +38,8 @@ export const menus: MenuItem[] = [
     title: '播放管理',
     icon: 'VideoPlay',
     children: [
-      { path: '/playback/config', title: '播放设置', icon: 'Setting' },
-      { path: '/playback/lines', title: '线路设置', icon: 'Connection' },
+      { path: '/player-settings', title: '播放设置', icon: 'Setting' },
+      { path: '/play-lines', title: '线路设置', icon: 'Connection' },
     ],
   },
   {
@@ -43,8 +47,8 @@ export const menus: MenuItem[] = [
     title: '高级工具',
     icon: 'SetUp',
     children: [
-      { path: '/tools/merge', title: '重复影片', icon: 'CopyDocument' },
-      { path: '/tools/cover-check', title: '图片检查', icon: 'Picture' },
+      { path: '/merge', title: '重复影片', icon: 'CopyDocument' },
+      { path: '/cover-check', title: '图片检查', icon: 'Picture' },
     ],
   },
   {
@@ -52,8 +56,8 @@ export const menus: MenuItem[] = [
     title: '系统管理',
     icon: 'Setting',
     children: [
-      { path: '/setting/site', title: '站点设置', icon: 'Monitor' },
-      { path: '/setting/account', title: '账号设置', icon: 'User' },
+      { path: '/site', title: '站点设置', icon: 'Monitor' },
+      { path: '/account', title: '账号设置', icon: 'User' },
     ],
   },
 ];
