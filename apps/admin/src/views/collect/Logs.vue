@@ -89,15 +89,20 @@ function statusOf(row: { status: number }): { text: string; type: TagProps['type
 
 const nowTick = ref(Date.now());
 
-/** 固定「X 时 X 分 X 秒」格式，避免执行中文字宽度变化导致页面抖动 */
+/** 固定「XX时 XX分 XX秒」格式，时分秒各两位，避免执行中文字宽度变化导致页面抖动 */
+function hmsText(totalSeconds: number): string {
+  const seconds = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${pad(hours)}时 ${pad(minutes)}分 ${pad(seconds % 60)}秒`;
+}
+
 function elapsedText(startText: string, endText: string | null): string {
   const start = new Date(startText.replace(' ', 'T')).getTime();
   const end = endText ? new Date(endText.replace(' ', 'T')).getTime() : nowTick.value;
   if (!Number.isFinite(start) || !Number.isFinite(end)) return '—';
-  const seconds = Math.max(0, Math.round((end - start) / 1000));
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${hours} 时 ${minutes} 分 ${seconds % 60} 秒`;
+  return hmsText(Math.round((end - start) / 1000));
 }
 
 function durationText(row: LogRow): string {
@@ -191,10 +196,9 @@ const progressPercent = computed(() => {
   return Math.min(100, Math.round((detailTotal.value / log.totalPages) * 100));
 });
 
-/** 把毫秒格式化成「X 时 Y 分 Z 秒」，与耗时列同款 */
+/** 把毫秒格式化成「XX时 XX分 XX秒」，与耗时列同款 */
 function msText(ms: number): string {
-  const totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
-  return `${Math.floor(totalSec / 3600)} 时 ${Math.floor((totalSec % 3600) / 60)} 分 ${totalSec % 60} 秒`;
+  return hmsText(Math.floor((ms || 0) / 1000));
 }
 
 /** 扣掉中断时长的实际采集耗时 */
@@ -376,44 +380,51 @@ onBeforeUnmount(() => {
           :height="tableHeight"
           empty-text="还没有采集记录"
         >
-          <el-table-column type="index" label="#" width="60" align="center" :index="rowIndex" />
-          <el-table-column prop="taskName" label="任务" min-width="110" show-overflow-tooltip>
+          <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
+          <el-table-column prop="taskName" label="任务" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.manual" class="muted">手动采集</span>
               <span v-else-if="row.taskName">{{ row.taskName }}</span>
               <span v-else class="muted">任务已删除</span>
             </template>
           </el-table-column>
-          <el-table-column prop="sourceName" label="采集源" width="110" show-overflow-tooltip>
+          <el-table-column prop="sourceName" label="采集源" width="130" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.sourceName">{{ row.sourceName }}</span>
               <span v-else class="muted">源已删除</span>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="80" align="center">
+          <el-table-column label="状态" width="90" align="center">
             <template #default="{ row }">
               <el-tag :type="statusOf(row).type" size="small">{{ statusOf(row).text }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="新增" width="70" align="center">
+          <el-table-column label="采集数" width="90" align="center">
+            <template #default="{ row }"><span :class="numClass('total')">{{ row.total }}</span></template>
+          </el-table-column>
+          <el-table-column label="新增" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('inserted')">{{ row.inserted }}</span></template>
           </el-table-column>
-          <el-table-column label="更新" width="70" align="center">
+          <el-table-column label="更新" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('updated')">{{ row.updated }}</span></template>
           </el-table-column>
-          <el-table-column label="跳过" width="70" align="center">
+          <el-table-column label="跳过" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('skipped')">{{ row.skipped }}</span></template>
           </el-table-column>
-          <el-table-column label="忽略" width="70" align="center">
+          <el-table-column label="忽略" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('ignored')">{{ row.ignored }}</span></template>
           </el-table-column>
-          <el-table-column label="失败" width="70" align="center">
+          <el-table-column label="失败" width="80" align="center">
             <template #default="{ row }"><span :class="numClass('failed')">{{ row.failed }}</span></template>
           </el-table-column>
-          <el-table-column label="开始时间" width="160" align="center">
+          <el-table-column label="开始时间" width="165" align="center">
             <template #default="{ row }">{{ formatDateTime(row.startedAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="140" align="center" fixed="right">
+          <el-table-column label="耗时" width="130" align="center">
+            <template #default="{ row }">{{ liveDuration(row) }}</template>
+          </el-table-column>
+          <el-table-column prop="message" label="信息" min-width="180" show-overflow-tooltip />
+          <el-table-column label="操作" width="170" align="center" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDetail(row)">明细</el-button>
               <el-button

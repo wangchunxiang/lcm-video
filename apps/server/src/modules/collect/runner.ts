@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Not, Repository } from 'typeorm';
-import { formatCollectSummary } from '@lcm/shared';
 import { CategoryEntity } from '../category/category.entity';
 import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
 import { CollectSourceEntity } from '../collect-source/collect-source.entity';
@@ -70,6 +69,11 @@ export const MANUAL_NAME = '手动采集';
 /** 任务表里表示「没有关联任务」的 id */
 const NO_TASK = '0';
 
+/** 任务表只存计数摘要，运行说明留给记录表 */
+function formatSummary(counters: Counters): string {
+  return `${counters.total}条：新增${counters.inserted}|更新${counters.updated}|跳过${counters.skipped}|忽略${counters.ignored}|失败${counters.failed}`;
+}
+
 @Injectable()
 export class CollectRunner {
   private readonly logger = new Logger(CollectRunner.name);
@@ -100,16 +104,42 @@ export class CollectRunner {
   /** 进程启动时调用：把上一轮遗留的「运行中」改判失败，否则任务永远显示在跑 */
   async closeInterruptedLogs(): Promise<void> {
     const message = '服务重启，任务已中断';
+    const interrupted = await this.logRepository.find({
+      where: { status: 1 },
+      select: {
+        id: true,
+        taskId: true,
+        total: true,
+        inserted: true,
+        updated: true,
+        skipped: true,
+        ignored: true,
+        failed: true,
+      },
+    });
     const result = await this.logRepository.update(
       { status: 1 },
       { status: 3, finishedAt: new Date(), message },
     );
-    const tasks = await this.taskRepository.update(
+    let taskCount = 0;
+    for (const log of interrupted) {
+      if (log.taskId === NO_TASK) continue;
+      const updated = await this.taskRepository.update(
+        { id: log.taskId, lastRunStatus: 1 },
+        {
+          lastRunStatus: 3,
+          lastRunMsg: formatSummary(log).slice(0, 255),
+        },
+      );
+      taskCount += updated.affected ?? 0;
+    }
+    // 没有对应运行记录的脏任务兜底
+    const stale = await this.taskRepository.update(
       { lastRunStatus: 1 },
-      { lastRunStatus: 3, lastRunMsg: message },
+      { lastRunStatus: 3, lastRunMsg: formatSummary(emptyCounters()) },
     );
+    taskCount += stale.affected ?? 0;
     const logs = result.affected ?? 0;
-    const taskCount = tasks.affected ?? 0;
     if (logs > 0 || taskCount > 0) {
       this.logger.warn(`清理中断的采集记录 ${logs} 条、任务 ${taskCount} 个`);
     }
@@ -226,12 +256,29 @@ export class CollectRunner {
       handle.controller.abort('用户取消');
       return true;
     }
+    const log = await this.logRepository.findOne({
+      where: { id: logId, status: 1 },
+      select: {
+        taskId: true,
+        lastPage: true,
+        totalPages: true,
+        total: true,
+        inserted: true,
+        updated: true,
+        skipped: true,
+        ignored: true,
+        failed: true,
+      },
+    });
+    if (log === null) return false;
+    const pageText =
+      log.totalPages > 0 ? `${log.lastPage}/${log.totalPages} 页` : `${log.lastPage} 页`;
     const result = await this.logRepository.update(
       { id: logId, status: 1 },
-      { status: 4, finishedAt: new Date(), message: '已取消' },
+      { status: 4, finishedAt: new Date(), message: `已取消，完成 ${pageText}` },
     );
     const affected = result.affected ?? 0;
-    if (affected > 0) await this.syncTaskStatus(logId, 4, '已取消');
+    if (affected > 0) await this.syncTaskStatus(logId, 4, formatSummary(log));
     return affected > 0;
   }
 
@@ -245,7 +292,7 @@ export class CollectRunner {
     if (log !== null) return this.cancel(log.id);
     const tasks = await this.taskRepository.update(
       { id: taskId, lastRunStatus: 1 },
-      { lastRunStatus: 4, lastRunMsg: '已取消' },
+      { lastRunStatus: 4, lastRunMsg: formatSummary(emptyCounters()) },
     );
     return (tasks.affected ?? 0) > 0;
   }
@@ -484,15 +531,14 @@ export class CollectRunner {
       if (pageCount === 0 && data.list.length < source.pagesize) break;
     }
 
-    const { counters } = context;
-    const summary = formatCollectSummary(counters);
+    const pageText = pageCount > 0 ? `${page}/${pageCount} 页` : `${page} 页`;
 
     if (canceled) {
-      await this.finish(context, 4, `已取消（${summary}）`);
+      await this.finish(context, 4, `已取消，完成 ${pageText}`);
     } else if (lastError && pageFailures >= PAGE_FAIL_LIMIT) {
-      await this.finish(context, 3, `连续 ${PAGE_FAIL_LIMIT} 页请求失败：${lastError}（${summary}）`);
+      await this.finish(context, 3, `连续 ${PAGE_FAIL_LIMIT} 页请求失败：${lastError}`);
     } else {
-      await this.finish(context, 2, summary);
+      await this.finish(context, 2, `完成 ${page} 页`);
     }
 
     // 两次任务之间留出间隔，避免整点多个任务同时打同一个源站
@@ -502,6 +548,7 @@ export class CollectRunner {
   private async finish(context: RunContext, status: number, message: string): Promise<void> {
     const { logId, counters } = context;
     const text = message.slice(0, 500);
+    const taskMessage = formatSummary(counters);
     const interruptedMs =
       status === 4 ? Math.max(0, Date.now() - (running.get(logId)?.startedAt ?? Date.now())) : undefined;
     await this.logRepository.update(
@@ -515,20 +562,21 @@ export class CollectRunner {
         resumeCount: context.resumeCount,
       },
     );
-    await this.syncTaskStatus(logId, status, text);
-    this.logger.log(`采集结束 log=${logId} status=${status}：${text}`);
+    await this.syncTaskStatus(logId, status, taskMessage);
+    this.logger.log(
+      `采集结束 log=${logId} status=${status}：${text}；任务摘要：${taskMessage}`,
+    );
   }
 
-  /** 记录收尾时同步任务表，任务列表才能显示上一次结果 */
-  private async syncTaskStatus(logId: string, status: number, message: string): Promise<void> {
+  /** 记录收尾时同步任务表；任务表只存计数摘要，运行说明留在记录表 */
+  private async syncTaskStatus(logId: string, status: number, taskMessage: string): Promise<void> {
     const log = await this.logRepository.findOne({ where: { id: logId }, select: { taskId: true } });
     if (log === null || log.taskId === NO_TASK) return;
     await this.taskRepository.update(
       { id: log.taskId },
-      { lastRunStatus: status, lastRunAt: new Date(), lastRunMsg: message.slice(0, 255) },
+      { lastRunStatus: status, lastRunAt: new Date(), lastRunMsg: taskMessage.slice(0, 255) },
     );
   }
-
   private counterPatch(
     counters: Counters,
   ): Pick<CollectTaskLogEntity, 'total' | 'inserted' | 'updated' | 'skipped' | 'ignored' | 'failed'> {

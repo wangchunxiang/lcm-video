@@ -4,7 +4,6 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
 import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
-import { normalizeCollectMessage } from '@lcm/shared/util';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 import { formatDateTime } from '../../utils/datetime.ts';
@@ -312,11 +311,29 @@ function runStatus(row: TaskRow): { text: string; type: 'success' | 'danger' | '
   return { text: '未执行', type: 'info' };
 }
 
-function pad2(value: number): string {
-  return String(value).padStart(2, '0');
+/**
+ * 任务表的说明只存计数摘要（`100条：新增10|更新20|跳过30|忽略5|失败2`），
+ * 列表里只显示「100 条」，明细放到悬停提示里。
+ */
+function summaryCount(message: string): string {
+  const matched = /^(\d+)\s*条/.exec(message.trim());
+  return matched ? `${matched[1]} 条` : message;
 }
 
-function formatRunTime(date: Date): string {
+function summaryDetail(message: string): string {
+  const index = message.search(/[：:]/);
+  if (index < 0) return message;
+  // `新增10|更新20|跳过30` → `新增 10 | 更新 20 | 跳过 30`，悬停提示里更好读
+  return message
+    .slice(index + 1)
+    .trim()
+    .replace(/\|/g, ' | ')
+    .replace(/(新增|更新|跳过|忽略|失败)\s*(\d)/g, '$1 $2');
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}function formatRunTime(date: Date): string {
   const week = WEEK_LABELS.find((item) => item.value === date.getDay())?.label ?? '';
   return `${date.getMonth() + 1}月${date.getDate()}日 ${week} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
@@ -426,47 +443,56 @@ onUnmounted(() => {
         >
           <el-table-column type="selection" width="44" fixed="left" />
           <el-table-column prop="name" label="任务名称" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="sourceName" label="采集源" width="110" show-overflow-tooltip />
-          <el-table-column label="采集范围" width="100" align="center">
+          <el-table-column prop="sourceName" label="采集源" width="88" show-overflow-tooltip />
+          <el-table-column label="采集范围" width="84" align="center">
             <template #default="{ row }">{{ rangeLabel(row.rangeType) }}</template>
           </el-table-column>
-          <el-table-column label="定时" width="130" align="center">
+          <el-table-column label="定时" width="88" align="center">
             <template #default="{ row }">
               <span v-if="row.cron" :title="row.cron">{{ describeCron(row.cron) }}</span>
               <span v-else class="muted">仅手动</span>
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="70" align="center">
+          <el-table-column label="状态" width="68" align="center">
             <template #default="{ row }">
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="结果" width="90" align="center">
+          <el-table-column label="执行状态" width="84" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.runningLogId" type="primary" size="small" effect="light">运行中</el-tag>
+              <span v-else class="muted">空闲</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="上次执行" width="134" align="center" class-name="time-cell">
+            <template #default="{ row }">{{ formatDateTime(row.lastRunAt) || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="结果" width="68" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.lastRunStatus === 1" type="primary" size="small" effect="light">运行中</el-tag>
               <el-tag v-else size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="执行时间" width="190" align="center">
+          <el-table-column label="说明" width="72" align="center">
             <template #default="{ row }">
-              <div class="run-times">
-                <div><span class="muted">上次</span> {{ formatDateTime(row.lastRunAt) || '—' }}</div>
-                <div><span class="muted">下次</span> {{ formatDateTime(row.nextRunAt) || '—' }}</div>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column label="说明" min-width="250" show-overflow-tooltip>
-            <template #default="{ row }">
-              <span v-if="row.lastRunMsg" class="run-msg">{{ normalizeCollectMessage(row.lastRunMsg) }}</span>
+              <el-tooltip v-if="row.lastRunMsg" placement="top">
+                <template #content>
+                  <span style="white-space: nowrap">{{ summaryDetail(row.lastRunMsg) }}</span>
+                </template>
+                <span>{{ summaryCount(row.lastRunMsg) }}</span>
+              </el-tooltip>
               <span v-else class="muted">—</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="160" align="center" fixed="right">
+          <el-table-column label="下次执行" width="134" align="center" class-name="time-cell">
+            <template #default="{ row }">{{ formatDateTime(row.nextRunAt) || '—' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="136" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="row.lastRunStatus !== 1" link type="primary" @click="run(row)">执行</el-button>
-              <el-button v-else link type="warning" @click="cancel(row)">取消</el-button>
-              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-              <el-button link type="danger" @click="remove(row)">删除</el-button>
+              <el-button v-if="row.lastRunStatus !== 1" link type="primary" class="op-btn" @click="run(row)">执行</el-button>
+              <el-button v-else link type="warning" class="op-btn" @click="cancel(row)">取消</el-button>
+              <el-button link type="primary" class="op-btn" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="danger" class="op-btn" @click="remove(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -582,18 +608,13 @@ onUnmounted(() => {
   color: var(--el-text-color-secondary);
   font-size: 12px;
 }
-.run-msg {
+:deep(.time-cell .cell) {
+  white-space: nowrap;
   font-size: 12px;
-  color: var(--el-text-color-regular);
   font-variant-numeric: tabular-nums;
 }
-.run-times {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: nowrap;
+.op-btn + .op-btn {
+  margin-left: 4px;
 }
 .cron-input :deep(.el-input__inner) {
   font-family: Consolas, Monaco, monospace;
