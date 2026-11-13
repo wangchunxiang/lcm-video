@@ -3,7 +3,7 @@ import { portal, type CategoryNode, type SiteConfig } from './api/portal';
 
 /**
  * 全站共享的站点配置与分类树。
- * 配置失败时用兜底值渲染，页面不因为 /api/site/config 不可用而白屏。
+ * 配置失败时用兜底值渲染，页面不因为 /api/web/config 不可用而白屏。
  */
 const DEFAULT_CONFIG: SiteConfig = {
   siteName: '蓝草莓影视',

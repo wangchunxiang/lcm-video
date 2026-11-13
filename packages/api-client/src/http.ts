@@ -43,7 +43,7 @@ export class ApiError extends Error {
 export type CredentialsMode = 'omit' | 'same-origin' | 'include';
 
 export interface HttpClientOptions {
-  /** 接口前缀，如 `/api/admin`、`/api/site`；开发期由 vite proxy 转发。 */
+  /** 接口前缀，如 `/api/admin`、`/api/web`；开发期由 vite proxy 转发。 */
   baseUrl: string;
   /** 返回 Bearer token；返回空值时不带 Authorization 头（v2 的 cookie 会话）。 */
   getToken?: () => string | null | undefined;

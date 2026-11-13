@@ -4,7 +4,7 @@ import { PortalService } from './portal.service';
 import type { CategoryNode, EpisodeItem, PlayLine, SiteConfig, VodCard, VodRow } from './portal.service';
 
 /** 前台只读接口：全部公开，不需要登录。 */
-@Controller('api/site')
+@Controller('api/web')
 @Public()
 export class PortalController {
   constructor(private readonly portal: PortalService) {}

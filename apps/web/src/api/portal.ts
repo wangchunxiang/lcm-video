@@ -1,12 +1,12 @@
 import { createHttpClient } from '@lcm/api-client';
 
 /**
- * 前台只读接口客户端（`/api/site/*`，服务端 PortalController，全部公开）。
+ * 前台只读接口客户端（`/api/web/*`，服务端 PortalController，全部公开）。
  * 下面的类型与 `apps/server/src/modules/portal/portal.service.ts` 的返回结构一一对应。
  *
  * TODO：这些契约类型应当挪到 `@lcm/shared`，由前后端同时引用；等页面成型时再收口。
  */
-const http = createHttpClient({ baseUrl: '/api/site' });
+const http = createHttpClient({ baseUrl: '/api/web' });
 
 /** 卡片：列表/首页统一的最小影片信息。 */
 export interface VodCard {

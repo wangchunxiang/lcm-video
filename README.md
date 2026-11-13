@@ -29,8 +29,8 @@ apps/
       database/        data-source.ts、migrate.ts、seed.ts、reset.ts、migrations/、seeds/
       modules/         一表一模块，CRUD 由 @AppCrud() 生成；另有 collect、portal、health 等无表模块
     test/              集成测试（e2e）预留；单测与源码同目录，跑 vitest
-  admin/               管理后台（dev 3200，build 到 /admin/）
-  web/                 用户端前台（dev 3300），页面目前为占位实现
+  admin/               管理后台（dev 与生产都在 /admin/ 下：dev http://localhost:3200/admin/）
+  web/                 用户端前台（dev 3300，生产挂在根路径）
 packages/
   shared/              共享契约：enums/ 枚举、types/ 纯类型、cron / html / vod / url-rule / settings / util
   api-client/          http.ts（统一信封、错误码、Bearer token）+ query-builder.ts（nest-crud 协议）
@@ -47,6 +47,9 @@ cp .env.example .env        # 填 DATABASE_URL、JWT_SECRET 等
 npm run db:seed             # 可选：导入初始分类 / 站点配置 / 管理员账号
 npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ```
+
+开发地址：前台 `http://localhost:3300`，后台 `http://localhost:3200/admin/`（与生产的 `/admin/`
+前缀一致），接口由两个 vite 的 `/api` 代理转发到 3100。
 
 空库不用手工建表：服务端启动时自动执行未应用的迁移（`migrationsRun: true`），
 首个迁移是 baseline，按实体建出 15 张表并带上表注释与字段注释；之后按需增量迁移
@@ -124,7 +127,7 @@ pm2 start ecosystem.config.cjs
 
 ## 当前状态
 
-- 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/site/*`、重复影片合并已完成，真库冒烟通过。
+- 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/web/*`、重复影片合并已完成，真库冒烟通过。
 - 管理后台：已对接 v3（Bearer token 存 localStorage、`take` / `skip` 分页、`where` / `order` JSON 过滤、camelCase 字段、`PUT` 更新）；`vue-tsc` 纳入 `npm run typecheck`。
-- 用户端前台：仅骨架（路由 + 五个占位页 + `/api/site` 客户端），样式与播放器待做。
+- 用户端前台：仅骨架（路由 + 五个占位页 + `/api/web` 客户端），样式与播放器待做。
 - 文档：`docs/架构-v2.md` 与 `docs/数据库设计-v2.md` 已对齐 TypeORM 实现；`docs/技术方案.md` 是 v1 遗留方案（Fastify + LiquidJS），开头已标注过时，只当产品范围参考。

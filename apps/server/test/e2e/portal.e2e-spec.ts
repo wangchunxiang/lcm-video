@@ -21,7 +21,7 @@ interface VodCard {
   categoryId: string;
 }
 
-describe('门户只读接口 /api/site', () => {
+describe('门户只读接口 /api/web', () => {
   let app: INestApplication;
   let fixtures: Fixtures;
 
@@ -34,7 +34,7 @@ describe('门户只读接口 /api/site', () => {
   });
 
   it('分类树带出两级结构', async () => {
-    const response = await request(app.getHttpServer()).get('/api/site/categories');
+    const response = await request(app.getHttpServer()).get('/api/web/categories');
     const body = response.body as Envelope<CategoryNode[]>;
 
     expect(body.code).toBe(0);
@@ -44,7 +44,7 @@ describe('门户只读接口 /api/site', () => {
   });
 
   it('首页返回分类树与分区卡片', async () => {
-    const response = await request(app.getHttpServer()).get('/api/site/home');
+    const response = await request(app.getHttpServer()).get('/api/web/home');
     const body = response.body as Envelope<{
       categories: CategoryNode[];
       rows: Array<{ title: string; more: string; items: VodCard[] }>;
@@ -59,7 +59,7 @@ describe('门户只读接口 /api/site', () => {
 
   it('分类列表按别名取片', async () => {
     const response = await request(app.getHttpServer())
-      .get(`/api/site/list/${fixtures.categoryAlias}`)
+      .get(`/api/web/list/${fixtures.categoryAlias}`)
       .query({ take: 10, skip: 0 });
     const body = response.body as Envelope<{ items: VodCard[]; total: number; category: { alias: string } }>;
 
@@ -70,7 +70,7 @@ describe('门户只读接口 /api/site', () => {
   });
 
   it('detail 返回影片与线路', async () => {
-    const response = await request(app.getHttpServer()).get(`/api/site/detail/${fixtures.vodId}`);
+    const response = await request(app.getHttpServer()).get(`/api/web/detail/${fixtures.vodId}`);
     const body = response.body as Envelope<{ vod: { id: string; name: string }; lines: unknown[]; related: unknown[] }>;
 
     expect(body.code).toBe(0);
@@ -79,7 +79,7 @@ describe('门户只读接口 /api/site', () => {
   });
 
   it('play 默认第一集，episodes 从线路里拆出来', async () => {
-    const response = await request(app.getHttpServer()).get(`/api/site/play/${fixtures.vodId}`);
+    const response = await request(app.getHttpServer()).get(`/api/web/play/${fixtures.vodId}`);
     const body = response.body as Envelope<{ current: number; episodes: Array<{ name: string }> }>;
 
     expect(body.code).toBe(0);
@@ -89,7 +89,7 @@ describe('门户只读接口 /api/site', () => {
 
   it('search 用 wd 参数命中片名', async () => {
     const response = await request(app.getHttpServer())
-      .get('/api/site/search')
+      .get('/api/web/search')
       .query({ wd: 'E2E' });
     const body = response.body as Envelope<{ items: VodCard[]; total: number }>;
 
@@ -98,7 +98,7 @@ describe('门户只读接口 /api/site', () => {
   });
 
   it('不存在的影片返回 1 而不是 500', async () => {
-    const response = await request(app.getHttpServer()).get('/api/site/detail/999999999');
+    const response = await request(app.getHttpServer()).get('/api/web/detail/999999999');
     const body = response.body as Envelope<null>;
 
     expect(body.code).toBe(1);
