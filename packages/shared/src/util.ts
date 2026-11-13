@@ -26,6 +26,29 @@ export function toText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+/** 采集计数：与采集记录、采集任务的累计字段一一对应 */
+export interface CollectCounters {
+  total: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  ignored: number;
+  failed: number;
+}
+
+/** 采集结论的一行摘要：`100条：新增10|更新20|跳过30|忽略5|失败2` */
+export function formatCollectSummary(counters: CollectCounters): string {
+  return `${counters.total}条：新增${counters.inserted}|更新${counters.updated}|跳过${counters.skipped}|忽略${counters.ignored}|失败${counters.failed}`;
+}
+
+/** 把历史格式（`共 100 条：新增 10、更新 20…`）换成紧凑格式，其余文字原样保留 */
+export function normalizeCollectMessage(message: string): string {
+  return message.replace(
+    /共\s*(\d+)\s*条[：:]\s*新增\s*(\d+)\s*[、,，|｜]\s*更新\s*(\d+)\s*[、,，|｜]\s*跳过\s*(\d+)\s*[、,，|｜]\s*忽略\s*(\d+)\s*[、,，|｜]\s*失败\s*(\d+)/g,
+    '$1条：新增$2|更新$3|跳过$4|忽略$5|失败$6',
+  );
+}
+
 /** 拉一次文本，失败抛错（错误信息带上域名，便于定位是哪个站点的问题） */
 export async function fetchTextOnce(url: string, timeoutMs = 15000): Promise<string> {
   const res = await fetch(url, {

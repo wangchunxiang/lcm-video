@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
 import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
+import { normalizeCollectMessage } from '@lcm/shared/util';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 import { formatDateTime } from '../../utils/datetime.ts';
@@ -454,9 +455,9 @@ onUnmounted(() => {
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="说明" min-width="100" show-overflow-tooltip>
+          <el-table-column label="说明" min-width="250" show-overflow-tooltip>
             <template #default="{ row }">
-              <span v-if="row.lastRunMsg">{{ row.lastRunMsg }}</span>
+              <span v-if="row.lastRunMsg" class="run-msg">{{ normalizeCollectMessage(row.lastRunMsg) }}</span>
               <span v-else class="muted">—</span>
             </template>
           </el-table-column>
@@ -580,6 +581,11 @@ onUnmounted(() => {
 .muted {
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+.run-msg {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  font-variant-numeric: tabular-nums;
 }
 .run-times {
   display: flex;

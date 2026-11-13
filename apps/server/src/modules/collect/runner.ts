@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Not, Repository } from 'typeorm';
+import { formatCollectSummary } from '@lcm/shared';
 import { CategoryEntity } from '../category/category.entity';
 import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
 import { CollectSourceEntity } from '../collect-source/collect-source.entity';
@@ -484,7 +485,7 @@ export class CollectRunner {
     }
 
     const { counters } = context;
-    const summary = `共 ${counters.total} 条：新增 ${counters.inserted}、更新 ${counters.updated}、跳过 ${counters.skipped}、忽略 ${counters.ignored}、失败 ${counters.failed}`;
+    const summary = formatCollectSummary(counters);
 
     if (canceled) {
       await this.finish(context, 4, `已取消（${summary}）`);
