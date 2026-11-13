@@ -236,7 +236,8 @@ export class PortalService {
       params,
     );
     const years = await this.dataSource.query<Array<{ year: number }>>(
-      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year > 0 ORDER BY year DESC LIMIT 15',
+      // 旧库里有 826 条年份是 201717、22026 这类脏值，年份筛选只列合理区间
+      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year BETWEEN 1900 AND 2100 ORDER BY year DESC LIMIT 15',
     );
 
     return {
