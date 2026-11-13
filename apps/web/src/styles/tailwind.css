@@ -26,22 +26,28 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-line: var(--line);
+  --color-search: var(--search-bg);
 
+  --radius-sm: var(--radius-sm);
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);
   --radius-pill: var(--radius-pill);
 
   --shadow-card: var(--shadow);
-  --shadow-card-hover: var(--shadow-hover);
+  --shadow-pop: var(--shadow-pop);
 
   --text-caption: var(--fs-caption);
   --text-small: var(--fs-small);
   --text-body: var(--fs-body);
   --text-emphasis: var(--fs-emphasis);
+  --text-vod: var(--fs-vod);
   --text-title: var(--fs-title);
+  --text-nav: var(--fs-nav);
   --text-logo: var(--fs-logo);
   --text-page: var(--fs-page-title);
+  --text-section: var(--fs-section);
   --text-display: var(--fs-display);
 
   --font-sans:

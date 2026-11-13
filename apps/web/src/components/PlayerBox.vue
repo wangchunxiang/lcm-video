@@ -11,7 +11,7 @@ const props = withDefaults(
     poster?: string;
     autoplay?: boolean;
     resume?: boolean;
-    /** 断点续播的存储键，通常为 `${vodId}:${playId}` */
+    /** 断点续播的存储键，通常是 `${vodId}:${playId}` */
     resumeKey?: string;
   }>(),
   { parseUrl: '', poster: '', autoplay: false, resume: false, resumeKey: '' },

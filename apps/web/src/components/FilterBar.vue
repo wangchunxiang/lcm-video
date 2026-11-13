@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import ChipRow from './ChipRow.vue';
-import type { ChipOption } from './chip-option';
-import Sheet from './ui/Sheet.vue';
-import Button from './ui/Button.vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
   types: { id: string; name: string; alias: string }[];
@@ -19,106 +15,69 @@ const emit = defineEmits<{
   'update:sort': [value: string];
 }>();
 
-const open = ref(false);
+interface Option {
+  value: string;
+  label: string;
+}
 
-const typeOptions = computed<ChipOption[]>(() => [
+const typeOptions = computed<Option[]>(() => [
   { value: '', label: '全部' },
   ...props.types.map((item) => ({ value: item.alias, label: item.name })),
 ]);
-const yearOptions = computed<ChipOption[]>(() => [
+const yearOptions = computed<Option[]>(() => [
   { value: '', label: '全部' },
   ...props.years.map((item) => ({ value: String(item), label: String(item) })),
 ]);
-const sortOptions: ChipOption[] = [
+const sortOptions: Option[] = [
   { value: 'time', label: '最近更新' },
   { value: 'new', label: '最新入库' },
 ];
 
-const activeCount = computed(
-  () => (props.type ? 1 : 0) + (props.year ? 1 : 0) + (props.sort !== 'time' ? 1 : 0),
-);
-
-function reset(): void {
-  emit('update:type', '');
-  emit('update:year', '');
-  emit('update:sort', 'time');
-}
+const ITEM =
+  'cursor-pointer rounded-md px-3 py-1 text-vod leading-6 transition';
+const ACTIVE = 'bg-primary text-white';
+const IDLE = 'text-ink-2 hover:text-primary';
 </script>
 
 <template>
-  <!-- 桌面 / 平板：白卡片内联三行 -->
-  <div class="mb-4 hidden flex-col gap-3 rounded-[10px] bg-surface p-5 shadow-card md:flex">
-    <div v-if="types.length" class="flex items-start gap-3">
-      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">类型</span>
-      <ChipRow
-        :options="typeOptions"
-        :model-value="type"
-        @update:model-value="(value: string) => emit('update:type', value)"
-      />
+  <div class="mb-4 flex flex-col gap-2">
+    <div v-if="types.length" class="flex flex-wrap items-center gap-1">
+      <span class="w-10 flex-none text-vod text-ink-3">类型</span>
+      <button
+        v-for="option in typeOptions"
+        :key="`type-${option.value}`"
+        type="button"
+        :class="[ITEM, option.value === type ? ACTIVE : IDLE]"
+        @click="emit('update:type', option.value)"
+      >
+        {{ option.label }}
+      </button>
     </div>
-    <div v-if="years.length" class="flex items-start gap-3">
-      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">年份</span>
-      <ChipRow
-        :options="yearOptions"
-        :model-value="year"
-        @update:model-value="(value: string) => emit('update:year', value)"
-      />
+
+    <div v-if="years.length" class="flex flex-wrap items-center gap-1">
+      <span class="w-10 flex-none text-vod text-ink-3">年份</span>
+      <button
+        v-for="option in yearOptions"
+        :key="`year-${option.value}`"
+        type="button"
+        :class="[ITEM, option.value === year ? ACTIVE : IDLE]"
+        @click="emit('update:year', option.value)"
+      >
+        {{ option.label }}
+      </button>
     </div>
-    <div class="flex items-start gap-3">
-      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">排序</span>
-      <ChipRow
-        :options="sortOptions"
-        :model-value="sort"
-        @update:model-value="(value: string) => emit('update:sort', value)"
-      />
+
+    <div class="flex flex-wrap items-center gap-1">
+      <span class="w-10 flex-none text-vod text-ink-3">排序</span>
+      <button
+        v-for="option in sortOptions"
+        :key="`sort-${option.value}`"
+        type="button"
+        :class="[ITEM, option.value === sort ? ACTIVE : IDLE]"
+        @click="emit('update:sort', option.value)"
+      >
+        {{ option.label }}
+      </button>
     </div>
   </div>
-
-  <!-- 手机：筛选按钮 + 底部抽屉 -->
-  <div class="mb-3 flex items-center gap-2 md:hidden">
-    <Button size="sm" @click="open = true">
-      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M4 6h16M7 12h10M10 18h4" stroke-linecap="round" />
-      </svg>
-      筛选
-      <span v-if="activeCount" class="rounded-pill bg-primary px-1.5 text-caption text-white">{{ activeCount }}</span>
-    </Button>
-    <Button v-if="activeCount" variant="ghost" size="sm" @click="reset">清除</Button>
-  </div>
-
-  <Sheet v-model:open="open" title="筛选" description="选择后立即生效" side="bottom">
-    <div class="flex flex-col gap-4">
-      <section v-if="types.length">
-        <h3 class="mb-2 text-small font-medium text-ink-2">类型</h3>
-        <ChipRow
-          :options="typeOptions"
-          :model-value="type"
-          @update:model-value="(value: string) => emit('update:type', value)"
-        />
-      </section>
-      <section v-if="years.length">
-        <h3 class="mb-2 text-small font-medium text-ink-2">年份</h3>
-        <ChipRow
-          :options="yearOptions"
-          :model-value="year"
-          @update:model-value="(value: string) => emit('update:year', value)"
-        />
-      </section>
-      <section>
-        <h3 class="mb-2 text-small font-medium text-ink-2">排序</h3>
-        <ChipRow
-          :options="sortOptions"
-          :model-value="sort"
-          @update:model-value="(value: string) => emit('update:sort', value)"
-        />
-      </section>
-    </div>
-
-    <template #footer>
-      <div class="flex gap-3">
-        <Button class="flex-1" @click="reset">重置</Button>
-        <Button variant="primary" class="flex-1" @click="open = false">完成</Button>
-      </div>
-    </template>
-  </Sheet>
 </template>

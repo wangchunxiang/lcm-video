@@ -8,7 +8,6 @@ import { useIsMobile } from '../composables/useBreakpoint';
 import VodGrid from '../components/VodGrid.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
-import Button from '../components/ui/Button.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
 const route = useRoute();
@@ -30,7 +29,6 @@ const error = ref('');
 const categoryName = computed(() => data.value?.category?.name ?? '全部影片');
 const shown = computed(() => (isMobile.value ? items.value : (data.value?.items ?? [])));
 const total = computed(() => data.value?.total ?? 0);
-const hasMore = computed(() => shown.value.length < total.value);
 
 function setQuery(patch: Record<string, string | undefined>, keepPage = false): void {
   const query: Record<string, string> = {};
@@ -42,7 +40,7 @@ function setQuery(patch: Record<string, string | undefined>, keepPage = false): 
     else query[key] = value;
   });
   if (!keepPage) delete query.page;
-  router.push({ name: 'list', params: { alias: alias.value }, query });
+  void router.push({ name: 'list', params: { alias: alias.value }, query });
 }
 
 function goPage(next: number): void {
@@ -50,7 +48,7 @@ function goPage(next: number): void {
 }
 
 function loadMore(): void {
-  if (loading.value || !hasMore.value) return;
+  if (loading.value || shown.value.length >= total.value) return;
   setQuery({ page: String(page.value + 1) }, true);
 }
 
@@ -92,18 +90,7 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div>
-    <nav class="mb-4 mt-5 flex flex-wrap items-center gap-2 text-small text-ink-3">
-      <RouterLink to="/" class="transition hover:text-primary">首页</RouterLink>
-      <span>/</span>
-      <span class="text-ink-2">{{ categoryName }}</span>
-    </nav>
-
-    <div class="mb-4 flex flex-wrap items-baseline gap-3">
-      <h1 class="text-page font-bold text-ink">{{ categoryName }}</h1>
-      <span v-if="data" class="text-small text-ink-3">共 {{ total }} 部</span>
-    </div>
-
+  <div class="pt-4">
     <FilterBar
       v-if="data"
       :types="data.types"
@@ -116,36 +103,33 @@ useSeo(() => ({
       @update:sort="(value: string) => setQuery({ sort: value === 'time' ? undefined : value })"
     />
 
-    <div
-      v-if="loading && !shown.length"
-      class="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-4 md:grid-cols-4 xl:grid-cols-6 min-[1500px]:grid-cols-8"
-    >
-      <div v-for="index in 12" :key="index" class="rounded-[10px] bg-surface p-1 shadow-card sm:p-2.5">
-        <Skeleton class="aspect-[2/3] w-full" />
-        <Skeleton class="mt-2 h-3.5 w-4/5" />
-        <Skeleton class="mt-1.5 h-3 w-1/2" />
+    <div v-if="loading && !shown.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div v-for="index in 12" :key="index" class="flex flex-col gap-2">
+        <Skeleton class="aspect-[210/280] w-full rounded-md" />
+        <Skeleton class="mx-auto h-4 w-4/5" />
       </div>
     </div>
 
-    <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
-      {{ error }}
-    </p>
+    <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
     <template v-else>
-      <VodGrid v-if="shown.length" :items="shown" show-category />
-      <p v-else class="py-12 text-center text-body text-ink-3">该分类下暂无影片</p>
+      <VodGrid v-if="shown.length" :items="shown" />
+      <p v-else class="py-16 text-center text-body text-ink-3">该分类下暂无影片。</p>
 
-      <!-- 桌面：分页器 -->
       <div v-if="shown.length && total > pageSize" class="hidden md:block">
         <PaginationBar :page="page" :total="total" :page-size="pageSize" @change="goPage" />
       </div>
 
-      <!-- 手机：加载更多 -->
-      <div v-if="shown.length" class="mt-4 md:hidden">
-        <Button v-if="hasMore" class="w-full" :disabled="loading" @click="loadMore">
+      <div v-if="shown.length && isMobile && shown.length < total" class="mt-4 text-center">
+        <button
+          type="button"
+          class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+          :disabled="loading"
+          @click="loadMore"
+        >
           {{ loading ? '加载中…' : '加载更多' }}
-        </Button>
-        <p class="mt-2 text-center text-caption text-ink-3">已显示 {{ shown.length }} / 共 {{ total }} 部</p>
+        </button>
+        <p class="mt-2 text-caption text-ink-3">已显示 {{ shown.length }} / 共 {{ total }} 部</p>
       </div>
     </template>
   </div>

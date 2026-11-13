@@ -8,7 +8,6 @@ import { useIsMobile } from '../composables/useBreakpoint';
 import VodGrid from '../components/VodGrid.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
-import Button from '../components/ui/Button.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -32,8 +31,6 @@ const years = computed(() => {
   return Array.from({ length: 30 }, (_, index) => now - index);
 });
 
-const hasMore = computed(() => items.value.length < total.value);
-
 function setQuery(patch: Record<string, string | undefined>, keepPage = false): void {
   const query: Record<string, string> = {};
   Object.entries(route.query).forEach(([key, value]) => {
@@ -44,17 +41,17 @@ function setQuery(patch: Record<string, string | undefined>, keepPage = false): 
     else query[key] = value;
   });
   if (!keepPage) delete query.page;
-  router.push({ name: 'search', query });
+  void router.push({ name: 'search', query });
 }
 
 function submit(): void {
   const value = keyword.value.trim();
   if (!value) return;
-  router.push({ name: 'search', query: { wd: value } });
+  void router.push({ name: 'search', query: { wd: value } });
 }
 
 function loadMore(): void {
-  if (loading.value || !hasMore.value) return;
+  if (loading.value || items.value.length >= total.value) return;
   setQuery({ page: String(page.value + 1) }, true);
 }
 
@@ -107,28 +104,26 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div>
-    <section class="mb-4 mt-6 rounded-[14px] bg-surface p-6 text-center shadow-card sm:p-8">
-      <h1 class="mb-4 text-page font-bold text-ink">搜索影片</h1>
-      <form class="mx-auto flex w-full max-w-[640px] gap-2" @submit.prevent="submit">
-        <input
-          v-model="keyword"
-          type="search"
-          maxlength="50"
-          placeholder="输入片名，如：流浪地球"
-          aria-label="搜索片名"
-          class="h-11 min-w-0 flex-1 rounded-pill border border-line bg-surface-2 px-4 text-body outline-none transition placeholder:text-ink-3 focus:border-primary-line focus:bg-surface focus:shadow-[0_0_0_3px_var(--primary-weak)]"
-        />
-        <Button variant="primary" class="h-11 px-6">搜索</Button>
-      </form>
-      <p class="mt-3 text-small text-ink-3">支持片名模糊搜索，最多 50 个字符</p>
-    </section>
+  <div class="pt-4">
+    <form class="mb-4 flex h-[38px] w-full max-w-[560px] items-center overflow-hidden rounded-md bg-search" @submit.prevent="submit">
+      <input
+        v-model="keyword"
+        type="search"
+        maxlength="50"
+        placeholder="输入片名，如：流浪地球"
+        aria-label="搜索片名"
+        class="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-body text-ink outline-none placeholder:text-ink-3"
+      />
+      <button
+        type="submit"
+        class="h-full cursor-pointer border-0 bg-transparent px-4 text-small text-ink-2 transition hover:text-primary"
+      >
+        搜索
+      </button>
+    </form>
 
     <template v-if="wd">
-      <div class="mb-4 flex flex-wrap items-baseline gap-3">
-        <h2 class="text-page font-bold text-ink">“{{ wd }}” 的搜索结果</h2>
-        <span v-if="loaded" class="text-small text-ink-3">共 {{ total }} 部</span>
-      </div>
+      <p v-if="loaded" class="mb-3 text-small text-ink-3">“{{ wd }}” 共 {{ total }} 部</p>
 
       <FilterBar
         :types="[]"
@@ -142,12 +137,10 @@ useSeo(() => ({
       />
 
       <p v-if="loading && !items.length" class="py-16 text-center text-body text-ink-3">搜索中…</p>
-      <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
-        {{ error }}
-      </p>
+      <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <template v-else-if="loaded">
-        <VodGrid v-if="items.length" :items="items" show-category />
-        <p v-else class="py-16 text-center text-body text-ink-3">没有找到相关影片，换个关键词试试</p>
+        <VodGrid v-if="items.length" :items="items" />
+        <p v-else class="py-16 text-center text-body text-ink-3">没有找到「{{ wd }}」，换个关键词试试。</p>
 
         <div v-if="items.length && total > pageSize" class="hidden md:block">
           <PaginationBar
@@ -158,15 +151,20 @@ useSeo(() => ({
           />
         </div>
 
-        <div v-if="items.length" class="mt-4 md:hidden">
-          <Button v-if="hasMore" class="w-full" :disabled="loading" @click="loadMore">
+        <div v-if="items.length && isMobile && items.length < total" class="mt-4 text-center">
+          <button
+            type="button"
+            class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+            :disabled="loading"
+            @click="loadMore"
+          >
             {{ loading ? '加载中…' : '加载更多' }}
-          </Button>
-          <p class="mt-2 text-center text-caption text-ink-3">已显示 {{ items.length }} / 共 {{ total }} 部</p>
+          </button>
+          <p class="mt-2 text-caption text-ink-3">已显示 {{ items.length }} / 共 {{ total }} 部</p>
         </div>
       </template>
     </template>
 
-    <p v-else class="py-16 text-center text-body text-ink-3">输入片名开始搜索</p>
+    <p v-else class="py-16 text-center text-body text-ink-3">输入片名开始搜索。</p>
   </div>
 </template>

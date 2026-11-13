@@ -5,7 +5,7 @@ import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import PlayerBox from '../components/PlayerBox.vue';
-import Button from '../components/ui/Button.vue';
+import Icon from '../components/Icon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -13,6 +13,7 @@ const router = useRouter();
 const play = ref<VodPlay | null>(null);
 const loading = ref(true);
 const error = ref('');
+const lineOpen = ref(false);
 
 const vod = computed(() => play.value?.vod ?? null);
 const line = computed(() => play.value?.line ?? null);
@@ -34,6 +35,7 @@ async function load(): Promise<void> {
 
   loading.value = true;
   error.value = '';
+  lineOpen.value = false;
   try {
     // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
     let result = await portal.play(vodId, { line: 0, ep: epParam });
@@ -72,12 +74,16 @@ async function load(): Promise<void> {
 }
 
 function selectLine(lineId: string): void {
-  router.push({ name: 'play', params: { id: String(route.params.id), lineId, ep: '1' } });
+  lineOpen.value = false;
+  void router.push({ name: 'play', params: { id: String(route.params.id), lineId, ep: '1' } });
 }
 
 function selectEp(index: number): void {
-  if (!line.value || index === current.value) return;
-  router.push({ name: 'play', params: { id: String(route.params.id), lineId: line.value.id, ep: String(index) } });
+  if (!line.value || index === current.value || index < 1) return;
+  void router.push({
+    name: 'play',
+    params: { id: String(route.params.id), lineId: line.value.id, ep: String(index) },
+  });
 }
 
 function onEnded(): void {
@@ -95,24 +101,14 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div>
-    <nav class="mb-4 mt-5 flex flex-wrap items-center gap-2 text-small text-ink-3">
-      <RouterLink to="/" class="transition hover:text-primary">首页</RouterLink>
-      <span>/</span>
-      <RouterLink v-if="vod" :to="`/detail/${vod.id}`" class="transition hover:text-primary">{{ vod.name }}</RouterLink>
-      <span v-if="vod">/</span>
-      <span class="text-ink-2">{{ epItem?.name ?? '在线播放' }}</span>
-    </nav>
-
+  <div class="pt-4">
     <p v-if="loading" class="py-16 text-center text-body text-ink-3">加载中…</p>
-    <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
-      {{ error }}
-    </p>
+    <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
     <template v-else-if="play && vod && line">
-      <div class="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div class="relative lg:pr-[392px]">
         <div class="min-w-0">
-          <div class="relative aspect-video overflow-hidden rounded-[10px] bg-black">
+          <div class="relative aspect-video overflow-hidden rounded-md bg-black">
             <PlayerBox
               :src="epItem?.url ?? ''"
               :parse-url="line.parseUrl"
@@ -124,56 +120,72 @@ useSeo(() => ({
             />
           </div>
 
-          <section class="mt-4 rounded-[10px] bg-surface p-5 shadow-card">
-            <h1 class="mb-2 text-title font-bold text-ink">{{ vod.name }} · {{ epItem?.name }}</h1>
-            <p class="text-small leading-[1.9] text-ink-2">
-              当前线路：{{ line.name }} · 共 {{ episodes.length }} 集 · {{ vod.remarks || '高清' }}
-            </p>
-            <p class="text-small leading-[1.9]">
-              <RouterLink :to="`/detail/${vod.id}`" class="text-ink-2 transition hover:text-primary">
-                查看影片详情 ›
-              </RouterLink>
-            </p>
-          </section>
-        </div>
-
-        <aside class="flex flex-col gap-3 rounded-[10px] bg-surface p-5 shadow-card">
-          <div class="flex flex-col gap-1">
-            <RouterLink :to="`/detail/${vod.id}`" class="text-small text-ink-2 transition hover:text-primary">
+          <div class="mt-3 flex flex-wrap items-baseline gap-2">
+            <RouterLink :to="`/detail/${vod.id}`" class="text-emphasis font-semibold text-ink hover:text-primary">
               {{ vod.name }}
             </RouterLink>
-            <span class="text-emphasis font-semibold text-ink">选集（{{ episodes.length }}）</span>
+            <span class="text-caption text-ink-3">{{ epItem?.name }}</span>
+            <span class="text-caption text-ink-3">· {{ line.name }} · 共 {{ episodes.length }} 集</span>
           </div>
+        </div>
 
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="item in play.lines"
-              :key="item.id"
-              type="button"
-              :class="[
-                'h-8 cursor-pointer rounded-pill border px-3 text-small transition',
-                item.id === line.id
-                  ? 'border-primary-line bg-primary-weak font-semibold text-primary'
-                  : 'border-line bg-surface text-ink-2 hover:border-primary-line hover:text-primary',
-              ]"
-              @click="selectLine(item.id)"
+        <aside class="mt-4 flex flex-col gap-3 lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:w-[380px]">
+          <div class="flex items-baseline gap-2">
+            <RouterLink
+              :to="`/detail/${vod.id}`"
+              :title="vod.name"
+              class="truncate text-emphasis font-semibold text-ink hover:text-primary"
             >
-              {{ item.name }}
-            </button>
+              {{ vod.name }}
+            </RouterLink>
+            <span class="ml-auto flex-none text-caption text-ink-3">{{ epItem?.name }}</span>
           </div>
 
-          <div class="max-h-[320px] overflow-y-auto pr-1 lg:max-h-[420px]">
-            <div class="grid grid-cols-5 gap-1.5 sm:grid-cols-6 xl:grid-cols-5">
+          <div class="relative">
+            <button
+              type="button"
+              class="flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded bg-surface px-3 text-small text-ink-2 transition hover:bg-surface-2"
+              :aria-expanded="lineOpen"
+              @click="lineOpen = !lineOpen"
+            >
+              <span class="truncate">{{ line.name }}</span>
+              <span class="flex flex-none items-center gap-1 text-caption text-ink-3">
+                {{ line.episodes }} 集
+                <Icon name="chevron-down" :size="14" />
+              </span>
+            </button>
+
+            <div
+              v-if="lineOpen"
+              class="absolute inset-x-0 top-full z-10 mt-1 max-h-[320px] overflow-auto rounded-lg border border-line bg-surface p-1 shadow-pop"
+            >
+              <button
+                v-for="item in play.lines"
+                :key="item.id"
+                type="button"
+                class="flex w-full cursor-pointer items-center justify-between gap-2 rounded px-2 py-[7px] text-left text-small transition"
+                :class="
+                  item.id === line.id
+                    ? 'bg-[rgba(59,130,246,0.16)] text-primary'
+                    : 'text-ink-2 hover:bg-surface-2 hover:text-primary'
+                "
+                @click="selectLine(item.id)"
+              >
+                <span class="truncate">{{ item.name }}</span>
+                <span class="flex-none text-caption text-ink-3">{{ item.episodes }} 集</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="max-h-[420px] overflow-y-auto pr-1">
+            <div class="grid grid-cols-5 gap-2 lg:grid-cols-4">
               <button
                 v-for="ep in episodes"
                 :key="ep.index"
                 type="button"
-                :class="[
-                  'h-9 cursor-pointer truncate rounded-lg border text-small transition',
-                  ep.index === current
-                    ? 'border-primary bg-primary text-white'
-                    : 'border-line bg-surface-2 text-ink-2 hover:border-primary-line hover:bg-primary-weak hover:text-primary',
-                ]"
+                :title="ep.name"
+                class="h-7 cursor-pointer truncate rounded bg-surface-2 text-caption text-ink-2 transition hover:bg-[rgba(59,130,246,0.18)] hover:text-primary"
+                :class="ep.index === current ? 'bg-primary text-white hover:bg-primary hover:text-white' : ''"
                 @click="selectEp(ep.index)"
               >
                 {{ ep.name }}
@@ -181,9 +193,25 @@ useSeo(() => ({
             </div>
           </div>
 
-          <div class="flex gap-2">
-            <Button size="sm" class="flex-1" :disabled="!prevEp" @click="selectEp(prevEp)">上一集</Button>
-            <Button size="sm" class="flex-1" :disabled="!nextEp" @click="selectEp(nextEp)">下一集</Button>
+          <div class="flex justify-between text-small">
+            <button
+              type="button"
+              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-primary disabled:cursor-not-allowed disabled:text-line"
+              :disabled="!prevEp"
+              @click="selectEp(prevEp)"
+            >
+              <Icon name="chevron-left" :size="14" />
+              上一集
+            </button>
+            <button
+              type="button"
+              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-primary disabled:cursor-not-allowed disabled:text-line"
+              :disabled="!nextEp"
+              @click="selectEp(nextEp)"
+            >
+              下一集
+              <Icon name="chevron-right" :size="14" />
+            </button>
           </div>
         </aside>
       </div>

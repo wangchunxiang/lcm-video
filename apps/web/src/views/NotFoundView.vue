@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
-import Button from '../components/ui/Button.vue';
 
 useSeo(() => ({
   title: `页面不存在 - ${site.config.siteName}`,
@@ -10,13 +9,36 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-3 py-24 text-center">
-    <p class="text-[64px] font-extrabold leading-none tracking-[4px] text-primary">404</p>
-    <h1 class="text-page font-bold text-ink">页面不存在</h1>
-    <p class="text-body text-ink-3">你访问的页面可能已被删除，或者链接地址有误。</p>
-    <div class="mt-2 flex flex-wrap justify-center gap-2">
-      <Button variant="primary" @click="$router.push('/')">回到首页</Button>
-      <Button @click="$router.push('/list/all')">全部影片</Button>
+  <section class="flex min-h-[60vh] flex-col items-center justify-center pb-8 text-center">
+    <h1 class="mb-2 text-display leading-none font-extrabold text-primary">404</h1>
+    <p class="mb-5 text-emphasis text-ink-2">页面不存在或已被移除</p>
+
+    <div class="flex flex-wrap justify-center gap-3">
+      <RouterLink
+        to="/"
+        class="inline-flex h-[38px] items-center rounded-md bg-primary px-6 text-body text-white transition hover:bg-primary-strong"
+      >
+        回到首页
+      </RouterLink>
+      <button
+        type="button"
+        class="inline-flex h-[38px] cursor-pointer items-center rounded-md border border-line bg-surface-2 px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+        @click="$router.back()"
+      >
+        返回上一页
+      </button>
     </div>
-  </div>
+
+    <div v-if="site.categories.length" class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-small">
+      <span class="text-ink-3">去看看</span>
+      <RouterLink
+        v-for="cat in site.categories"
+        :key="cat.id"
+        :to="`/list/${cat.alias}`"
+        class="text-ink-2 transition hover:text-primary"
+      >
+        {{ cat.name }}
+      </RouterLink>
+    </div>
+  </section>
 </template>

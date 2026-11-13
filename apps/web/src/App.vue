@@ -11,9 +11,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col">
+  <div class="flex min-h-screen flex-col bg-bg text-ink">
     <SiteHeader />
-    <main class="flex-1 pt-2">
+    <main class="flex-1 pt-4 pb-6">
       <Container>
         <RouterView />
       </Container>

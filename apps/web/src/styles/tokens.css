@@ -1,36 +1,44 @@
 /*
  * 设计令牌：颜色、字号、间距、圆角只在这里声明一次。
- * 页面样式一律引用变量，不写裸色值与裸字号（见 docs/样式规范.md、技术方案 7.6）。
+ * 页面样式一律引用变量，不写裸色值与裸字号（见 docs/样式规范.md、docs/前端决策清单.md）。
+ *
+ * 取值来自 v2 前台主题 themes/default/assets/style.css：深色底、蓝色主色。
  */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
   /* 品牌与文字 */
-  --primary: #2563eb;
-  --primary-strong: #1d4ed8;
-  --primary-weak: #e8f0ff;
-  --primary-line: #c9dbff;
-  --text: #1b2430;
-  --text-2: #5b6472;
-  --text-3: #8b95a5;
-  --danger: #d64545;
+  --primary: #3b82f6;
+  --primary-strong: #2563eb;
+  --primary-weak: rgba(59, 130, 246, 0.16);
+  --primary-line: rgba(59, 130, 246, 0.45);
+  --text: #e6e8eb;
+  --text-2: #a9b0ba;
+  --text-3: #7f8792;
+  --danger: #f87171;
 
   /* 背景与描边 */
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --surface-2: #f1f4f8;
-  --line: #e8ebf0;
+  --bg: #0a0c0f;
+  --surface: #171a20;
+  --surface-2: #1c2027;
+  --surface-3: #232830;
+  --line: #2a303a;
+  --search-bg: #3b3d3f;
 
   /* 圆角与阴影 */
-  --radius: 10px;
-  --radius-lg: 14px;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
-  --shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-  --shadow-hover: 0 14px 30px rgba(15, 23, 42, 0.14);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5);
 
   /* 布局 */
-  --container: min(1800px, 100% - 120px);
+  --container: 1792px;
+  --container-gap: 128px;
   --header-h: 64px;
+  --control-h: 38px;
 
   /* 间距刻度：4 的倍数 */
   --space-1: 4px;
@@ -52,8 +60,11 @@
   --fs-small: 13px;
   --fs-body: 14px;
   --fs-emphasis: 15px;
+  --fs-vod: 16px;
   --fs-title: 18px;
-  --fs-logo: 20px;
+  --fs-nav: 18px;
+  --fs-logo: 22px;
   --fs-page-title: 21px;
+  --fs-section: 22px;
   --fs-display: 64px;
 }

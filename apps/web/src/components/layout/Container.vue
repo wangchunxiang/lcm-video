@@ -1,7 +1,10 @@
 <script setup lang="ts">
-// 只负责「最大宽度 + 左右留白」，调用方传 class 时会由 Vue 自动合并到根节点。
+// 只负责「最大宽度 + 左右留白」，与 v2 主题的 .container 一致：
+// 1792px 上限，两侧各 64px；窄屏收到 16px。
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-[60px]"><slot /></div>
+  <div class="mx-auto w-[min(1792px,calc(100%-128px))] max-md:w-[calc(100%-32px)]">
+    <slot />
+  </div>
 </template>

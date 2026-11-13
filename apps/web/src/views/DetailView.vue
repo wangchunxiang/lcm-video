@@ -6,7 +6,6 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
-import { buttonClass } from '../components/ui/button';
 
 const route = useRoute();
 const router = useRouter();
@@ -17,6 +16,7 @@ const loading = ref(true);
 const error = ref('');
 const episodes = ref<EpisodeItem[]>([]);
 const epLoading = ref(false);
+const introOpen = ref(false);
 
 const vod = computed(() => data.value?.vod ?? null);
 const lines = computed(() => data.value?.lines ?? []);
@@ -36,22 +36,10 @@ const currentEp = computed(() => {
 
 const categoryName = computed(() => vod.value?.categoryName ?? '影片');
 const poster = computed(() => vod.value?.cover || '/img/poster-placeholder.svg');
-
-/** 分类 id → 列表地址：一级分类直接进分类页，二级分类带 type 参数。 */
-const categoryLink = computed(() => {
-  const categoryId = vod.value?.categoryId;
-  if (!categoryId) return '/list/all';
-  const top = site.categories.find((item) => item.id === categoryId);
-  if (top) return `/list/${top.alias}`;
-  for (const item of site.categories) {
-    const child = item.children.find((sub) => sub.id === categoryId);
-    if (child) return `/list/${item.alias}?type=${child.alias}`;
-  }
-  return '/list/all';
-});
+const intro = computed(() => vod.value?.content?.trim() ?? '');
 
 function selectLine(lineId: string): void {
-  router.replace({
+  void router.replace({
     name: 'detail',
     params: { id: id.value },
     query: { ...route.query, line: lineId, ep: undefined },
@@ -85,6 +73,7 @@ async function load(): Promise<void> {
   error.value = '';
   data.value = null;
   episodes.value = [];
+  introOpen.value = false;
   try {
     const result = await portal.detail(id.value);
     if (seq !== requestSeq) return;
@@ -103,123 +92,137 @@ useSeo(() => ({
   title: vod.value
     ? `${vod.value.name} - ${categoryName.value} - ${site.config.siteName}`
     : `影片详情 - ${site.config.siteName}`,
-  description: (vod.value?.content || vod.value?.remarks || site.config.siteSubtitle).slice(0, 120),
+  description: (intro.value || vod.value?.remarks || site.config.siteSubtitle).slice(0, 120),
 }));
 </script>
 
 <template>
-  <div>
-    <nav class="mb-4 mt-5 flex flex-wrap items-center gap-2 text-small text-ink-3">
-      <RouterLink to="/" class="transition hover:text-primary">首页</RouterLink>
-      <span>/</span>
-      <RouterLink :to="categoryLink" class="transition hover:text-primary">{{ categoryName }}</RouterLink>
-      <span>/</span>
-      <span class="text-ink-2">{{ vod?.name ?? '影片详情' }}</span>
-    </nav>
-
-    <div v-if="loading" class="rounded-[14px] bg-surface p-5 shadow-card">
-      <div class="flex flex-col gap-5 sm:flex-row">
-        <Skeleton class="aspect-[2/3] w-[150px] shrink-0 rounded-[10px] sm:w-[200px]" />
-        <div class="flex-1 space-y-3">
-          <Skeleton class="h-7 w-2/3" />
-          <Skeleton class="h-4 w-1/2" />
-          <Skeleton class="h-4 w-full" />
-          <Skeleton class="h-4 w-4/5" />
-        </div>
+  <div class="pt-4">
+    <div v-if="loading" class="flex flex-col gap-5 lg:flex-row">
+      <Skeleton class="aspect-[3/4] w-[200px] flex-none rounded-md" />
+      <div class="flex-1 space-y-3">
+        <Skeleton class="h-8 w-2/3" />
+        <Skeleton class="h-4 w-1/2" />
+        <Skeleton class="h-4 w-full" />
       </div>
     </div>
-    <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
-      {{ error }}
-    </p>
+
+    <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
     <template v-else-if="vod">
-      <section class="rounded-[14px] bg-surface p-5 shadow-card">
-        <div class="flex flex-col gap-5 sm:flex-row sm:gap-6">
-          <div class="mx-auto w-[150px] shrink-0 overflow-hidden rounded-[10px] bg-surface-2 sm:mx-0 sm:w-[200px]">
-            <img :src="poster" :alt="vod.name" class="aspect-[2/3] h-full w-full object-cover" />
+      <section class="flex gap-8 pb-6 max-lg:flex-col max-lg:gap-5">
+        <img
+          :src="poster"
+          :alt="vod.name"
+          class="h-[320px] w-[240px] flex-none rounded-md bg-surface-2 object-fill max-lg:mx-auto max-lg:h-[300px] max-lg:w-[200px]"
+        />
+
+        <div class="flex min-w-0 flex-1 flex-col justify-between gap-3">
+          <div class="flex flex-col gap-3">
+            <h1 class="text-[32px] leading-[1.25] font-bold text-ink max-lg:text-[24px]">{{ vod.name }}</h1>
+            <p v-if="vod.subName" class="text-body text-ink-2">{{ vod.subName }}</p>
+
+            <div class="flex flex-wrap gap-2">
+              <span v-if="vod.year" class="rounded bg-[rgba(59,130,246,0.22)] px-2 py-1 text-caption text-[#93c5fd]">
+                {{ vod.year }}
+              </span>
+              <span v-if="vod.categoryName" class="rounded bg-surface-2 px-2 py-1 text-caption text-ink-2">
+                {{ vod.categoryName }}
+              </span>
+              <span v-if="vod.remarks" class="rounded bg-surface-2 px-2 py-1 text-caption text-ink-2">
+                {{ vod.remarks }}
+              </span>
+            </div>
+
+            <dl class="grid gap-2 text-body">
+              <div class="flex gap-3">
+                <dt class="w-[42px] flex-none text-ink-3">导演</dt>
+                <dd class="text-ink-2">{{ vod.director || '—' }}</dd>
+              </div>
+              <div class="flex gap-3">
+                <dt class="w-[42px] flex-none text-ink-3">演员</dt>
+                <dd class="text-ink-2">{{ vod.actor || '—' }}</dd>
+              </div>
+              <div v-if="vod.releaseDate" class="flex gap-3">
+                <dt class="w-[42px] flex-none text-ink-3">上映</dt>
+                <dd class="text-ink-2">{{ vod.releaseDate }}</dd>
+              </div>
+              <div v-if="intro" class="flex gap-3">
+                <dt class="w-[42px] flex-none text-ink-3">简介</dt>
+                <dd class="min-w-0 flex-1">
+                  <p class="whitespace-pre-wrap leading-[1.9] text-ink-2" :class="introOpen ? '' : 'line-clamp-2'">
+                    {{ intro }}
+                  </p>
+                  <button
+                    type="button"
+                    class="mt-1 cursor-pointer text-small text-primary hover:underline"
+                    @click="introOpen = !introOpen"
+                  >
+                    {{ introOpen ? '收起' : '详情' }}
+                  </button>
+                </dd>
+              </div>
+            </dl>
           </div>
 
-          <div class="flex min-w-0 flex-1 flex-col gap-3">
-            <h1 class="text-[22px] font-bold leading-[1.3] text-ink sm:text-[28px]">{{ vod.name }}</h1>
-            <p v-if="vod.subName" class="text-emphasis text-ink-3">{{ vod.subName }}</p>
-
-            <div class="flex flex-wrap gap-x-4 gap-y-2 text-small text-ink-2">
-              <span><b class="font-normal text-ink-3">分类：</b>{{ vod.categoryName || '未分类' }}</span>
-              <span v-if="vod.year"><b class="font-normal text-ink-3">年份：</b>{{ vod.year }}</span>
-              <span v-if="vod.area"><b class="font-normal text-ink-3">地区：</b>{{ vod.area }}</span>
-              <span v-if="vod.lang"><b class="font-normal text-ink-3">语言：</b>{{ vod.lang }}</span>
-              <span v-if="vod.releaseDate"><b class="font-normal text-ink-3">上映：</b>{{ vod.releaseDate }}</span>
-              <span v-if="vod.director"><b class="font-normal text-ink-3">导演：</b>{{ vod.director }}</span>
-              <span v-if="vod.actor"><b class="font-normal text-ink-3">主演：</b>{{ vod.actor }}</span>
-              <span v-if="vod.remarks"><b class="font-normal text-ink-3">状态：</b>{{ vod.remarks }}</span>
-            </div>
-
-            <div class="mt-2 flex flex-wrap gap-3">
-              <RouterLink
-                v-if="selectedLine"
-                :class="buttonClass({ variant: 'primary' })"
-                :to="`/play/${vod.id}/${selectedLine.id}/1`"
-              >
-                立即播放
-              </RouterLink>
-              <RouterLink :class="buttonClass()" :to="categoryLink">同分类影片</RouterLink>
-            </div>
+          <div class="flex flex-wrap gap-2">
+            <RouterLink
+              v-if="selectedLine"
+              :to="`/play/${vod.id}/${selectedLine.id}/1`"
+              class="inline-flex h-[38px] items-center rounded-md bg-primary px-6 text-body text-white transition hover:bg-primary-strong"
+            >
+              立即播放
+            </RouterLink>
+            <RouterLink
+              to="/list/all"
+              class="inline-flex h-[38px] items-center rounded-md border border-line bg-surface-2 px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+            >
+              全部影片
+            </RouterLink>
           </div>
         </div>
       </section>
 
-      <section class="mt-4 rounded-[10px] bg-surface p-5 shadow-card">
-        <h2 class="mb-3 text-title font-bold text-ink">剧情简介</h2>
-        <p class="whitespace-pre-wrap leading-[1.9] text-ink-2">{{ vod.content || '暂无简介' }}</p>
-      </section>
-
-      <section class="mt-4 rounded-[10px] bg-surface p-5 shadow-card">
-        <h2 class="mb-4 text-title font-bold text-ink">播放线路</h2>
-        <template v-if="lines.length">
-          <div class="mb-4 flex flex-wrap gap-2">
-            <button
-              v-for="line in lines"
-              :key="line.id"
-              type="button"
-              :class="[
-                'h-8 cursor-pointer rounded-pill border px-3 text-small transition',
-                selectedLine?.id === line.id
-                  ? 'border-primary-line bg-primary-weak font-semibold text-primary'
-                  : 'border-line bg-surface text-ink-2 hover:border-primary-line hover:text-primary',
-              ]"
-              @click="selectLine(line.id)"
-            >
-              {{ line.name }}（{{ line.episodes }}集）
-            </button>
-          </div>
-
-          <p v-if="epLoading" class="py-8 text-center text-body text-ink-3">剧集加载中…</p>
-          <div
-            v-else-if="episodes.length"
-            class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+      <section v-if="lines.length" class="pb-2">
+        <div class="mb-4 flex flex-wrap gap-2">
+          <button
+            v-for="line in lines"
+            :key="line.id"
+            type="button"
+            class="inline-flex h-8 cursor-pointer items-center rounded px-4 text-small transition"
+            :class="
+              selectedLine?.id === line.id
+                ? 'bg-[rgba(59,130,246,0.16)] text-primary'
+                : 'bg-surface text-ink-2 hover:bg-surface-2 hover:text-primary'
+            "
+            @click="selectLine(line.id)"
           >
+            {{ line.name }}
+            <span class="ml-1 text-caption text-ink-3">{{ line.episodes }} 集</span>
+          </button>
+        </div>
+
+        <p v-if="epLoading" class="py-10 text-center text-body text-ink-3">剧集加载中…</p>
+        <div v-else-if="episodes.length" class="max-h-[420px] overflow-y-auto">
+          <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <RouterLink
               v-for="ep in episodes"
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
-              :class="[
-                'block h-9 truncate rounded-lg border text-center text-small leading-[34px] transition',
-                currentEp === ep.index
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-line bg-surface-2 text-ink-2 hover:border-primary-line hover:bg-primary-weak hover:text-primary',
-              ]"
+              :title="ep.name"
+              class="h-7 truncate rounded bg-surface-2 text-center text-caption leading-7 transition hover:bg-[rgba(59,130,246,0.18)] hover:text-primary"
+              :class="currentEp === ep.index ? 'bg-primary text-white hover:bg-primary hover:text-white' : 'text-ink-2'"
             >
               {{ ep.name }}
             </RouterLink>
           </div>
-          <p v-else class="py-8 text-center text-body text-ink-3">该线路暂无剧集</p>
-        </template>
-        <p v-else class="py-8 text-center text-body text-ink-3">这部影片还没有可播放的线路</p>
+        </div>
+        <p v-else class="py-10 text-center text-body text-ink-3">该线路暂无剧集</p>
       </section>
 
       <section v-if="data?.related.length" class="mt-4">
-        <div class="mb-4 flex items-baseline gap-3">
-          <h2 class="text-title font-bold text-ink">相关推荐</h2>
+        <div class="mb-4 flex items-baseline">
+          <h2 class="text-section font-bold text-ink">相关推荐</h2>
         </div>
         <VodGrid :items="data.related" />
       </section>
