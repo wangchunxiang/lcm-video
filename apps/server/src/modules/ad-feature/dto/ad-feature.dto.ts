@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /** 新建AdFeature。 */
 export class CreateAdFeatureDTO {
@@ -27,8 +27,8 @@ export class CreateAdFeatureDTO {
   hitVods?: number;
 
   @IsOptional()
-  @IsObject({ message: '必须是对象' })
-  sample?: Record<string, unknown>;
+  @IsArray({ message: '必须是数组' })
+  sample?: unknown[];
 }
 
 /** 修改AdFeature。 */
@@ -59,6 +59,6 @@ export class UpdateAdFeatureDTO {
   hitVods?: number;
 
   @IsOptional()
-  @IsObject({ message: '必须是对象' })
-  sample?: Record<string, unknown>;
+  @IsArray({ message: '必须是数组' })
+  sample?: unknown[];
 }

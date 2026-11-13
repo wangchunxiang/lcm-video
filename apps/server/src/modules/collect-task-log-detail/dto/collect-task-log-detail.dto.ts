@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsObject, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 /** 新建CollectTaskLogDetail。 */
 export class CreateCollectTaskLogDetailDTO {
@@ -43,8 +43,8 @@ export class CreateCollectTaskLogDetailDTO {
   failed?: number;
 
   @IsOptional()
-  @IsObject({ message: '必须是对象' })
-  failDetail?: Record<string, unknown>;
+  @IsArray({ message: '必须是数组' })
+  failDetail?: unknown[];
 
   @IsOptional()
   @IsString({ message: '必须是字符串' })
@@ -95,8 +95,8 @@ export class UpdateCollectTaskLogDetailDTO {
   failed?: number;
 
   @IsOptional()
-  @IsObject({ message: '必须是对象' })
-  failDetail?: Record<string, unknown>;
+  @IsArray({ message: '必须是数组' })
+  failDetail?: unknown[];
 
   @IsOptional()
   @IsString({ message: '必须是字符串' })
