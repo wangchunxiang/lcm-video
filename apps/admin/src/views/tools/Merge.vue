@@ -231,15 +231,21 @@ async function loadDetail(group: LightGroup): Promise<void> {
   }
 }
 
-async function load(): Promise<void> {
+async function load(options: { select?: boolean } = {}): Promise<void> {
   loading.value = true;
   try {
     preview.value = await api.post<Preview>('/vod-merge/preview');
     // 数据刷新后清掉已经不存在的勾选，避免批量操作打到旧分组上
     const aliveKeys = new Set(rows.value.map((row) => groupId(row)));
     selected.value = selected.value.filter((id) => aliveKeys.has(id));
-    const alive = rows.value.find((row) => groupId(row) === activeKey.value);
-    const next = alive ?? visibleGroups.value[0] ?? filtered.value[0];
+    // 查询后不自动选中：右侧先清空，由用户从左侧挑一组
+    if (options.select === false) {
+      activeKey.value = '';
+      detail.value = null;
+      return;
+    }
+    const alive = filtered.value.find((row) => groupId(row) === activeKey.value);
+    const next = alive ?? filtered.value[0];
     if (next) {
       activeKey.value = groupId(next);
       await loadDetail(next);
@@ -256,10 +262,13 @@ async function load(): Promise<void> {
 
 /** 查询：应用筛选条件，同时重新拉一次服务端数据（原来的「刷新」按钮已去掉） */
 function search(): void {
+  if (loading.value) return;
   applied.keyword = filters.keyword;
   applied.kind = filters.kind;
   visibleCount.value = PAGE;
-  void load();
+  activeKey.value = '';
+  detail.value = null;
+  void load({ select: false });
 }
 
 function reset(): void {
@@ -449,8 +458,8 @@ onMounted(() => {
           <el-option label="疑似重复" value="suspect" />
           <el-option label="同源同 ID" value="same" />
         </el-select>
-        <el-button type="primary" @click="search">查询</el-button>
-        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" :loading="loading" @click="search">查询</el-button>
+        <el-button :disabled="loading" @click="reset">重置</el-button>
         <span class="count">已筛选 {{ filtered.length }} 组 · 共 {{ rows.length }} 组</span>
         <span class="bar-right">
           <el-button

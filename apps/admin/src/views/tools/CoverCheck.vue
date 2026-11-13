@@ -16,8 +16,8 @@
           <el-option label="失效" value="2" />
           <el-option label="无法验证" value="3" />
         </el-select>
-        <el-button type="primary" @click="search">查询</el-button>
-        <el-button @click="reset">重置</el-button>
+        <el-button type="primary" :loading="loading" @click="search">查询</el-button>
+        <el-button :disabled="loading" @click="reset">重置</el-button>
       </div>
 
       <div class="search-extra">

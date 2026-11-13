@@ -71,9 +71,6 @@ export interface LightGroup {
   actorOverlap?: number;
 }
 
-/** 预览结果的缓存时长：合并 / 忽略 / 采集完成后都会主动失效 */
-const PREVIEW_CACHE_MS = 30_000;
-
 /** 预览返回体 */
 export interface MergePreview {
   auto: LightGroup[];
@@ -185,9 +182,6 @@ function actorOverlap(members: MergeMember[]): number {
 @Injectable()
 export class VodMergeService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
-
-  /** 预览缓存：1 万组要算 2 秒，页面来回切换不必重算 */
-  private previewCache: { at: number; value: MergePreview } | null = null;
 
   /** 被忽略的分组键集合 */
   private async loadIgnored(): Promise<Set<string>> {
@@ -625,9 +619,6 @@ export class VodMergeService {
 
   /** 预览：分组的轻量列表（不含线路明细） */
   async preview(): Promise<MergePreview> {
-    const cached = this.previewCache;
-    if (cached !== null && Date.now() - cached.at < PREVIEW_CACHE_MS) return cached.value;
-
     // 三条统计互相独立，并行跑；最慢的严格键分组约 2 秒
     const [strict, looseGroups, sameSource, ignored] = await Promise.all([
       this.loadStrictLight(),
@@ -706,7 +697,6 @@ export class VodMergeService {
         ignored: ignored.size,
       },
     };
-    this.previewCache = { at: Date.now(), value };
     return value;
   }
 
@@ -724,7 +714,6 @@ export class VodMergeService {
   async merge(dto: VodMergeMergeDTO): Promise<{ merged: number }> {
     const ids = [...new Set(dto.ids)].filter((id) => BigInt(id) > 0n);
     if (ids.length < 2) throw new BadRequestException('请至少选择两条影片');
-    this.previewCache = null;
 
     const rows = await this.dataSource.query<
       Array<{
@@ -784,7 +773,6 @@ export class VodMergeService {
     const valid = kind === 'same' ? isSameKey(dto.key) : isHashKey(dto.key);
     if (!valid) throw new BadRequestException('分组标识不正确');
     const ignoreKind = kind === 'same' ? 2 : kind === 'suspect' ? 2 : 1;
-    this.previewCache = null;
     return this.setIgnored(ignoreKey(kind, dto.key), ignoreKind, dto.ignored ?? true);
   }
 
@@ -802,7 +790,6 @@ export class VodMergeService {
       const detail = await this.loadGroupDetail('auto', group.key);
       if (detail !== null) merged += await this.mergeGroup(detail.members);
     }
-    this.previewCache = null;
     return { needConfirm: false, groups: auto.length, vods, merged };
   }
 
@@ -819,7 +806,6 @@ export class VodMergeService {
     const action = dto.action ?? 'merge';
     const valid = dto.keys.filter((item) => ((item.kind ?? 'auto') === 'same' ? isSameKey(item.key) : isHashKey(item.key)));
     if (valid.length === 0) throw new BadRequestException('请先选择分组');
-    this.previewCache = null;
 
     const groups: MergeGroup[] = [];
     for (const item of valid) {
