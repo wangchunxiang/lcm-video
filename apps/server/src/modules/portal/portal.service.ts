@@ -132,30 +132,18 @@ export class PortalService {
     };
   }
 
-  /** 首页：分类树 + 最新 + 今日更新 + 推荐。 */
+  /** 首页：分类树 + 今日更新。 */
   async home(): Promise<{ categories: CategoryNode[]; rows: VodRow[] }> {
     const categories = await this.categories();
-    const latest = await this.queryCards({
-      where: 'v.status = 1',
-      order: 'v.created_at DESC, v.id DESC',
-      take: HOME_ROW,
-    });
     const today = await this.queryCards({
       where: 'v.status = 1 AND v.collected_at >= CURDATE()',
       order: 'v.collected_at DESC, v.id DESC',
       take: HOME_ROW,
     });
-    const recommend = await this.queryCards({
-      where: "v.status = 1 AND v.remarks <> ''",
-      order: 'v.year DESC, v.collected_at DESC, v.id DESC',
-      take: HOME_ROW,
-    });
 
-    const rows: VodRow[] = [
-      { title: '今日更新', more: '/today', items: today },
-      { title: '最新收录', more: '/category/all', items: latest },
-      { title: '最近热播', more: '/category/all?sort=time', items: recommend },
-    ].filter((row) => row.items.length > 0);
+    const rows: VodRow[] = [{ title: '今日更新', more: '/list/all', items: today }].filter(
+      (row) => row.items.length > 0,
+    );
 
     return { categories, rows };
   }

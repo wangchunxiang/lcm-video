@@ -11,8 +11,6 @@ const data = ref<HomeResult | null>(null);
 
 const MORE_LINKS: Record<string, string> = {
   今日更新: '/list/all?sort=time',
-  最新收录: '/list/all?sort=new',
-  最近热播: '/list/all',
 };
 
 function moreLink(title: string): string {
