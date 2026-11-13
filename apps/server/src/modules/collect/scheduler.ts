@@ -53,9 +53,19 @@ export class CollectScheduler implements OnApplicationBootstrap {
     }
   }
 
-  /** 本轮最多启动一个任务：同一时刻只跑一路采集，避免多个任务同时打远端 */
+  /**
+   * 一个 tick 里把所有命中 cron 的任务都启动。
+   *
+   * 不同源站互不影响，源站级别的并发由 runner 自己挡（同一源站只会有一个
+   * 采集在跑）。原来的 v1 调度器就是这么做的；v3 重写时改成了「一次只启动
+   * 一个」，结果同一时刻的五个任务里只有 id 最小的两个能挤进那一分钟。
+   */
   private async scan(): Promise<void> {
     const now = new Date();
+    // cron 精度是分钟：同一分钟内（含上一个 tick）已经跑过就跳过
+    const minuteStart = new Date(now.getTime());
+    minuteStart.setSeconds(0, 0);
+
     const tasks = await this.taskRepository.find({
       where: { isEnabled: 1, cron: Not(''), lastRunStatus: Not(1) },
       select: { id: true, name: true, cron: true, lastRunAt: true },
@@ -64,14 +74,13 @@ export class CollectScheduler implements OnApplicationBootstrap {
 
     for (const task of tasks) {
       if (!matchCron(task.cron, now)) continue;
-      // cron 精度是分钟：同一分钟内（含上一个 tick）已经跑过就跳过
-      if (task.lastRunAt && now.getTime() - task.lastRunAt.getTime() < 60_000) continue;
+      if (task.lastRunAt && task.lastRunAt.getTime() >= minuteStart.getTime()) continue;
       const result = await this.runner.startTask(task.id, 'auto');
       if (result.ok) {
         this.logger.log(`触发采集任务 #${task.id} ${task.name}（log=${result.logId ?? ''}）`);
-        return;
+      } else {
+        this.logger.debug(`任务 #${task.id} 未启动：${result.msg ?? ''}`);
       }
-      this.logger.debug(`任务 #${task.id} 未启动：${result.msg ?? ''}`);
     }
   }
 }
