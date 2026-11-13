@@ -5,6 +5,7 @@ import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import PlayerBox from '../components/PlayerBox.vue';
+import Button from '../components/ui/Button.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -95,64 +96,84 @@ useSeo(() => ({
 
 <template>
   <div>
-    <nav class="crumb">
-      <RouterLink to="/">首页</RouterLink>
+    <nav class="mb-4 mt-5 flex flex-wrap items-center gap-2 text-small text-ink-3">
+      <RouterLink to="/" class="transition hover:text-primary">首页</RouterLink>
       <span>/</span>
-      <RouterLink v-if="vod" :to="`/detail/${vod.id}`">{{ vod.name }}</RouterLink>
+      <RouterLink v-if="vod" :to="`/detail/${vod.id}`" class="transition hover:text-primary">{{ vod.name }}</RouterLink>
       <span v-if="vod">/</span>
-      <span>{{ epItem?.name ?? '在线播放' }}</span>
+      <span class="text-ink-2">{{ epItem?.name ?? '在线播放' }}</span>
     </nav>
 
-    <p v-if="loading" class="loading-tip">加载中…</p>
-    <p v-else-if="error" class="error-box">{{ error }}</p>
+    <p v-if="loading" class="py-16 text-center text-body text-ink-3">加载中…</p>
+    <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
+      {{ error }}
+    </p>
 
     <template v-else-if="play && vod && line">
-      <div class="play-layout">
-        <div>
-          <PlayerBox
-            :src="epItem?.url ?? ''"
-            :parse-url="line.parseUrl"
-            :poster="vod.cover"
-            :autoplay="player.autoplay"
-            :resume="player.resume"
-            :resume-key="`${vod.id}:${line.id}`"
-            @ended="onEnded"
-          />
+      <div class="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div class="min-w-0">
+          <div class="relative aspect-video overflow-hidden rounded-[10px] bg-black">
+            <PlayerBox
+              :src="epItem?.url ?? ''"
+              :parse-url="line.parseUrl"
+              :poster="vod.cover"
+              :autoplay="player.autoplay"
+              :resume="player.resume"
+              :resume-key="`${vod.id}:${line.id}`"
+              @ended="onEnded"
+            />
+          </div>
 
-          <section class="play-info">
-            <h1>{{ vod.name }} · {{ epItem?.name }}</h1>
-            <p>当前线路：{{ line.name }} · 共 {{ episodes.length }} 集 · {{ vod.remarks || '高清' }}</p>
-            <p><RouterLink :to="`/detail/${vod.id}`">查看影片详情 ›</RouterLink></p>
+          <section class="mt-4 rounded-[10px] bg-surface p-5 shadow-card">
+            <h1 class="mb-2 text-title font-bold text-ink">{{ vod.name }} · {{ epItem?.name }}</h1>
+            <p class="text-small leading-[1.9] text-ink-2">
+              当前线路：{{ line.name }} · 共 {{ episodes.length }} 集 · {{ vod.remarks || '高清' }}
+            </p>
+            <p class="text-small leading-[1.9]">
+              <RouterLink :to="`/detail/${vod.id}`" class="text-ink-2 transition hover:text-primary">
+                查看影片详情 ›
+              </RouterLink>
+            </p>
           </section>
         </div>
 
-        <aside class="play-side">
-          <div class="play-side-head">
-            <RouterLink class="play-vod" :to="`/detail/${vod.id}`">{{ vod.name }}</RouterLink>
-            <span class="play-side-title">选集（{{ episodes.length }}）</span>
+        <aside class="flex flex-col gap-3 rounded-[10px] bg-surface p-5 shadow-card">
+          <div class="flex flex-col gap-1">
+            <RouterLink :to="`/detail/${vod.id}`" class="text-small text-ink-2 transition hover:text-primary">
+              {{ vod.name }}
+            </RouterLink>
+            <span class="text-emphasis font-semibold text-ink">选集（{{ episodes.length }}）</span>
           </div>
 
-          <div class="line-pills">
+          <div class="flex flex-wrap gap-2">
             <button
               v-for="item in play.lines"
               :key="item.id"
-              class="chip"
-              :class="{ 'is-on': item.id === line.id }"
               type="button"
+              :class="[
+                'h-8 cursor-pointer rounded-pill border px-3 text-small transition',
+                item.id === line.id
+                  ? 'border-primary-line bg-primary-weak font-semibold text-primary'
+                  : 'border-line bg-surface text-ink-2 hover:border-primary-line hover:text-primary',
+              ]"
               @click="selectLine(item.id)"
             >
               {{ item.name }}
             </button>
           </div>
 
-          <div class="ep-scroll">
-            <div class="ep-grid">
+          <div class="max-h-[320px] overflow-y-auto pr-1 lg:max-h-[420px]">
+            <div class="grid grid-cols-5 gap-1.5 sm:grid-cols-6 xl:grid-cols-5">
               <button
                 v-for="ep in episodes"
                 :key="ep.index"
-                class="ep-btn"
-                :class="{ 'is-on': ep.index === current }"
                 type="button"
+                :class="[
+                  'h-9 cursor-pointer truncate rounded-lg border text-small transition',
+                  ep.index === current
+                    ? 'border-primary bg-primary text-white'
+                    : 'border-line bg-surface-2 text-ink-2 hover:border-primary-line hover:bg-primary-weak hover:text-primary',
+                ]"
                 @click="selectEp(ep.index)"
               >
                 {{ ep.name }}
@@ -160,9 +181,9 @@ useSeo(() => ({
             </div>
           </div>
 
-          <div class="play-nav">
-            <button class="btn btn-sm" type="button" :disabled="!prevEp" @click="selectEp(prevEp)">上一集</button>
-            <button class="btn btn-sm" type="button" :disabled="!nextEp" @click="selectEp(nextEp)">下一集</button>
+          <div class="flex gap-2">
+            <Button size="sm" class="flex-1" :disabled="!prevEp" @click="selectEp(prevEp)">上一集</Button>
+            <Button size="sm" class="flex-1" :disabled="!nextEp" @click="selectEp(nextEp)">下一集</Button>
           </div>
         </aside>
       </div>

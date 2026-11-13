@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 import SiteHeader from './components/SiteHeader.vue';
 import SiteFooter from './components/SiteFooter.vue';
+import Container from './components/layout/Container.vue';
 import { loadSite } from './site';
 
 onMounted(() => {
@@ -10,12 +11,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="site">
+  <div class="flex min-h-screen flex-col">
     <SiteHeader />
-    <main class="site-main">
-      <div class="container">
+    <main class="flex-1 pt-2">
+      <Container>
         <RouterView />
-      </div>
+      </Container>
     </main>
     <SiteFooter />
   </div>

@@ -166,26 +166,27 @@ onBeforeUnmount(destroyPlayer);
 </script>
 
 <template>
-  <div class="player-shell">
+  <div class="player-box relative h-full w-full bg-black">
     <iframe
       v-if="iframeSrc"
       :src="iframeSrc"
+      class="h-full w-full border-0"
       allowfullscreen
       allow="autoplay; fullscreen; picture-in-picture"
       referrerpolicy="no-referrer"
     ></iframe>
-    <div v-else ref="containerRef" class="art-container"></div>
-    <div v-if="failed" class="player-fallback">该线路暂不支持在线播放</div>
+    <div v-else ref="containerRef" class="h-full w-full"></div>
+    <div
+      v-if="failed"
+      class="absolute inset-0 grid place-items-center bg-[#0f172a] text-[13px] text-[#c9d1de]"
+    >
+      该线路暂不支持在线播放
+    </div>
   </div>
 </template>
 
 <style scoped>
-.art-container {
-  width: 100%;
-  height: 100%;
-}
-
-.player-shell :deep(.art-video-player) {
+.player-box :deep(.art-video-player) {
   width: 100%;
   height: 100%;
 }

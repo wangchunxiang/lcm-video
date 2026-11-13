@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { cn } from '@/lib/utils';
-
-const props = withDefaults(defineProps<{ class?: string }>(), { class: '' });
-const classes = computed(() => cn('mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-[60px]', props.class));
+// 只负责「最大宽度 + 左右留白」，调用方传 class 时会由 Vue 自动合并到根节点。
 </script>
 
 <template>
-  <div :class="classes"><slot /></div>
+  <div class="mx-auto w-full max-w-[1800px] px-4 sm:px-6 xl:px-[60px]"><slot /></div>
 </template>

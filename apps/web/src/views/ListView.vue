@@ -8,9 +8,8 @@ import { useIsMobile } from '../composables/useBreakpoint';
 import VodGrid from '../components/VodGrid.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
-import Grid from '../components/layout/Grid.vue';
-import Button from '../components/ui/button/Button.vue';
-import Skeleton from '../components/ui/skeleton/Skeleton.vue';
+import Button from '../components/ui/Button.vue';
+import Skeleton from '../components/ui/Skeleton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -94,15 +93,15 @@ useSeo(() => ({
 
 <template>
   <div>
-    <nav class="mb-2.5 flex items-center gap-1.5 text-small text-ink-3">
-      <RouterLink to="/" class="hover:text-primary">首页</RouterLink>
+    <nav class="mb-4 mt-5 flex flex-wrap items-center gap-2 text-small text-ink-3">
+      <RouterLink to="/" class="transition hover:text-primary">首页</RouterLink>
       <span>/</span>
       <span class="text-ink-2">{{ categoryName }}</span>
     </nav>
 
-    <div class="mb-3 flex items-end justify-between gap-3">
-      <h1 class="truncate text-page font-semibold text-ink sm:text-[24px]">{{ categoryName }}</h1>
-      <span v-if="data" class="shrink-0 text-small text-ink-3">共 {{ total }} 部</span>
+    <div class="mb-4 flex flex-wrap items-baseline gap-3">
+      <h1 class="text-page font-bold text-ink">{{ categoryName }}</h1>
+      <span v-if="data" class="text-small text-ink-3">共 {{ total }} 部</span>
     </div>
 
     <FilterBar
@@ -117,37 +116,36 @@ useSeo(() => ({
       @update:sort="(value: string) => setQuery({ sort: value === 'time' ? undefined : value })"
     />
 
-    <Grid v-if="loading && !shown.length">
-      <div v-for="index in 12" :key="index">
-        <Skeleton class="aspect-[3/4] w-full" />
+    <div
+      v-if="loading && !shown.length"
+      class="grid grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-4 md:grid-cols-4 xl:grid-cols-6 min-[1500px]:grid-cols-8"
+    >
+      <div v-for="index in 12" :key="index" class="rounded-[10px] bg-surface p-1 shadow-card sm:p-2.5">
+        <Skeleton class="aspect-[2/3] w-full" />
         <Skeleton class="mt-2 h-3.5 w-4/5" />
         <Skeleton class="mt-1.5 h-3 w-1/2" />
       </div>
-    </Grid>
+    </div>
 
-    <p v-else-if="error" class="rounded-md border border-line bg-surface px-4 py-10 text-center text-body text-ink-2">
+    <p v-else-if="error" class="my-6 rounded-[10px] border border-[#f3d1d1] bg-[#fdf3f3] px-4 py-5 text-center text-body text-danger">
       {{ error }}
     </p>
 
     <template v-else>
       <VodGrid v-if="shown.length" :items="shown" show-category />
-      <p v-else class="rounded-md border border-line bg-surface px-4 py-16 text-center text-body text-ink-3">
-        该分类下暂无影片
-      </p>
+      <p v-else class="py-12 text-center text-body text-ink-3">该分类下暂无影片</p>
 
       <!-- 桌面：分页器 -->
-      <div v-if="shown.length && total > pageSize" class="mt-5 hidden sm:block">
+      <div v-if="shown.length && total > pageSize" class="hidden md:block">
         <PaginationBar :page="page" :total="total" :page-size="pageSize" @change="goPage" />
       </div>
 
       <!-- 手机：加载更多 -->
-      <div v-if="shown.length" class="mt-4 sm:hidden">
-        <Button v-if="hasMore" variant="outline" class="w-full" :disabled="loading" @click="loadMore">
+      <div v-if="shown.length" class="mt-4 md:hidden">
+        <Button v-if="hasMore" class="w-full" :disabled="loading" @click="loadMore">
           {{ loading ? '加载中…' : '加载更多' }}
         </Button>
-        <p class="mt-2 text-center text-caption text-ink-3">
-          已显示 {{ shown.length }} / 共 {{ total }} 部
-        </p>
+        <p class="mt-2 text-center text-caption text-ink-3">已显示 {{ shown.length }} / 共 {{ total }} 部</p>
       </div>
     </template>
   </div>

@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue';
 import ChipRow from './ChipRow.vue';
 import type { ChipOption } from './chip-option';
-import Sheet from './ui/sheet/Sheet.vue';
-import Button from './ui/button/Button.vue';
+import Sheet from './ui/Sheet.vue';
+import Button from './ui/Button.vue';
 
 const props = defineProps<{
   types: { id: string; name: string; alias: string }[];
@@ -46,10 +46,10 @@ function reset(): void {
 </script>
 
 <template>
-  <!-- 桌面：内联三行，与原来一致 -->
-  <div class="mb-4 hidden flex-col gap-2.5 rounded-md border border-line bg-surface px-4 py-3 sm:flex">
+  <!-- 桌面 / 平板：白卡片内联三行 -->
+  <div class="mb-4 hidden flex-col gap-3 rounded-[10px] bg-surface p-5 shadow-card md:flex">
     <div v-if="types.length" class="flex items-start gap-3">
-      <span class="w-9 shrink-0 pt-1.5 text-small text-ink-3">类型</span>
+      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">类型</span>
       <ChipRow
         :options="typeOptions"
         :model-value="type"
@@ -57,7 +57,7 @@ function reset(): void {
       />
     </div>
     <div v-if="years.length" class="flex items-start gap-3">
-      <span class="w-9 shrink-0 pt-1.5 text-small text-ink-3">年份</span>
+      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">年份</span>
       <ChipRow
         :options="yearOptions"
         :model-value="year"
@@ -65,7 +65,7 @@ function reset(): void {
       />
     </div>
     <div class="flex items-start gap-3">
-      <span class="w-9 shrink-0 pt-1.5 text-small text-ink-3">排序</span>
+      <span class="w-11 shrink-0 pt-1.5 text-small text-ink-3">排序</span>
       <ChipRow
         :options="sortOptions"
         :model-value="sort"
@@ -74,9 +74,9 @@ function reset(): void {
     </div>
   </div>
 
-  <!-- 手机：一个按钮 + 底部抽屉 -->
-  <div class="mb-3 flex items-center gap-2 sm:hidden">
-    <Button variant="outline" size="sm" @click="open = true">
+  <!-- 手机：筛选按钮 + 底部抽屉 -->
+  <div class="mb-3 flex items-center gap-2 md:hidden">
+    <Button size="sm" @click="open = true">
       <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M4 6h16M7 12h10M10 18h4" stroke-linecap="round" />
       </svg>
@@ -116,8 +116,8 @@ function reset(): void {
 
     <template #footer>
       <div class="flex gap-3">
-        <Button variant="outline" class="flex-1" @click="reset">重置</Button>
-        <Button class="flex-1" @click="open = false">完成</Button>
+        <Button class="flex-1" @click="reset">重置</Button>
+        <Button variant="primary" class="flex-1" @click="open = false">完成</Button>
       </div>
     </template>
   </Sheet>

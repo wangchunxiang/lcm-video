@@ -29,6 +29,9 @@ const pages = computed<Array<number | '...'>>(() => {
   return result;
 });
 
+const BTN =
+  'min-w-9 h-9 cursor-pointer rounded-lg border border-line bg-surface px-2 text-small text-ink-2 transition hover:border-primary-line hover:text-primary disabled:cursor-not-allowed disabled:opacity-45';
+
 function go(page: number): void {
   if (page < 1 || page > pageCount.value || page === props.page) return;
   emit('change', page);
@@ -36,21 +39,20 @@ function go(page: number): void {
 </script>
 
 <template>
-  <nav v-if="pageCount > 1" class="pager" aria-label="分页">
-    <button class="pager-btn" type="button" :disabled="page <= 1" @click="go(page - 1)">上一页</button>
+  <nav v-if="pageCount > 1" class="my-6 flex flex-wrap items-center justify-center gap-2" aria-label="分页">
+    <button :class="BTN" type="button" :disabled="page <= 1" @click="go(page - 1)">上一页</button>
     <template v-for="(item, index) in pages" :key="`${item}-${index}`">
-      <span v-if="item === '...'" class="pager-info">…</span>
+      <span v-if="item === '...'" class="text-caption text-ink-3">…</span>
       <button
         v-else
-        class="pager-btn"
-        :class="{ 'is-on': item === page }"
+        :class="[BTN, item === page ? 'border-primary bg-primary font-semibold text-white hover:border-primary hover:text-white' : '']"
         type="button"
         @click="go(item as number)"
       >
         {{ item }}
       </button>
     </template>
-    <button class="pager-btn" type="button" :disabled="page >= pageCount" @click="go(page + 1)">下一页</button>
-    <span class="pager-info">共 {{ total }} 条 / {{ pageCount }} 页</span>
+    <button :class="BTN" type="button" :disabled="page >= pageCount" @click="go(page + 1)">下一页</button>
+    <span class="text-caption text-ink-3">共 {{ total }} 条 / {{ pageCount }} 页</span>
   </nav>
 </template>
