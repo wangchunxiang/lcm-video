@@ -340,11 +340,12 @@ onBeforeUnmount(() => {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="原地址">
-          <el-input v-model="form.from_url" placeholder="如 https://ps.ryzypics.com" />
-          <div class="hint">按前缀匹配，只替换以此开头的地址。</div>
+          <el-input v-model="form.from_url" placeholder="如 ps.ryzypics.com" />
+          <div class="hint">按前缀匹配，只替换以此开头的地址；可省略 https://，省略时 http 与 https 都匹配。</div>
         </el-form-item>
         <el-form-item label="新地址">
-          <el-input v-model="form.to_url" placeholder="如 https://pic.ry-pic.com" />
+          <el-input v-model="form.to_url" placeholder="如 pic.ry-pic.com" />
+          <div class="hint">省略协议时沿用原地址的协议。</div>
         </el-form-item>
         <el-form-item label="排序">
           <el-input v-model.number="form.sort" style="width: 120px" />

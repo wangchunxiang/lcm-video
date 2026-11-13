@@ -9,12 +9,28 @@ function usable(rules: UrlRule[]): UrlRule[] {
     .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 }
 
-/** 单个地址做前缀替换：只有以原地址开头才替换，避免改到路径中段 */
+/** 协议前缀，如 `https://` */
+const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
+
+/**
+ * 单个地址做前缀替换：只有以原地址开头才替换，避免改到路径中段。
+ *
+ * 原地址可以不写协议（如 `vod.a.com`）：此时按「忽略协议」比较，替换后把地址
+ * 原本的协议补回去；新地址自带协议时以新地址为准。这样一条规则能同时覆盖
+ * http 与 https，也符合后台填写时的直觉。
+ */
 export function applyUrlRule(url: string, rule: UrlRule): string {
   const from = rule.fromUrl.trim();
   const to = rule.toUrl.trim();
-  if (!url || !from || !url.startsWith(from)) return url;
-  return to + url.slice(from.length);
+  if (!url || !from) return url;
+
+  const scheme = SCHEME.exec(url)?.[0] ?? '';
+  const target = SCHEME.test(from) ? url : url.slice(scheme.length);
+  if (!target.startsWith(from)) return url;
+
+  const rest = target.slice(from.length);
+  if (!to) return rest;
+  return SCHEME.test(to) ? to + rest : `${scheme}${to}${rest}`;
 }
 
 /** 对一条地址串应用一组规则（按顺序依次套用） */

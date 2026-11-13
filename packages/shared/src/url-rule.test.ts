@@ -25,6 +25,23 @@ describe('applyUrlRule', () => {
       'https://b.com/x',
     );
   });
+
+  it('原地址不带协议时忽略协议匹配，替换后保留原协议', () => {
+    expect(applyUrlRule('https://a.com/x', rule('a.com', 'b.com'))).toBe('https://b.com/x');
+    expect(applyUrlRule('http://a.com/x', rule('a.com', 'b.com'))).toBe('http://b.com/x');
+  });
+
+  it('新地址自带协议时以新地址为准', () => {
+    expect(applyUrlRule('https://a.com/x', rule('a.com', 'http://b.com'))).toBe('http://b.com/x');
+  });
+
+  it('不带协议的规则也不会改到路径中段', () => {
+    expect(applyUrlRule('https://x.com/a.com/y', rule('a.com', 'b.com'))).toBe('https://x.com/a.com/y');
+  });
+
+  it('新地址为空时删掉前缀', () => {
+    expect(applyUrlRule('https://a.com/x', rule('https://a.com', ''))).toBe('/x');
+  });
 });
 
 describe('applyUrlRules', () => {
