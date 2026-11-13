@@ -12,25 +12,43 @@ function usable(rules: UrlRule[]): UrlRule[] {
 /** 协议前缀，如 `https://` */
 const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 
+/** 去掉协议，规则里的地址与地址本身都按这个形式比较 */
+function withoutScheme(value: string): string {
+  return value.replace(SCHEME, '');
+}
+
+/** 规则实际参与匹配的串（去协议），供服务端做 LIKE 预筛 */
+export function urlRuleNeedle(fromUrl: string): string {
+  return withoutScheme(fromUrl.trim());
+}
+
 /**
- * 单个地址做前缀替换：只有以原地址开头才替换，避免改到路径中段。
+ * 单个地址替换：地址里出现原地址就替换，不限开头、出现几次换几次。
  *
- * 原地址可以不写协议（如 `vod.a.com`）：此时按「忽略协议」比较，替换后把地址
- * 原本的协议补回去；新地址自带协议时以新地址为准。这样一条规则能同时覆盖
- * http 与 https，也符合后台填写时的直觉。
+ * 原地址可以不写协议（如 `vod.a.com`）：匹配时忽略协议，地址自身的协议保持原样；
+ * 新地址也可以不写协议。这样一条 `vod.a.com → vod.b.com` 能同时覆盖 http 与
+ * https，也能改到 `https://cdn.example/?url=vod.a.com/x.m3u8` 这种出现在中间的地址。
+ *
+ * 新地址带了协议、且原地址就在地址开头时，按「协议 + 原地址」整段替换，
+ * 这样 `http://a.com → https://b.com` 可以顺带把协议改掉。
  */
 export function applyUrlRule(url: string, rule: UrlRule): string {
-  const from = rule.fromUrl.trim();
-  const to = rule.toUrl.trim();
+  const from = urlRuleNeedle(rule.fromUrl);
+  const rawTo = rule.toUrl.trim();
+  const to = withoutScheme(rawTo);
   if (!url || !from) return url;
 
   const scheme = SCHEME.exec(url)?.[0] ?? '';
-  const target = SCHEME.test(from) ? url : url.slice(scheme.length);
-  if (!target.startsWith(from)) return url;
+  if (!to) {
+    // 新地址为空 = 删掉这段地址；开头那段的协议一起删，避免留下 `https:///path`
+    return url.split(`${scheme}${from}`).join('').split(from).join('');
+  }
 
-  const rest = target.slice(from.length);
-  if (!to) return rest;
-  return SCHEME.test(to) ? to + rest : `${scheme}${to}${rest}`;
+  const toScheme = SCHEME.exec(rawTo)?.[0] ?? '';
+  if (toScheme && url.slice(scheme.length).startsWith(from)) {
+    return rawTo + url.slice(scheme.length + from.length);
+  }
+  return url.split(from).join(to);
 }
 
 /** 对一条地址串应用一组规则（按顺序依次套用） */

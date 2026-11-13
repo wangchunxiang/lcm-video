@@ -10,10 +10,18 @@ const rule = (fromUrl: string, toUrl: string, extra: Partial<UrlRule> = {}): Url
 });
 
 describe('applyUrlRule', () => {
-  it('只做前缀替换', () => {
+  it('地址里出现原地址就替换，不限开头', () => {
     expect(applyUrlRule('http://a.com/x.m3u8', rule('http://a.com', 'https://b.com'))).toBe(
       'https://b.com/x.m3u8',
     );
+    expect(applyUrlRule('https://x.com/a.com/y', rule('a.com', 'b.com'))).toBe('https://x.com/b.com/y');
+    expect(applyUrlRule('https://cdn.example/?url=vod.a.com/x.m3u8', rule('vod.a.com', 'vod.b.com'))).toBe(
+      'https://cdn.example/?url=vod.b.com/x.m3u8',
+    );
+  });
+
+  it('出现多次时全部替换', () => {
+    expect(applyUrlRule('https://a.com/a.com/x', rule('a.com', 'b.com'))).toBe('https://b.com/b.com/x');
   });
 
   it('不匹配时原样返回', () => {
@@ -26,21 +34,17 @@ describe('applyUrlRule', () => {
     );
   });
 
-  it('原地址不带协议时忽略协议匹配，替换后保留原协议', () => {
+  it('规则带不带协议都按域名匹配，地址自身的协议不变', () => {
     expect(applyUrlRule('https://a.com/x', rule('a.com', 'b.com'))).toBe('https://b.com/x');
     expect(applyUrlRule('http://a.com/x', rule('a.com', 'b.com'))).toBe('http://b.com/x');
+    expect(applyUrlRule('http://a.com/x', rule('https://a.com', 'http://b.com'))).toBe('http://b.com/x');
   });
 
-  it('新地址自带协议时以新地址为准', () => {
-    expect(applyUrlRule('https://a.com/x', rule('a.com', 'http://b.com'))).toBe('http://b.com/x');
-  });
-
-  it('不带协议的规则也不会改到路径中段', () => {
-    expect(applyUrlRule('https://x.com/a.com/y', rule('a.com', 'b.com'))).toBe('https://x.com/a.com/y');
-  });
-
-  it('新地址为空时删掉前缀', () => {
+  it('新地址为空时删掉这段前缀与协议', () => {
     expect(applyUrlRule('https://a.com/x', rule('https://a.com', ''))).toBe('/x');
+    expect(applyUrlRule('https://cdn.example/?url=a.com/x', rule('a.com', ''))).toBe(
+      'https://cdn.example/?url=/x',
+    );
   });
 });
 

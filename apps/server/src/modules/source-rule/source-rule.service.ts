@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { applyPlayUrlRules } from '@lcm/shared';
+import { applyCoverRules, applyPlayUrlRules, hostOf, urlRuleNeedle } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
 import { CollectSourceService } from '../collect-source/collect-source.service';
 import { SourceRuleEntity } from './source-rule.entity';
@@ -68,29 +68,44 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
     return rule.kind === 2 ? this.applyCover(rule, confirm) : this.applyPlay(rule, confirm);
   }
 
-  /** 封面换前缀：`cover_host` 是业务列，必须跟着重算。 */
+  /** 封面替换：`cover_host` 是业务列，必须跟着重算。 */
   private async applyCover(
     rule: SourceRuleEntity,
     confirm: boolean,
   ): Promise<SourceRuleApplyResult> {
-    const prefix = `${rule.fromUrl}%`;
-    const rows = await this.dataSource.query<Array<{ total: number }>>(
-      'SELECT COUNT(*) AS total FROM lcm_vod WHERE cover LIKE ?',
-      [prefix],
+    const needle = urlRuleNeedle(rule.fromUrl);
+    const rows = await this.dataSource.query<Array<{ id: string; cover: string }>>(
+      'SELECT id, cover FROM lcm_vod WHERE cover LIKE ?',
+      [`%${needle}%`],
     );
-    const total = Number(rows[0]?.total ?? 0);
-    if (!confirm) return { needConfirm: true, total, affected: 0 };
-    if (total === 0) return { needConfirm: false, total: 0, affected: 0 };
+    const changes: Array<{ id: string; cover: string; coverHost: string }> = [];
+    for (const row of rows) {
+      const cover = applyCoverRules(row.cover, [rule]);
+      if (cover !== row.cover) changes.push({ id: row.id, cover, coverHost: hostOf(cover) });
+    }
+    if (!confirm) return { needConfirm: true, total: changes.length, affected: 0 };
+    if (changes.length === 0) return { needConfirm: false, total: 0, affected: 0 };
 
-    await this.dataSource.query(
-      `UPDATE lcm_vod
-          SET cover = CONCAT(?, SUBSTRING(cover, ?)),
-              cover_host = LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(?, SUBSTRING(cover, ?)), '/', 3), '/', -1)),
-              updated_at = NOW()
-        WHERE cover LIKE ?`,
-      [rule.toUrl, rule.fromUrl.length + 1, rule.toUrl, rule.fromUrl.length + 1, prefix],
-    );
-    return { needConfirm: false, total, affected: total };
+    let affected = 0;
+    for (let start = 0; start < changes.length; start += APPLY_BATCH) {
+      const batch = changes.slice(start, start + APPLY_BATCH);
+      const coverCases = batch.map(() => 'WHEN ? THEN ?').join(' ');
+      const hostCases = batch.map(() => 'WHEN ? THEN ?').join(' ');
+      const params: string[] = [];
+      for (const row of batch) params.push(row.id, row.cover);
+      for (const row of batch) params.push(row.id, row.coverHost);
+      const ids = batch.map((row) => row.id);
+      await this.dataSource.query(
+        `UPDATE lcm_vod
+            SET cover = CASE id ${coverCases} ELSE cover END,
+                cover_host = CASE id ${hostCases} ELSE cover_host END,
+                updated_at = NOW()
+          WHERE id IN (?)`,
+        [...params, ids],
+      );
+      affected += batch.length;
+    }
+    return { needConfirm: false, total: changes.length, affected };
   }
 
   /** 播放地址换前缀：只动本采集源的线路，逐集套用规则。 */
@@ -100,7 +115,7 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
   ): Promise<SourceRuleApplyResult> {
     const rows = await this.dataSource.query<Array<{ id: string; playUrl: string }>>(
       'SELECT id, play_url AS playUrl FROM lcm_vod_play WHERE source_id = ? AND play_url LIKE ?',
-      [rule.sourceId, `%${rule.fromUrl}%`],
+      [rule.sourceId, `%${urlRuleNeedle(rule.fromUrl)}%`],
     );
     const changes: Array<{ id: string; playUrl: string }> = [];
     for (const row of rows) {

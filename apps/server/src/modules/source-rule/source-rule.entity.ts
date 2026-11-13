@@ -28,7 +28,7 @@ export class SourceRuleEntity extends AppBaseEntity {
     type: 'varchar',
     length: 255,
     default: '',
-    comment: '源地址前缀',
+    comment: '原地址：地址中出现即替换，可省略协议',
   })
   fromUrl!: string;
 
@@ -37,7 +37,7 @@ export class SourceRuleEntity extends AppBaseEntity {
     type: 'varchar',
     length: 255,
     default: '',
-    comment: '替换成的前缀，空表示删除该前缀',
+    comment: '新地址：可省略协议，空表示删除这段地址',
   })
   toUrl!: string;
 
