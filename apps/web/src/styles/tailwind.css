@@ -1,0 +1,56 @@
+/*
+ * Tailwind 入口。
+ *
+ * 只引 theme 与 utilities 两层，故意不引 preflight：老页面仍由 site.css 负责，
+ * preflight 会把它们的默认样式（列表、标题、表单）重置掉。新组件
+ * （components/ui、components/layout）只依赖 Tailwind 工具类，不读 site.css。
+ *
+ * 颜色、圆角、阴影、字号全部来自 styles/tokens.css，这里只做映射，
+ * 不新增裸色值或裸尺寸。
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tw-animate-css';
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-weak: var(--primary-weak);
+  --color-primary-line: var(--primary-line);
+
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-ink-3: var(--text-3);
+  --color-danger: var(--danger);
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-pill: var(--radius-pill);
+
+  --shadow-card: var(--shadow);
+  --shadow-card-hover: var(--shadow-hover);
+
+  --text-caption: var(--fs-caption);
+  --text-small: var(--fs-small);
+  --text-body: var(--fs-body);
+  --text-emphasis: var(--fs-emphasis);
+  --text-title: var(--fs-title);
+  --text-page: var(--fs-page-title);
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+  }
+}

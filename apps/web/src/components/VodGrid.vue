@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { VodCard as VodCardData } from '../api/portal';
+import Grid from './layout/Grid.vue';
 import VodCard from './VodCard.vue';
 
 withDefaults(
@@ -12,7 +13,7 @@ withDefaults(
 </script>
 
 <template>
-  <div class="vod-grid">
+  <Grid>
     <VodCard v-for="item in items" :key="item.id" :vod="item" :show-category="showCategory" />
-  </div>
+  </Grid>
 </template>
