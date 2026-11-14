@@ -1,10 +1,28 @@
 <script setup lang="ts">
-// 只负责「最大宽度 + 左右留白」，与 v2 主题的 .container 一致：
-// 1792px 上限，两侧各 64px；窄屏收到 16px。
+/**
+ * 页面骨架的「内容区」宽度：全站唯一的横向边界。
+ *
+ * 宽度取 tokens.css 的 --container / --container-gap（1600px，两侧各 96px），
+ * 手机上收到两侧各 14px。横向位置只由这里决定，区块内部不再自己加左右 padding
+ * （见 docs/样式规范-v3.md 第三节）。
+ */
 </script>
 
 <template>
-  <div class="mx-auto w-[min(1792px,calc(100%-128px))] max-md:w-[calc(100%-32px)]">
+  <div class="page-container">
     <slot />
   </div>
 </template>
+
+<style scoped>
+.page-container {
+  width: min(var(--container), calc(100% - var(--container-gap)));
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    width: calc(100% - 28px);
+  }
+}
+</style>

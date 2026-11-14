@@ -5,7 +5,7 @@ import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import PlayerBox from '../components/PlayerBox.vue';
-import Icon from '../components/Icon.vue';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
 const route = useRoute();
 const router = useRouter();
@@ -120,8 +120,8 @@ useSeo(() => ({
             />
           </div>
 
-          <div class="mt-3 flex flex-wrap items-baseline gap-2">
-            <RouterLink :to="`/detail/${vod.id}`" class="text-emphasis font-semibold text-ink hover:text-primary">
+          <div class="mt-4 flex flex-wrap items-baseline gap-2">
+            <RouterLink :to="`/detail/${vod.id}`" class="text-emphasis font-semibold text-ink">
               {{ vod.name }}
             </RouterLink>
             <span class="text-caption text-ink-3">{{ epItem?.name }}</span>
@@ -129,12 +129,12 @@ useSeo(() => ({
           </div>
         </div>
 
-        <aside class="mt-4 flex flex-col gap-3 lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:w-[380px]">
+        <aside class="mt-4 flex flex-col gap-4 lg:absolute lg:inset-y-0 lg:right-0 lg:mt-0 lg:w-[380px]">
           <div class="flex items-baseline gap-2">
             <RouterLink
               :to="`/detail/${vod.id}`"
               :title="vod.name"
-              class="truncate text-emphasis font-semibold text-ink hover:text-primary"
+              class="truncate text-emphasis font-semibold text-ink"
             >
               {{ vod.name }}
             </RouterLink>
@@ -144,14 +144,14 @@ useSeo(() => ({
           <div class="relative">
             <button
               type="button"
-              class="flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded bg-surface px-3 text-small text-ink-2 transition hover:bg-surface-2"
+              class="flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded bg-surface px-4 text-small text-ink-2 transition hover:bg-surface-2"
               :aria-expanded="lineOpen"
               @click="lineOpen = !lineOpen"
             >
               <span class="truncate">{{ line.name }}</span>
               <span class="flex flex-none items-center gap-1 text-caption text-ink-3">
                 {{ line.episodes }} 集
-                <Icon name="chevron-down" :size="14" />
+                <ChevronDown :size="14" class="shrink-0" />
               </span>
             </button>
 
@@ -163,11 +163,11 @@ useSeo(() => ({
                 v-for="item in play.lines"
                 :key="item.id"
                 type="button"
-                class="flex w-full cursor-pointer items-center justify-between gap-2 rounded px-2 py-[7px] text-left text-small transition"
+                class="flex h-[30px] w-full cursor-pointer items-center justify-between gap-2 rounded px-4 text-left text-small transition"
                 :class="
                   item.id === line.id
-                    ? 'bg-[rgba(59,130,246,0.16)] text-primary'
-                    : 'text-ink-2 hover:bg-surface-2 hover:text-primary'
+                    ? 'bg-primary-weak text-primary'
+                    : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
                 "
                 @click="selectLine(item.id)"
               >
@@ -184,7 +184,7 @@ useSeo(() => ({
                 :key="ep.index"
                 type="button"
                 :title="ep.name"
-                class="h-7 cursor-pointer truncate rounded bg-surface-2 text-caption text-ink-2 transition hover:bg-[rgba(59,130,246,0.18)] hover:text-primary"
+                class="h-7 cursor-pointer truncate rounded bg-surface-2 text-caption text-ink-2 transition hover:bg-surface-3 hover:text-ink"
                 :class="ep.index === current ? 'bg-primary text-white hover:bg-primary hover:text-white' : ''"
                 @click="selectEp(ep.index)"
               >
@@ -196,21 +196,21 @@ useSeo(() => ({
           <div class="flex justify-between text-small">
             <button
               type="button"
-              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-primary disabled:cursor-not-allowed disabled:text-line"
+              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-ink disabled:cursor-not-allowed disabled:text-line"
               :disabled="!prevEp"
               @click="selectEp(prevEp)"
             >
-              <Icon name="chevron-left" :size="14" />
+              <ChevronLeft :size="14" class="shrink-0" />
               上一集
             </button>
             <button
               type="button"
-              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-primary disabled:cursor-not-allowed disabled:text-line"
+              class="inline-flex cursor-pointer items-center gap-1 text-ink-3 transition hover:text-ink disabled:cursor-not-allowed disabled:text-line"
               :disabled="!nextEp"
               @click="selectEp(nextEp)"
             >
               下一集
-              <Icon name="chevron-right" :size="14" />
+              <ChevronRight :size="14" class="shrink-0" />
             </button>
           </div>
         </aside>

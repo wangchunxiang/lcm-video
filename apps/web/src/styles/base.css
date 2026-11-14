@@ -1,59 +1,85 @@
 /*
  * 基础重置：只把浏览器默认值对齐，不写任何视觉。
  * 视觉一律走 Tailwind 工具类 + tokens.css 的变量（见 docs/前端决策清单.md D33）。
+ *
+ * 全部规则必须留在 @layer base 里：无层（unlayered）样式在 CSS 层叠里优先级高于
+ * 所有 @layer，会让 `a { color: inherit }` 压掉 utilities 层的 `text-*`，
+ * 表现为「链接上写的颜色不生效」。层级顺序在 styles/tailwind.css 开头声明。
  */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-html {
-  -webkit-text-size-adjust: 100%;
-}
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background-color: var(--bg);
-  color: var(--text);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-    'Helvetica Neue', Arial, sans-serif;
-  font-size: var(--fs-body);
-  line-height: 1.6;
-}
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+      'Helvetica Neue', Arial, sans-serif;
+    font-size: var(--fs-body);
+    line-height: 1.6;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 
-img,
-video,
-iframe {
-  display: block;
-  max-width: 100%;
-}
+  img,
+  video,
+  iframe {
+    display: block;
+    max-width: 100%;
+  }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
 
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
+  /*
+   * 没引 Tailwind preflight，浏览器给 <button> 的默认底色（ButtonFace）和边框会一直留着，
+   * 表现为「按钮是灰块、hover 颜色不对」。这里统一清掉，视觉仍由工具类决定。
+   */
+  button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
 
-ul,
-ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  input,
+  textarea {
+    background: transparent;
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  ul,
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
 }

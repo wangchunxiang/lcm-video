@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 C · 信息港</title>
+<style>
+:root{
+  --bg:#0d0f12;--surface:#15181d;--surface-2:#1b1f25;--line:#262b33;
+  --text:#e8ebef;--text-2:#9aa3ae;--text-3:#6e7783;
+  --primary:#22b8a6;--primary-soft:rgba(34,184,166,.14);--primary-line:rgba(34,184,166,.42);
+  --hot:#ff6b57;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);
+  font:13.5px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{display:block}
+.wrap{width:min(1560px,100% - 72px);margin:0 auto}
+
+/* 顶栏 */
+.top{background:#11141a;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+.top .wrap{display:flex;align-items:center;gap:28px;height:56px}
+.logo{font-size:17px;font-weight:700;letter-spacing:.02em;display:flex;align-items:center;gap:7px}
+.logo i{width:16px;height:16px;border-radius:4px;background:var(--primary);display:block}
+.nav{display:flex;gap:4px;font-size:14px}
+.nav a{padding:6px 12px;border-radius:6px;color:var(--text-2);transition:.16s}
+.nav a:hover{background:var(--surface-2);color:var(--text)}
+.nav a.on{background:var(--primary-soft);color:var(--primary)}
+.search{margin-left:auto;display:flex;height:34px;width:320px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.search input{flex:1;border:0;background:0;outline:0;padding:0 12px;color:var(--text);font-size:13.5px}
+.search button{border:0;background:var(--primary);color:#062b26;font-weight:700;font-size:13px;padding:0 16px;cursor:pointer}
+
+/* 筛选条 */
+.bar{display:flex;align-items:center;gap:18px;padding:14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar .lbl{font-size:12.5px;color:var(--text-3);letter-spacing:.08em}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:3px 11px;border-radius:999px;font-size:12.5px;color:var(--text-2);
+  border:1px solid var(--line);background:var(--surface);transition:.16s}
+.chip:hover{border-color:var(--primary-line);color:var(--text)}
+.chip.on{background:var(--primary);border-color:var(--primary);color:#062b26;font-weight:700}
+.bar .sep{width:1px;height:16px;background:var(--line)}
+
+/* 主体两栏 */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 306px;gap:26px;padding:22px 0 50px;align-items:start}
+
+.block-hd{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.block-hd h2{margin:0;font-size:16px;font-weight:700}
+.block-hd .n{font-size:12px;color:var(--text-3)}
+.block-hd .mo{margin-left:auto;font-size:12.5px;color:var(--text-2)}
+.block-hd .mo:hover{color:var(--primary)}
+.block-hd .bar-accent{width:3px;height:14px;border-radius:2px;background:var(--primary);display:block}
+
+/* 网格卡片 */
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:20px 16px}
+.v{display:flex;flex-direction:column;gap:7px;min-width:0}
+.v .art{position:relative;aspect-ratio:2/3;border-radius:6px;overflow:hidden;background:var(--surface-2)}
+.v .art::after{content:attr(data-name);position:absolute;inset:0;display:grid;place-items:center;padding:8px;
+  font-size:12px;color:#5d6570;text-align:center}
+.v .art img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;transition:transform .35s}
+.v:hover .art img{transform:scale(1.05)}
+.v:hover .art{outline:1px solid var(--primary-line);outline-offset:0}
+.v .rm{position:absolute;z-index:2;top:5px;right:5px;font-size:11.5px;padding:1px 6px;border-radius:4px;
+  background:rgba(13,15,18,.8);color:#dfe5ec;backdrop-filter:blur(4px)}
+.v .t{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .16s}
+.v:hover .t{color:var(--primary)}
+.v .m{font-size:11.5px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 分页 */
+.pager{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:26px}
+.pager a{min-width:32px;height:32px;padding:0 10px;display:grid;place-items:center;border-radius:5px;
+  background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--text-2)}
+.pager a:hover{border-color:var(--primary-line);color:var(--text)}
+.pager a.on{background:var(--primary);border-color:var(--primary);color:#062b26;font-weight:700}
+
+/* 侧栏 */
+.side{display:flex;flex-direction:column;gap:18px;position:sticky;top:74px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px}
+.panel-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.panel-hd h3{margin:0;font-size:14px;font-weight:700}
+.panel-hd .n{font-size:11.5px;color:var(--text-3);margin-left:auto}
+.tabs{display:flex;gap:14px;font-size:12.5px;color:var(--text-3);margin-bottom:8px}
+.tabs b{color:var(--primary);font-weight:600}
+.rank{display:flex;flex-direction:column}
+.rk{display:grid;grid-template-columns:20px 1fr auto;gap:9px;align-items:center;padding:7px 4px;border-radius:5px}
+.rk:hover{background:var(--surface-2)}
+.rk .no{font-size:12px;font-weight:700;color:var(--text-3);font-variant-numeric:tabular-nums}
+.rk:nth-child(1) .no,.rk:nth-child(2) .no,.rk:nth-child(3) .no{color:var(--hot)}
+.rk .nm{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk:hover .nm{color:var(--primary)}
+.rk .tagx{font-size:11px;color:var(--text-3)}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mini a{display:flex;flex-direction:column;gap:5px;min-width:0}
+.mini .art{position:relative;aspect-ratio:2/3;border-radius:5px;overflow:hidden;background:var(--surface-2)}
+.mini .art::after{content:attr(data-name);position:absolute;inset:0;display:grid;place-items:center;padding:6px;
+  font-size:10.5px;color:#5d6570;text-align:center}
+.mini .art img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover}
+.mini .t{font-size:11.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini a:hover .t{color:var(--primary)}
+.cat-links{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cat-links a{font-size:12.5px;color:var(--text-2);padding:5px 8px;border-radius:4px;background:var(--surface-2)}
+.cat-links a:hover{color:var(--primary)}
+
+.foot{border-top:1px solid var(--line);padding:22px 0 40px;font-size:12px;color:var(--text-3);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.pick{position:fixed;left:18px;bottom:18px;z-index:99;font-size:12px;letter-spacing:.06em;padding:7px 13px;
+  border-radius:999px;background:var(--primary-soft);color:var(--primary);border:1px solid var(--primary-line);
+  backdrop-filter:blur(10px)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#"><i></i>蓝草莓影视</a>
+    <nav class="nav">
+      <a class="on" href="#">首页</a><a href="#">电影</a><a href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a><a href="#">全部片库</a>
+    </nav>
+    <form class="search" onsubmit="return false">
+      <input placeholder="搜索片名 / 演员 / 导演">
+      <button>搜索</button>
+    </form>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <span class="lbl">分类</span>
+    <div class="chips" id="chips-cat"></div>
+    <span class="sep"></span>
+    <span class="lbl">年份</span>
+    <div class="chips" id="chips-year"></div>
+    <span class="sep"></span>
+    <span class="lbl">排序</span>
+    <div class="chips" id="chips-sort"></div>
+  </div>
+
+  <div class="main">
+    <div>
+      <div class="block-hd">
+        <span class="bar-accent"></span>
+        <h2>最新收录</h2>
+        <span class="n" id="gridCount"></span>
+        <a class="mo" href="#">按更新时间排序 ›</a>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="pager" id="pager"></div>
+
+      <div class="block-hd" style="margin-top:34px">
+        <span class="bar-accent"></span>
+        <h2>今日更新</h2>
+        <span class="n" id="todayCount"></span>
+        <a class="mo" href="#">全部新片 ›</a>
+      </div>
+      <div class="grid" id="gridToday"></div>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-hd"><h3>热播榜</h3><span class="n">实时</span></div>
+        <div class="tabs"><b>今日</b><span>本周</span><span>本月</span></div>
+        <div class="rank" id="rank"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd"><h3>剧集连更</h3><span class="n">更新至最新</span></div>
+        <div class="mini" id="miniTv"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hd"><h3>分类直达</h3></div>
+        <div class="cat-links" id="catLinks"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="foot">
+    <span>本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</span>
+    <span>在库 <b id="total" style="color:#9aa3ae"></b> 部</span>
+  </footer>
+</div>
+
+<div class="pick">方案 C · 信息港</div>
+
+<script src="data.js"></script>
+<script>
+const S = window.SITE;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+
+/* 顶部分类 chips */
+$('chips-cat').innerHTML = ['<a class="chip on" href="#">全部</a>',
+  ...S.categories.map(c => `<a class="chip" href="#">${esc(c.n)}</a>`)].join('');
+/* 年份 chips：真实数据里取最近 5 个 */
+const years = [...new Set(S.all.map(i => i.y).filter(Boolean))].sort((a, b) => b - a).slice(0, 5);
+$('chips-year').innerHTML = `<a class="chip on" href="#">全部</a>` +
+  years.map(y => `<a class="chip" href="#">${y}</a>`).join('');
+$('chips-sort').innerHTML = `<a class="chip on" href="#">最新</a><a class="chip" href="#">最热</a>`;
+
+/* 网格 */
+function card(it){
+  const meta = [it.y || '未知', it.a].filter(Boolean).join(' · ');
+  return `<a class="v" href="#">
+    <div class="art" data-name="${esc(it.n)}">
+      <img src="${esc(it.c)}" alt="${esc(it.n)}" loading="lazy">
+      ${it.r ? `<span class="rm">${esc(it.r)}</span>` : ''}
+    </div>
+    <span class="t">${esc(it.n)}</span>
+    <span class="m">${esc(meta)}</span>
+  </a>`;
+}
+$('grid').innerHTML = S.all.slice(0, 24).map(card).join('');
+$('gridCount').textContent = '共 ' + S.total.toLocaleString() + ' 部';
+$('gridToday').innerHTML = S.today.map(card).join('');
+$('todayCount').textContent = S.today.length + ' 部';
+$('total').textContent = S.total.toLocaleString();
+$('pager').innerHTML = ['‹', '1', '2', '3', '4', '5', '…', '5187', '›']
+  .map((p, i) => `<a class="${i === 1 ? 'on' : ''}" href="#">${p}</a>`).join('');
+
+/* 榜单：用「剧集」数据凑真实条目，名次即顺序 */
+$('rank').innerHTML = [...S.juji, ...S.dianying].slice(0, 10).map((it, i) => `
+  <a class="rk" href="#">
+    <span class="no">${i + 1}</span>
+    <span class="nm">${esc(it.n)}</span>
+    <span class="tagx">${esc(it.r || '')}</span>
+  </a>`).join('');
+
+$('miniTv').innerHTML = S.juji.slice(0, 6).map(it => `
+  <a href="#" title="${esc(it.n)}">
+    <div class="art" data-name="${esc(it.n)}"><img src="${esc(it.c)}" alt="" loading="lazy"></div>
+    <span class="t">${esc(it.n)}</span>
+  </a>`).join('');
+
+$('catLinks').innerHTML = S.categories.map(c => `<a href="#">${esc(c.n)}</a>`).join('') +
+  `<a href="#">动作片</a><a href="#">喜剧片</a><a href="#">科幻片</a><a href="#">纪录片</a>`;
+</script>
+</body>
+</html>

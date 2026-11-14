@@ -30,6 +30,7 @@
   --color-line: var(--line);
   --color-search: var(--search-bg);
 
+  /* 圆角：rounded-md 取 --radius（8px），不是 tokens 里另起的中间名（见 docs/样式规范-v3.md） */
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);
@@ -45,9 +46,11 @@
   --text-vod: var(--fs-vod);
   --text-title: var(--fs-title);
   --text-nav: var(--fs-nav);
+  --text-nav-sm: var(--fs-nav-sm);
   --text-logo: var(--fs-logo);
   --text-page: var(--fs-page-title);
   --text-section: var(--fs-section);
+  --text-hero: var(--fs-hero);
   --text-display: var(--fs-display);
 
   --font-sans:

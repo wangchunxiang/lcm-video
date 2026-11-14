@@ -34,7 +34,7 @@ apps/
 packages/
   shared/              共享契约：enums/ 枚举、types/ 纯类型、cron / html / vod / url-rule / settings / util
   api-client/          http.ts（统一信封、错误码、Bearer token）+ query-builder.ts（nest-crud 协议）
-docs/                  架构、数据库设计、功能对齐与样式规范
+docs/                  架构、数据库设计、功能对齐与样式规范（样式现行版：样式规范-v3.md）
 ```
 
 ## 快速开始

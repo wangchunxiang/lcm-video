@@ -112,20 +112,21 @@ useSeo(() => ({
         maxlength="50"
         placeholder="输入片名，如：流浪地球"
         aria-label="搜索片名"
-        class="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-body text-ink outline-none placeholder:text-ink-3"
+        class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 text-body text-ink outline-none placeholder:text-ink-3"
       />
       <button
         type="submit"
-        class="h-full cursor-pointer border-0 bg-transparent px-4 text-small text-ink-2 transition hover:text-primary"
+        class="h-full cursor-pointer border-0 bg-transparent px-4 text-small text-ink-2 transition hover:text-ink"
       >
         搜索
       </button>
     </form>
 
     <template v-if="wd">
-      <p v-if="loaded" class="mb-3 text-small text-ink-3">“{{ wd }}” 共 {{ total }} 部</p>
+      <p v-if="loaded" class="mb-4 text-small text-ink-3">“{{ wd }}” 共 {{ total }} 部</p>
 
       <FilterBar
+        class="mb-4"
         :types="[]"
         :years="years"
         :type="''"
@@ -154,7 +155,7 @@ useSeo(() => ({
         <div v-if="items.length && isMobile && items.length < total" class="mt-4 text-center">
           <button
             type="button"
-            class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+            class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-4 text-body text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
             :disabled="loading"
             @click="loadMore"
           >

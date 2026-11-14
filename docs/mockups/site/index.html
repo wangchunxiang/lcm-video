@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>前台整站改版 · 四个方向</title>
+<style>
+:root{--bg:#0b0c0f;--card:#12151b;--line:#242832;--ink:#e7eaf0;--ink-2:#9aa3ae;--ink-3:#6f7883;--accent:#3b82f6;--paper:#f7f5f0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.72 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:56px 24px 90px}
+h1{font-size:27px;margin:0 0 8px;letter-spacing:-.01em}
+.lead{color:var(--ink-2);margin:0 0 10px}
+.tip{color:var(--ink-3);font-size:12.5px;margin:0 0 34px}
+a.card{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:12px;
+  padding:20px 22px;margin-bottom:14px;background:var(--card);transition:.18s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 18px 34px -20px #000}
+a.card.d2:hover{border-color:#b23a1f}
+.row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+a.card h2{margin:0;font-size:17.5px}
+.pill{font-size:11.5px;padding:1px 8px;border-radius:999px;background:rgba(59,130,246,.14);color:#93b9ff;border:1px solid rgba(59,130,246,.3)}
+.pill.warm{background:rgba(216,166,87,.14);color:#e0b674;border-color:rgba(216,166,87,.32)}
+.pill.teal{background:rgba(34,184,166,.14);color:#5fd8c8;border-color:rgba(34,184,166,.3)}
+.pill.gray{background:rgba(240,200,140,.1);color:#d9c8a8;border-color:rgba(240,200,140,.26)}
+.desc{color:var(--ink-2);font-size:13.5px;margin:8px 0 10px}
+.kv{font-size:12.5px;color:var(--ink-3)}
+.kv b{color:#c9d2de;font-weight:600}
+ul.views{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding:0;list-style:none}
+ul.views li{font-size:11.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:5px;padding:2px 8px}
+.note{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3);line-height:2}
+.note b{color:#c9d2de;font-weight:600}
+.note code{font-family:ui-monospace,Menlo,monospace;background:#181c22;color:#a9b6c6;padding:1px 5px;border-radius:4px;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>前台整站 · 四个方向</h1>
+  <p class="lead">每套都是<strong>完整的四个页面</strong>（首页 / 列表 / 详情 / 播放），不是只改首页。全部用本站真实数据与真实封面：今日更新 12 部、在库 124,591 部、详情页是《玫瑰战争国语》的真实线路与 16 集选集。</p>
+  <p class="tip">打开任一方案后，用页面里的「首页 / 列表 / 详情 / 播放」切换看四个视图；右下角有方案徽标，左下角可以回到本页。</p>
+
+  <a class="card" href="d1-midnight.html">
+    <div class="row"><h2>D1 · 深夜影院</h2><span class="pill">深色 · 蓝 · 电影感</span></div>
+    <div class="desc">全幅 hero 轮播撑着首屏氛围，横向 rail 追内容，详情页用模糊剧照做 banner，播放页走沉浸式暗场。</div>
+    <div class="kv">适合 <b>想让站点看起来像流媒体平台</b> · 视觉冲击优先</div>
+    <ul class="views"><li>hero 轮播</li><li>横向 rail</li><li>详情 banner</li><li>沉浸播放页</li></ul>
+  </a>
+
+  <a class="card d2" href="d2-paper.html">
+    <div class="row"><h2>D2 · 纸感目录</h2><span class="pill warm">浅色 · 米白 · 衬线</span></div>
+    <div class="desc">报头＋日期线＋三栏版式，列表页是一张真正可扫读的目录表（缩略图/片名/分类/年份/地区/状态），详情页首字下沉、线路表格化。</div>
+    <div class="kv">适合 <b>白天也好看、想靠文字信息取胜</b> · 与常见深色采集站完全不同</div>
+    <ul class="views"><li>三栏版面</li><li>目录表</li><li>线路表 + 首字下沉</li><li>浅色播放页</li></ul>
+  </a>
+
+  <a class="card" href="d3-info-portal.html">
+    <div class="row"><h2>D3 · 信息港</h2><span class="pill teal">深色 · 青绿 · 高密度</span></div>
+    <div class="desc">筛选条 + 6 列网格 + 右侧榜单侧栏，一屏能扫到几十部；详情与播放都围绕「找片快、切集快」组织。</div>
+    <div class="kv">适合 <b>片库大、用户目标明确</b> · 功能与效率优先</div>
+    <ul class="views"><li>筛选 chips</li><li>侧栏榜单</li><li>路线 + 选集</li><li>播放器 + 选集网格</li></ul>
+  </a>
+
+  <a class="card" href="d4-poster-wall.html">
+    <div class="row"><h2>D4 · 海报墙</h2><span class="pill gray">近黑 · 琥珀 · 画廊</span></div>
+    <div class="desc">没有 hero、没有侧栏、没有筛选面板，整站就是海报：信息藏在 hover 与详情页里，安静、克制。</div>
+    <div class="kv">适合 <b>想摆脱「采集站」既视感</b> · 美感与差异化优先</div>
+    <ul class="views"><li>纯海报墙</li><li>hover 出信息</li><li>全屏模糊底 + 居中卡片</li><li>极简播放页</li></ul>
+  </a>
+
+  <div class="note">
+    对比时建议只看三件事：<br>
+    ① 首屏第一眼能不能看出「这个站有什么、今天更新了什么」；<br>
+    ② 从首页到能点播放，几次点击、有没有走错路；<br>
+    ③ 列表页在 124,591 部这个量级下，你愿不愿意用它找片。<br><br>
+    四套都不含评分 / 播放量 / 热度这些<b>库里没有的字段</b>，避免上线时变成假数据。选定方向后我落成 Vue 组件（沿用 <code>tokens.css</code> 与 <code>docs/样式规范.md</code>），需要新接口的地方会先列出来。
+  </div>
+</div>
+</body>
+</html>

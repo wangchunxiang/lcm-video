@@ -42,7 +42,8 @@ export interface PlayLine {
 /** 一行卡片（首页分区）。 */
 export interface VodRow {
   title: string;
-  more: string;
+  /** 「更多」跳转地址；没有对应聚合页的区块不填 */
+  more?: string;
   items: VodCard[];
 }
 
@@ -72,7 +73,8 @@ export interface SiteConfig {
 }
 
 const PAGE_LIMIT = 100;
-const HOME_ROW = 12;
+/** 首页每块给 8 列 × 2 行 = 16 部（前台首页按 16 部一屏两行排） */
+const HOME_ROW = 16;
 
 /** 取正整数参数，非法时回落默认值。 */
 function toInt(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -141,7 +143,7 @@ export class PortalService {
       take: HOME_ROW,
     });
 
-    const rows: VodRow[] = [{ title: '今日更新', more: '/list/all', items: today }].filter(
+    const rows: VodRow[] = [{ title: '今日更新', items: today }].filter(
       (row) => row.items.length > 0,
     );
 
@@ -175,7 +177,7 @@ export class PortalService {
     take?: string;
     skip?: string;
   }): Promise<{
-    category: { id: string; name: string; alias: string; pid: string } | null;
+    category: { id: string; name: string; alias: string; pid: string };
     types: Array<{ id: string; name: string; alias: string }>;
     years: number[];
     items: VodCard[];
@@ -184,34 +186,28 @@ export class PortalService {
     const take = toInt(input.take, 24, 1, PAGE_LIMIT);
     const skip = toInt(input.skip, 0, 0, 1_000_000);
 
-    const category =
-      input.alias === 'all'
-        ? null
-        : (
-            await this.dataSource.query<
-              Array<{ id: string; name: string; alias: string; pid: string }>
-            >('SELECT id, pid, name, alias FROM lcm_category WHERE alias = ? LIMIT 1', [input.alias])
-          )[0] ?? null;
-    if (input.alias !== 'all' && category === null) throw new NotFoundException('分类不存在');
+    // 只认真实分类：没有「全部」聚合页，未知别名一律 404
+    const category = (
+      await this.dataSource.query<Array<{ id: string; name: string; alias: string; pid: string }>>(
+        'SELECT id, pid, name, alias FROM lcm_category WHERE alias = ? LIMIT 1',
+        [input.alias],
+      )
+    )[0] ?? null;
+    if (category === null) throw new NotFoundException('分类不存在');
 
-    const types =
-      category === null
-        ? []
-        : await this.dataSource.query<Array<{ id: string; name: string; alias: string }>>(
-            'SELECT id, name, alias FROM lcm_category WHERE pid = ? ORDER BY sort ASC, id ASC',
-            [category.pid === '0' ? category.id : category.pid],
-          );
+    const types = await this.dataSource.query<Array<{ id: string; name: string; alias: string }>>(
+      'SELECT id, name, alias FROM lcm_category WHERE pid = ? ORDER BY sort ASC, id ASC',
+      [category.pid === '0' ? category.id : category.pid],
+    );
 
     const clauses: string[] = ['v.status = 1'];
     const params: unknown[] = [];
-    if (category !== null) {
-      if (category.pid === '0') {
-        clauses.push('(v.category_id = ? OR v.category_pid = ?)');
-        params.push(category.id, category.id);
-      } else {
-        clauses.push('v.category_id = ?');
-        params.push(category.id);
-      }
+    if (category.pid === '0') {
+      clauses.push('(v.category_id = ? OR v.category_pid = ?)');
+      params.push(category.id, category.id);
+    } else {
+      clauses.push('v.category_id = ?');
+      params.push(category.id);
     }
     if (input.typeAlias !== undefined && input.typeAlias !== '') {
       const sub = types.find((row) => row.alias === input.typeAlias);
@@ -235,9 +231,11 @@ export class PortalService {
       `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
       params,
     );
+    const currentYear = new Date().getFullYear();
     const years = await this.dataSource.query<Array<{ year: number }>>(
-      // 旧库里有 826 条年份是 201717、22026 这类脏值，年份筛选只列合理区间
-      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year BETWEEN 1900 AND 2100 ORDER BY year DESC LIMIT 15',
+      // 旧库里有 826 条年份是 201717、22026 这类脏值，还有若干未来年份；年份筛选只列 1900 到今年
+      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year BETWEEN 1900 AND ? ORDER BY year DESC LIMIT 15',
+      [currentYear],
     );
 
     return {

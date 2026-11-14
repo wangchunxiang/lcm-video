@@ -19,7 +19,7 @@ const windowPages = computed<number[]>(() => {
 });
 
 const BTN =
-  'inline-flex h-[34px] min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-line bg-surface px-2 text-small text-ink-2 transition hover:border-primary-line hover:text-primary';
+  'inline-flex h-[34px] min-w-[34px] cursor-pointer items-center justify-center rounded-md border border-line bg-surface px-2 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink';
 
 function go(next: number): void {
   if (next < 1 || next > pageCount.value || next === props.page) return;
@@ -28,7 +28,7 @@ function go(next: number): void {
 </script>
 
 <template>
-  <nav v-if="pageCount > 1" class="flex flex-wrap items-center justify-center gap-2 pt-6 pb-2" aria-label="分页">
+  <nav v-if="pageCount > 1" class="flex flex-wrap items-center justify-center gap-2 pt-4" aria-label="分页">
     <button v-if="page > 1" :class="BTN" type="button" @click="go(1)">首页</button>
     <button v-if="page > 1" :class="BTN" type="button" @click="go(page - 1)">上一页</button>
 

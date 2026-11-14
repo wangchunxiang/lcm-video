@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>首页改版方案 · 索引</title>
+<style>
+:root{--bg:#0b0c0f;--line:#242832;--text:#e7eaf0;--text-2:#9aa3ae}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:56px 24px 80px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:-.01em}
+.lead{color:var(--text-2);margin:0 0 34px}
+a.card{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-radius:12px;
+  padding:20px 22px;margin-bottom:14px;transition:.18s;background:#12151b}
+a.card:hover{border-color:#3b82f6;transform:translateY(-2px);box-shadow:0 16px 30px -18px #000}
+a.card h2{margin:0 0 4px;font-size:17px}
+a.card .sub{color:var(--text-2);font-size:13.5px;margin-bottom:10px}
+a.card .kv{font-size:12.5px;color:#7f8792}
+a.card .kv b{color:#c9d2de;font-weight:600}
+.tagS{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:999px;background:rgba(59,130,246,.16);
+  color:#93b9ff;margin-left:8px;vertical-align:2px}
+.note{margin-top:30px;font-size:12.5px;color:#7f8792;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>首页改版 · 三个方向</h1>
+  <p class="lead">都是本站真实数据（今日更新 12 部、在库 124,591 部）与真实封面，静态 HTML，只做视觉与结构对比。</p>
+
+  <a class="card" href="a-streaming.html">
+    <h2>A · 影院大幕<span class="tagS">主色不变 · 蓝</span></h2>
+    <div class="sub">全幅 hero 轮播 + 横向 rail + 8 列网格。视觉冲击强，像流媒体首页。</div>
+    <div class="kv">首屏 <b>1 个焦点</b> · 单行可滚卡片 · 适合 <b>推新的内容运营</b></div>
+  </a>
+
+  <a class="card" href="b-editorial.html">
+    <h2>B · 杂志编排<span class="tagS">暖金 · 衬线</span></h2>
+    <div class="sub">左侧主推大图 + 右侧今日更新文字索引，分区用竖排标题。安静、有编辑感。</div>
+    <div class="kv">首屏 <b>1 大 + 10 条索引</b> · 文字优先 · 适合 <b>强调「今日更新」这个卖点</b></div>
+  </a>
+
+  <a class="card" href="c-portal.html">
+    <h2>C · 信息港<span class="tagS">青绿 · 高密度</span></h2>
+    <div class="sub">筛选 chips + 6 列主网格 + 右侧热播榜/连更/分类直达。信息密度最高，一屏几十部。</div>
+    <div class="kv">首屏 <b>24 部 + 榜单</b> · 少滚动 · 适合 <b>片库大、用户目标明确</b></div>
+  </a>
+
+  <div class="note">
+    对比时建议看三件事：① 首屏第一眼看到几部片；② 滚动三屏内能不能找到「今天有什么新的」；
+    ③ 顶部导航 + 搜索占多少视觉重量。选一个方向后我再把它落成 Vue 组件（沿用现有 tokens / 样式规范）。
+  </div>
+</div>
+</body>
+</html>

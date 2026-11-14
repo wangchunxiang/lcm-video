@@ -47,3 +47,12 @@ export async function loadSite(): Promise<void> {
   }
   site.ready = true;
 }
+
+/**
+ * 列表页的兜底分类：`/list` 或历史遗留的 `/list/all` 都落到第一个一级分类。
+ * 分类还没加载完时用 `dianying`（站内永远存在的电影频道）。
+ */
+export function defaultListAlias(): string {
+  return site.categories[0]?.alias || 'dianying';
+}
+

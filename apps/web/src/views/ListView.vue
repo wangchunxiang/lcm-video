@@ -10,11 +10,17 @@ import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
+/**
+ * 列表页（D1 版式）：标题 / 筛选条 / 海报网格 / 分页，单列通宽，没有侧栏。
+ *
+ * 一级分类的切换交给筛选条最上面的「分类」行（与顶栏导航同一个去向），
+ * 当前分类的子类型挂在「类型」行；手机端用「加载更多」而不是分页。
+ */
 const route = useRoute();
 const router = useRouter();
 const isMobile = useIsMobile();
 
-const alias = computed(() => String(route.params.alias || 'all'));
+const alias = computed(() => String(route.params.alias || ''));
 const page = computed(() => Math.max(1, Number(route.query.page) || 1));
 const type = computed(() => (typeof route.query.type === 'string' ? route.query.type : ''));
 const year = computed(() => (typeof route.query.year === 'string' ? route.query.year : ''));
@@ -26,7 +32,7 @@ const items = ref<VodCardData[]>([]);
 const loading = ref(true);
 const error = ref('');
 
-const categoryName = computed(() => data.value?.category?.name ?? '全部影片');
+const categoryName = computed(() => data.value?.category.name ?? '');
 const shown = computed(() => (isMobile.value ? items.value : (data.value?.items ?? [])));
 const total = computed(() => data.value?.total ?? 0);
 
@@ -90,11 +96,13 @@ useSeo(() => ({
 </script>
 
 <template>
-  <div class="pt-4">
+  <div class="flex flex-col gap-4 pt-4">
+    <!-- 标题行按设计去掉；留一个只给读屏和 SEO 的 h1，页面视觉从筛选条直接开始 -->
+    <h1 class="sr-only">{{ categoryName }}</h1>
+
     <FilterBar
-      v-if="data"
-      :types="data.types"
-      :years="data.years"
+      :types="data?.types ?? []"
+      :years="data?.years ?? []"
       :type="type"
       :year="year"
       :sort="sort"
@@ -105,8 +113,8 @@ useSeo(() => ({
 
     <div v-if="loading && !shown.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
       <div v-for="index in 12" :key="index" class="flex flex-col gap-2">
-        <Skeleton class="aspect-[210/280] w-full rounded-md" />
-        <Skeleton class="mx-auto h-4 w-4/5" />
+        <Skeleton class="aspect-[2/3] w-full rounded-md" />
+        <Skeleton class="h-4 w-3/4 rounded-md" />
       </div>
     </div>
 
@@ -120,10 +128,10 @@ useSeo(() => ({
         <PaginationBar :page="page" :total="total" :page-size="pageSize" @change="goPage" />
       </div>
 
-      <div v-if="shown.length && isMobile && shown.length < total" class="mt-4 text-center">
+      <div v-if="shown.length && isMobile && shown.length < total" class="mt-2 text-center">
         <button
           type="button"
-          class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-5 text-body text-ink-2 transition hover:border-primary-line hover:text-primary"
+          class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-4 text-body text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
           :disabled="loading"
           @click="loadMore"
         >

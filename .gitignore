@@ -10,3 +10,6 @@ uploads/
 
 # 开发截图
 .shots/
+
+# macOS
+.DS_Store

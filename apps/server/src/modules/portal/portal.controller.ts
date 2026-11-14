@@ -28,7 +28,7 @@ export class PortalController {
     return this.portal.config();
   }
 
-  /** 列表页：`/list/:alias`，别名用 `all` 表示全部。 */
+  /** 列表页：`/list/:alias`，别名必须是一级分类 alias（没有 `all` 聚合页）。 */
   @Get('list/:alias')
   list(
     @Param('alias') alias: string,

@@ -1,6 +1,6 @@
 /*
  * 设计令牌：颜色、字号、间距、圆角只在这里声明一次。
- * 页面样式一律引用变量，不写裸色值与裸字号（见 docs/样式规范.md、docs/前端决策清单.md）。
+ * 页面样式一律引用变量，不写裸色值与裸字号（见 docs/样式规范-v3.md、docs/前端决策清单.md）。
  *
  * 取值来自 v2 前台主题 themes/default/assets/style.css：深色底、蓝色主色。
  */
@@ -26,18 +26,22 @@
   --search-bg: #3b3d3f;
 
   /* 圆角与阴影 */
+  /*
+   * 圆角：模板里只用 Tailwind 的 rounded-sm / rounded-md / rounded-lg / rounded-pill，
+   * 对应值在 styles/tailwind.css 里映射（sm=4px、md=8px 取自 --radius、lg=12px、pill=999px）。
+   * 不要再单独加一个「--radius-md」之类的中间令牌，之前就有过一条 6px 的死值，谁都不生效。
+   */
   --radius: 8px;
   --radius-sm: 4px;
-  --radius-md: 6px;
   --radius-lg: 12px;
   --radius-pill: 999px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.5);
 
   /* 布局 */
-  --container: 1792px;
-  --container-gap: 128px;
-  --header-h: 64px;
+  --container: 1600px;
+  --container-gap: 96px;
+  --header-h: 56px;
   --control-h: 38px;
 
   /* 间距刻度：4 的倍数 */
@@ -50,10 +54,7 @@
   --space-7: 32px;
 
   /* 页面级语义间距 */
-  --gap-block: var(--space-4);
-  --gap-grid-x: var(--space-4);
-  --gap-grid-y: var(--space-4);
-  --pad-card: var(--space-5);
+  /* 布局只用四档：4 / 8 / 16 / 32（见 docs/样式规范-v3.md §间距）；12、20 只给组件内部 */
 
   /* 字号层级 */
   --fs-caption: 12px;
@@ -63,8 +64,14 @@
   --fs-vod: 16px;
   --fs-title: 18px;
   --fs-nav: 18px;
+  /* 顶部导航：一级分类横排，14.5px 更紧凑 */
+  --fs-nav-sm: 14.5px;
   --fs-logo: 22px;
   --fs-page-title: 21px;
   --fs-section: 22px;
   --fs-display: 64px;
+  /* 首页 hero：标题随视口缩放；高度顶到 600px，但不超过视口 68%（手机上再压） */
+  --fs-hero: clamp(24px, 3.4vw, 54px);
+  --hero-h: min(600px, 68vh);
+  /* 首页每块取 16 部（8 列 × 2 行），列数由 VodGrid 的断点决定，不需要额外的卡片宽度令牌 */
 }

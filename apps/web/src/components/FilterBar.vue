@@ -33,16 +33,22 @@ const sortOptions: Option[] = [
   { value: 'new', label: '最新入库' },
 ];
 
-const ITEM =
-  'cursor-pointer rounded-md px-3 py-1 text-vod leading-6 transition';
-const ACTIVE = 'bg-primary text-white';
-const IDLE = 'text-ink-2 hover:text-primary';
+/**
+ * 纯文字，不做按钮/胶囊：选中变强调色，hover 变白。
+ * 字号按「标签 13px < 条目 14px < 片名 16px」分层，别和海报标题抢层级。
+ * 一级分类不在这里切——顶栏导航已经有了，这里只做当前分类下的类型/年份/排序。
+ */
+const ROW = 'flex flex-wrap items-baseline gap-x-4 gap-y-1';
+const LABEL = 'w-8 flex-none text-small text-ink-3';
+const ITEM = 'cursor-pointer text-body leading-6 transition';
+const ACTIVE = 'text-primary';
+const IDLE = 'text-ink-2 hover:text-ink';
 </script>
 
 <template>
-  <div class="mb-4 flex flex-col gap-2">
-    <div v-if="types.length" class="flex flex-wrap items-center gap-1">
-      <span class="w-10 flex-none text-vod text-ink-3">类型</span>
+  <div class="flex flex-col gap-2">
+    <div v-if="types.length" :class="ROW">
+      <span :class="LABEL">类型</span>
       <button
         v-for="option in typeOptions"
         :key="`type-${option.value}`"
@@ -54,8 +60,8 @@ const IDLE = 'text-ink-2 hover:text-primary';
       </button>
     </div>
 
-    <div v-if="years.length" class="flex flex-wrap items-center gap-1">
-      <span class="w-10 flex-none text-vod text-ink-3">年份</span>
+    <div v-if="years.length" :class="ROW">
+      <span :class="LABEL">年份</span>
       <button
         v-for="option in yearOptions"
         :key="`year-${option.value}`"
@@ -67,8 +73,8 @@ const IDLE = 'text-ink-2 hover:text-primary';
       </button>
     </div>
 
-    <div class="flex flex-wrap items-center gap-1">
-      <span class="w-10 flex-none text-vod text-ink-3">排序</span>
+    <div :class="ROW">
+      <span :class="LABEL">排序</span>
       <button
         v-for="option in sortOptions"
         :key="`sort-${option.value}`"

@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D2 · 纸感目录（整站）</title>
+<style>
+:root{
+  --paper:#f7f5f0;--paper-2:#fffdf9;--paper-3:#efece4;--line:#e0dad0;--line-2:#cfc8bb;
+  --ink:#1b1917;--ink-2:#57524b;--ink-3:#8b8479;
+  --red:#b23a1f;--red-soft:rgba(178,58,31,.08);
+  --serif:"Songti SC","Source Han Serif SC",Georgia,"Times New Roman",serif;
+  --wrap:min(1380px,100% - 112px);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font:14px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{display:block}
+h1,h2,h3,p{margin:0}
+.wrap{width:var(--wrap);margin:0 auto}
+.serif{font-family:var(--serif)}
+
+/* ---------- 报头 ---------- */
+.mast{border-bottom:1px solid var(--line);background:var(--paper-2)}
+.mast .wrap{display:flex;align-items:flex-end;gap:34px;padding:22px 0 16px}
+.brand{display:flex;flex-direction:column;gap:1px;flex:none}
+.brand b{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:.16em;line-height:1.2}
+.brand i{font-style:normal;font-size:9.5px;letter-spacing:.34em;text-transform:uppercase;color:var(--ink-3)}
+.nav{display:flex;gap:26px;font-size:13.5px;letter-spacing:.1em;color:var(--ink-2);padding-bottom:3px}
+.nav a{padding-bottom:3px;border-bottom:1px solid transparent;transition:.16s}
+.nav a:hover{color:var(--red);border-color:var(--red)}
+.nav a.on{color:var(--red);border-color:var(--red)}
+.mast .right{margin-left:auto;display:flex;align-items:center;gap:18px;padding-bottom:2px}
+.find{display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--line-2);padding:3px 0;color:var(--ink-3)}
+.find input{border:0;background:0;outline:0;width:150px;font-size:13.5px;color:var(--ink)}
+.switch{display:flex;gap:14px;font-size:12.5px;letter-spacing:.08em;color:var(--ink-3)}
+.switch button{border:0;background:0;cursor:pointer;font:inherit;color:inherit;letter-spacing:inherit;padding:0 0 2px;border-bottom:1px solid transparent}
+.switch button:hover{color:var(--ink)}
+.switch button.on{color:var(--red);border-color:var(--red);font-weight:600}
+.dateline{border-bottom:1px solid var(--line);background:var(--paper)}
+.dateline .wrap{display:flex;align-items:center;gap:14px;padding:9px 0;font-size:11.5px;letter-spacing:.12em;color:var(--ink-3)}
+.dateline .rule{flex:1;height:1px;background:var(--line)}
+.dateline b{color:var(--red);font-weight:600}
+
+/* ---------- 首页三栏 ---------- */
+.front{display:grid;grid-template-columns:1.05fr 1.5fr 1fr;gap:44px;padding:38px 0 30px;align-items:start}
+.col-hd{display:flex;align-items:baseline;gap:10px;padding-bottom:9px;border-bottom:2px solid var(--ink);margin-bottom:4px}
+.col-hd h2{font-family:var(--serif);font-size:16.5px;font-weight:600;letter-spacing:.2em}
+.col-hd .n{font-size:11.5px;color:var(--ink-3);letter-spacing:.1em}
+.col-hd .mo{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+.col-hd .mo:hover{color:var(--red)}
+.dl{display:flex;flex-direction:column}
+.dl a{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:baseline;
+  padding:9px 2px;border-bottom:1px dotted var(--line-2);transition:.14s}
+.dl a:hover{background:var(--red-soft);padding-left:8px}
+.dl .no{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.dl .nm{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .14s}
+.dl a:hover .nm{color:var(--red)}
+.dl .rm{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+
+/* 主推 */
+.lead{display:flex;flex-direction:column;gap:16px}
+.lead .shot{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--paper-3);border:1px solid var(--line)}
+.lead .shot::after{content:attr(data-name);position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--serif);font-size:18px;color:var(--ink-3)}
+.lead .shot img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;object-position:50% 20%;
+  filter:saturate(.95);transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+.lead:hover .shot img{transform:scale(1.03)}
+.lead .mark{position:absolute;z-index:2;left:0;top:0;background:var(--red);color:#fff;font-size:10.5px;
+  letter-spacing:.22em;padding:5px 12px}
+.lead h1{font-family:var(--serif);font-size:clamp(24px,2.3vw,34px);line-height:1.3;font-weight:600;letter-spacing:.01em}
+.lead .en{font-family:var(--serif);font-size:13px;font-style:italic;color:var(--ink-3);margin-top:-10px}
+.lead .meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+.lead .meta span:not(:last-child)::after{content:"／";margin-left:8px;color:var(--line-2)}
+.lead .desc{font-size:13.5px;line-height:1.95;color:var(--ink-2);
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.lead .go{align-self:flex-start;font-size:12.5px;letter-spacing:.16em;color:var(--red);
+  border-bottom:1px solid var(--red-soft);padding-bottom:3px;transition:.18s}
+.lead .go:hover{border-color:var(--red)}
+
+/* 右栏分类索引 */
+.idx{display:flex;flex-direction:column;gap:2px}
+.idx a{display:flex;align-items:baseline;gap:8px;padding:11px 2px;border-bottom:1px solid var(--line);transition:.16s}
+.idx a:hover{padding-left:6px}
+.idx .cn{font-family:var(--serif);font-size:15px;letter-spacing:.14em}
+.idx a:hover .cn{color:var(--red)}
+.idx .dots{flex:1;border-bottom:1px dotted var(--line-2);transform:translateY(-4px)}
+.idx .ct{font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.mini-list{display:flex;flex-direction:column;margin-top:6px}
+.mini-list a{display:flex;gap:10px;padding:8px 0;border-bottom:1px dotted var(--line-2);align-items:center}
+.mini-list .art{width:40px;height:56px;flex:none;position:relative;overflow:hidden;background:var(--paper-3)}
+.mini-list .art::after{content:attr(data-name);position:absolute;inset:0;display:none}
+.mini-list .art img{width:100%;height:100%;object-fit:cover}
+.mini-list .tx{min-width:0;display:flex;flex-direction:column;gap:1px}
+.mini-list .t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-list a:hover .t{color:var(--red)}
+.mini-list .m{font-size:11px;color:var(--ink-3)}
+
+/* ---------- 分类分栏 ---------- */
+.row-block{border-top:2px solid var(--ink);padding:22px 0 34px}
+.row-block .hd{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.row-block h3{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.24em}
+.row-block .hd .sub{font-size:11.5px;color:var(--ink-3);letter-spacing:.1em}
+.row-block .hd .mo{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+.row-block .hd .mo:hover{color:var(--red)}
+.strip{display:grid;grid-template-columns:repeat(8,1fr);gap:20px 14px}
+.card{display:flex;flex-direction:column;gap:7px;min-width:0}
+.art{position:relative;aspect-ratio:2/3;overflow:hidden;background:var(--paper-3);border:1px solid var(--line)}
+.art::after{content:attr(data-name);position:absolute;inset:0;display:grid;place-items:center;padding:10px;
+  font-family:var(--serif);font-size:12.5px;color:var(--ink-3);text-align:center}
+.art img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;
+  filter:saturate(.94) brightness(.99);transition:transform .5s cubic-bezier(.2,.8,.2,1),filter .3s}
+.card:hover .art img{transform:scale(1.04);filter:saturate(1.02)}
+.card .t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card:hover .t{color:var(--red)}
+.card .m{font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 列表（目录表） ---------- */
+.catalog{padding:26px 0 56px}
+.cat-head{display:flex;align-items:baseline;gap:14px;padding-bottom:12px;border-bottom:2px solid var(--ink)}
+.cat-head h1{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.18em}
+.cat-head .n{font-size:12px;color:var(--ink-3);letter-spacing:.1em}
+.cat-head .sort{margin-left:auto;font-size:12px;color:var(--ink-2);display:flex;gap:14px}
+.cat-head .sort a.on{color:var(--red);border-bottom:1px solid var(--red)}
+.filters{display:flex;flex-wrap:wrap;gap:8px 26px;padding:14px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.filters .g{display:flex;align-items:baseline;gap:10px}
+.filters .k{color:var(--ink-3);letter-spacing:.1em;font-size:11px}
+.filters .vs{display:flex;gap:12px;flex-wrap:wrap}
+.filters a{color:var(--ink-2);padding-bottom:1px;border-bottom:1px solid transparent}
+.filters a:hover{color:var(--ink)}
+.filters a.on{color:var(--red);border-color:var(--red);font-weight:600}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl thead th{text-align:left;font-weight:400;font-size:11px;letter-spacing:.14em;color:var(--ink-3);
+  padding:10px 8px;border-bottom:1px solid var(--line)}
+.tbl tbody tr{border-bottom:1px dotted var(--line-2);transition:.14s}
+.tbl tbody tr:hover{background:var(--paper-2)}
+.tbl td{padding:10px 8px;vertical-align:middle}
+.tbl td.pic{width:56px}
+.tbl td.pic .art{width:38px;aspect-ratio:2/3;border:0}
+.tbl td.name{font-size:14px;min-width:200px}
+.tbl tbody tr:hover td.name{color:var(--red)}
+.tbl td.name .sub{display:block;font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.tbl td.c{color:var(--ink-2);font-size:12.5px;white-space:nowrap}
+.tbl td.r{text-align:right;color:var(--ink-3);font-size:12px;white-space:nowrap}
+.pg{display:flex;justify-content:center;gap:16px;align-items:center;padding:26px 0 0;font-size:12.5px;color:var(--ink-2)}
+.pg a{padding-bottom:1px;border-bottom:1px solid transparent}
+.pg a:hover{color:var(--red)}
+.pg a.on{color:var(--red);border-color:var(--red);font-weight:600}
+
+/* ---------- 详情 ---------- */
+.detail{padding:34px 0 60px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:44px;align-items:start}
+.d-left{display:flex;flex-direction:column;gap:18px}
+.d-left .poster{aspect-ratio:2/3;position:relative;overflow:hidden;background:var(--paper-3);border:1px solid var(--line);box-shadow:0 18px 34px -26px rgba(0,0,0,.5)}
+.d-left .poster img{width:100%;height:100%;object-fit:cover}
+.d-actions{display:flex;flex-direction:column;gap:8px}
+.btn{height:42px;display:grid;place-items:center;font-size:13.5px;letter-spacing:.08em;border:1px solid var(--ink);transition:.16s}
+.btn-solid{background:var(--ink);color:var(--paper-2)}
+.btn-solid:hover{background:var(--red);border-color:var(--red)}
+.btn-line{color:var(--ink-2);border-color:var(--line-2)}
+.btn-line:hover{border-color:var(--ink);color:var(--ink)}
+.d-right{min-width:0}
+.crumb{font-size:11.5px;letter-spacing:.1em;color:var(--ink-3);margin-bottom:10px}
+.crumb a:hover{color:var(--red)}
+.d-right h1{font-family:var(--serif);font-size:clamp(26px,2.6vw,38px);line-height:1.28;font-weight:600;letter-spacing:.01em}
+.d-right .sub{font-family:var(--serif);font-size:14px;color:var(--ink-3);font-style:italic;margin-top:4px}
+.kvbar{display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px;color:var(--ink-2);padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:16px 0 22px}
+.kvbar span:not(:last-child)::after{content:"／";margin-left:8px;color:var(--line-2)}
+.kvbar .tag{color:var(--red)}
+.sec-t{font-family:var(--serif);font-size:15px;letter-spacing:.2em;padding-bottom:8px;border-bottom:1px solid var(--ink);margin:0 0 14px;display:flex;align-items:baseline;gap:10px}
+.sec-t .n{font-family:inherit;font-size:11px;letter-spacing:.1em;color:var(--ink-3)}
+.sec-t .mo{margin-left:auto;font-size:11px;color:var(--ink-3);letter-spacing:.08em}
+.prose{font-size:14px;line-height:2.05;color:var(--ink-2);text-align:justify}
+.prose::first-letter{font-family:var(--serif);font-size:34px;line-height:1;float:left;margin:4px 8px 0 0;color:var(--red)}
+.people{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px;font-size:12.5px;color:var(--ink-2);margin-top:18px;padding-top:14px;border-top:1px dotted var(--line-2)}
+.people b{font-weight:400;color:var(--ink-3);margin-right:8px;letter-spacing:.08em}
+.line-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:22px}
+.line-tbl th{font-weight:400;font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+.line-tbl td{padding:9px 8px;border-bottom:1px dotted var(--line-2);color:var(--ink-2)}
+.line-tbl tr:hover td{color:var(--ink)}
+.line-tbl .pick-btn{font-size:12px;letter-spacing:.1em;color:var(--red);border-bottom:1px solid var(--red-soft)}
+.eps-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.eps-grid a{background:var(--paper-2);padding:9px 0;text-align:center;font-size:12.5px;color:var(--ink-2);
+  font-variant-numeric:tabular-nums;transition:.14s}
+.eps-grid a:hover{background:var(--red-soft);color:var(--red)}
+.eps-grid a.on{background:var(--ink);color:var(--paper-2);font-weight:600}
+.rel-list{display:grid;grid-template-columns:1fr 1fr;gap:0 30px}
+.rel-list a{display:grid;grid-template-columns:18px 1fr auto;gap:9px;align-items:baseline;padding:8px 0;border-bottom:1px dotted var(--line-2);font-size:13px}
+.rel-list a:hover .nm{color:var(--red)}
+.rel-list .no{font-size:10.5px;color:var(--ink-3)}
+.rel-list .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rel-list .rm{font-size:11px;color:var(--ink-3)}
+
+/* ---------- 播放 ---------- */
+.playpage{padding:20px 0 60px}
+.play-crumb{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-3);padding-bottom:14px}
+.play-crumb a:hover{color:var(--red)}
+.play-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:34px;align-items:start}
+.screen{position:relative;aspect-ratio:16/9;background:#12100e;border:1px solid var(--line);overflow:hidden}
+.screen .bgv{position:absolute;inset:0;background-size:cover;background-position:50% 30%;opacity:.2;filter:blur(12px)}
+.screen .big{position:absolute;inset:0;display:grid;place-items:center}
+.screen .big i{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  border:1px solid rgba(255,255,255,.5);color:#fff;font-size:20px;font-style:normal;transition:.18s}
+.screen .big i:hover{background:var(--red);border-color:var(--red)}
+.screen .tag{position:absolute;left:14px;top:14px;font-size:11px;letter-spacing:.14em;color:#f2ede4;
+  background:rgba(0,0,0,.5);padding:3px 9px}
+.screen .bar{position:absolute;left:0;right:0;bottom:0;height:36px;display:flex;align-items:center;gap:12px;
+  padding:0 14px;font-size:11.5px;color:#cfc7ba;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent)}
+.screen .bar .tr{flex:1;height:2px;background:rgba(255,255,255,.24);position:relative}
+.screen .bar .tr i{position:absolute;inset:0 74% 0 0;background:var(--red)}
+.play-meta{display:flex;align-items:baseline;gap:14px;padding:16px 0 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.play-meta h1{font-family:var(--serif);font-size:21px;font-weight:600;letter-spacing:.06em}
+.play-meta .ep{font-size:12.5px;color:var(--red);letter-spacing:.08em}
+.play-meta .ln{margin-left:auto;display:flex;gap:16px;font-size:12px;color:var(--ink-3)}
+.play-meta .ln a.on{color:var(--red);border-bottom:1px solid var(--red)}
+.p-side{display:flex;flex-direction:column;gap:18px}
+.panel{border:1px solid var(--line);background:var(--paper-2)}
+.panel .ph{padding:10px 12px;border-bottom:1px solid var(--line);font-family:var(--serif);font-size:13px;
+  letter-spacing:.16em;display:flex;align-items:baseline;gap:8px}
+.panel .ph .n{margin-left:auto;font-family:inherit;font-size:10.5px;color:var(--ink-3)}
+.panel .rows{padding:4px 12px 8px}
+.panel .rows .kv{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:7px 0;border-bottom:1px dotted var(--line-2)}
+.panel .rows .kv:last-child{border:0}
+.panel .rows .kv span{color:var(--ink-3)}
+.panel .rows .kv b{font-weight:400;max-width:64%;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-side .hint{font-size:11.5px;color:var(--ink-3);line-height:1.9}
+.p-side .hint b{color:var(--ink-2);font-weight:400}
+
+/* ---------- 页脚 / 徽标 ---------- */
+.foot{border-top:1px solid var(--line);background:var(--paper-2);padding:22px 0 46px;font-size:11.5px;color:var(--ink-3)}
+.foot .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;letter-spacing:.06em}
+.pick{position:fixed;right:16px;bottom:16px;z-index:99;font-size:11.5px;letter-spacing:.08em;padding:6px 12px;
+  background:var(--paper-2);color:var(--red);border:1px solid var(--line-2)}
+.backall{position:fixed;left:16px;bottom:16px;z-index:99;font-size:11.5px;padding:6px 12px;
+  background:var(--paper-2);color:var(--ink-2);border:1px solid var(--line-2)}
+.backall:hover{color:var(--red)}
+
+@media (max-width:1180px){
+  :root{--wrap:calc(100% - 56px)}
+  .front{grid-template-columns:1fr 1fr;gap:30px}
+  .front .idx-col{grid-column:1 / -1}
+  .strip{grid-template-columns:repeat(6,1fr)}
+  .detail{grid-template-columns:200px minmax(0,1fr);gap:28px}
+  .play-layout{grid-template-columns:1fr}
+  .eps-grid{grid-template-columns:repeat(6,1fr)}
+}
+@media (max-width:720px){
+  :root{--wrap:calc(100% - 30px)}
+  .mast .wrap{flex-wrap:wrap;gap:14px}
+  .nav{display:none}
+  .mast .right{gap:14px}
+  .find input{width:110px}
+  .front{grid-template-columns:1fr}
+  .strip{grid-template-columns:repeat(3,1fr);gap:14px 10px}
+  .detail{grid-template-columns:1fr}
+  .d-left{flex-direction:row;gap:14px}
+  .d-left .poster{width:120px;flex:none}
+  .d-actions{flex:1;justify-content:flex-start}
+  .eps-grid{grid-template-columns:repeat(5,1fr)}
+  .rel-list{grid-template-columns:1fr}
+  .tbl td.hide-sm,.tbl thead th.hide-sm{display:none}
+  .people{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <a class="brand" href="#"><b>蓝草莓影视</b><i>Lan Cao Mei · Film Index</i></a>
+    <nav class="nav">
+      <a class="on" href="#">首页</a><a href="#">电影</a><a href="#">剧集</a><a href="#">综艺</a><a href="#">动漫</a>
+    </nav>
+    <div class="right">
+      <label class="find">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input placeholder="搜索片名">
+      </label>
+      <div class="switch" id="switch">
+        <button data-view="home" class="on">首页</button>
+        <button data-view="list">列表</button>
+        <button data-view="detail">详情</button>
+        <button data-view="play">播放</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="dateline">
+  <div class="wrap">
+    <span id="today"></span><span class="rule"></span>
+    <span>今日上新 <b id="newN"></b> 部</span><span>／</span>
+    <span>在库 <b id="totalN"></b> 部</span>
+  </div>
+</div>
+
+<!-- ============ 首页 ============ -->
+<section class="view" data-view="home">
+  <div class="wrap">
+    <div class="front">
+      <div>
+        <div class="col-hd"><h2>今日更新</h2><span class="n" id="todayN"></span><a class="mo" href="#" data-go="list">全部 ›</a></div>
+        <div class="dl" id="dl"></div>
+      </div>
+
+      <article class="lead" id="lead"></article>
+
+      <div class="idx-col">
+        <div class="col-hd"><h2>按分类翻阅</h2><span class="n">四类</span></div>
+        <div class="idx" id="idx"></div>
+        <div class="col-hd" style="margin-top:22px"><h2>剧集连更</h2><span class="n">更新至最新</span></div>
+        <div class="mini-list" id="miniTv"></div>
+      </div>
+    </div>
+
+    <section class="row-block" id="rows"></section>
+  </div>
+</section>
+
+<!-- ============ 列表 ============ -->
+<section class="view" data-view="list" hidden>
+  <div class="wrap">
+    <div class="catalog">
+      <div class="cat-head">
+        <h1>全部影片</h1>
+        <span class="n" id="catN"></span>
+        <div class="sort"><a class="on" href="#">按收录时间</a><a href="#">按更新时间</a><a href="#">按片名</a></div>
+      </div>
+      <div class="filters">
+        <div class="g"><span class="k">分类</span><div class="vs" id="fCat"></div></div>
+        <div class="g"><span class="k">年份</span><div class="vs" id="fYear"></div></div>
+        <div class="g"><span class="k">地区</span><div class="vs" id="fArea"></div></div>
+      </div>
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th class="hide-sm" style="width:56px"></th>
+            <th>片名</th><th class="hide-sm">分类</th><th class="hide-sm">年份</th><th class="hide-sm">地区</th><th style="text-align:right">状态</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="pg" id="pg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 详情 ============ -->
+<section class="view" data-view="detail" hidden>
+  <div class="wrap">
+    <div class="detail">
+      <div class="d-left">
+        <div class="poster" id="dPoster"></div>
+        <div class="d-actions">
+          <a class="btn btn-solid" href="#" data-go="play">立即播放</a>
+          <a class="btn btn-line" href="#">加入收藏</a>
+        </div>
+      </div>
+      <div class="d-right">
+        <div class="crumb"><a href="#" data-go="home">首页</a> ／ <a href="#" data-go="list">影片目录</a> ／ <span id="dCat"></span></div>
+        <h1 id="dTitle"></h1>
+        <div class="sub" id="dSub"></div>
+        <div class="kvbar" id="dKv"></div>
+
+        <div class="sec-t">剧情简介</div>
+        <p class="prose" id="dContent"></p>
+        <div class="people" id="dPeople"></div>
+
+        <div class="sec-t" style="margin-top:30px">播放线路<span class="n" id="dLineN"></span></div>
+        <table class="line-tbl">
+          <thead><tr><th style="width:38%">线路</th><th>来源</th><th>集数</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="dLines"></tbody>
+        </table>
+
+        <div class="sec-t">选集<span class="n" id="dEpN"></span></div>
+        <div class="eps-grid" id="dEps"></div>
+
+        <div class="sec-t" style="margin-top:32px">相关推荐<span class="n">同类影片</span></div>
+        <div class="rel-list" id="dRel"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 播放 ============ -->
+<section class="view" data-view="play" hidden>
+  <div class="wrap">
+    <div class="playpage">
+      <div class="play-crumb">
+        <a href="#" data-go="detail">‹ 返回详情</a><span>／</span><span id="pCrumb"></span>
+      </div>
+      <div class="play-layout">
+        <div>
+          <div class="screen">
+            <div class="bgv" id="pBg"></div>
+            <div class="tag" id="pTag">三六资源 · 第01集</div>
+            <div class="big"><i>▶</i></div>
+            <div class="bar">
+              <span>00:00</span><span class="tr"><i></i></span><span>45:00</span>
+              <span>高清</span><span>全屏</span>
+            </div>
+          </div>
+
+          <div class="play-meta">
+            <h1 id="pTitle"></h1>
+            <span class="ep" id="pEp"></span>
+            <div class="ln" id="pLines"></div>
+          </div>
+
+          <div class="sec-t" style="margin-top:22px">选集<span class="n" id="pEpN"></span></div>
+          <div class="eps-grid" id="pEps"></div>
+        </div>
+
+        <aside class="p-side">
+          <div class="panel">
+            <div class="ph">影片信息</div>
+            <div class="rows" id="pInfo"></div>
+          </div>
+          <div class="hint">
+            选集后自动连播下一集；线路之间可随时切换，播放进度不保留。<br>
+            当前为 <b id="pLineName"></b>，共 <b id="pLineCnt"></b> 条线路。
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</span>
+    <span>D2 · 纸感目录</span>
+  </div>
+</footer>
+
+<a class="backall" href="index.html">← 全部方案</a>
+<div class="pick">D2 · 纸感目录</div>
+
+<script src="data.js"></script>
+<script>
+const S = window.SITE;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const metaOf = (it) => [it.y || '未知', it.a].filter(Boolean).join(' · ');
+
+function go(view) {
+  document.querySelectorAll('.view').forEach((el) => { el.hidden = el.dataset.view !== view; });
+  document.querySelectorAll('#switch button').forEach((b) => b.classList.toggle('on', b.dataset.view === view));
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+$('switch').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-view]');
+  if (btn) go(btn.dataset.view);
+});
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-go]');
+  if (a) { e.preventDefault(); go(a.dataset.go); }
+});
+
+/* 卡片（分类分栏用） */
+function card(it) {
+  return `<a class="card" href="#" data-go="detail">
+    <div class="art" data-name="${esc(it.n)}"><img src="${esc(it.c)}" alt="${esc(it.n)}" loading="lazy"></div>
+    <span class="t">${esc(it.n)}</span>
+    <span class="m">${esc(metaOf(it))}</span>
+  </a>`;
+}
+
+/* 日期与统计 */
+$('today').textContent = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+$('newN').textContent = S.today.length;
+$('totalN').textContent = S.total.toLocaleString();
+$('todayN').textContent = S.today.length + ' 部';
+
+/* 首页：今日更新目录 */
+$('dl').innerHTML = S.today.slice(0, 12).map((it, i) => `
+  <a href="#" data-go="detail">
+    <span class="no">${String(i + 1).padStart(2, '0')}</span>
+    <span class="nm">${esc(it.n)}</span>
+    <span class="rm">${esc(it.r || it.g || '')}</span>
+  </a>`).join('');
+
+/* 首页：主推（取今日更新里集数最多的一部） */
+const hero = [...S.today].sort((a, b) => (b.e || 0) - (a.e || 0))[0] || S.all[0];
+$('lead').innerHTML = `
+  <a class="shot" href="#" data-go="detail" data-name="${esc(hero.n)}">
+    <img src="${esc(hero.c)}" alt="${esc(hero.n)}">
+    <span class="mark">本期主推</span>
+  </a>
+  <h1>${esc(hero.n)}</h1>
+  <div class="meta">
+    <span>${esc(hero.g || '')}</span><span>${hero.y || '—'}</span>
+    <span>${esc(hero.a || '—')}</span><span>${esc(hero.r || '—')}</span>
+  </div>
+  <p class="desc">${esc(S.desc[hero.id] || '暂无简介')}</p>
+  <a class="go" href="#" data-go="detail">阅读全文并观看 →</a>`;
+
+/* 首页：分类索引 */
+const counts = { 电影: S.dianying.length, 剧集: S.juji.length, 综艺: S.zongyi.length, 动漫: S.dongman.length };
+$('idx').innerHTML = S.categories.map((c) =>
+  `<a href="#" data-go="list"><span class="cn">${esc(c.n)}</span><span class="dots"></span><span class="ct">${counts[c.n] || '—'} 部在列</span></a>`).join('');
+
+$('miniTv').innerHTML = S.juji.slice(0, 6).map((it) => `
+  <a href="#" data-go="detail">
+    <span class="art" data-name="${esc(it.n)}"><img src="${esc(it.c)}" alt="" loading="lazy"></span>
+    <span class="tx"><span class="t">${esc(it.n)}</span><span class="m">${esc(it.r || '')}</span></span>
+  </a>`).join('');
+
+/* 首页：分类分栏 */
+const blocks = [['电影', S.dianying], ['剧集', S.juji], ['综艺', S.zongyi], ['动漫', S.dongman]];
+$('rows').innerHTML = blocks.map(([name, items]) => `
+  <div class="hd"><h3>${name}</h3><span class="sub">近期收录</span><a class="mo" href="#" data-go="list">更多 ${name} ›</a></div>
+  <div class="strip">${items.slice(0, 8).map(card).join('')}</div>
+`).join('<div style="height:34px"></div>');
+
+/* 列表 */
+$('catN').textContent = `共 ${S.total.toLocaleString()} 部`;
+$('fCat').innerHTML = `<a class="on" href="#">全部</a>` + S.categories.map((c) => `<a href="#">${esc(c.n)}</a>`).join('');
+const years = [...new Set(S.all.map((i) => i.y).filter(Boolean))].sort((a, b) => b - a).slice(0, 5);
+$('fYear').innerHTML = `<a class="on" href="#">全部</a>` + years.map((y) => `<a href="#">${y}</a>`).join('');
+const areas = [...new Set(S.all.map((i) => i.a.split(' ')[0]).filter(Boolean))].slice(0, 5);
+$('fArea').innerHTML = `<a class="on" href="#">全部</a>` + areas.map((a) => `<a href="#">${esc(a)}</a>`).join('');
+
+$('tbody').innerHTML = S.all.map((it) => `
+  <tr data-go="detail" style="cursor:pointer">
+    <td class="pic hide-sm"><span class="art" data-name="${esc(it.n)}"><img src="${esc(it.c)}" alt="" loading="lazy"></span></td>
+    <td class="name">${esc(it.n)}<span class="sub">${esc(it.a || '')}</span></td>
+    <td class="c hide-sm">${esc(it.g || '—')}</td>
+    <td class="c hide-sm">${it.y || '—'}</td>
+    <td class="c hide-sm">${esc(it.a || '—')}</td>
+    <td class="r">${esc(it.r || '—')}</td>
+  </tr>`).join('');
+
+$('pg').innerHTML = ['‹ 上一页', '1', '2', '3', '…', '5187', '下一页 ›']
+  .map((p, i) => `<a class="${i === 1 ? 'on' : ''}" href="#">${p}</a>`).join('');
+
+/* 详情 */
+const D = S.detailTv, dv = D.vod;
+$('dPoster').innerHTML = `<img src="${esc(dv.c)}" alt="${esc(dv.n)}">`;
+$('dTitle').textContent = dv.n;
+$('dSub').textContent = dv.releaseDate ? `${dv.releaseDate} · ${dv.lang || ''}` : (dv.lang || '');
+$('dCat').textContent = dv.g || '影片';
+$('dKv').innerHTML = [dv.g, dv.y, dv.a, dv.r, dv.e ? `全 ${dv.e} 集` : '', dv.lang]
+  .filter(Boolean).map((t, i) => `<span class="${i === 0 ? 'tag' : ''}">${esc(t)}</span>`).join('');
+$('dContent').textContent = dv.content || '暂无简介';
+$('dPeople').innerHTML =
+  `<div><b>导演</b>${esc(dv.director || '—')}</div>` +
+  `<div><b>语言</b>${esc(dv.lang || '—')}</div>` +
+  `<div style="grid-column:1/-1"><b>主演</b>${esc(dv.actor || '—')}</div>`;
+$('dLineN').textContent = `${D.lines.length} 条`;
+$('dLines').innerHTML = D.lines.map((l, i) => `
+  <tr>
+    <td>${esc(l.name)}</td>
+    <td>${esc(l.sourceFrom || '—')}</td>
+    <td>${l.episodes} 集</td>
+    <td style="text-align:right"><a class="pick-btn" href="#" data-go="play">播放 ${i === 0 ? '›' : ''}</a></td>
+  </tr>`).join('');
+$('dEpN').textContent = `共 ${S.play.episodes.length} 集`;
+$('dEps').innerHTML = S.play.episodes.map((e, i) =>
+  `<a class="${i === 0 ? 'on' : ''}" href="#" data-go="play">${esc(e.name)}</a>`).join('');
+$('dRel').innerHTML = D.related.map((it, i) => `
+  <a href="#" data-go="detail">
+    <span class="no">${String(i + 1).padStart(2, '0')}</span>
+    <span class="nm">${esc(it.n)}</span>
+    <span class="rm">${esc(it.r || it.y || '')}</span>
+  </a>`).join('');
+
+/* 播放 */
+const P = S.play;
+$('pBg').style.backgroundImage = `url(${P.vod.cover})`;
+$('pCrumb').textContent = P.vod.name;
+$('pTitle').textContent = P.vod.name;
+$('pEp').textContent = P.episodes[0]?.name || '第01集';
+$('pTag').textContent = `${P.lines[0]?.name || '默认线路'} · ${P.episodes[0]?.name || '第01集'}`;
+$('pEpN').textContent = `共 ${P.episodes.length} 集`;
+$('pEps').innerHTML = P.episodes.map((e, i) =>
+  `<a class="${i === 0 ? 'on' : ''}" href="#">${String(e.index).padStart(2, '0')}</a>`).join('');
+$('pLines').innerHTML = P.lines.map((l, i) =>
+  `<a class="${i === 0 ? 'on' : ''}" href="#">${esc(l.name)}（${l.episodes}）</a>`).join('');
+$('pInfo').innerHTML = `
+  <div class="kv"><span>片名</span><b>${esc(P.vod.name)}</b></div>
+  <div class="kv"><span>状态</span><b>${esc(P.vod.remarks || '—')}</b></div>
+  <div class="kv"><span>分类</span><b>${esc(dv.g || '—')}</b></div>
+  <div class="kv"><span>年份</span><b>${dv.y || '—'}</b></div>
+  <div class="kv"><span>地区</span><b>${esc(dv.a || '—')}</b></div>
+  <div class="kv"><span>集数</span><b>${P.episodes.length} 集</b></div>`;
+$('pLineName').textContent = P.lines[0]?.name || '默认线路';
+$('pLineCnt').textContent = P.lines.length;
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>方案 A · 影院大幕</title>
+<style>
+:root{
+  --primary:#3b82f6;--primary-strong:#2563eb;--primary-weak:rgba(59,130,246,.16);
+  --text:#e9ecf1;--text-2:#a4acb8;--text-3:#79818d;
+  --bg:#08090c;--surface:#14171d;--surface-2:#1b1f27;--line:rgba(255,255,255,.08);
+  --r:10px;--r-lg:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--text);
+  font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+img{display:block}
+.wrap{width:min(1600px,100% - 96px);margin:0 auto}
+
+/* ---------- header ---------- */
+.site{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line);
+  background:rgba(8,9,12,.72);backdrop-filter:blur(18px) saturate(140%)}
+.site .wrap{display:flex;align-items:center;gap:36px;height:70px}
+.logo{font-size:21px;font-weight:800;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.logo i{width:9px;height:22px;border-radius:3px;background:linear-gradient(180deg,#60a5fa,#2563eb);display:block}
+.nav{display:flex;gap:26px;font-size:15px;color:var(--text-2)}
+.nav a{position:relative;padding:6px 0;transition:color .18s}
+.nav a:hover{color:#fff}
+.nav a.on{color:#fff}
+.nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:-22px;height:2px;background:var(--primary)}
+.search{margin-left:auto;display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;
+  border-radius:999px;background:var(--surface-2);border:1px solid var(--line);width:260px;color:var(--text-3)}
+.search input{border:0;background:0;outline:0;color:var(--text);font-size:14px;width:100%}
+.search svg{flex:none;opacity:.7}
+.btn-lucky{height:38px;padding:0 18px;border-radius:999px;border:1px solid var(--primary-line,rgba(59,130,246,.45));
+  color:#cfe0ff;font-size:13.5px;display:flex;align-items:center;gap:6px;background:var(--primary-weak)}
+
+/* ---------- hero ---------- */
+.hero{position:relative;height:min(680px,74vh);margin-bottom:8px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center 28%;
+  transform:scale(1.04);transition:opacity .6s}
+.hero-blur{position:absolute;inset:-10%;background-size:cover;background-position:center 30%;
+  filter:blur(60px) brightness(.5) saturate(120%);transform:scale(1.1)}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(90deg,var(--bg) 4%,rgba(8,9,12,.86) 34%,rgba(8,9,12,.32) 62%,rgba(8,9,12,.05) 82%),
+    linear-gradient(0deg,var(--bg) 0%,rgba(8,9,12,0) 46%)}
+.hero-in{position:absolute;left:0;right:0;bottom:54px;z-index:2}
+.hero-in .wrap{display:flex;justify-content:space-between;align-items:flex-end;gap:40px}
+.hero-txt{max-width:640px}
+.kicker{display:inline-flex;align-items:center;gap:10px;font-size:12.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:#8fb6ff;margin-bottom:14px}
+.kicker span{width:26px;height:1px;background:currentColor;opacity:.6}
+.hero h1{margin:0 0 14px;font-size:clamp(38px,4.3vw,62px);line-height:1.06;letter-spacing:-.025em;font-weight:800}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;color:var(--text-2);font-size:14px}
+.meta b{font-weight:600;color:#e9ecf1}
+.meta .dot{width:3px;height:3px;border-radius:50%;background:var(--text-3)}
+.tag{padding:2px 9px;border-radius:5px;font-size:12.5px;background:rgba(255,255,255,.08);color:#cdd4de}
+.hero p.desc{margin:16px 0 26px;color:#b9c1cc;font-size:14.5px;line-height:1.8;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.actions{display:flex;gap:12px}
+.btn{height:46px;padding:0 26px;border-radius:var(--r);display:inline-flex;align-items:center;gap:9px;
+  font-size:15px;font-weight:600;border:1px solid transparent;transition:.18s}
+.btn-play{background:var(--primary);color:#fff;box-shadow:0 10px 26px -10px rgba(59,130,246,.9)}
+.btn-play:hover{background:var(--primary-strong)}
+.btn-ghost{border-color:rgba(255,255,255,.18);color:#e9ecf1;background:rgba(255,255,255,.06);backdrop-filter:blur(6px)}
+.btn-ghost:hover{background:rgba(255,255,255,.12)}
+.hero-side{display:flex;flex-direction:column;align-items:flex-end;gap:14px;padding-bottom:6px}
+.hero-side .idx{font-size:13px;color:var(--text-3);letter-spacing:.1em;font-variant-numeric:tabular-nums}
+.bullets{display:flex;gap:7px}
+.bullets i{width:26px;height:3px;border-radius:2px;background:rgba(255,255,255,.22);display:block;transition:.2s}
+.bullets i.on{background:#fff;width:38px}
+
+/* ---------- rails ---------- */
+.rail{margin:0 0 46px}
+.rail-hd{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+.rail-hd h2{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em}
+.rail-hd .sub{font-size:13px;color:var(--text-3)}
+.rail-hd .more{margin-left:auto;font-size:13.5px;color:var(--text-2);display:inline-flex;gap:5px;align-items:center}
+.rail-hd .more:hover{color:var(--primary)}
+.track{display:grid;grid-auto-flow:column;grid-auto-columns:212px;gap:20px;overflow-x:auto;
+  scroll-snap-type:x proximity;padding:4px 0 10px;scrollbar-width:none}
+.track::-webkit-scrollbar{display:none}
+.track>*{scroll-snap-align:start}
+
+/* ---------- card ---------- */
+.card{display:flex;flex-direction:column;gap:10px}
+.art{position:relative;aspect-ratio:2/3;border-radius:var(--r);overflow:hidden;background:var(--surface);
+  transition:transform .24s ease,box-shadow .24s ease}
+.art::after{content:attr(data-name);position:absolute;inset:0;display:grid;place-items:center;padding:14px;
+  font-size:13px;line-height:1.5;color:#6d7683;text-align:center}
+.art img{position:relative;z-index:1;width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.card:hover .art{transform:translateY(-6px);box-shadow:0 22px 44px -18px #000,0 0 0 1px rgba(59,130,246,.55)}
+.card:hover .art img{transform:scale(1.06)}
+.badge{position:absolute;z-index:2;top:8px;right:8px;padding:2px 8px;border-radius:5px;
+  font-size:12px;background:rgba(8,9,12,.72);backdrop-filter:blur(6px);color:#dfe5ee;border:1px solid rgba(255,255,255,.12)}
+.play{position:absolute;z-index:3;inset:0;display:grid;place-items:center;opacity:0;transition:opacity .22s;
+  background:linear-gradient(0deg,rgba(8,9,12,.75),rgba(8,9,12,.15))}
+.card:hover .play{opacity:1}
+.play i{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(59,130,246,.94);box-shadow:0 8px 22px -6px rgba(0,0,0,.8);color:#fff;font-size:15px}
+.cap{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cap .t{font-size:14.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card:hover .cap .t{color:#93b9ff}
+.cap .m{font-size:12.5px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ---------- today grid ---------- */
+.today{border-top:1px solid var(--line);padding-top:38px;margin:0 0 70px}
+.grid8{display:grid;grid-template-columns:repeat(8,1fr);gap:22px 20px}
+
+.foot{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--text-3);font-size:13px;
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+/* 方案标签 */
+.pick{position:fixed;left:18px;bottom:18px;z-index:99;font-size:12px;letter-spacing:.06em;
+  padding:7px 13px;border-radius:999px;background:rgba(59,130,246,.16);color:#a9c9ff;
+  border:1px solid rgba(59,130,246,.4);backdrop-filter:blur(10px)}
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="logo" href="#"><i></i>蓝草莓影视</a>
+    <nav class="nav">
+      <a class="on" href="#">首页</a>
+      <a href="#">电影</a>
+      <a href="#">剧集</a>
+      <a href="#">综艺</a>
+      <a href="#">动漫</a>
+    </nav>
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input placeholder="搜索片名、演员">
+    </label>
+    <a class="btn-lucky" href="#">随机一部</a>
+  </div>
+</header>
+
+<section class="hero" id="hero">
+  <div class="hero-blur" id="heroBlur"></div>
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-in">
+    <div class="wrap">
+      <div class="hero-txt">
+        <div class="kicker"><span></span><em style="font-style:normal" id="heroKicker"></em></div>
+        <h1 id="heroTitle"></h1>
+        <div class="meta" id="heroMeta"></div>
+        <p class="desc" id="heroDesc"></p>
+        <div class="actions">
+          <a class="btn btn-play" href="#" id="heroPlay">▶ 立即播放</a>
+          <a class="btn btn-ghost" href="#">查看详情</a>
+        </div>
+      </div>
+      <div class="hero-side">
+        <div class="bullets" id="heroDots"></div>
+        <div class="idx" id="heroIdx"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <section class="rail">
+    <div class="rail-hd">
+      <h2>今日更新</h2><span class="sub" id="todayCount"></span>
+      <a class="more" href="#">全部新片 ›</a>
+    </div>
+    <div class="track" id="railToday"></div>
+  </section>
+
+  <section class="rail">
+    <div class="rail-hd"><h2>电影</h2><span class="sub">院线新片与热播</span><a class="more" href="#">更多 ›</a></div>
+    <div class="track" id="railMovie"></div>
+  </section>
+
+  <section class="rail">
+    <div class="rail-hd"><h2>剧集</h2><span class="sub">每晚两集，连更不落</span><a class="more" href="#">更多 ›</a></div>
+    <div class="track" id="railTv"></div>
+  </section>
+
+  <section class="today">
+    <div class="rail-hd"><h2>正在热播</h2><span class="sub">按上线时间排序</span><a class="more" href="#">进入片库 ›</a></div>
+    <div class="grid8" id="gridAll"></div>
+  </section>
+
+  <footer class="foot">
+    <span>本站所有内容均收集自互联网，仅供学习交流，请勿用于商业用途。</span>
+    <span>共 <b id="total" style="color:#a4acb8"></b> 部作品在库</span>
+  </footer>
+</div>
+
+<div class="pick">方案 A · 影院大幕</div>
+
+<script src="data.js"></script>
+<script>
+const S = window.SITE;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function card(it){
+  const meta = [it.y || '未知年份', it.a].filter(Boolean).join(' · ');
+  return `<a class="card" href="#">
+    <div class="art" data-name="${esc(it.n)}">
+      <img src="${esc(it.c)}" alt="${esc(it.n)}" loading="lazy">
+      ${it.r ? `<span class="badge">${esc(it.r)}</span>` : ''}
+      <span class="play"><i>▶</i></span>
+    </div>
+    <div class="cap"><span class="t">${esc(it.n)}</span><span class="m">${esc(meta)}</span></div>
+  </a>`;
+}
+const fill = (id, items) => document.getElementById(id).innerHTML = items.map(card).join('');
+
+fill('railToday', S.today);
+fill('railMovie', S.dianying.slice(0, 12));
+fill('railTv', S.juji.slice(0, 12));
+fill('gridAll', S.all.slice(0, 16));
+document.getElementById('todayCount').textContent = S.today.length + ' 部';
+document.getElementById('total').textContent = S.total.toLocaleString();
+
+/* hero：取前 5 部今日更新，用详情简介 */
+const heroes = S.today.slice(0, 5);
+let cur = 0;
+const $ = id => document.getElementById(id);
+
+function paint(){
+  const it = heroes[cur];
+  const desc = S.desc[it.id] || '';
+  $('heroBg').style.backgroundImage = `url(${it.c})`;
+  $('heroBlur').style.backgroundImage = `url(${it.c})`;
+  $('heroKicker').textContent = [it.g, it.a].filter(Boolean).join('  /  ');
+  $('heroTitle').textContent = it.n;
+  $('heroMeta').innerHTML = [
+    it.y ? `<b>${it.y}</b>` : '', it.a ? `<span>${esc(it.a)}</span>` : '',
+    it.r ? `<span class="tag">${esc(it.r)}</span>` : '',
+    it.e ? `<span>全 ${it.e} 集</span>` : ''
+  ].filter(Boolean).join('<span class="dot"></span>');
+  $('heroDesc').textContent = desc || '暂无简介';
+  $('heroIdx').textContent = `${String(cur + 1).padStart(2, '0')} / ${String(heroes.length).padStart(2, '0')}`;
+  $('heroDots').innerHTML = heroes.map((_, i) => `<i class="${i === cur ? 'on' : ''}"></i>`).join('');
+}
+$('heroDots').addEventListener('click', e => {
+  const i = [...e.target.parentNode.children].indexOf(e.target);
+  if (i >= 0) { cur = i; paint(); }
+});
+paint();
+setInterval(() => { cur = (cur + 1) % heroes.length; paint(); }, 7000);
+</script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue';
+import { X } from 'lucide-vue-next';
 
 /**
  * 抽屉：手机上从底部弹出（筛选），窄屏导航从左滑出。
@@ -53,10 +54,10 @@ onBeforeUnmount(() => {
         tabindex="-1"
         :class="['fixed z-50 flex flex-col bg-surface shadow-xl', PANEL[props.side]]"
       >
-        <header class="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+        <header class="flex items-start justify-between gap-4 border-b border-line px-4 py-4">
           <div class="min-w-0">
             <h2 class="text-title font-semibold text-ink">{{ title }}</h2>
-            <p v-if="description" class="mt-0.5 text-small text-ink-3">{{ description }}</p>
+            <p v-if="description" class="mt-1 text-small text-ink-3">{{ description }}</p>
           </div>
           <button
             type="button"
@@ -64,17 +65,15 @@ onBeforeUnmount(() => {
             aria-label="关闭"
             @click="open = false"
           >
-            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
-            </svg>
+            <X :size="16" class="shrink-0" />
           </button>
         </header>
 
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <slot />
         </div>
 
-        <footer v-if="$slots.footer" class="border-t border-line px-4 py-3">
+        <footer v-if="$slots.footer" class="border-t border-line px-4 py-4">
           <slot name="footer" />
         </footer>
       </section>

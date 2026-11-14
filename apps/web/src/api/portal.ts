@@ -42,7 +42,8 @@ export interface PlayLine {
 
 export interface VodRow {
   title: string;
-  more: string;
+  /** 「更多」跳转地址；没有对应聚合页的区块没有这个字段 */
+  more?: string;
   items: VodCard[];
 }
 
@@ -58,7 +59,7 @@ export interface HomeResult {
 }
 
 export interface VodListPage {
-  category: { id: string; name: string; alias: string; pid: string } | null;
+  category: { id: string; name: string; alias: string; pid: string };
   types: Array<{ id: string; name: string; alias: string }>;
   years: number[];
   items: VodCard[];
