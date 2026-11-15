@@ -203,7 +203,11 @@ function selectLine(lineId: string): void {
   });
 }
 
+/** 上一轮选集请求的序号：快速连点线路时，先发后到的响应直接丢弃 */
+let epSeq = 0;
+
 async function loadEpisodes(): Promise<void> {
+  const seq = ++epSeq;
   if (!selectedLine.value || !data.value) {
     episodes.value = [];
     return;
@@ -214,11 +218,11 @@ async function loadEpisodes(): Promise<void> {
   epLoading.value = true;
   try {
     const result = await portal.play(id.value, { line: index, ep: 1 });
-    episodes.value = result.episodes;
+    if (seq === epSeq) episodes.value = result.episodes;
   } catch {
-    episodes.value = [];
+    if (seq === epSeq) episodes.value = [];
   } finally {
-    epLoading.value = false;
+    if (seq === epSeq) epLoading.value = false;
   }
 }
 
@@ -390,8 +394,12 @@ useSeo(() => ({
           </button>
         </div>
 
-        <p v-if="epLoading" class="py-8 text-center text-body text-ink-3">剧集加载中…</p>
-        <div v-else-if="episodesShown.length" class="max-h-[420px] overflow-y-auto">
+        <div
+          v-if="episodesShown.length"
+          class="max-h-[420px] overflow-y-auto transition-opacity"
+          :class="epLoading ? 'pointer-events-none opacity-40' : ''"
+          :aria-busy="epLoading"
+        >
           <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <RouterLink
               v-for="ep in episodesShown"
@@ -406,6 +414,7 @@ useSeo(() => ({
             </RouterLink>
           </div>
         </div>
+        <p v-else-if="epLoading" class="py-8 text-center text-body text-ink-3">剧集加载中…</p>
         <p v-else class="py-8 text-center text-body text-ink-3">该线路暂无剧集</p>
       </section>
 
