@@ -17,7 +17,8 @@ import Skeleton from '../components/ui/Skeleton.vue';
  * 分区接口要按分类统计总数，单次要 3 秒左右，所以 hero 与今日更新先出，
  * 四个分类各自回来各自渲染，不整页等最慢的一块。
  */
-const HERO_SIZE = 5;
+/** hero 最多 8 个轮播位；后台没配时回落到今日更新前 8 部 */
+const HERO_SIZE = 8;
 /** 每块取 16 部 = 8 列 × 2 行 */
 const SECTION_SIZE = 16;
 
@@ -41,6 +42,8 @@ interface Section {
 const loading = ref(true);
 const error = ref('');
 const today = ref<VodCardData[]>([]);
+/** 后台配的 hero 轮播位；空数组表示没配过 */
+const hero = ref<VodCardData[]>([]);
 
 const sections = ref<Section[]>(
   CATEGORY_SECTIONS.map((section) => ({
@@ -52,8 +55,8 @@ const sections = ref<Section[]>(
   })),
 );
 
-/** hero 用今日更新；今日没有新片时这块整段不渲染，不留空壳 */
-const heroItems = computed(() => today.value.slice(0, HERO_SIZE));
+/** hero 优先用后台配置的轮播位；一个都没配时回落到今日更新前 8 部，今日也没新片就整段不渲染 */
+const heroItems = computed(() => (hero.value.length ? hero.value : today.value.slice(0, HERO_SIZE)));
 
 /** 首屏：今日更新（/home 一次请求，几十毫秒） */
 async function loadToday(): Promise<void> {
@@ -61,6 +64,7 @@ async function loadToday(): Promise<void> {
   error.value = '';
   try {
     const home = await portal.home();
+    hero.value = home.hero ?? [];
     today.value = home.rows.flatMap((row) => row.items);
   } catch (e) {
     error.value = (e as Error).message || '首页加载失败';

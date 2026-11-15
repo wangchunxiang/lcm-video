@@ -12,7 +12,7 @@ export class PortalController {
 
   /** 首页：分类树 + 分区卡片。 */
   @Get('home')
-  home(): Promise<{ categories: CategoryNode[]; rows: VodRow[] }> {
+  home(): Promise<{ categories: CategoryNode[]; hero: VodCard[]; rows: VodRow[] }> {
     return this.portal.home();
   }
 

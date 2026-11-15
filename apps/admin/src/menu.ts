@@ -31,6 +31,7 @@ export const menus: MenuItem[] = [
     children: [
       { path: '/vods', title: '影视管理', icon: 'VideoCamera' },
       { path: '/categories', title: '分类管理', icon: 'CollectionTag' },
+      { path: '/home-hero', title: '首页轮播', icon: 'Picture' },
     ],
   },
   {

@@ -7,6 +7,7 @@ import AdminLayout from '../layout/AdminLayout.vue';
 import Dashboard from '../views/Dashboard.vue';
 import Placeholder from '../views/Placeholder.vue';
 import Categories from '../views/content/Categories.vue';
+import HomeHero from '../views/content/HomeHero.vue';
 import Vods from '../views/content/Vods.vue';
 import Logs from '../views/collect/Logs.vue';
 import Mappings from '../views/collect/Mappings.vue';
@@ -30,6 +31,7 @@ const implemented: Record<string, Component> = {
   '/logs': Logs,
   '/vods': Vods,
   '/categories': Categories,
+  '/home-hero': HomeHero,
   '/site': SiteSetting,
   '/account': AccountSetting,
   '/merge': MergeTools,

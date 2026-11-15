@@ -55,6 +55,8 @@ export interface EpisodeItem {
 
 export interface HomeResult {
   categories: CategoryNode[];
+  /** 首页 hero 轮播：运营在后台配的位，最多 8 个；空数组表示没配过，由首页回落到「今日更新」前 8 部 */
+  hero: VodCard[];
   rows: VodRow[];
 }
 
