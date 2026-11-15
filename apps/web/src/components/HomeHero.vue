@@ -111,9 +111,9 @@ onBeforeUnmount(stop);
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
     />
-    <!-- 遮罩：左侧压暗给文字留安全区，底部接到页面底色 -->
+    <!-- 遮罩：左侧只做很轻的过渡（海报要看得到），文字靠投影兜底；底部接到页面底色 -->
     <div
-      class="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,12,15,0.94)_3%,rgba(10,12,15,0.85)_36%,rgba(10,12,15,0.28)_66%,rgba(10,12,15,0.05)_88%),linear-gradient(0deg,#0a0c0f_0%,rgba(10,12,15,0)_48%)]"
+      class="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,12,15,0.80)_3%,rgba(10,12,15,0.55)_36%,rgba(10,12,15,0.14)_66%,rgba(10,12,15,0)_88%),linear-gradient(0deg,#0a0c0f_0%,rgba(10,12,15,0)_48%)]"
       aria-hidden="true"
     />
 
@@ -123,7 +123,7 @@ onBeforeUnmount(stop);
       class="absolute inset-0 z-[1] cursor-pointer"
       :aria-label="`查看《${hero.name}》详情`"
     />
-    <div class="pointer-events-none absolute inset-x-0 bottom-[52px] z-10">
+    <div class="hero-text-shadow pointer-events-none absolute inset-x-0 bottom-[52px] z-10">
       <Container>
         <div class="flex items-end justify-between gap-8">
           <!-- 文字列吃满剩余宽度：只有右下指示条是不可压缩的，其余全给标题 -->
@@ -166,6 +166,16 @@ onBeforeUnmount(stop);
 /* 高度走 tokens：桌面 min(600px, 68vh)；手机上压到 440px，别把首屏全占满 */
 .hero {
   height: var(--hero-h);
+}
+
+/**
+ * 文字投影：遮罩只压到 0.80，遇到白底海报靠这层投影保证可读。
+ * 两层（大范围柔光 + 1px 硬边）比单层更稳，也不会在深色图上发灰。
+ */
+.hero-text-shadow {
+  text-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 @media (max-width: 640px) {
