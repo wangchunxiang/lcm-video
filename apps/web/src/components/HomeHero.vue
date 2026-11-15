@@ -112,11 +112,11 @@ onBeforeUnmount(stop);
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
     />
-    <!-- 画面：宽度铺满、高度自适应（100% auto）。宽图不裁左右，竖图仍是现在的裁上下 -->
+    <!-- 画面：contain 完整显示、完全不裁；宽图按宽度铺满，竖图两侧由模糊铺底补 -->
     <div
       v-for="(layer, index) in layers"
       :key="`pic-${index}`"
-      class="absolute inset-0 bg-no-repeat [background-position:50%_28%] [background-size:100%_auto] transition-opacity duration-700 ease-out"
+      class="absolute inset-0 bg-contain bg-no-repeat bg-center transition-opacity duration-700 ease-out"
       :class="layer.on ? 'opacity-100' : 'opacity-0'"
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
