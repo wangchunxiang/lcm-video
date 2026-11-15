@@ -28,13 +28,22 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 watch(open, (value) => {
-  document.body.style.overflow = value ? 'hidden' : '';
-  if (value) window.addEventListener('keydown', onKeydown);
-  else window.removeEventListener('keydown', onKeydown);
+  if (value) {
+    // 锁滚动会让滚动条消失、页面右移，这里补回同宽的右内边距，避免打开时「动一下」
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = scrollbar > 0 ? `${scrollbar}px` : '';
+    window.addEventListener('keydown', onKeydown);
+  } else {
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    window.removeEventListener('keydown', onKeydown);
+  }
 });
 
 onBeforeUnmount(() => {
   document.body.style.overflow = '';
+  document.body.style.paddingRight = '';
   window.removeEventListener('keydown', onKeydown);
 });
 </script>

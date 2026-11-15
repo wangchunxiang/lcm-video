@@ -29,6 +29,8 @@
   --color-surface-3: var(--surface-3);
   --color-line: var(--line);
   --color-search: var(--search-bg);
+  --color-glass: var(--glass);
+  --color-scrim: var(--scrim);
 
   /* 圆角：rounded-md 取 --radius（8px），不是 tokens 里另起的中间名（见 docs/样式规范-v3.md） */
   --radius-sm: var(--radius-sm);

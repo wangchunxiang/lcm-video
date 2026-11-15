@@ -280,7 +280,7 @@ export class PortalService {
     const related = await this.queryCards({
       where: 'v.status = 1 AND v.category_id = ? AND v.id <> ?',
       order: 'v.collected_at DESC, v.id DESC',
-      take: 12,
+      take: 8,
       params: [vod.categoryId, id],
     });
 

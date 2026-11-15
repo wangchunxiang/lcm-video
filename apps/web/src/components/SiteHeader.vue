@@ -45,7 +45,7 @@ function go(path: string): void {
 
 <template>
   <!-- 顶栏在流里占位（不浮在 hero 上）；半透明 + 模糊，滚动时底下内容能透出来 -->
-  <header class="sticky top-0 z-50 border-b border-line/70 bg-[rgba(10,12,15,0.55)] backdrop-blur-xl">
+  <header class="sticky top-0 z-50 border-b border-line/70 bg-glass backdrop-blur-xl">
     <Container>
       <div class="flex h-[var(--header-h)] items-center gap-8">
         <RouterLink to="/" class="flex flex-none items-center gap-2 transition-opacity hover:opacity-90">

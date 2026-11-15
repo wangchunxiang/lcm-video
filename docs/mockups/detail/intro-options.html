@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情页 · 简介展开三方案</title>
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #12151a;
+    --surface-2: #1a1e25;
+    --surface-3: #232830;
+    --line: #262b33;
+    --ink: #e6e8eb;
+    --ink-2: #a9b0ba;
+    --ink-3: #7f8792;
+    --primary: #3b82f6;
+    --primary-weak: rgba(59, 130, 246, 0.16);
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  header.top { padding: 32px 32px 0; max-width: 1180px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 8px; font-size: 22px; }
+  header.top p { margin: 0; color: var(--ink-3); font-size: 13px; }
+  .demo { max-width: 1180px; margin: 32px auto 0; padding: 0 32px 48px; }
+  .demo > h2 { margin: 0 0 4px; font-size: 16px; }
+  .demo > .note { margin: 0 0 16px; color: var(--ink-3); font-size: 13px; }
+  .stage {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 320px at 12% 0%, rgba(59,130,246,.10), transparent 62%),
+      var(--bg);
+  }
+  .row { display: flex; align-items: flex-start; gap: 32px; padding: 16px; }
+  .poster {
+    flex: none;
+    width: 240px;
+    aspect-ratio: 2 / 3;
+    border-radius: var(--radius);
+    background: linear-gradient(160deg, #22303f, #131922 60%, #0d1218);
+    color: #64748b;
+    font-size: 12px;
+    display: grid;
+    place-items: center;
+    align-self: flex-start; /* 关键：不被右侧内容撑高 */
+  }
+  .info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .info h1 { margin: 0; font-size: 21px; line-height: 1.25; }
+  .sub { color: var(--ink-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { padding: 4px 8px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; }
+  .chips span:first-child { background: var(--primary-weak); color: var(--primary); }
+  dl { margin: 0; display: grid; gap: 8px; }
+  dl > div { display: flex; gap: 16px; }
+  dt { flex: none; width: 42px; color: var(--ink-3); }
+  dd { margin: 0; min-width: 0; flex: 1; color: var(--ink-2); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { height: 38px; padding: 0 16px; border: 0; border-radius: var(--radius); cursor: pointer; font-size: 14px; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.ghost { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+  .intro { margin: 0; line-height: 1.9; }
+  .intro.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .more {
+    margin-left: 4px; padding: 0; border: 0; background: none;
+    color: var(--ink-2); font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .more:hover { color: var(--ink); }
+
+  /* B：简介独立区块 */
+  .intro-block { border-top: 1px solid var(--line); margin: 0 16px 16px; padding-top: 16px; }
+  .intro-block h3 { margin: 0 0 8px; font-size: 13px; font-weight: 400; color: var(--ink-3); }
+  .intro-block p { margin: 0; line-height: 1.9; color: var(--ink-2); }
+  .intro-block p.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* C：抽屉 */
+  .mask { position: absolute; inset: 0; background: rgba(6, 8, 12, .6); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .mask.on { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 380px; max-width: 85%;
+    background: var(--surface); border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .24s ease;
+  }
+  .drawer.on { transform: none; }
+  .drawer header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--line); }
+  .drawer header b { font-size: 16px; }
+  .drawer header button { border: 0; background: none; color: var(--ink-3); cursor: pointer; font-size: 18px; }
+  .drawer .body { padding: 16px; overflow: auto; line-height: 1.9; color: var(--ink-2); }
+
+  .tag {
+    display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: 3px;
+    background: var(--primary-weak); color: var(--primary); font-size: 12px;
+  }
+
+  /* 窄屏（含很小的预览面板）改成上下堆叠，和生产端 max-lg 行为一致 */
+  @media (max-width: 900px) {
+    header.top, .demo { padding-left: 16px; padding-right: 16px; }
+    .row { flex-direction: column; gap: 16px; }
+    .poster { width: 200px; }
+    .drawer { width: 85%; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>详情页 · 简介很长时的三种形态</h1>
+  <p>按当前生产样式还原：海报 240×360（2:3，不随内容撑高）、信息列 16px 行距、简介 597 字。点每块里的「详情 / 收起」实测。</p>
+</header>
+
+<!-- A -->
+<section class="demo">
+  <span class="tag">A</span>
+  <h2>行内展开（现状，已修 self-start）</h2>
+  <p class="note">点「详情」→ 简介在信息列里长高，海报固定在 2:3 不动，海报下方留白。</p>
+  <div class="stage">
+    <div class="row">
+      <div class="poster">海报 2:3</div>
+      <div class="info">
+        <h1>玫瑰战争国语</h1>
+        <div class="sub">玫瑰的战争</div>
+        <div class="chips"><span>2026</span><span>港台剧</span><span>更新至第18集</span></div>
+        <dl>
+          <div><dt>导演</dt><dd>钟澍佳</dd></div>
+          <div><dt>演员</dt><dd>杨茜尧, 陈豪, 林夏薇, 马国明, 陈展鹏, 姚子羚, 傅嘉莉, 陈自瑶, 邝洁楹, 蔡洁</dd></div>
+          <div><dt>上映</dt><dd>2026</dd></div>
+          <div>
+            <dt>简介</dt>
+            <dd>
+              <p class="intro clamp" id="a-intro">一宗骇人的碎尸案，警察刘少杰发现自己太太夏无双是最大嫌疑犯，质疑她杀害富豪李耀天。随着刘少杰深入调查，偶像新星关子盈、金牌经理人苏嘉年、演员安安、名模富太梁菲雅，四位女明星先后被卷入案件，真相一层层剥开。刘少杰在追查过程中发现，每个人都在用自己的方式掩盖一段不愿被提起的过去，而最危险的往往不是凶手，而是那些看似无辜的旁观者。</p>
+              <button class="more" data-toggle="a-intro">详情</button>
+            </dd>
+          </div>
+        </dl>
+        <div class="actions"><button class="btn primary">立即播放</button><button class="btn ghost">浏览剧集</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- B -->
+<section class="demo">
+  <span class="tag">B</span>
+  <h2>简介独立成块（首屏版式完全稳定）</h2>
+  <p class="note">首屏只有海报 + 基本信息，简介挪到下面整宽区块；展开只增加下方高度，首屏高度永远不变。</p>
+  <div class="stage">
+    <div class="row">
+      <div class="poster">海报 2:3</div>
+      <div class="info">
+        <h1>玫瑰战争国语</h1>
+        <div class="sub">玫瑰的战争</div>
+        <div class="chips"><span>2026</span><span>港台剧</span><span>更新至第18集</span></div>
+        <dl>
+          <div><dt>导演</dt><dd>钟澍佳</dd></div>
+          <div><dt>演员</dt><dd>杨茜尧, 陈豪, 林夏薇, 马国明, 陈展鹏, 姚子羚, 傅嘉莉, 陈自瑶, 邝洁楹, 蔡洁</dd></div>
+          <div><dt>上映</dt><dd>2026</dd></div>
+        </dl>
+        <div class="actions"><button class="btn primary">立即播放</button><button class="btn ghost">浏览剧集</button></div>
+      </div>
+    </div>
+    <div class="intro-block">
+      <h3>简介</h3>
+      <p class="clamp" id="b-intro">一宗骇人的碎尸案，警察刘少杰发现自己太太夏无双是最大嫌疑犯，质疑她杀害富豪李耀天。随着刘少杰深入调查，偶像新星关子盈、金牌经理人苏嘉年、演员安安、名模富太梁菲雅，四位女明星先后被卷入案件，真相一层层剥开。刘少杰在追查过程中发现，每个人都在用自己的方式掩盖一段不愿被提起的过去，而最危险的往往不是凶手，而是那些看似无辜的旁观者。</p>
+      <button class="more" data-toggle="b-intro">详情</button>
+    </div>
+  </div>
+</section>
+
+<!-- C -->
+<section class="demo">
+  <span class="tag">C</span>
+  <h2>点「详情」开抽屉（页面完全不重排）</h2>
+  <p class="note">列表里只留两行摘要，全文在右侧抽屉里读；关掉就回到原样，首屏高度、海报、按钮位置都不动。</p>
+  <div class="stage">
+    <div class="row">
+      <div class="poster">海报 2:3</div>
+      <div class="info">
+        <h1>玫瑰战争国语</h1>
+        <div class="sub">玫瑰的战争</div>
+        <div class="chips"><span>2026</span><span>港台剧</span><span>更新至第18集</span></div>
+        <dl>
+          <div><dt>导演</dt><dd>钟澍佳</dd></div>
+          <div><dt>演员</dt><dd>杨茜尧, 陈豪, 林夏薇, 马国明, 陈展鹏, 姚子羚, 傅嘉莉, 陈自瑶, 邝洁楹, 蔡洁</dd></div>
+          <div><dt>上映</dt><dd>2026</dd></div>
+          <div>
+            <dt>简介</dt>
+            <dd>
+              <p class="intro clamp">一宗骇人的碎尸案，警察刘少杰发现自己太太夏无双是最大嫌疑犯，质疑她杀害富豪李耀天。随着刘少杰深入调查，偶像新星关子盈、金牌经理人苏嘉年…</p>
+              <button class="more" data-drawer>详情</button>
+            </dd>
+          </div>
+        </dl>
+        <div class="actions"><button class="btn primary">立即播放</button><button class="btn ghost">浏览剧集</button></div>
+      </div>
+    </div>
+
+    <div class="mask" data-mask></div>
+    <aside class="drawer" data-drawer-panel aria-label="简介">
+      <header><b>简介</b><button type="button" data-close aria-label="关闭">×</button></header>
+      <div class="body">
+        一宗骇人的碎尸案，警察刘少杰发现自己太太夏无双是最大嫌疑犯，质疑她杀害富豪李耀天。随着刘少杰深入调查，偶像新星关子盈、金牌经理人苏嘉年、演员安安、名模富太梁菲雅，四位女明星先后被卷入案件，真相一层层剥开。刘少杰在追查过程中发现，每个人都在用自己的方式掩盖一段不愿被提起的过去，而最危险的往往不是凶手，而是那些看似无辜的旁观者。
+      </div>
+    </aside>
+  </div>
+</section>
+
+<script>
+  // A / B：行内展开
+  document.querySelectorAll('[data-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const p = document.getElementById(btn.dataset.toggle);
+      const open = p.classList.toggle('clamp') === false;
+      btn.textContent = open ? '收起' : '详情';
+    });
+  });
+
+  // C：抽屉
+  const panel = document.querySelector('[data-drawer-panel]');
+  const mask = document.querySelector('[data-mask]');
+  const openDrawer = () => { panel.classList.add('on'); mask.classList.add('on'); };
+  const closeDrawer = () => { panel.classList.remove('on'); mask.classList.remove('on'); };
+  document.querySelector('[data-drawer]').addEventListener('click', openDrawer);
+  document.querySelector('[data-close]').addEventListener('click', closeDrawer);
+  mask.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+</body>
+</html>

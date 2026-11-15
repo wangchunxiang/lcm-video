@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { portal, type EpisodeItem, type VodDetail } from '../api/portal';
 import { site } from '../site';
@@ -50,6 +50,130 @@ const browseTo = computed(() => (topCategory.value ? `/list/${topCategory.value.
 const browseLabel = computed(() => (topCategory.value ? `浏览${topCategory.value.name}` : ''));
 const poster = computed(() => vod.value?.cover || '/img/poster-placeholder.svg');
 const intro = computed(() => vod.value?.content?.trim() ?? '');
+
+/**
+ * 摘要截断：算出「两行内能放下多少字 + 省略号 + 详情」，让按钮紧跟最后一个字。
+ * 按钮只负责打开详情弹窗。
+ */
+const introRef = ref<HTMLElement | null>(null);
+const introCut = ref('');
+const introLong = ref(false);
+const introShown = computed(() => (introLong.value ? `${introCut.value}…` : intro.value));
+
+function fitIntro(): void {
+  const el = introRef.value;
+  const full = intro.value;
+  if (!el || !full) {
+    introCut.value = '';
+    introLong.value = false;
+    return;
+  }
+  const cs = getComputedStyle(el);
+  const lineHeight = parseFloat(cs.lineHeight) || 24;
+  const fontSize = parseFloat(cs.fontSize) || 14;
+  const maxHeight = lineHeight * 2 + 1;
+
+  const probe = document.createElement('p');
+  probe.style.cssText = [
+    'position:absolute',
+    'left:-9999px',
+    'top:0',
+    'visibility:hidden',
+    'pointer-events:none',
+    `width:${el.clientWidth}px`,
+    `font:${cs.font}`,
+    `line-height:${cs.lineHeight}`,
+    `letter-spacing:${cs.letterSpacing}`,
+    `white-space:${cs.whiteSpace}`,
+  ].join(';');
+  document.body.appendChild(probe);
+
+  const fits = (text: string): boolean => {
+    probe.textContent = `${text}…`;
+    const tail = document.createElement('span');
+    tail.style.fontSize = `${fontSize}px`;
+    tail.style.marginLeft = '4px';
+    tail.textContent = '详情';
+    // 末尾再留 2 个字宽的空白，按钮就不会顶到内容区右边界
+    const spacer = document.createElement('span');
+    spacer.style.display = 'inline-block';
+    spacer.style.width = `${fontSize * 2}px`;
+    probe.append(tail, spacer);
+    return probe.scrollHeight <= maxHeight;
+  };
+
+  if (fits(full)) {
+    introLong.value = false;
+    introCut.value = full;
+  } else {
+    introLong.value = true;
+    let lo = 0;
+    let hi = full.length;
+    let best = 0;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (fits(full.slice(0, mid))) {
+        best = mid;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    introCut.value = full.slice(0, best);
+  }
+  probe.remove();
+  lastFitWidth = el.clientWidth;
+}
+
+let fitTimer: number | undefined;
+let lastFitWidth = 0;
+
+/** 宽度没变就不用重算；拖动窗口时 120ms 防抖（和 v2 一致） */
+function onResize(): void {
+  window.clearTimeout(fitTimer);
+  fitTimer = window.setTimeout(() => {
+    const width = introRef.value?.clientWidth ?? 0;
+    if (width > 0 && width !== lastFitWidth) fitIntro();
+  }, 120);
+}
+
+function closeIntro(): void {
+  introOpen.value = false;
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') closeIntro();
+}
+
+/** 弹窗打开时锁滚动，并补回滚动条宽度，避免页面右移一下 */
+watch(introOpen, (open) => {
+  if (open) {
+    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = scrollbar > 0 ? `${scrollbar}px` : '';
+  } else {
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+  }
+});
+
+watch(intro, async () => {
+  await nextTick();
+  fitIntro();
+});
+
+onMounted(() => {
+  window.addEventListener('resize', onResize);
+  document.addEventListener('keydown', onKeydown);
+  // 字体加载完成后宽高会变一次，再量一遍更稳（系统字体通常已就绪，开销可忽略）
+  void document.fonts?.ready.then(fitIntro);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize);
+  document.removeEventListener('keydown', onKeydown);
+  window.clearTimeout(fitTimer);
+});
 
 function selectLine(lineId: string): void {
   void router.replace({
@@ -113,7 +237,7 @@ useSeo(() => ({
   <div>
     <Container v-if="loading" class="pt-4">
       <div class="flex flex-col gap-4 lg:flex-row">
-        <Skeleton class="aspect-[2/3] w-[240px] flex-none rounded-md" />
+        <Skeleton class="aspect-[2/3] w-[240px] flex-none self-start rounded-md" />
         <div class="flex-1 space-y-2">
           <Skeleton class="h-8 w-2/3" />
           <Skeleton class="h-4 w-1/2" />
@@ -126,8 +250,9 @@ useSeo(() => ({
 
     <template v-else-if="vod">
       <!-- 顶部横幅：封面放大虚化垫底，前面压渐变接到页面底色；横幅通栏，内容仍收进 Container -->
-      <section class="relative isolate overflow-hidden">
-        <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+      <section class="relative isolate z-10">
+        <!-- 只裁剪背景层（blur 会外溢）；内容层不裁剪，简介浮层才能盖到下面的区块上 -->
+        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div
             v-if="vod.cover"
             class="absolute inset-0 scale-110 bg-cover bg-center opacity-60 blur-2xl max-lg:blur-lg"
@@ -143,7 +268,7 @@ useSeo(() => ({
         <img
           :src="poster"
           :alt="vod.name"
-          class="aspect-[2/3] w-[240px] flex-none rounded-md bg-surface-2 object-fill max-lg:w-[200px]"
+          class="aspect-[2/3] w-[240px] flex-none self-start rounded-md bg-surface-2 object-fill max-lg:w-[200px]"
         />
 
         <div class="flex min-w-0 flex-1 flex-col justify-between gap-4">
@@ -179,16 +304,11 @@ useSeo(() => ({
               <div class="flex gap-4">
                 <dt class="w-[42px] flex-none text-ink-3">简介</dt>
                 <dd class="min-w-0 flex-1">
-                  <p class="whitespace-pre-wrap leading-[1.9] text-ink-2" :class="introOpen ? '' : 'line-clamp-2'">
-                    {{ intro }}
-                  </p>
-                  <button
-                    type="button"
-                    class="mt-1 cursor-pointer text-small text-ink-2 transition hover:text-ink"
-                    @click="introOpen = !introOpen"
-                  >
-                    {{ introOpen ? '收起' : '详情' }}
-                  </button>
+                  <p ref="introRef" class="whitespace-pre-wrap leading-[1.9] text-ink-2">{{ introShown }}<button
+                      type="button"
+                      class="ml-1 inline cursor-pointer text-body text-primary transition hover:text-ink"
+                      @click.stop="introOpen = true"
+                    >详情</button></p>
                 </dd>
               </div>
             </dl>
@@ -264,5 +384,29 @@ useSeo(() => ({
       </section>
       </Container>
     </template>
+
+    <!-- 简介弹窗：640px 居中 + 遮罩，关闭＝按钮 / 点遮罩 / Esc -->
+    <Teleport to="body">
+      <div v-if="introOpen" class="fixed inset-0 z-40 bg-scrim" @click="closeIntro" />
+      <div
+        v-if="introOpen"
+        role="dialog"
+        aria-modal="true"
+        aria-label="详细介绍"
+        class="fixed left-1/2 top-1/2 z-50 flex max-h-[70vh] w-[min(640px,calc(100%-48px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
+      >
+        <header class="flex items-center justify-between gap-4 border-b border-line px-4 py-2">
+          <h2 class="text-body font-semibold text-ink">详细介绍</h2>
+          <button
+            type="button"
+            class="cursor-pointer text-small text-primary transition hover:text-ink"
+            @click="closeIntro"
+          >
+            关闭
+          </button>
+        </header>
+        <div class="overflow-y-auto whitespace-pre-wrap px-4 py-4 leading-[1.9] text-ink-2">{{ intro }}</div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情页 · 简介的 6 种展现形式</title>
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #171a20;
+    --surface-2: #1c2027;
+    --surface-3: #232830;
+    --line: #2a303a;
+    --ink: #e6e8eb;
+    --ink-2: #a9b0ba;
+    --ink-3: #7f8792;
+    --primary: #3b82f6;
+    --primary-weak: rgba(59, 130, 246, 0.16);
+    --glass: rgba(10, 12, 15, 0.55);
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 0 64px; background: var(--bg); color: var(--ink);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  h1.page { margin: 0 0 6px; font-size: 22px; }
+  p.lead { margin: 0 0 28px; color: var(--ink-3); font-size: 13px; }
+
+  .demo { margin-bottom: 40px; }
+  .demo > h2 { margin: 0 0 4px; font-size: 16px; }
+  .demo > h2 span { color: var(--primary); margin-right: 8px; }
+  .demo > .note { margin: 0 0 12px; color: var(--ink-3); font-size: 13px; }
+
+  .stage {
+    position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    background: radial-gradient(900px 320px at 12% 0%, rgba(59,130,246,.10), transparent 62%), var(--bg);
+  }
+  .row { display: flex; align-items: flex-start; gap: 32px; padding: 16px; }
+  .poster {
+    flex: none; width: 240px; aspect-ratio: 2 / 3; border-radius: var(--radius); align-self: flex-start;
+    background: linear-gradient(160deg, #22303f, #131922 60%, #0d1218);
+    color: #64748b; font-size: 12px; display: grid; place-items: center;
+  }
+  .info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+  .info h3 { margin: 0; font-size: 21px; line-height: 1.25; }
+  .sub { color: var(--ink-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { padding: 4px 8px; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; }
+  .chips span:first-child { background: var(--primary-weak); color: var(--primary); }
+  dl { margin: 0; display: grid; gap: 8px; }
+  dl > div { display: flex; gap: 16px; }
+  dt { flex: none; width: 42px; color: var(--ink-3); }
+  dd { margin: 0; min-width: 0; flex: 1; color: var(--ink-2); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { height: 38px; padding: 0 16px; border: 0; border-radius: 6px; cursor: pointer; font: inherit; font-size: 14px; }
+  .btn.primary { background: var(--primary); color: #fff; }
+  .btn.ghost { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+  .more {
+    margin-left: 4px; padding: 0; border: 0; background: none; color: var(--primary);
+    font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .more:hover { color: var(--ink); }
+  .lines { padding: 0 16px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+  .lines > b { font-size: 13px; font-weight: 400; color: var(--ink-3); width: 32px; }
+  .lines button { height: 32px; padding: 0 16px; border: 0; border-radius: 4px; background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+  .lines button.on { background: var(--primary-weak); color: var(--primary); }
+  .close-x { border: 0; background: none; color: var(--primary); font: inherit; font-size: 13px; cursor: pointer; }
+
+  /* ── A 原位浮层 ─────────────────────────── */
+  .v-a dd.intro-cell { position: relative; }
+  .v-a .panel {
+    position: absolute; left: 0; top: 0; z-index: 30; width: 100%;
+    max-height: 240px; display: none; flex-direction: column; overflow: hidden;
+    border: 1px solid rgba(42,48,58,.7); border-radius: var(--radius);
+    background: var(--glass); backdrop-filter: blur(24px); box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  }
+  .v-a .panel.on { display: flex; }
+  .v-a .panel header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 4px 16px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink-3); }
+  .v-a .panel .bd { padding: 16px; overflow-y: auto; line-height: 1.9; color: var(--ink-2); white-space: pre-wrap; }
+
+  /* ── B 居中弹窗 ─────────────────────────── */
+  .v-b .mask { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: none; z-index: 20; }
+  .v-b .modal {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 21;
+    width: min(640px, calc(100% - 48px)); max-height: 70%; display: none; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+  }
+  .v-b .mask.on, .v-b .modal.on { display: flex; }
+  .v-b .modal header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  .v-b .modal .bd { padding: 16px; overflow-y: auto; line-height: 1.9; color: var(--ink-2); white-space: pre-wrap; }
+
+  /* ── C 底部抽屉（手机） ─────────────────── */
+  .v-c { display: flex; gap: 24px; align-items: flex-start; }
+  .phone {
+    position: relative; width: 375px; height: 620px; flex: none; overflow: hidden;
+    border: 1px solid var(--line); border-radius: 18px; background: var(--bg);
+  }
+  .phone .p-head { padding: 16px; display: flex; gap: 16px; }
+  .phone .p-poster { width: 110px; aspect-ratio: 2/3; flex: none; border-radius: 6px; background: linear-gradient(160deg,#22303f,#131922); display: grid; place-items: center; color: #64748b; font-size: 11px; }
+  .phone .p-info { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .phone .p-info h3 { margin: 0; font-size: 17px; }
+  .phone .p-info .chips span { font-size: 11px; }
+  .phone .p-actions { padding: 0 16px; display: flex; gap: 8px; }
+  .phone .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; max-height: 85%;
+    display: none; flex-direction: column; background: var(--surface); border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--line); transform: translateY(100%); transition: transform .24s ease;
+  }
+  .phone .sheet.on { display: flex; transform: none; }
+  .phone .sheet header { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--line); }
+  .phone .sheet .bd { padding: 16px; overflow-y: auto; line-height: 1.9; color: var(--ink-2); white-space: pre-wrap; }
+  .v-c .side-note { color: var(--ink-3); font-size: 13px; line-height: 1.8; }
+
+  /* ── D 页内展开 ─────────────────────────── */
+  .v-d .intro.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* ── E 整宽区块 + 锚点 ──────────────────── */
+  .v-e .anchor-block { padding: 16px; border-top: 1px solid var(--line); }
+  .v-e .anchor-block h4 { margin: 0 0 8px; font-size: 18px; }
+  .v-e .anchor-block p { margin: 0; max-height: 200px; overflow-y: auto; line-height: 1.9; color: var(--ink-2); white-space: pre-wrap; }
+  .v-e .flash { animation: flash 1.2s ease; }
+  @keyframes flash { 0%,100% { background: transparent; } 30% { background: rgba(59,130,246,.12); } }
+
+  /* ── F Tab 分栏 ─────────────────────────── */
+  .v-f .tabs { display: flex; gap: 24px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  .v-f .tabs button { border: 0; background: none; color: var(--ink-2); font: inherit; font-size: 14px; padding: 12px 0; cursor: pointer; border-bottom: 2px solid transparent; }
+  .v-f .tabs button.on { color: var(--primary); border-bottom-color: var(--primary); }
+  .v-f .pane { padding: 16px; }
+  .v-f .pane[hidden] { display: none; }
+  .v-f .pane p { margin: 0; max-height: 230px; overflow-y: auto; line-height: 1.9; color: var(--ink-2); white-space: pre-wrap; }
+  .v-f .eps { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 8px; }
+  .v-f .eps a { display: block; height: 30px; line-height: 30px; text-align: center; border-radius: 4px; background: var(--surface-2); color: var(--ink-2); font-size: 12px; text-decoration: none; }
+
+  /* 窄屏（含小尺寸预览面板）：堆叠 + 缩小海报，避免信息列被挤成一条 */
+  @media (max-width: 900px) {
+    .row { flex-direction: column; gap: 16px; }
+    .poster { width: 180px; }
+    .v-c { flex-direction: column; }
+    .v-c .side-note { max-width: 375px; }
+    .phone { width: 100%; max-width: 375px; }
+    .v-f .eps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page">详情页 · 简介的 6 种展现形式</h1>
+  <p class="lead">同一份数据（597 字简介）＋ 当前生产样式还原。每块都能点：A 浮层 / B 弹窗 / C 底部抽屉（手机）/ D 页内展开 / E 整宽区块锚点 / F Tab 分栏。</p>
+
+  <section class="demo v-a">
+    <h2><span>A</span>原位浮层（当前线上）</h2>
+    <p class="note">点「详情」→ 盖在简介格上，玻璃底、最高 240px、内部滚动；关闭＝按钮/点外部/Esc。</p>
+    <div class="stage" data-stage="a"></div>
+  </section>
+
+  <section class="demo v-b">
+    <h2><span>B</span>居中弹窗</h2>
+    <p class="note">点「详情」→ 640px 居中卡片 + 遮罩，阅读宽度最舒服；关闭＝按钮/遮罩/Esc。</p>
+    <div class="stage" data-stage="b"></div>
+  </section>
+
+  <section class="demo v-c">
+    <h2><span>C</span>底部抽屉（手机形态）</h2>
+    <p class="note">手机上从底部滑出 85% 高的抽屉，手势自然；桌面端不推荐（占半屏）。</p>
+    <div class="v-c">
+      <div class="phone" data-phone></div>
+      <div class="side-note">
+        · 抽屉圆角 16px、顶部一条分隔线<br />
+        · 内容区独立滚动，页面本身不滚动<br />
+        · 关闭：下滑 / 点遮罩 / 关闭按钮
+      </div>
+    </div>
+  </section>
+
+  <section class="demo v-d">
+    <h2><span>D</span>页内展开（行内长高）</h2>
+    <p class="note">点「详情」→ 简介在原位展开，按钮与线路整体下移；零额外层级，但首屏会变长。</p>
+    <div class="stage" data-stage="d"></div>
+  </section>
+
+  <section class="demo v-e">
+    <h2><span>E</span>整宽区块 + 锚点跳转</h2>
+    <p class="note">点「详情」→ 平滑滚到下方整宽的「详细介绍」区块（它自己最高 200px 内滚动）。</p>
+    <div class="stage" data-stage="e"></div>
+  </section>
+
+  <section class="demo v-f">
+    <h2><span>F</span>Tab 分栏（简介 / 剧集）</h2>
+    <p class="note">简介与剧集拆成两个 Tab，页面最干净；属于详情页整体重做的范围。</p>
+    <div class="stage" data-stage="f"></div>
+  </section>
+</div>
+
+<script>
+const DATA = {
+  title: '玫瑰战争国语',
+  sub: '玫瑰的战争',
+  chips: ['2026', '港台剧', '更新至第18集'],
+  rows: [
+    ['导演', '钟澍佳'],
+    ['演员', '杨茜尧, 陈豪, 林夏薇, 马国明, 陈展鹏, 姚子羚, 傅嘉莉, 陈自瑶, 邝洁楹, 蔡洁'],
+    ['上映', '2026'],
+  ],
+  intro:
+    '一宗骇人的碎尸案，警察刘少杰发现自己太太夏无双是最大嫌疑犯，质疑她杀害富豪李耀天。随着刘少杰深入调查，偶像新星关子盈、金牌经理人苏嘉年、演员安安、名模富太梁菲雅，四位女明星先后被卷入案件，真相一层层剥开。' +
+    '刘少杰在追查过程中发现，每个人都在用自己的方式掩盖一段不愿被提起的过去，而最危险的往往不是凶手，而是那些看似无辜的旁观者。' +
+    '夏无双发现身边好闺蜜被李耀天控制，就连她的外甥女关子盈，也难逃李耀天魔掌，选择自杀解脱一生。她选择与警察刘少杰合作，联手瓦解李耀诚经营的黑暗酒吧王国。' +
+    '一眾女星重获自由，夏无双却发现杀害李耀天的人，竟然就是每天陪在自己身边的丈夫。案子结了，婚姻也散了，她带着女儿搬离旧居，重新学着做一个普通人。',
+};
+
+const chipsHTML = DATA.chips.map(c => `<span>${c}</span>`).join('');
+const rowsHTML = DATA.rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+const teaserHTML = (extra = '') =>
+  `<dt>简介</dt><dd class="${extra}">${DATA.intro.slice(0, 54)}…<button class="more" type="button">详情</button></dd>`;
+
+function head(withIntro = true) {
+  return `
+    <div class="row">
+      <div class="poster">海报 2:3</div>
+      <div class="info">
+        <h3>${DATA.title}</h3>
+        <div class="sub">${DATA.sub}</div>
+        <div class="chips">${chipsHTML}</div>
+        <dl>
+          ${rowsHTML}
+          ${withIntro ? `<div>${teaserHTML('intro-cell')}</div>` : ''}
+        </dl>
+        <div class="actions">
+          <button class="btn primary">立即播放</button>
+          <button class="btn ghost">浏览剧集</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+const linesHTML = `
+  <div class="lines">
+    <b>线路</b>
+    <button class="on">三六资源 18 集</button>
+    <button>如意资源 18 集</button>
+    <button>非凡资源 17 集</button>
+  </div>`;
+
+/* A：原位浮层 */
+document.querySelector('[data-stage="a"]').innerHTML = head() + linesHTML + `
+  <div class="panel" data-panel>
+    <header><span>详细介绍</span><button class="close-x" type="button" data-close>关闭</button></header>
+    <div class="bd">${DATA.intro}</div>
+  </div>`;
+(() => {
+  const stage = document.querySelector('[data-stage="a"]');
+  const cell = stage.querySelector('.intro-cell');
+  const panel = stage.querySelector('[data-panel]');
+  const btn = stage.querySelector('.more');
+  const open = () => panel.classList.add('on');
+  const close = () => panel.classList.remove('on');
+  btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+  stage.querySelector('[data-close]').addEventListener('click', close);
+  document.addEventListener('click', (e) => { if (!cell.contains(e.target)) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+})();
+
+/* B：居中弹窗 */
+document.querySelector('[data-stage="b"]').innerHTML = head() + linesHTML + `
+  <div class="mask" data-mask></div>
+  <div class="modal" data-modal>
+    <header><span>详细介绍</span><button class="close-x" type="button" data-close>关闭</button></header>
+    <div class="bd">${DATA.intro}</div>
+  </div>`;
+(() => {
+  const stage = document.querySelector('[data-stage="b"]');
+  const mask = stage.querySelector('[data-mask]');
+  const modal = stage.querySelector('[data-modal]');
+  const open = () => { mask.classList.add('on'); modal.classList.add('on'); };
+  const close = () => { mask.classList.remove('on'); modal.classList.remove('on'); };
+  stage.querySelector('.more').addEventListener('click', open);
+  stage.querySelector('[data-close]').addEventListener('click', close);
+  mask.addEventListener('click', close);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+})();
+
+/* C：手机底部抽屉 */
+document.querySelector('[data-phone]').innerHTML = `
+  <div class="p-head">
+    <div class="p-poster">海报</div>
+    <div class="p-info">
+      <h3>${DATA.title}</h3>
+      <div class="chips">${chipsHTML}</div>
+      <div style="color:var(--ink-2);font-size:13px">${DATA.intro.slice(0, 40)}…<button class="more" type="button" style="font-size:13px">详情</button></div>
+    </div>
+  </div>
+  <div class="p-actions"><button class="btn primary" style="height:34px;font-size:13px">立即播放</button><button class="btn ghost" style="height:34px;font-size:13px">浏览剧集</button></div>
+  <div class="sheet" data-sheet>
+    <header><b style="font-size:15px">详细介绍</b><button class="close-x" type="button" data-close>关闭</button></header>
+    <div class="bd">${DATA.intro}</div>
+  </div>`;
+(() => {
+  const phone = document.querySelector('[data-phone]');
+  const sheet = phone.querySelector('[data-sheet]');
+  phone.querySelector('.more').addEventListener('click', () => sheet.classList.add('on'));
+  sheet.querySelector('[data-close]').addEventListener('click', () => sheet.classList.remove('on'));
+})();
+
+/* D：页内展开 */
+document.querySelector('[data-stage="d"]').innerHTML = head() + linesHTML;
+(() => {
+  const stage = document.querySelector('[data-stage="d"]');
+  const cell = stage.querySelector('.intro-cell');
+  let open = false;
+  const render = () => {
+    cell.classList.toggle('clamp', !open);
+    cell.innerHTML = open
+      ? `${DATA.intro}<button class="more" type="button">收起</button>`
+      : `${DATA.intro.slice(0, 54)}…<button class="more" type="button">详情</button>`;
+  };
+  cell.addEventListener('click', (e) => {
+    if (!e.target.closest('.more')) return;
+    e.stopPropagation();
+    open = !open;
+    render();
+  });
+  render();
+})();
+
+/* E：整宽区块 + 锚点 */
+document.querySelector('[data-stage="e"]').innerHTML = head() + linesHTML + `
+  <div class="anchor-block" data-anchor>
+    <h4>详细介绍</h4>
+    <p>${DATA.intro}</p>
+  </div>`;
+(() => {
+  const stage = document.querySelector('[data-stage="e"]');
+  const anchor = stage.querySelector('[data-anchor]');
+  stage.querySelector('.more').addEventListener('click', () => {
+    anchor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    anchor.classList.remove('flash');
+    void anchor.offsetWidth;
+    anchor.classList.add('flash');
+  });
+})();
+
+/* F：Tab 分栏 */
+document.querySelector('[data-stage="f"]').innerHTML = head(false) + `
+  <div class="tabs">
+    <button class="on" data-tab="intro">简介</button>
+    <button data-tab="eps">剧集</button>
+  </div>
+  <div class="pane" data-pane="intro"><p>${DATA.intro}</p></div>
+  <div class="pane" data-pane="eps" hidden>
+    <div class="eps">${Array.from({ length: 18 }, (_, i) => `<a href="#">第${String(i + 1).padStart(2, '0')}集</a>`).join('')}</div>
+  </div>`;
+(() => {
+  const stage = document.querySelector('[data-stage="f"]');
+  stage.querySelectorAll('[data-tab]').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      stage.querySelectorAll('[data-tab]').forEach((t) => t.classList.toggle('on', t === tab));
+      stage.querySelectorAll('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== tab.dataset.tab; });
+    });
+  });
+})();
+</script>
+</body>
+</html>
