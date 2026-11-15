@@ -103,10 +103,20 @@ onBeforeUnmount(stop);
     @mouseenter="stop"
     @mouseleave="start"
   >
+    <!-- 铺底：同一张图 cover + 模糊，宽图按宽度铺满后上下不足的部分由它补上 -->
     <div
       v-for="(layer, index) in layers"
-      :key="index"
-      class="absolute inset-0 bg-cover [background-position:50%_28%] transition-opacity duration-700 ease-out"
+      :key="`fill-${index}`"
+      class="absolute inset-0 scale-110 bg-cover [background-position:50%_28%] blur-2xl brightness-[0.45] transition-opacity duration-700 ease-out"
+      :class="layer.on ? 'opacity-100' : 'opacity-0'"
+      :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
+      aria-hidden="true"
+    />
+    <!-- 画面：宽度铺满、高度自适应（100% auto）。宽图不裁左右，竖图仍是现在的裁上下 -->
+    <div
+      v-for="(layer, index) in layers"
+      :key="`pic-${index}`"
+      class="absolute inset-0 bg-no-repeat [background-position:50%_28%] [background-size:100%_auto] transition-opacity duration-700 ease-out"
       :class="layer.on ? 'opacity-100' : 'opacity-0'"
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
