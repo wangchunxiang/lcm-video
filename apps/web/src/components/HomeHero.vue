@@ -10,23 +10,26 @@ import Container from './layout/Container.vue';
  * 所以左右边界与下方区块仍然对齐。
  */
 const props = defineProps<{
-  items: VodCardData[];
+  /** `bgImage` 是后台配的横幅图：有就整张显示（不裁），没有再拿封面放大裁切 */
+  items: Array<VodCardData & { bgImage?: string }>;
 }>();
 
 /** 轮播间隔，毫秒 */
 const INTERVAL = 7000;
 
+/** `banner` = 运营配的横幅图（contain 不裁）；`poster` = 竖版封面（cover 放大裁切） */
+type LayerFit = 'banner' | 'poster';
 
 const current = ref(0);
 /** 两图层交叉淡入：写入隐藏层再翻转 opacity，避免切图时闪黑 */
-const layers = ref<Array<{ src: string; on: boolean }>>([
-  { src: '', on: false },
-  { src: '', on: false },
+const layers = ref<Array<{ src: string; fit: LayerFit; on: boolean }>>([
+  { src: '', fit: 'poster', on: false },
+  { src: '', fit: 'poster', on: false },
 ]);
 let visible = 0;
 let timer: number | null = null;
 
-const hero = computed<VodCardData | undefined>(() => props.items[current.value]);
+const hero = computed<(VodCardData & { bgImage?: string }) | undefined>(() => props.items[current.value]);
 const metaParts = computed<string[]>(() => {
   const it = hero.value;
   if (!it) return [];
@@ -36,13 +39,20 @@ const metaParts = computed<string[]>(() => {
   );
 });
 
+/** 有横幅图就用它（整张显示）；否则用竖版封面（放大裁切） */
+function sourceOf(item: VodCardData & { bgImage?: string }): { src: string; fit: LayerFit } {
+  const banner = item.bgImage?.trim() ?? '';
+  return banner ? { src: banner, fit: 'banner' } : { src: item.cover, fit: 'poster' };
+}
+
 function show(index: number): void {
   const it = props.items[index];
   if (!it) return;
+  const next = sourceOf(it);
   const hidden = visible === 0 ? 1 : 0;
-  const outgoing = layers.value[visible] ?? { src: '', on: false };
-  layers.value[hidden] = { src: it.cover, on: true };
-  layers.value[visible] = { src: outgoing.src, on: false };
+  const outgoing = layers.value[visible] ?? { src: '', fit: 'poster', on: false };
+  layers.value[hidden] = { src: next.src, fit: next.fit, on: true };
+  layers.value[visible] = { src: outgoing.src, fit: outgoing.fit, on: false };
   visible = hidden;
   current.value = index;
 }
@@ -80,8 +90,8 @@ watch(
   () => {
     visible = 0;
     layers.value = [
-      { src: '', on: false },
-      { src: '', on: false },
+      { src: '', fit: 'poster', on: false },
+      { src: '', fit: 'poster', on: false },
     ];
     current.value = 0;
     if (!props.items.length) {
@@ -112,12 +122,15 @@ onBeforeUnmount(stop);
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
     />
-    <!-- 画面：contain 完整显示、完全不裁；宽图按宽度铺满，竖图两侧由模糊铺底补 -->
+    <!-- 画面：横幅图 contain 整张显示（不裁）；封面图 cover 放大裁切（原来的做法） -->
     <div
       v-for="(layer, index) in layers"
       :key="`pic-${index}`"
-      class="absolute inset-0 bg-contain bg-no-repeat bg-center transition-opacity duration-700 ease-out"
-      :class="layer.on ? 'opacity-100' : 'opacity-0'"
+      class="absolute inset-0 bg-no-repeat transition-opacity duration-700 ease-out"
+      :class="[
+        layer.fit === 'banner' ? 'bg-contain bg-center' : 'bg-cover [background-position:50%_28%]',
+        layer.on ? 'opacity-100' : 'opacity-0',
+      ]"
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
     />

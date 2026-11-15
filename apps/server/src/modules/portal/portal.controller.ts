@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { WEB_API_PREFIX } from '../../common/http/api-prefix';
 import { Public } from '../../common/decorators/public.decorator';
 import { PortalService } from './portal.service';
-import type { CategoryNode, EpisodeItem, PlayLine, SiteConfig, VodCard, VodRow } from './portal.service';
+import type { CategoryNode, EpisodeItem, HeroCard, PlayLine, SiteConfig, VodCard, VodRow } from './portal.service';
 
 /** 前台只读接口：全部公开，不需要登录。 */
 @Controller(WEB_API_PREFIX)
@@ -12,7 +12,7 @@ export class PortalController {
 
   /** 首页：分类树 + 分区卡片。 */
   @Get('home')
-  home(): Promise<{ categories: CategoryNode[]; hero: VodCard[]; rows: VodRow[] }> {
+  home(): Promise<{ categories: CategoryNode[]; hero: HeroCard[]; rows: VodRow[] }> {
     return this.portal.home();
   }
 

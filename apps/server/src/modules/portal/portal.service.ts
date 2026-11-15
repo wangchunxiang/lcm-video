@@ -39,6 +39,11 @@ export interface PlayLine {
   parseUrl: string;
 }
 
+/** hero 卡片：在 `VodCard` 之上带运营配的横幅图（空串表示没配，前端用封面放大裁切） */
+export interface HeroCard extends VodCard {
+  bgImage: string;
+}
+
 /** 一行卡片（首页分区）。 */
 export interface VodRow {
   title: string;
@@ -137,7 +142,7 @@ export class PortalService {
   }
 
   /** 首页：分类树 + hero 轮播 + 今日更新。 */
-  async home(): Promise<{ categories: CategoryNode[]; hero: VodCard[]; rows: VodRow[] }> {
+  async home(): Promise<{ categories: CategoryNode[]; hero: HeroCard[]; rows: VodRow[] }> {
     const [categories, hero, today] = await Promise.all([
       this.categories(),
       this.heroCards(),
@@ -161,13 +166,14 @@ export class PortalService {
    * 覆盖字段（标题 / 横幅图 / 角标）为空串时用影片自己的值：`NULLIF(...)` 把空串变成
    * NULL，外层 `COALESCE` 再取影片值。没配 hero 时返回空数组，由前台回落到今日更新。
    */
-  private async heroCards(): Promise<VodCard[]> {
+  private async heroCards(): Promise<HeroCard[]> {
     const rows = await this.dataSource.query<
       Array<{
         id: string;
         name: string;
         subName: string;
         cover: string;
+        bgImage: string | null;
         year: number;
         area: string;
         remarks: string;
@@ -179,7 +185,8 @@ export class PortalService {
       `SELECT v.id,
               COALESCE(NULLIF(h.title, ''), v.name) AS name,
               v.sub_name AS subName,
-              COALESCE(NULLIF(h.bg_image, ''), v.cover) AS cover,
+              v.cover,
+              h.bg_image AS bgImage,
               v.year, v.area,
               COALESCE(NULLIF(h.remarks, ''), v.remarks) AS remarks,
               v.episode_count AS episodeCount, v.category_id AS categoryId,
@@ -199,6 +206,7 @@ export class PortalService {
       name: row.name,
       subName: row.subName,
       cover: row.cover,
+      bgImage: row.bgImage ?? '',
       year: Number(row.year),
       area: row.area,
       remarks: row.remarks,

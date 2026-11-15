@@ -459,7 +459,7 @@ onBeforeUnmount(() => {
         </el-form-item>
         <el-form-item label="横幅图">
           <el-input v-model="form.bgImage" maxlength="1000" placeholder="留空使用影片封面" />
-          <div class="hint">hero 是通栏放大，2:3 海报铺满会被裁掉上下，建议填 16:9 或更宽的图。</div>
+          <div class="hint">填了横幅图就整张显示、不裁切（建议 16:9 或更宽）；留空则用影片封面放大裁切，竖版海报只能露出中间一条。</div>
         </el-form-item>
         <el-form-item label="角标文案">
           <el-input v-model="form.remarks" maxlength="255" placeholder="留空使用影片备注" />

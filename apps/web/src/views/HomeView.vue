@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { portal, type VodCard as VodCardData } from '../api/portal';
+import { portal, type HeroCard, type VodCard as VodCardData } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import HomeHero from '../components/HomeHero.vue';
@@ -43,7 +43,7 @@ const loading = ref(true);
 const error = ref('');
 const today = ref<VodCardData[]>([]);
 /** 后台配的 hero 轮播位；空数组表示没配过 */
-const hero = ref<VodCardData[]>([]);
+const hero = ref<HeroCard[]>([]);
 
 const sections = ref<Section[]>(
   CATEGORY_SECTIONS.map((section) => ({
@@ -56,7 +56,9 @@ const sections = ref<Section[]>(
 );
 
 /** hero 优先用后台配置的轮播位；一个都没配时回落到今日更新前 8 部，今日也没新片就整段不渲染 */
-const heroItems = computed(() => (hero.value.length ? hero.value : today.value.slice(0, HERO_SIZE)));
+const heroItems = computed<(VodCardData & { bgImage?: string })[]>(() =>
+  hero.value.length ? hero.value : today.value.slice(0, HERO_SIZE),
+);
 
 /** 首屏：今日更新（/home 一次请求，几十毫秒） */
 async function loadToday(): Promise<void> {
