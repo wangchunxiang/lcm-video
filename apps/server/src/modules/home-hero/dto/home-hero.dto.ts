@@ -104,3 +104,26 @@ export class UpdateHomeHeroDTO {
   @IsDateString({}, { message: '下线时间格式不正确' })
   endAt?: string | null;
 }
+
+/** 后台表格查询：关键词匹配片名或覆盖标题，status 0 隐藏 / 1 显示，空表示全部 */
+export class HomeHeroRowsDTO {
+  @IsOptional()
+  @IsString({ message: '关键词必须是字符串' })
+  @MaxLength(255, { message: '关键词最长 255 个字符' })
+  keyword?: string;
+
+  @IsOptional()
+  @Type(() => String)
+  @IsIn(['', '0', '1'], { message: '显示状态只能是 0 或 1' })
+  status?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '每页条数必须是整数' })
+  take?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: '偏移量必须是整数' })
+  skip?: number;
+}

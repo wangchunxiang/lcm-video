@@ -87,8 +87,35 @@ export class HomeHeroService extends AppCrudService<HomeHeroEntity> {
       throw error;
     }
   }
-  /** 后台表格：配置行 + 影片名/封面，按 `sort` 排好（上限 200，hero 位不会有这么多） */
-  async rows(): Promise<HomeHeroRow[]> {
+  /**
+   * 后台表格：配置行 + 影片名/封面/分类，按 `sort` 排好。
+   * 和采集源站那页一致：服务端过滤（关键词匹配片名或覆盖标题）+ 分页。
+   */
+  async rows(query: HomeHeroRowsQuery = {}): Promise<{ items: HomeHeroRow[]; total: number }> {
+    const take = Math.min(100, Math.max(1, Math.trunc(Number(query.take) || 20)));
+    const skip = Math.max(0, Math.trunc(Number(query.skip) || 0));
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    const keyword = (query.keyword ?? '').trim();
+    if (keyword) {
+      conditions.push('(v.name LIKE ? OR h.title LIKE ?)');
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+    if (query.status === '0' || query.status === '1') {
+      conditions.push('h.is_show = ?');
+      params.push(Number(query.status));
+    }
+    const whereSql = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const counted = await this.dataSource.query<Array<{ n: string | number }>>(
+      `SELECT COUNT(*) AS n
+         FROM lcm_home_hero h
+         LEFT JOIN lcm_vod v ON v.id = h.vod_id
+         ${whereSql}`,
+      params,
+    );
+
     const rows = await this.dataSource.query<HomeHeroRawRow[]>(
       `SELECT h.id, h.vod_id AS vodId, h.title, h.sub_title AS subTitle, h.bg_image AS bgImage,
               h.remarks, h.sort, h.is_show AS isShow, h.start_at AS startAt, h.end_at AS endAt,
@@ -98,19 +125,25 @@ export class HomeHeroService extends AppCrudService<HomeHeroEntity> {
          FROM lcm_home_hero h
          LEFT JOIN lcm_vod v ON v.id = h.vod_id
          LEFT JOIN lcm_category c ON c.id = v.category_id
+         ${whereSql}
         ORDER BY h.sort ASC, h.id ASC
-        LIMIT 200`,
+        LIMIT ? OFFSET ?`,
+      [...params, take, skip],
     );
+
     const now = Date.now();
-    return rows.map((row) => ({
-      ...row,
-      vodYear: Number(row.vodYear),
-      sort: Number(row.sort),
-      isShow: Number(row.isShow),
-      startAt: row.startAt ? new Date(row.startAt) : null,
-      endAt: row.endAt ? new Date(row.endAt) : null,
-      live: Number(row.isShow) === 1 && inWindow(row.startAt, row.endAt, now),
-    }));
+    return {
+      total: Number(counted[0]?.n ?? 0),
+      items: rows.map((row) => ({
+        ...row,
+        vodYear: Number(row.vodYear),
+        sort: Number(row.sort),
+        isShow: Number(row.isShow),
+        startAt: row.startAt ? new Date(row.startAt) : null,
+        endAt: row.endAt ? new Date(row.endAt) : null,
+        live: Number(row.isShow) === 1 && inWindow(row.startAt, row.endAt, now),
+      })),
+    };
   }
 
 }
@@ -139,6 +172,14 @@ export interface HomeHeroRow {
   endAt: Date | null;
   /** 按当前时间算是否真的在轮播（is_show = 1 且落在上下线区间内） */
   live: boolean;
+}
+
+/** 后台表格查询参数（与 `HomeHeroRowsDTO` 对应） */
+export interface HomeHeroRowsQuery {
+  keyword?: string;
+  status?: string;
+  take?: number;
+  skip?: number;
 }
 
 /** 原生查询回的原始行：计数与日期列可能是字符串，统一在 `rows()` 里转 */
