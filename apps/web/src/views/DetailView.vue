@@ -396,18 +396,18 @@ useSeo(() => ({
 
         <div
           v-if="episodesShown.length"
-          class="max-h-[420px] overflow-y-auto transition-opacity"
+          class="max-h-[var(--ep-max-h)] overflow-y-auto transition-opacity"
           :class="epLoading ? 'pointer-events-none opacity-40' : ''"
           :aria-busy="epLoading"
         >
-          <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+          <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <RouterLink
               v-for="ep in episodesShown"
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
               :aria-current="currentEp === ep.index ? 'page' : undefined"
-              class="h-[30px] truncate rounded bg-surface-2 text-center text-caption leading-[30px] transition hover:bg-surface-3 hover:text-ink"
+              class="h-[var(--ep-cell-h)] truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] transition hover:bg-surface-3 hover:text-ink"
               :class="currentEp === ep.index ? 'bg-primary text-white hover:bg-primary hover:text-white' : 'text-ink-2'"
             >
               {{ ep.name }}
