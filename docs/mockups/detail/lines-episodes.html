@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>详情/播放页 · 线路与剧集的 6 种排布</title>
+<style>
+  :root {
+    --bg: #0a0c0f; --surface: #171a20; --surface-2: #1c2027; --surface-3: #232830;
+    --line: #2a303a; --ink: #e6e8eb; --ink-2: #a9b0ba; --ink-3: #7f8792;
+    --primary: #3b82f6; --primary-weak: rgba(59,130,246,.16); --glass: rgba(10,12,15,.55);
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 0 64px; background: var(--bg); color: var(--ink);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  h1.page { margin: 0 0 6px; font-size: 22px; }
+  p.lead { margin: 0 0 28px; color: var(--ink-3); font-size: 13px; }
+
+  .demo { margin-bottom: 36px; }
+  .demo > h2 { margin: 0 0 4px; font-size: 16px; }
+  .demo > h2 span { color: var(--primary); margin-right: 8px; }
+  .demo > .note { margin: 0 0 12px; color: var(--ink-3); font-size: 13px; }
+  .stage { border: 1px solid var(--line); border-radius: 10px; padding: 16px;
+    background: radial-gradient(900px 260px at 10% 0%, rgba(59,130,246,.08), transparent 62%), var(--bg); }
+
+  .label { width: 32px; flex: none; font-size: 13px; color: var(--ink-3); }
+  .rowline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+  .chip { height: 32px; padding: 0 16px; border: 0; border-radius: 4px; background: var(--surface);
+    color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+  .chip:hover { background: var(--surface-2); color: var(--ink); }
+  .chip.on { background: var(--primary-weak); color: var(--primary); }
+  .chip small { color: var(--ink-3); margin-left: 4px; font-size: 12px; }
+  .chip.on small { color: var(--primary); }
+
+  .grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+  .grid a { display: block; height: 30px; line-height: 30px; text-align: center; border-radius: 4px;
+    background: var(--surface-2); color: var(--ink-2); font-size: 12px; text-decoration: none; }
+  .grid a:hover { background: var(--surface-3); color: var(--ink); }
+  .grid a.on { background: var(--primary); color: #fff; }
+
+  /* B 下拉 */
+  .select { position: relative; display: inline-block; }
+  .select > button { height: 32px; padding: 0 12px; display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink-2);
+    font: inherit; font-size: 13px; cursor: pointer; }
+  .select > button:hover { border-color: rgba(42,48,58,.5); color: var(--ink); }
+  .select .menu { position: absolute; left: 0; top: 38px; z-index: 5; min-width: 180px; padding: 4px;
+    display: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+  .select.open .menu { display: block; }
+  .select .menu button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 8px 12px; border: 0; border-radius: 4px; background: none; color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+  .select .menu button:hover { background: var(--surface-2); color: var(--ink); }
+  .select .menu button.on { color: var(--primary); }
+
+  /* C 线路卡片 */
+  .cards { display: flex; flex-wrap: wrap; gap: 8px; }
+  .card { min-width: 168px; padding: 8px 12px; text-align: left; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); color: var(--ink-2); font: inherit; cursor: pointer; }
+  .card b { display: block; color: var(--ink); font-size: 13px; font-weight: 500; }
+  .card span { font-size: 12px; color: var(--ink-3); }
+  .card.on { border-color: rgba(59,130,246,.45); background: var(--primary-weak); }
+  .card.on b, .card.on span { color: var(--primary); }
+
+  /* F 播放页两栏 */
+  .play { display: flex; gap: 24px; align-items: flex-start; }
+  .player { flex: 1; min-width: 0; aspect-ratio: 16/9; border-radius: 8px;
+    background: repeating-linear-gradient(135deg, #10151c, #10151c 12px, #0c1116 12px, #0c1116 24px);
+    display: grid; place-items: center; color: var(--ink-3); font-size: 13px; }
+  .side { width: 380px; flex: none; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px; }
+  .side h4 { margin: 0 0 12px; font-size: 13px; font-weight: 400; color: var(--ink-3); }
+  .side .grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+  .more { margin-top: 12px; height: 32px; padding: 0 16px; border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface); color: var(--ink-2); font: inherit; font-size: 13px; cursor: pointer; }
+  .more:hover { border-color: rgba(42,48,58,.5); color: var(--ink); }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .play { flex-direction: column; }
+    .side { width: 100%; }
+    .side .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="page">详情 / 播放页 · 线路与剧集的 6 种排布</h1>
+  <p class="lead">同一份数据：5 条线路、18 集；D 用 132 集演示长剧。A 是当前线上形态，其余为候选。</p>
+
+  <section class="demo"><h2><span>A</span>现状：线路 chips 一行 + 选集 8 列网格</h2>
+    <p class="note">最简单的排法：线路横排可换，选集固定 8 列，视觉上和列表页筛选一致。</p>
+    <div class="stage" data-a></div>
+  </section>
+
+  <section class="demo"><h2><span>B</span>线路下拉 + 选集网格</h2>
+    <p class="note">线路多时（5 条以上）不占横向空间，一行就够；代价是换线路要多点一次。</p>
+    <div class="stage" data-b></div>
+  </section>
+
+  <section class="demo"><h2><span>C</span>线路卡片（资源名 + 集数 + 状态）</h2>
+    <p class="note">每条线路一张卡，信息量最大：能显示集数、更新状态，选中态用边框+淡蓝底；缺点是占高度。</p>
+    <div class="stage" data-c></div>
+  </section>
+
+  <section class="demo"><h2><span>D</span>选集分段（长剧专用）</h2>
+    <p class="note">132 集不再平铺，按 1–50 / 51–100 / 101–132 分段切换；每段内仍是网格。</p>
+    <div class="stage" data-d></div>
+  </section>
+
+  <section class="demo"><h2><span>E</span>选集折叠（先给最近 12 集）</h2>
+    <p class="note">默认只展示前 12 集 +「展开全部 18 集」，首屏更干净；剧集多时配合 D 的分段更好。</p>
+    <div class="stage" data-e></div>
+  </section>
+
+  <section class="demo"><h2><span>F</span>播放页两栏：线路下拉 + 右侧选集</h2>
+    <p class="note">播放页右侧 380px 栏：顶部线路下拉，下面选集网格 5 列；左侧播放器 16:9。</p>
+    <div class="stage" data-f></div>
+  </section>
+</div>
+
+<script>
+const LINES = [
+  { name: '三六资源', eps: 18 },
+  { name: '如意资源', eps: 18 },
+  { name: '非凡资源', eps: 17 },
+  { name: '电影天堂', eps: 18 },
+  { name: '西瓜资源', eps: 18 },
+];
+const ep = (i) => String(i).padStart(2, '0');
+const gridHTML = (from, to, active = 0) =>
+  Array.from({ length: to - from + 1 }, (_, k) => {
+    const n = from + k;
+    return `<a href="#" class="${n === active ? 'on' : ''}">第${ep(n)}集</a>`;
+  }).join('');
+const chipsHTML = (active = 0) =>
+  LINES.map((l, i) => `<button class="chip ${i === active ? 'on' : ''}" type="button">${l.name}<small>${l.eps} 集</small></button>`).join('');
+
+/* A 现状 */
+document.querySelector('[data-a]').innerHTML =
+  `<div class="rowline"><span class="label">线路</span>${chipsHTML()}</div>` +
+  `<div class="grid">${gridHTML(1, 18, 1)}</div>`;
+document.querySelector('[data-a]').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  chip.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === chip));
+});
+
+/* B 下拉 */
+document.querySelector('[data-b]').innerHTML =
+  `<div class="rowline">
+     <span class="label">线路</span>
+     <div class="select" data-select>
+       <button type="button">三六资源 · 18 集 ▾</button>
+       <div class="menu">${LINES.map((l, i) => `<button type="button" class="${i === 0 ? 'on' : ''}"><span>${l.name}</span><span>${l.eps} 集</span></button>`).join('')}</div>
+     </div>
+   </div>
+   <div class="grid">${gridHTML(1, 18, 1)}</div>`;
+(() => {
+  const sel = document.querySelector('[data-b] [data-select]');
+  const label = sel.querySelector('button');
+  label.addEventListener('click', (e) => { e.stopPropagation(); sel.classList.toggle('open'); });
+  sel.querySelectorAll('.menu button').forEach((b) => b.addEventListener('click', () => {
+    sel.querySelectorAll('.menu button').forEach((x) => x.classList.toggle('on', x === b));
+    label.textContent = `${b.children[0].textContent} · ${b.children[1].textContent} ▾`;
+    sel.classList.remove('open');
+  }));
+  document.addEventListener('click', () => sel.classList.remove('open'));
+})();
+
+/* C 卡片 */
+document.querySelector('[data-c]').innerHTML =
+  `<div class="rowline"><span class="label">线路</span>
+     <div class="cards">${LINES.map((l, i) => `<button class="card ${i === 0 ? 'on' : ''}" type="button"><b>${l.name}</b><span>${l.eps} 集 · ${l.eps === 17 ? '更新中' : '已完结'}</span></button>`).join('')}</div>
+   </div>
+   <div class="grid">${gridHTML(1, 18, 1)}</div>`;
+document.querySelector('[data-c]').addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  document.querySelectorAll('[data-c] .card').forEach((c) => c.classList.toggle('on', c === card));
+});
+
+/* D 分段 */
+const RANGES = [[1, 50], [51, 100], [101, 132]];
+document.querySelector('[data-d]').innerHTML =
+  `<div class="rowline"><span class="label">线路</span>${chipsHTML()}</div>
+   <div class="rowline"><span class="label">选集</span>
+     ${RANGES.map(([a, b], i) => `<button class="chip ${i === 0 ? 'on' : ''}" type="button" data-range="${i}">${a}–${b}</button>`).join('')}
+   </div>
+   <div class="grid" data-eps>${gridHTML(1, 50, 1)}</div>`;
+(() => {
+  const stage = document.querySelector('[data-d]');
+  const eps = stage.querySelector('[data-eps]');
+  stage.querySelectorAll('[data-range]').forEach((b) => b.addEventListener('click', () => {
+    stage.querySelectorAll('[data-range]').forEach((x) => x.classList.toggle('on', x === b));
+    const [a, c] = RANGES[Number(b.dataset.range)];
+    eps.innerHTML = gridHTML(a, c, a);
+  }));
+})();
+
+/* E 折叠 */
+document.querySelector('[data-e]').innerHTML =
+  `<div class="rowline"><span class="label">线路</span>${chipsHTML()}</div>
+   <div class="grid" data-eps>${gridHTML(1, 12, 1)}</div>
+   <button class="more" type="button" data-toggle>展开全部 18 集</button>`;
+(() => {
+  const stage = document.querySelector('[data-e]');
+  const eps = stage.querySelector('[data-eps]');
+  const btn = stage.querySelector('[data-toggle]');
+  let open = false;
+  btn.addEventListener('click', () => {
+    open = !open;
+    eps.innerHTML = open ? gridHTML(1, 18, 1) : gridHTML(1, 12, 1);
+    btn.textContent = open ? '收起' : '展开全部 18 集';
+  });
+})();
+
+/* F 播放页两栏 */
+document.querySelector('[data-f]').innerHTML = `
+  <div class="play">
+    <div class="player">播放器 16:9</div>
+    <aside class="side">
+      <h4>线路</h4>
+      <div class="select" data-select style="width:100%">
+        <button type="button" style="width:100%;justify-content:space-between">三六资源 · 18 集 ▾</button>
+        <div class="menu" style="width:100%">${LINES.map((l, i) => `<button type="button" class="${i === 0 ? 'on' : ''}"><span>${l.name}</span><span>${l.eps} 集</span></button>`).join('')}</div>
+      </div>
+      <h4 style="margin-top:16px">选集</h4>
+      <div class="grid">${gridHTML(1, 18, 1)}</div>
+    </aside>
+  </div>`;
+(() => {
+  const sel = document.querySelector('[data-f] [data-select]');
+  const label = sel.querySelector('button');
+  label.addEventListener('click', (e) => { e.stopPropagation(); sel.classList.toggle('open'); });
+  sel.querySelectorAll('.menu button').forEach((b) => b.addEventListener('click', () => {
+    label.textContent = `${b.children[0].textContent} · ${b.children[1].textContent} ▾`;
+    sel.classList.remove('open');
+  }));
+  document.addEventListener('click', () => sel.classList.remove('open'));
+})();
+</script>
+</body>
+</html>

@@ -35,6 +35,26 @@ const currentEp = computed(() => {
   return Number.isFinite(value) && value > 0 ? value : 0;
 });
 
+/** 选集排序：倒序 = 最新集在前，偏好存 localStorage（长番追更常用） */
+const EP_ORDER_KEY = 'lcm:ep-order';
+const epDesc = ref(false);
+try {
+  epDesc.value = localStorage.getItem(EP_ORDER_KEY) === 'desc';
+} catch {
+  epDesc.value = false;
+}
+
+const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
+
+function toggleEpOrder(): void {
+  epDesc.value = !epDesc.value;
+  try {
+    localStorage.setItem(EP_ORDER_KEY, epDesc.value ? 'desc' : 'asc');
+  } catch {
+    /* 隐私模式写不进去，忽略 */
+  }
+}
+
 const categoryName = computed(() => vod.value?.categoryName ?? '影片');
 /** 影片挂在二级分类上（如「港台剧」），这里回溯到一级分类，给「浏览分类」按钮落地址 */
 const topCategory = computed(() => {
@@ -337,31 +357,44 @@ useSeo(() => ({
 
       <Container class="pt-4">
         <section v-if="lines.length" class="pb-4">
-        <div class="mb-4 flex flex-wrap items-baseline gap-x-4 gap-y-2">
-          <span class="w-8 flex-none text-small text-ink-3">线路</span>
-          <button
-            v-for="line in lines"
-            :key="line.id"
-            type="button"
-            class="inline-flex h-8 cursor-pointer items-center rounded px-4 text-small transition"
-            :class="
-              selectedLine?.id === line.id
-                ? 'bg-primary-weak text-primary'
-                : 'bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink'
-            "
-            :aria-pressed="selectedLine?.id === line.id"
-            @click="selectLine(line.id)"
+        <div class="mb-4 flex items-end gap-4 border-b border-line">
+          <div
+            role="tablist"
+            class="-mb-px flex min-w-0 flex-1 gap-4 overflow-x-auto sm:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {{ line.name }}
-            <span class="ml-1 text-caption text-ink-3">{{ line.episodes }} 集</span>
+            <button
+              v-for="line in lines"
+              :id="`line-tab-${line.id}`"
+              :key="line.id"
+              type="button"
+              role="tab"
+              class="flex-none cursor-pointer whitespace-nowrap pb-2 pt-2 text-body transition"
+              :class="
+                selectedLine?.id === line.id
+                  ? 'text-primary shadow-[inset_0_-2px_0_var(--color-primary)]'
+                  : 'text-ink-2 hover:text-ink'
+              "
+              :aria-selected="selectedLine?.id === line.id"
+              @click="selectLine(line.id)"
+            >
+              {{ line.name }}
+            </button>
+          </div>
+          <button
+            type="button"
+            class="-mb-px flex-none cursor-pointer pb-2 pt-2 text-small text-ink-3 transition hover:text-ink"
+            :title="epDesc ? '当前倒序，点击切回正序' : '当前正序，点击切换为倒序'"
+            @click="toggleEpOrder"
+          >
+            {{ epDesc ? '倒序' : '正序' }}
           </button>
         </div>
 
         <p v-if="epLoading" class="py-8 text-center text-body text-ink-3">剧集加载中…</p>
-        <div v-else-if="episodes.length" class="max-h-[420px] overflow-y-auto">
+        <div v-else-if="episodesShown.length" class="max-h-[420px] overflow-y-auto">
           <div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <RouterLink
-              v-for="ep in episodes"
+              v-for="ep in episodesShown"
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
