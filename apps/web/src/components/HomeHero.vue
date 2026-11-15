@@ -111,9 +111,9 @@ onBeforeUnmount(stop);
       :style="layer.src ? { backgroundImage: `url(${layer.src})` } : undefined"
       aria-hidden="true"
     />
-    <!-- 遮罩：左侧只做很轻的过渡（海报要看得到），文字靠投影兜底；底部接到页面底色 -->
+    <!-- 遮罩：只留底部渐变（把 hero 底边接到页面底色 + 压住文字带），横向不再压暗 -->
     <div
-      class="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,12,15,0.80)_3%,rgba(10,12,15,0.55)_36%,rgba(10,12,15,0.14)_66%,rgba(10,12,15,0)_88%),linear-gradient(0deg,#0a0c0f_0%,rgba(10,12,15,0)_48%)]"
+      class="absolute inset-0 bg-[linear-gradient(0deg,#0a0c0f_0%,rgba(10,12,15,0.88)_16%,rgba(10,12,15,0.55)_38%,rgba(10,12,15,0)_64%)]"
       aria-hidden="true"
     />
 
