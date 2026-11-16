@@ -60,20 +60,20 @@
   /* 页面级语义间距 */
   /* 布局只用四档：4 / 8 / 16 / 32（见 docs/样式规范-v3.md §间距）；12、20 只给组件内部 */
 
-  /* 字号层级 */
+  /* 字号层级：只有 6 档 —— 12 角标 / 14 正文 / 16 强调与片名 / 18 小标题 / 22 区块标题与站名 / 64 超大数字 */
   --fs-caption: 12px;
-  --fs-small: 13px;
+  --fs-small: 14px;
   --fs-body: 14px;
-  --fs-emphasis: 15px;
+  --fs-emphasis: 16px;
   --fs-vod: 16px;
   /* 输入框在手机上的字号下限：低于 16px 时 iOS 聚焦会自动放大页面 */
   --fs-input: 16px;
   --fs-title: 18px;
   --fs-nav: 18px;
-  /* 顶部导航：一级分类横排，14.5px 更紧凑 */
-  --fs-nav-sm: 14.5px;
+  /* 顶部导航：一级分类横排，手机与桌面同一档 */
+  --fs-nav-sm: 16px;
   --fs-logo: 22px;
-  --fs-page-title: 21px;
+  --fs-page-title: 22px;
   --fs-section: 22px;
   --fs-display: 64px;
   /* 首页每块取 16 部（8 列 × 2 行），列数由 VodGrid 的断点决定，不需要额外的卡片宽度令牌 */

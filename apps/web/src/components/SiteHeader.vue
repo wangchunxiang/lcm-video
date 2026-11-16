@@ -33,7 +33,7 @@ const navCategories = computed(() => site.categories.slice(0, 6));
 
 /** 导航就是一行文字：选中项变强调色，不做按钮/下划线 */
 const NAV =
-  'inline-flex flex-none items-center gap-1 whitespace-nowrap text-small text-ink-2 transition hover:text-ink sm:text-nav-sm [&.router-link-active]:text-primary';
+  'inline-flex flex-none items-center gap-1 whitespace-nowrap text-nav-sm text-ink-2 transition hover:text-ink [&.router-link-active]:text-primary';
 
 /** 分类图标：小屏 14px、桌面 16px，够用又不占地方 */
 const NAV_ICON = 'h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4';
@@ -86,7 +86,7 @@ function submitMobile(): void {
   <header class="sticky top-0 z-50 border-b border-line/70 bg-glass backdrop-blur-xl">
     <Container>
       <div
-        class="h-[var(--header-h)] items-center gap-2 lg:gap-8"
+        class="h-[var(--header-h)] items-center gap-1 lg:gap-8"
         :class="searchOpen ? 'hidden lg:flex' : 'flex'"
       >
         <RouterLink to="/" class="flex flex-none items-center gap-2 transition-opacity hover:opacity-90">
@@ -105,7 +105,7 @@ function submitMobile(): void {
         </RouterLink>
 
         <nav
-          class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto sm:gap-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-8"
+          class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-8"
           aria-label="分类导航"
         >
           <RouterLink to="/" :class="NAV">
