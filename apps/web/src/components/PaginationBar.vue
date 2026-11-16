@@ -11,11 +11,16 @@ const emit = defineEmits<{ change: [page: number] }>();
 
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / Math.max(1, props.pageSize))));
 
-/** 与 v2 一致：当前页前后各 2 页，最多 5 个页码。 */
+/** 与 v2 一致：当前页前后各 2 页，最多 5 个页码；末尾几页向前补足，窗口不会缩水。 */
+const WINDOW_SIZE = 5;
+
 const windowPages = computed<number[]>(() => {
-  const start = Math.max(1, props.page - 2);
-  const end = Math.min(pageCount.value, start + 4);
-  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index);
+  const count = pageCount.value;
+  const size = Math.min(WINDOW_SIZE, count);
+  let start = Math.max(1, props.page - 2);
+  // 最后几页：向前对齐，始终保持 5 个，否则点「尾页」后页码条只剩 3 个
+  if (start + size - 1 > count) start = Math.max(1, count - size + 1);
+  return Array.from({ length: size }, (_, index) => start + index);
 });
 
 const BTN =

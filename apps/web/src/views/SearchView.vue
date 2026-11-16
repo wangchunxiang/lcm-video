@@ -97,6 +97,18 @@ watch(wd, (value) => {
 });
 watch([wd, page, year, sort, pageSize], load, { immediate: true });
 
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
+
+/** 同列表页：page 超出实际页数时纠正到最后一页，否则空结果连分页条都没有 */
+watch(
+  [page, pageCount, loaded],
+  () => {
+    if (!loaded.value || !total.value) return;
+    if (page.value > pageCount.value) setQuery({ page: String(pageCount.value) }, true);
+  },
+  { flush: 'post' },
+);
+
 useSeo(() => ({
   title: wd.value ? `搜索：${wd.value} - ${site.config.siteName}` : `搜索 - ${site.config.siteName}`,
   description: `在 ${site.config.siteName} 搜索影片`,

@@ -89,6 +89,24 @@ async function load(): Promise<void> {
 
 watch([alias, page, type, year, sort, pageSize], load, { immediate: true });
 
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
+
+/**
+ * 当前页超出实际页数时纠正到最后一页。
+ *
+ * 两种常见来源：手工改 URL 的 `?page=99999`；以及站里一直在采集，改天总量变少后旧的
+ * 「尾页」地址就失效了。落到空页时列表显示「暂无影片」、分页条又按「有内容才渲染」的规则
+ * 消失，等于没路可退。等 `data` 到位再判断，避免首屏 total=0 时把 page 误拉回 1。
+ */
+watch(
+  [page, pageCount, data],
+  () => {
+    if (!data.value) return;
+    if (page.value > pageCount.value) goPage(pageCount.value);
+  },
+  { flush: 'post' },
+);
+
 useSeo(() => ({
   title: `${categoryName.value}在线观看 - ${site.config.siteName}`,
   description: `${categoryName.value}频道：${site.config.siteSubtitle}`,
