@@ -13,6 +13,8 @@ export default defineConfig({
   server: {
     port: 3300,
     strictPort: true,
+    // 默认只监听 localhost，手机/平板访问局域网 IP 打不开；这里显式监听所有网卡
+    host: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3100',
