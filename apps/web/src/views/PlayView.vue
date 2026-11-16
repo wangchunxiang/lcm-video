@@ -39,6 +39,15 @@ const player = computed(() => site.config.player);
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
 const nextEpItem = computed(() => (nextEp.value ? episodes.value[nextEp.value - 1] : null));
 
+/** 标题右侧的小字：当前集 + 源站备注（线路名与总集数在下拉里已有，不重复） */
+const subtitle = computed(() => {
+  const parts: string[] = [];
+  if (episodes.value.length > 1 && epItem.value) parts.push(epItem.value.name);
+  const remarks = vod.value?.remarks ?? '';
+  if (remarks) parts.push(remarks);
+  return parts.join(' · ');
+});
+
 async function load(): Promise<void> {
   const seq = ++requestSeq;
   const vodId = String(route.params.id || '');
@@ -271,9 +280,7 @@ useSeo(() => ({
         >
           {{ vod.name }}
         </RouterLink>
-        <span class="shrink-0 truncate text-caption text-ink-3">
-          {{ epItem?.name }} · {{ line.name }} · 共 {{ episodes.length }} 集
-        </span>
+        <span class="shrink-0 truncate text-caption text-ink-3">{{ subtitle }}</span>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
