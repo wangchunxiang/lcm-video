@@ -20,13 +20,9 @@ const error = ref('');
 const lineOpen = ref(false);
 const countdown = ref(0);
 const epsRef = ref<HTMLDivElement | null>(null);
-const epsWrapRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
-/** 选集区高度按整行吸附，避免底部露出半行 */
-const epsHeight = ref(0);
 
 let countdownTimer: number | undefined;
-let epsObserver: ResizeObserver | null = null;
 let requestSeq = 0;
 
 const vod = computed(() => play.value?.vod ?? null);
@@ -222,35 +218,8 @@ watch(
 
 watch(current, () => void scrollToCurrent());
 
-/**
- * 选集区高度按整行吸附：容器高度随卡片剩余空间变化，
- * 直接用 max-height 会在底部露出半行，这里量一次可用高度再算成整数行。
- */
-function measureEpisodes(): void {
-  const wrap = epsWrapRef.value;
-  if (!wrap) return;
-  const style = getComputedStyle(wrap);
-  const cell = Number.parseFloat(style.getPropertyValue('--ep-cell-h')) || 30;
-  const gap = Number.parseFloat(style.getPropertyValue('--ep-gap')) || 8;
-  const max = Number.parseFloat(style.getPropertyValue('--ep-max-h')) || 372;
-  const available = Math.min(wrap.clientHeight, max);
-  if (available <= 0) return;
-  const rows = Math.max(1, Math.floor((available + gap) / (cell + gap)));
-  epsHeight.value = rows * cell + (rows - 1) * gap;
-}
-
-watch(epsWrapRef, (wrap) => {
-  epsObserver?.disconnect();
-  epsObserver = null;
-  if (!wrap) return;
-  epsObserver = new ResizeObserver(() => measureEpisodes());
-  epsObserver.observe(wrap);
-  measureEpisodes();
-});
-
 onBeforeUnmount(() => {
   stopCountdown();
-  epsObserver?.disconnect();
 });
 
 useSeo(() => ({
@@ -364,11 +333,10 @@ useSeo(() => ({
             </div>
           </div>
 
-          <div ref="epsWrapRef" class="min-h-0 flex-1 max-lg:max-h-[var(--ep-max-h)]">
+          <div class="min-h-0 flex-1 max-lg:max-h-[var(--ep-max-h)]">
             <div
               ref="epsRef"
-              class="grid grid-cols-4 gap-2 overflow-y-auto"
-              :style="epsHeight ? { height: `${epsHeight}px` } : undefined"
+              class="grid h-full grid-cols-4 content-start gap-2 overflow-y-auto"
             >
               <button
                 v-for="ep in episodes"
