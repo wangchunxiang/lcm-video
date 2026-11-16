@@ -22,18 +22,25 @@ const introOpen = ref(false);
 const vod = computed(() => data.value?.vod ?? null);
 const lines = computed(() => data.value?.lines ?? []);
 
-const queryLine = computed(() => (typeof route.query.line === 'string' ? route.query.line : ''));
+/**
+ * 当前选中的线路只存在页面里（不进 URL）：地址栏保持 `/detail/:id`，
+ * 点线路 tab 不产生导航，刷新或从别处回来默认第一条线路。
+ */
+const selectedLineId = ref('');
 
-/** URL 里的 line 是线路 id；缺失或失效时回落到第一条线路。 */
 const selectedLine = computed(() => {
   if (!lines.value.length) return null;
-  return lines.value.find((line) => line.id === queryLine.value) ?? lines.value[0];
+  return lines.value.find((line) => line.id === selectedLineId.value) ?? lines.value[0];
 });
 
-const currentEp = computed(() => {
-  const value = Number(route.query.ep);
-  return Number.isFinite(value) && value > 0 ? value : 0;
-});
+/** 详情数据就绪（或换片）后默认选第一条线路 */
+watch(
+  lines,
+  (list) => {
+    selectedLineId.value = list[0]?.id ?? '';
+  },
+  { immediate: true },
+);
 
 /** 选集排序：倒序 = 最新集在前，偏好存 localStorage（长番追更常用） */
 const EP_ORDER_KEY = 'lcm:ep-order';
@@ -187,6 +194,13 @@ onMounted(() => {
   document.addEventListener('keydown', onKeydown);
   // 字体加载完成后宽高会变一次，再量一遍更稳（系统字体通常已就绪，开销可忽略）
   void document.fonts?.ready.then(fitIntro);
+  // 旧链接里的 ?line= / ?ep= 已不再使用（线路改存在页面里），清掉让地址栏保持干净
+  if (route.query.line !== undefined || route.query.ep !== undefined) {
+    const rest = { ...route.query };
+    delete rest.line;
+    delete rest.ep;
+    void router.replace({ name: 'detail', params: { id: id.value }, query: rest });
+  }
 });
 
 onBeforeUnmount(() => {
@@ -196,11 +210,7 @@ onBeforeUnmount(() => {
 });
 
 function selectLine(lineId: string): void {
-  void router.replace({
-    name: 'detail',
-    params: { id: id.value },
-    query: { ...route.query, line: lineId, ep: undefined },
-  });
+  selectedLineId.value = lineId;
 }
 
 /** 上一轮选集请求的序号：快速连点线路时，先发后到的响应直接丢弃 */
@@ -406,9 +416,7 @@ useSeo(() => ({
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
-              :aria-current="currentEp === ep.index ? 'page' : undefined"
-              class="h-[var(--ep-cell-h)] truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] transition hover:bg-surface-3 hover:text-ink"
-              :class="currentEp === ep.index ? 'bg-primary text-white hover:bg-primary hover:text-white' : 'text-ink-2'"
+              class="h-[var(--ep-cell-h)] truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] text-ink-2 transition hover:bg-surface-3 hover:text-ink"
             >
               {{ ep.name }}
             </RouterLink>
