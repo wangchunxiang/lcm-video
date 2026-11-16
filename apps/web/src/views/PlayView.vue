@@ -319,53 +319,57 @@ useSeo(() => ({
         </div>
       </div>
 
-      <!-- 工具栏：上一集 / 下一集 / 片名 / 自动连播开关 -->
-      <div class="mt-4 flex flex-wrap items-center gap-2 border-b border-line pb-3">
-        <button
-          type="button"
-          class="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-line bg-surface-2 px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:text-line"
-          :disabled="!prevEp"
-          @click="selectEp(prevEp)"
-        >
-          <ChevronLeft :size="16" class="shrink-0" />
-          上一集
-        </button>
-        <button
-          type="button"
-          class="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-line bg-surface-2 px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:text-line"
-          :disabled="!nextEp"
-          @click="selectEp(nextEp)"
-        >
-          下一集
-          <ChevronRight :size="16" class="shrink-0" />
-        </button>
+      <!-- 标题行：片名 + 当前集，右端是播放控制（上一集 / 下一集 / 自动连播） -->
+      <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div class="flex min-w-0 flex-1 basis-full items-baseline gap-3 sm:basis-auto">
+          <RouterLink
+            :to="`/detail/${vod.id}`"
+            :title="vod.name"
+            class="min-w-0 truncate text-[20px] font-semibold leading-tight text-ink hover:text-primary"
+          >
+            {{ vod.name }}
+          </RouterLink>
+          <span class="shrink-0 truncate text-small text-ink-3">{{ subtitle }}</span>
+        </div>
 
-        <RouterLink
-          :to="`/detail/${vod.id}`"
-          :title="vod.name"
-          class="mx-1 min-w-0 truncate text-[18px] font-semibold leading-tight text-ink hover:text-primary"
-        >
-          {{ vod.name }}
-        </RouterLink>
-        <span class="shrink-0 truncate text-caption text-ink-3">{{ subtitle }}</span>
-
-        <label class="ml-auto flex cursor-pointer items-center gap-2 text-small text-ink-2">
-          自动连播
+        <div class="ml-auto flex flex-none items-center gap-2">
           <button
             type="button"
-            role="switch"
-            :aria-checked="autonext"
-            :aria-label="autonext ? '关闭自动连播' : '开启自动连播'"
-            class="relative h-[22px] w-[38px] flex-none cursor-pointer rounded-full transition"
-            :class="autonext ? 'bg-primary' : 'bg-surface-3'"
-            @click="toggleAutonext"
+            class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
+            :disabled="!prevEp"
+            @click="selectEp(prevEp)"
           >
-            <span
-              class="absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all"
-              :class="autonext ? 'left-[19px]' : 'left-[3px]'"
-            />
+            <ChevronLeft :size="16" class="shrink-0" />
+            上一集
           </button>
-        </label>
+          <button
+            type="button"
+            class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
+            :disabled="!nextEp"
+            @click="selectEp(nextEp)"
+          >
+            下一集
+            <ChevronRight :size="16" class="shrink-0" />
+          </button>
+
+          <label class="ml-2 flex cursor-pointer items-center gap-2 text-small text-ink-2">
+            自动连播
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="autonext"
+              :aria-label="autonext ? '关闭自动连播' : '开启自动连播'"
+              class="relative h-[22px] w-[38px] flex-none cursor-pointer rounded-full transition"
+              :class="autonext ? 'bg-primary' : 'bg-surface-3'"
+              @click="toggleAutonext"
+            >
+              <span
+                class="absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all"
+                :class="autonext ? 'left-[19px]' : 'left-[3px]'"
+              />
+            </button>
+          </label>
+        </div>
       </div>
 
       <!-- 线路与选集：和详情页同一套写法（下划线 tab + 网格），切集仍就地换源 -->
