@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ChevronDown } from 'lucide-vue-next';
 import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
@@ -36,7 +36,6 @@ const current = computed(() => play.value?.current ?? 1);
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
 
-const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
 const nextEpItem = computed(() => (nextEp.value ? episodes.value[nextEp.value - 1] : null));
 
@@ -379,30 +378,6 @@ useSeo(() => ({
                 {{ ep.name }}
               </button>
             </div>
-          </div>
-
-          <div class="mt-auto flex items-center gap-2 border-t border-line pt-4">
-            <button
-              type="button"
-              class="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-4 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent"
-              :disabled="!prevEp"
-              @click="selectEp(prevEp)"
-            >
-              <ChevronLeft :size="16" class="shrink-0" />
-              上一集
-            </button>
-            <button
-              type="button"
-              class="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-4 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:text-line disabled:hover:bg-transparent"
-              :disabled="!nextEp"
-              @click="selectEp(nextEp)"
-            >
-              下一集
-              <ChevronRight :size="16" class="shrink-0" />
-            </button>
-            <span class="ml-auto text-caption text-ink-3">
-              自动连播：{{ player.autonext ? '开' : '关' }}
-            </span>
           </div>
         </aside>
       </div>
