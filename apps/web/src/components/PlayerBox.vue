@@ -13,8 +13,23 @@ const props = withDefaults(
     resume?: boolean;
     /** 断点续播的存储键，通常是 `${vodId}:${playId}` */
     resumeKey?: string;
+    /** 以下四个开关来自后台「播放设置」 */
+    screenshot?: boolean;
+    fullscreen?: boolean;
+    webfullscreen?: boolean;
+    setting?: boolean;
   }>(),
-  { parseUrl: '', poster: '', autoplay: false, resume: false, resumeKey: '' },
+  {
+    parseUrl: '',
+    poster: '',
+    autoplay: false,
+    resume: false,
+    resumeKey: '',
+    screenshot: false,
+    fullscreen: true,
+    webfullscreen: true,
+    setting: false,
+  },
 );
 
 const emit = defineEmits<{ ended: []; error: [] }>();
@@ -118,16 +133,18 @@ function createPlayer(): void {
     // ArtPlayer 会校验选项类型，poster 传 undefined 会直接抛错
     ...(props.poster ? { poster: props.poster } : {}),
     autoplay: props.autoplay,
-    theme: '#2563eb',
+    theme: '#3b82f6',
     lang: 'zh-cn',
     volume: 0.7,
     playbackRate: true,
     aspectRatio: true,
-    fullscreen: true,
-    fullscreenWeb: true,
+    // 四个开关对应后台「播放设置」，默认值与 site.ts 的兜底保持一致
+    screenshot: props.screenshot,
+    fullscreen: props.fullscreen,
+    fullscreenWeb: props.webfullscreen,
     pip: true,
     hotkey: true,
-    setting: true,
+    setting: props.setting,
     autoSize: false,
     moreVideoAttr: { playsInline: true, preload: 'metadata' },
   });
