@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { portal, type VodCard } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
-import { useIsMobile } from '../composables/useBreakpoint';
 import VodGrid from '../components/VodGrid.vue';
 import GridSkeleton from '../components/ui/GridSkeleton.vue';
 import FilterBar from '../components/FilterBar.vue';
@@ -12,7 +11,6 @@ import PaginationBar from '../components/PaginationBar.vue';
 
 const route = useRoute();
 const router = useRouter();
-const isMobile = useIsMobile();
 
 const wd = computed(() => String(route.query.wd ?? '').trim());
 const page = computed(() => Math.max(1, Number(route.query.page) || 1));
@@ -51,11 +49,6 @@ function submit(): void {
   void router.push({ name: 'search', query: { wd: value } });
 }
 
-function loadMore(): void {
-  if (loading.value || items.value.length >= total.value) return;
-  setQuery({ page: String(page.value + 1) }, true);
-}
-
 let requestSeq = 0;
 
 async function load(): Promise<void> {
@@ -79,8 +72,7 @@ async function load(): Promise<void> {
     });
     if (seq !== requestSeq) return;
     total.value = result.total;
-    if (!isMobile.value || page.value === 1) items.value = result.items;
-    else items.value = [...items.value, ...result.items];
+    items.value = result.items;
     loaded.value = true;
   } catch (e) {
     if (seq !== requestSeq) return;
@@ -163,26 +155,13 @@ useSeo(() => ({
         <VodGrid v-if="items.length" :items="items" />
         <p v-else class="py-16 text-center text-body text-ink-3">没有找到「{{ wd }}」，换个关键词试试。</p>
 
-        <div v-if="items.length && total > pageSize" class="hidden md:block">
-          <PaginationBar
-            :page="page"
-            :total="total"
-            :page-size="pageSize"
-            @change="(next: number) => setQuery({ page: String(next) }, true)"
-          />
-        </div>
-
-        <div v-if="items.length && isMobile && items.length < total" class="mt-4 text-center">
-          <button
-            type="button"
-            class="h-[38px] cursor-pointer rounded-md border border-line bg-surface px-4 text-body text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
-            :disabled="loading"
-            @click="loadMore"
-          >
-            {{ loading ? '加载中…' : '加载更多' }}
-          </button>
-          <p class="mt-2 text-caption text-ink-3">已显示 {{ items.length }} / 共 {{ total }} 部</p>
-        </div>
+        <PaginationBar
+          v-if="items.length && total > pageSize"
+          :page="page"
+          :total="total"
+          :page-size="pageSize"
+          @change="(next: number) => setQuery({ page: String(next) }, true)"
+        />
       </template>
     </template>
 
