@@ -8,8 +8,6 @@ import { useSeo } from '../composables/useSeo';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
-/** 选集分组：每 50 集一个 tab，避免几百集时一屏塞不下 */
-const GROUP_SIZE = 50;
 /** 自动连播倒计时（秒），期间可取消 */
 const AUTONEXT_SECONDS = 5;
 
@@ -20,7 +18,6 @@ const play = ref<VodPlay | null>(null);
 const loading = ref(true);
 const error = ref('');
 const lineOpen = ref(false);
-const activeGroup = ref(0);
 const countdown = ref(0);
 const epsRef = ref<HTMLDivElement | null>(null);
 const epsWrapRef = ref<HTMLDivElement | null>(null);
@@ -42,23 +39,6 @@ const player = computed(() => site.config.player);
 const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
 const nextEpItem = computed(() => (nextEp.value ? episodes.value[nextEp.value - 1] : null));
-
-/** 集数多时按 50 集分组，只有一组时不渲染 tab */
-const groups = computed(() => {
-  const total = episodes.value.length;
-  const list: Array<{ index: number; label: string }> = [];
-  for (let start = 0; start < total; start += GROUP_SIZE) {
-    list.push({
-      index: list.length,
-      label: `${start + 1}-${Math.min(start + GROUP_SIZE, total)}`,
-    });
-  }
-  return list;
-});
-
-const groupEpisodes = computed(() =>
-  episodes.value.slice(activeGroup.value * GROUP_SIZE, (activeGroup.value + 1) * GROUP_SIZE),
-);
 
 async function load(): Promise<void> {
   const seq = ++requestSeq;
@@ -232,13 +212,7 @@ watch(
   { immediate: true },
 );
 
-watch(current, (value) => {
-  const group = Math.floor((value - 1) / GROUP_SIZE);
-  if (group !== activeGroup.value) activeGroup.value = group;
-  void scrollToCurrent();
-});
-
-watch(activeGroup, () => void scrollToCurrent());
+watch(current, () => void scrollToCurrent());
 
 /**
  * 选集区高度按整行吸附：容器高度随卡片剩余空间变化，
@@ -382,24 +356,6 @@ useSeo(() => ({
             </div>
           </div>
 
-          <!-- 集数很多时分组会超过一行，横向滚动而不是换行堆高 -->
-          <div v-if="groups.length > 1" class="flex gap-2 overflow-x-auto pb-1">
-            <button
-              v-for="group in groups"
-              :key="group.index"
-              type="button"
-              class="h-8 shrink-0 cursor-pointer rounded-sm px-4 text-small transition"
-              :class="
-                group.index === activeGroup
-                  ? 'bg-primary-weak text-primary'
-                  : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
-              "
-              @click="activeGroup = group.index"
-            >
-              {{ group.label }}
-            </button>
-          </div>
-
           <div ref="epsWrapRef" class="min-h-0 flex-1 max-lg:max-h-[var(--ep-max-h)]">
             <div
               ref="epsRef"
@@ -407,7 +363,7 @@ useSeo(() => ({
               :style="epsHeight ? { height: `${epsHeight}px` } : undefined"
             >
               <button
-                v-for="ep in groupEpisodes"
+                v-for="ep in episodes"
                 :key="ep.index"
                 type="button"
                 :title="ep.name"
