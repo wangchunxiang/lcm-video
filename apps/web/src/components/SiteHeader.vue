@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { computed, nextTick, ref, watch, type Component } from 'vue';
+﻿<script setup lang="ts">
+import { computed, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Clapperboard, Film, House, Search, Sparkles, Tv } from 'lucide-vue-next';
 import { site } from '../site';
@@ -33,10 +33,10 @@ const navCategories = computed(() => site.categories.slice(0, 6));
 
 /** 导航就是一行文字：选中项变强调色，不做按钮/下划线 */
 const NAV =
-  'inline-flex flex-none items-center gap-1 whitespace-nowrap text-nav-sm text-ink-2 transition hover:text-ink [&.router-link-active]:text-primary';
+  'inline-flex flex-none items-center gap-1 whitespace-nowrap text-small text-ink-2 transition hover:text-ink sm:text-nav-sm [&.router-link-active]:text-primary';
 
-/** 分类图标在小屏不画：一行五六个分类要挤进 375，图标会让每一项宽出 18px */
-const NAV_ICON = 'hidden shrink-0 sm:block';
+/** 分类图标：小屏 14px、桌面 16px，够用又不占地方 */
+const NAV_ICON = 'h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4';
 
 /** 一级分类的图标按 alias 认；接口里新增的分类没配图标就不画，不猜 */
 const CATEGORY_ICONS: Record<string, Component> = {
@@ -55,14 +55,13 @@ function submit(): void {
 /**
  * 小屏搜索：点图标不跳页，就地展开一个输入框，旁边留「取消」。
  * 误点直接点取消（或按 Esc）就收回去，不会多一次页面跳转。
+ * 故意不自动聚焦：误点展开时不该弹键盘，想搜再点一下输入框。
  */
 const searchOpen = ref(false);
 const searchInput = ref<HTMLInputElement | null>(null);
 
-async function openSearch(): Promise<void> {
+function openSearch(): void {
   searchOpen.value = true;
-  await nextTick();
-  searchInput.value?.focus();
 }
 
 function closeSearch(): void {
