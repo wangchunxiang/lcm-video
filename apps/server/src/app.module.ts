@@ -20,7 +20,6 @@ import { VodMergeIgnoreModule } from './modules/vod-merge-ignore/vod-merge-ignor
 import { VodMergeRuleModule } from './modules/vod-merge-rule/vod-merge-rule.module';
 import { SourceRuleModule } from './modules/source-rule/source-rule.module';
 import { CoverCheckModule } from './modules/cover-check/cover-check.module';
-import { HomeHeroModule } from './modules/home-hero/home-hero.module';
 import { CollectTaskModule } from './modules/collect-task/collect-task.module';
 import { CollectTaskLogModule } from './modules/collect-task-log/collect-task-log.module';
 import { CollectTaskLogDetailModule } from './modules/collect-task-log-detail/collect-task-log-detail.module';
@@ -80,7 +79,6 @@ import { CollectModule } from './modules/collect/collect.module';
     VodMergeRuleModule,
     SourceRuleModule,
     CoverCheckModule,
-    HomeHeroModule,
     CollectTaskModule,
     CollectTaskLogModule,
     CollectTaskLogDetailModule,

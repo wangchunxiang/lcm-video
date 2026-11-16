@@ -53,15 +53,9 @@ export interface EpisodeItem {
   url: string;
 }
 
-/** 首页 hero 的一项：`bgImage` 是运营在后台配的横幅图，空串表示没配（此时用 `cover` 放大裁切） */
-export interface HeroCard extends VodCard {
-  bgImage: string;
-}
-
+/** 首页：分类树 + 今日更新分区。 */
 export interface HomeResult {
   categories: CategoryNode[];
-  /** 首页 hero 轮播：运营在后台配的位，最多 8 个；空数组表示没配过，由首页回落到「今日更新」前 8 部 */
-  hero: HeroCard[];
   rows: VodRow[];
 }
 

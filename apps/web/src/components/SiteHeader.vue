@@ -10,7 +10,7 @@ import Sheet from './ui/Sheet.vue';
  * 页面骨架的「顶部」。
  *
  * 三段结构固定：品牌 → 一级分类导航 → 搜索（手机端收成图标 + 抽屉）。
- * 高度取 --header-h；底色恒定半透明 + 模糊，首页 hero 从它下方开始。
+ * 高度取 --header-h；底色恒定半透明 + 模糊，滚动时底下内容能透出来。
  */
 const router = useRouter();
 const keyword = ref('');
@@ -44,7 +44,7 @@ function go(path: string): void {
 </script>
 
 <template>
-  <!-- 顶栏在流里占位（不浮在 hero 上）；半透明 + 模糊，滚动时底下内容能透出来 -->
+  <!-- 顶栏在流里占位（不浮在内容上）；半透明 + 模糊，滚动时底下内容能透出来 -->
   <header class="sticky top-0 z-50 border-b border-line/70 bg-glass backdrop-blur-xl">
     <Container>
       <div class="flex h-[var(--header-h)] items-center gap-8">

@@ -39,11 +39,6 @@ export interface PlayLine {
   parseUrl: string;
 }
 
-/** hero 卡片：在 `VodCard` 之上带运营配的横幅图（空串表示没配，前端用封面放大裁切） */
-export interface HeroCard extends VodCard {
-  bgImage: string;
-}
-
 /** 一行卡片（首页分区）。 */
 export interface VodRow {
   title: string;
@@ -80,8 +75,6 @@ export interface SiteConfig {
 const PAGE_LIMIT = 100;
 /** 首页每块给 8 列 × 2 行 = 16 部（前台首页按 16 部一屏两行排） */
 const HOME_ROW = 16;
-/** hero 轮播位上限：运营配 8 个够用，多了首屏轮不过来（前台没配置时回落今日更新前 8 部） */
-const HOME_HERO = 8;
 
 /** 取正整数参数，非法时回落默认值。 */
 function toInt(value: string | undefined, fallback: number, min: number, max: number): number {
@@ -141,11 +134,10 @@ export class PortalService {
     };
   }
 
-  /** 首页：分类树 + hero 轮播 + 今日更新。 */
-  async home(): Promise<{ categories: CategoryNode[]; hero: HeroCard[]; rows: VodRow[] }> {
-    const [categories, hero, today] = await Promise.all([
+  /** 首页：分类树 + 今日更新。 */
+  async home(): Promise<{ categories: CategoryNode[]; rows: VodRow[] }> {
+    const [categories, today] = await Promise.all([
       this.categories(),
-      this.heroCards(),
       this.queryCards({
         where: 'v.status = 1 AND v.collected_at >= CURDATE()',
         order: 'v.collected_at DESC, v.id DESC',
@@ -157,63 +149,7 @@ export class PortalService {
       (row) => row.items.length > 0,
     );
 
-    return { categories, hero, rows };
-  }
-
-  /**
-   * hero 轮播位：读 `lcm_home_hero` 的运营配置。
-   *
-   * 覆盖字段（标题 / 横幅图 / 角标）为空串时用影片自己的值：`NULLIF(...)` 把空串变成
-   * NULL，外层 `COALESCE` 再取影片值。没配 hero 时返回空数组，由前台回落到今日更新。
-   */
-  private async heroCards(): Promise<HeroCard[]> {
-    const rows = await this.dataSource.query<
-      Array<{
-        id: string;
-        name: string;
-        subName: string;
-        cover: string;
-        bgImage: string | null;
-        year: number;
-        area: string;
-        remarks: string;
-        episodeCount: number;
-        categoryId: string;
-        categoryName: string;
-      }>
-    >(
-      `SELECT v.id,
-              COALESCE(NULLIF(h.title, ''), v.name) AS name,
-              v.sub_name AS subName,
-              v.cover,
-              h.bg_image AS bgImage,
-              v.year, v.area,
-              COALESCE(NULLIF(h.remarks, ''), v.remarks) AS remarks,
-              v.episode_count AS episodeCount, v.category_id AS categoryId,
-              COALESCE(c.name, '') AS categoryName
-         FROM lcm_home_hero h
-         JOIN lcm_vod v ON v.id = h.vod_id
-         LEFT JOIN lcm_category c ON c.id = v.category_id
-        WHERE h.is_show = 1 AND v.status = 1
-          AND (h.start_at IS NULL OR h.start_at <= NOW())
-          AND (h.end_at IS NULL OR h.end_at > NOW())
-        ORDER BY h.sort ASC, h.id ASC
-        LIMIT ?`,
-      [HOME_HERO],
-    );
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      subName: row.subName,
-      cover: row.cover,
-      bgImage: row.bgImage ?? '',
-      year: Number(row.year),
-      area: row.area,
-      remarks: row.remarks,
-      episodeCount: Number(row.episodeCount),
-      categoryId: row.categoryId,
-      categoryName: row.categoryName,
-    }));
+    return { categories, rows };
   }
 
   /** 分类树：一级 + 其下二级。 */

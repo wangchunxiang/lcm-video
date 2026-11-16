@@ -3,7 +3,6 @@ import { VodMergeRule1794400000000 } from './1794400000000-vod-merge-rule';
 import { WidenReleaseDate1794400001000 } from './1794400001000-widen-release-date';
 import { SourceRuleComments1794400002000 } from './1794400002000-source-rule-comments';
 import { MergePreviewIndexes1794400003000 } from './1794400003000-merge-preview-indexes';
-import { HomeHero1794400004000 } from './1794400004000-home-hero';
 
 /**
  * 迁移清单：显式注册，理由同 `../entities.ts`（glob 在 e2e 里会 require 到 `.ts`）。
@@ -15,5 +14,4 @@ export const MIGRATIONS = [
   WidenReleaseDate1794400001000,
   SourceRuleComments1794400002000,
   MergePreviewIndexes1794400003000,
-  HomeHero1794400004000,
 ];

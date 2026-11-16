@@ -10,7 +10,7 @@ import { loadSite } from './site';
  * 页面骨架：顶部 → 内容区 → 底部。
  *
  * 内容区默认由 Container 收边；带 `meta.fullBleed` 的页面（目前只有首页）
- * 自己管横向边界，好让 hero / 大图这类区块真正通栏。
+ * 自己管横向边界，好让大图这类区块真正通栏。
  */
 const route = useRoute();
 

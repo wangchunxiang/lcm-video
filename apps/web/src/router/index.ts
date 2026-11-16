@@ -12,7 +12,7 @@ export const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('../views/HomeView.vue'),
-      // 首页 hero 通栏，横向边界交给页面自己（见 App.vue）
+      // 首页整页在 Container 里收边（见 App.vue）
       meta: { fullBleed: true },
     },
     { path: '/list', redirect: () => ({ name: 'list', params: { alias: defaultListAlias() } }) },

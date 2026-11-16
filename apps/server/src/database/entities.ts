@@ -7,7 +7,6 @@ import { CollectTaskLogDetailEntity } from '../modules/collect-task-log-detail/c
 import { CollectTaskLogEntity } from '../modules/collect-task-log/collect-task-log.entity';
 import { CollectTaskEntity } from '../modules/collect-task/collect-task.entity';
 import { CoverCheckEntity } from '../modules/cover-check/cover-check.entity';
-import { HomeHeroEntity } from '../modules/home-hero/home-hero.entity';
 import { MergeRuleEntity } from '../modules/vod-merge-rule/vod-merge-rule.entity';
 import { PlayLineEntity } from '../modules/play-line/play-line.entity';
 import { SettingEntity } from '../modules/setting/setting.entity';
@@ -34,7 +33,6 @@ export const ENTITIES = [
   CollectTaskLogEntity,
   CollectTaskEntity,
   CoverCheckEntity,
-  HomeHeroEntity,
   MergeRuleEntity,
   PlayLineEntity,
   SettingEntity,
