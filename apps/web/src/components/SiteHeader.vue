@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref, watch, type Component } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { Clapperboard, Film, House, Menu, Search, Sparkles, Tv } from 'lucide-vue-next';
 import { site } from '../site';
 import Container from './layout/Container.vue';
@@ -13,8 +13,21 @@ import Sheet from './ui/Sheet.vue';
  * 高度取 --header-h；底色恒定半透明 + 模糊，滚动时底下内容能透出来。
  */
 const router = useRouter();
+const route = useRoute();
 const keyword = ref('');
 const navOpen = ref(false);
+
+/**
+ * 顶栏输入框与搜索结果页共用同一个关键词：
+ * 搜索页（有 wd）在桌面端不重复画输入框，用户直接在顶栏改词回车即可。
+ */
+watch(
+  () => route.query.wd,
+  (value) => {
+    keyword.value = typeof value === 'string' ? value : '';
+  },
+  { immediate: true },
+);
 
 /** 顶部导航只放一级分类（与首页的区块一一对应），子分类留给列表页筛选 */
 const navCategories = computed(() => site.categories.slice(0, 6));

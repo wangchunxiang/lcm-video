@@ -106,7 +106,15 @@ useSeo(() => ({
 
 <template>
   <div class="pt-4">
-    <form class="mb-4 flex h-[38px] w-full items-center overflow-hidden rounded-md bg-search" @submit.prevent="submit">
+    <!--
+      入口页（还没有关键词）任何宽度都显示；有结果后桌面端收起，
+      因为顶栏已经有同一个输入框（见 SiteHeader 的 wd 同步），避免一行重复。
+    -->
+    <form
+      class="mb-4 flex h-[38px] w-full items-center overflow-hidden rounded-md bg-search"
+      :class="wd ? 'lg:hidden' : ''"
+      @submit.prevent="submit"
+    >
       <input
         v-model="keyword"
         type="search"
