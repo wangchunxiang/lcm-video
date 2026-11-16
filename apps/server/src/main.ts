@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { extname, join, sep } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -59,15 +59,28 @@ async function bootstrap(): Promise<void> {
   // 静态页面：构建产物存在时由本进程托管（后台 /admin/、前台 /）。
   // 开发时前端各自跑 vite dev server，dist 可能不存在，跳过即可。
   // 放在 Nest 路由之前注册，命中就结束，不会走到统一信封。
+  //
+  // 缓存策略：`/assets/` 下的文件名带内容哈希，内容一变文件名就变，可以永久缓存；
+  // 其余（index.html、图标等固定名字）只缓存 1 小时，发版后能及时更新。
+  const staticCache = () => ({
+    index: 'index.html' as const,
+    maxAge: '1h',
+    setHeaders: (response: Response, path: string) => {
+      if (path.includes(`${sep}assets${sep}`)) {
+        response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  });
+
   const adminDist = join(__dirname, '../../admin/dist');
   if (existsSync(join(adminDist, 'index.html'))) {
-    app.useStaticAssets(adminDist, { prefix: '/admin/', index: 'index.html', maxAge: '1h' });
+    app.useStaticAssets(adminDist, { prefix: '/admin/', ...staticCache() });
     app.use(spaFallback('/admin', adminDist));
   }
 
   const webDist = join(__dirname, '../../web/dist');
   if (existsSync(join(webDist, 'index.html'))) {
-    app.useStaticAssets(webDist, { index: 'index.html', maxAge: '1h' });
+    app.useStaticAssets(webDist, staticCache());
     app.use(spaFallback('/', webDist));
   }
 

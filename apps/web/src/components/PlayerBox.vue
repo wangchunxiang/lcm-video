@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Artplayer from 'artplayer';
-import Hls from 'hls.js';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = withDefaults(
@@ -47,8 +46,30 @@ const iframeSrc = computed(() => {
 
 const RESUME_PREFIX = 'lcm:resume:';
 
+/**
+ * hls.js 动态导入后的类型：只声明用到的那部分。
+ * 它的 d.ts 是 `export default class Hls`，但动态 import 的命名空间类型在
+ * `moduleResolution: Bundler` 下拿不到构造签名，这里显式声明更稳。
+ */
+interface HlsPlayer {
+  loadSource(url: string): void;
+  attachMedia(media: HTMLVideoElement): void;
+  recoverMediaError(): void;
+  destroy(): void;
+  on(event: string, listener: (event: string, data: { fatal?: boolean; type?: string }) => void): void;
+}
+
+interface HlsConstructor {
+  new (config: { enableWorker: boolean; lowLatencyMode: boolean; maxAudioFramesDrift: number }): HlsPlayer;
+  isSupported(): boolean;
+  Events: { ERROR: string };
+  ErrorTypes: { MEDIA_ERROR: string };
+}
+
 let art: Artplayer | null = null;
-let hls: Hls | null = null;
+let hls: HlsPlayer | null = null;
+/** hls.js 动态加载令牌：换集或销毁后让上一次加载的回调失效 */
+let loadToken = 0;
 let lastSaveAt = 0;
 
 function resumeStorageKey(): string {
@@ -56,6 +77,7 @@ function resumeStorageKey(): string {
 }
 
 function destroyPlayer(): void {
+  loadToken += 1;
   if (hls) {
     hls.destroy();
     hls = null;
@@ -70,6 +92,8 @@ function destroyPlayer(): void {
  * ArtPlayer 的 m3u8 自定义内核。
  * iOS/Safari 原生支持 m3u8，直接交给内核可避免带 Origin 的跨域请求（部分源站 WAF 会拦）；
  * 其余浏览器用 hls.js，致命错误时回退到原生内核再试一次。
+ *
+ * hls.js 压缩后约 400KB，只有真正需要时才动态加载，不拖慢首屏（播放器外壳先出来）。
  */
 function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void {
   // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
@@ -77,31 +101,47 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
     hls.destroy();
     hls = null;
   }
+  // 换集/卸载会让上一次的动态加载作废，用令牌判断回调是否还有效
+  const token = ++loadToken;
   if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
     return;
   }
-  if (!Hls.isSupported()) {
+
+  const unsupported = (): void => {
     failed.value = true;
     player.notice.show = '该线路暂不支持在线播放';
     emit('error');
-    return;
-  }
+  };
 
-  const instance = new Hls({ enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 });
-  hls = instance;
-  instance.loadSource(url);
-  instance.attachMedia(video);
-  instance.on(Hls.Events.ERROR, (_event, data) => {
-    if (!data.fatal) return;
-    if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-      instance.recoverMediaError();
-      return;
-    }
-    instance.destroy();
-    hls = null;
-    video.src = url;
-  });
+  void import('hls.js')
+    .then((module) => {
+      if (token !== loadToken) return;
+      const Hls = (module as unknown as { default: HlsConstructor }).default;
+      if (!Hls.isSupported()) {
+        unsupported();
+        return;
+      }
+
+      const instance = new Hls({ enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 });
+      hls = instance;
+      instance.loadSource(url);
+      instance.attachMedia(video);
+      instance.on(Hls.Events.ERROR, (_event, data) => {
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          instance.recoverMediaError();
+          return;
+        }
+        instance.destroy();
+        hls = null;
+        video.src = url;
+      });
+    })
+    .catch(() => {
+      if (token !== loadToken) return;
+      unsupported();
+    });
 }
 
 function restoreResume(player: Artplayer): void {

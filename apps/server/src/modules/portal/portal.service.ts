@@ -126,6 +126,16 @@ function toInt(value: string | undefined, fallback: number, min: number, max: nu
  */
 @Injectable()
 export class PortalService {
+  /** 年份选项缓存：全站同一份，列表页每次请求都会要，60 秒内不重复查库。 */
+  private yearsCache: { at: number; years: number[] } | null = null;
+
+  /** 一级分类总数缓存：key = `分类id:年份`，翻页/切排序时不必重复计数。 */
+  private readonly countCache = new Map<string, { at: number; total: number }>();
+
+  private static readonly YEARS_TTL_MS = 60_000;
+
+  private static readonly COUNT_TTL_MS = 60_000;
+
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly setting: SettingService,
@@ -241,23 +251,30 @@ export class PortalService {
 
     const clauses: string[] = ['v.status = 1'];
     const params: unknown[] = [];
-    if (category.pid === '0') {
+    const sub =
+      input.typeAlias !== undefined && input.typeAlias !== ''
+        ? (types.find((row) => row.alias === input.typeAlias) ?? null)
+        : null;
+    if (input.typeAlias !== undefined && input.typeAlias !== '' && sub === null) {
+      throw new BadRequestException('子分类不存在');
+    }
+    // 一级分类且没选子分类时，范围是「分类本身 + 其下所有子分类」
+    const topLevel = category.pid === '0' && sub === null;
+    if (sub !== null) {
+      clauses.push('v.category_id = ?');
+      params.push(sub.id);
+    } else if (category.pid === '0') {
       clauses.push('(v.category_id = ? OR v.category_pid = ?)');
       params.push(category.id, category.id);
     } else {
       clauses.push('v.category_id = ?');
       params.push(category.id);
     }
-    if (input.typeAlias !== undefined && input.typeAlias !== '') {
-      const sub = types.find((row) => row.alias === input.typeAlias);
-      if (sub === undefined) throw new BadRequestException('子分类不存在');
-      clauses.push('v.category_id = ?');
-      params.push(sub.id);
-    }
     const year = Number(input.year ?? '');
-    if (Number.isFinite(year) && year > 0) {
+    const yearFilter = Number.isFinite(year) && year > 0 ? year : undefined;
+    if (yearFilter !== undefined) {
       clauses.push('v.year = ?');
-      params.push(year);
+      params.push(yearFilter);
     }
 
     const where = clauses.join(' AND ');
@@ -265,25 +282,73 @@ export class PortalService {
     const order =
       input.sort === 'new' ? 'v.created_at DESC, v.id DESC' : 'v.collected_at DESC, v.id DESC';
 
-    const items = await this.queryCards({ where, order, take, skip, params });
-    const totalRows = await this.dataSource.query<Array<{ total: number }>>(
-      `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
-      params,
-    );
-    const currentYear = new Date().getFullYear();
-    const years = await this.dataSource.query<Array<{ year: number }>>(
-      // 旧库里有 826 条年份是 201717、22026 这类脏值，还有若干未来年份；年份筛选只列 1900 到今年
-      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year BETWEEN 1900 AND ? ORDER BY year DESC LIMIT 15',
-      [currentYear],
-    );
+    const [items, total, years] = await Promise.all([
+      this.queryCards({ where, order, take, skip, params }),
+      topLevel
+        ? this.countTopLevel(category.id, yearFilter)
+        : this.countByWhere(where, params),
+      this.listYears(),
+    ]);
 
     return {
       category,
       types,
-      years: years.map((row) => Number(row.year)),
+      years,
       items,
-      total: Number(totalRows[0]?.total ?? 0),
+      total,
     };
+  }
+
+  /** 普通计数：条件都带索引前缀，直接 COUNT 即可。 */
+  private async countByWhere(where: string, params: unknown[]): Promise<number> {
+    const rows = await this.dataSource.query<Array<{ total: number }>>(
+      `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
+      params,
+    );
+    return Number(rows[0]?.total ?? 0);
+  }
+
+  /**
+   * 一级分类的计数：不能对 `(category_id = ? OR category_pid = ?)` 直接 COUNT(*)
+   * —— MySQL 会放弃索引走全表扫（12 万行实测 2.3~2.7 秒）。
+   * 拆成两段互不重叠的索引计数再相加（第二段排除已被第一段覆盖的行），实测 100ms 左右。
+   * 结果缓存 60 秒：列表页翻页、切排序都会重复问同一个数，采集入库晚一分钟显示无所谓。
+   */
+  private async countTopLevel(categoryId: string, year?: number): Promise<number> {
+    const key = `${categoryId}:${year ?? ''}`;
+    const now = Date.now();
+    const hit = this.countCache.get(key);
+    if (hit !== undefined && now - hit.at < PortalService.COUNT_TTL_MS) return hit.total;
+
+    const filter = year === undefined ? '' : ' AND year = ?';
+    const extra: unknown[] = year === undefined ? [] : [year];
+    const rows = await this.dataSource.query<Array<{ total: number }>>(
+      `SELECT
+         (SELECT COUNT(*) FROM lcm_vod WHERE status = 1${filter} AND category_pid = ?) +
+         (SELECT COUNT(*) FROM lcm_vod WHERE status = 1${filter} AND category_id = ? AND category_pid <> ?) AS total`,
+      [...extra, categoryId, ...extra, categoryId, categoryId],
+    );
+    const total = Number(rows[0]?.total ?? 0);
+    this.countCache.set(key, { at: now, total });
+    return total;
+  }
+
+  /**
+   * 年份筛选选项：全站同一份，改库不频繁，缓存 60 秒。
+   * 旧库里有 826 条年份是 201717、22026 这类脏值，还有若干未来年份，只列 1900 到今年。
+   */
+  private async listYears(): Promise<number[]> {
+    const now = Date.now();
+    if (this.yearsCache !== null && now - this.yearsCache.at < PortalService.YEARS_TTL_MS) {
+      return this.yearsCache.years;
+    }
+    const rows = await this.dataSource.query<Array<{ year: number }>>(
+      'SELECT DISTINCT year FROM lcm_vod WHERE status = 1 AND year BETWEEN 1900 AND ? ORDER BY year DESC LIMIT 15',
+      [new Date().getFullYear()],
+    );
+    const years = rows.map((row) => Number(row.year));
+    this.yearsCache = { at: now, years };
+    return years;
   }
 
   /** 详情页：影片 + 线路（按线路设置排序过滤）+ 同分类推荐。 */

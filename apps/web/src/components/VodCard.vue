@@ -28,6 +28,7 @@ function onError(): void {
         :src="cover"
         :alt="vod.name"
         loading="lazy"
+        decoding="async"
         class="h-full w-full object-fill transition-transform duration-500 group-hover:scale-[1.14]"
         :class="loaded ? 'opacity-100' : 'opacity-0'"
         @load="loaded = true"

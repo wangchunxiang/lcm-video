@@ -16,6 +16,10 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
 @Index('idx_merge_preview', ['nameHash', 'name', 'year', 'status', 'collectedAt'])
 // 疑似重复：按 name_hash_loose 分组时顺带数出组内有几种严格键
 @Index('idx_merge_loose', ['nameHashLoose', 'nameHash'])
+// 列表「最新入库」按 created_at 排序，没有这条索引时 12 万行要 filesort（7.4 秒）
+@Index('idx_status_created', ['status', 'createdAt', 'id'])
+// 年份筛选的 DISTINCT year，避免每次列表都扫全部上架行
+@Index('idx_status_year', ['status', 'year'])
 export class VodEntity extends AppBaseEntity {
   @Column({
     name: 'category_id',
