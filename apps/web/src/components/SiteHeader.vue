@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Clapperboard, Film, House, Search, Sparkles, Tv } from 'lucide-vue-next';
@@ -10,7 +10,7 @@ import Container from './layout/Container.vue';
  *
  * 三段结构固定：品牌 → 一级分类导航 → 搜索。
  * 高度取 --header-h；底色恒定半透明 + 模糊，滚动时底下内容能透出来。
- * 小屏（<lg）分类改成顶栏下方一行横向滑动条，不再收进抽屉。
+ * 小屏（<sm）只留 logo 图标、隐藏站名，分类导航退成纯文字，一行放得下。
  */
 const router = useRouter();
 const route = useRoute();
@@ -35,9 +35,8 @@ const navCategories = computed(() => site.categories.slice(0, 6));
 const NAV =
   'inline-flex flex-none items-center gap-1 whitespace-nowrap text-nav-sm text-ink-2 transition hover:text-ink [&.router-link-active]:text-primary';
 
-/** 小屏分类条：胶囊按钮，选中填主色弱底 */
-const CHIP =
-  'inline-flex h-8 flex-none items-center gap-1 whitespace-nowrap rounded-pill px-4 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink [&.router-link-active]:bg-primary-weak [&.router-link-active]:text-primary';
+/** 分类图标在小屏不画：一行五六个分类要挤进 375，图标会让每一项宽出 18px */
+const NAV_ICON = 'hidden shrink-0 sm:block';
 
 /** 一级分类的图标按 alias 认；接口里新增的分类没配图标就不画，不猜 */
 const CATEGORY_ICONS: Record<string, Component> = {
@@ -58,7 +57,7 @@ function submit(): void {
   <!-- 顶栏在流里占位（不浮在内容上）；半透明 + 模糊，滚动时底下内容能透出来 -->
   <header class="sticky top-0 z-50 border-b border-line/70 bg-glass backdrop-blur-xl">
     <Container>
-      <div class="flex h-[var(--header-h)] items-center gap-8">
+      <div class="flex h-[var(--header-h)] items-center gap-2 lg:gap-8">
         <RouterLink to="/" class="flex flex-none items-center gap-2 transition-opacity hover:opacity-90">
           <!-- v2 主题的站点图标（public/img/logo.png，与 themes/default/assets/img/logo.png 同一份） -->
           <img
@@ -68,18 +67,22 @@ function submit(): void {
             height="28"
             class="h-7 w-7 flex-none rounded-md"
           />
-          <span class="whitespace-nowrap text-logo font-extrabold tracking-tight text-ink">
+          <!-- 小屏把站名让给分类：375 宽下站名占 120px，五个分类就放不下了 -->
+          <span class="hidden whitespace-nowrap text-logo font-extrabold tracking-tight text-ink sm:inline">
             {{ site.config.siteName }}
           </span>
         </RouterLink>
 
-        <nav class="hidden min-w-0 flex-1 items-center gap-8 lg:flex" aria-label="分类导航">
+        <nav
+          class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto sm:gap-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-8"
+          aria-label="分类导航"
+        >
           <RouterLink to="/" :class="NAV">
-            <House :size="16" class="shrink-0" />
+            <House :size="16" :class="NAV_ICON" />
             <span>首页</span>
           </RouterLink>
           <RouterLink v-for="cat in navCategories" :key="cat.id" :to="`/list/${cat.alias}`" :class="NAV">
-            <component :is="CATEGORY_ICONS[cat.alias]" v-if="CATEGORY_ICONS[cat.alias]" :size="16" class="shrink-0" />
+            <component :is="CATEGORY_ICONS[cat.alias]" v-if="CATEGORY_ICONS[cat.alias]" :size="16" :class="NAV_ICON" />
             <span>{{ cat.name }}</span>
           </RouterLink>
         </nav>
@@ -101,34 +104,14 @@ function submit(): void {
           />
         </form>
 
-        <div class="ml-auto flex items-center gap-1 lg:hidden">
-          <RouterLink
-            to="/search"
-            class="flex h-9 w-9 items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-            aria-label="搜索"
-          >
-            <Search :size="20" class="shrink-0" />
-          </RouterLink>
-        </div>
+        <RouterLink
+          to="/search"
+          class="ml-auto flex h-9 w-9 flex-none items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink lg:hidden"
+          aria-label="搜索"
+        >
+          <Search :size="20" class="shrink-0" />
+        </RouterLink>
       </div>
-
-      <!--
-        小屏分类：不再藏进抽屉，改成顶栏下方一行可横向滑动的分类条。
-        抽屉要多一次点击、还挡住内容；分类只有四五个，直接摆出来一步可达。
-      -->
-      <nav
-        class="flex gap-1 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
-        aria-label="分类导航"
-      >
-        <RouterLink to="/" :class="CHIP">
-          <House :size="14" class="shrink-0" />
-          <span>首页</span>
-        </RouterLink>
-        <RouterLink v-for="cat in navCategories" :key="cat.id" :to="`/list/${cat.alias}`" :class="CHIP">
-          <component :is="CATEGORY_ICONS[cat.alias]" v-if="CATEGORY_ICONS[cat.alias]" :size="14" class="shrink-0" />
-          <span>{{ cat.name }}</span>
-        </RouterLink>
-      </nav>
     </Container>
   </header>
 </template>
