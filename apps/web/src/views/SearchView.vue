@@ -6,6 +6,7 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { useIsMobile } from '../composables/useBreakpoint';
 import VodGrid from '../components/VodGrid.vue';
+import GridSkeleton from '../components/ui/GridSkeleton.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
 
@@ -105,7 +106,7 @@ useSeo(() => ({
 
 <template>
   <div class="pt-4">
-    <form class="mb-4 flex h-[38px] w-full max-w-[560px] items-center overflow-hidden rounded-md bg-search" @submit.prevent="submit">
+    <form class="mb-4 flex h-[38px] w-full items-center overflow-hidden rounded-md bg-search" @submit.prevent="submit">
       <input
         v-model="keyword"
         type="search"
@@ -137,7 +138,7 @@ useSeo(() => ({
         @update:sort="(value: string) => setQuery({ sort: value === 'time' ? undefined : value })"
       />
 
-      <p v-if="loading && !items.length" class="py-16 text-center text-body text-ink-3">搜索中…</p>
+      <GridSkeleton v-if="loading && !items.length" />
       <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <template v-else-if="loaded">
         <VodGrid v-if="items.length" :items="items" />

@@ -19,6 +19,43 @@ export interface VodCard {
   categoryName: string;
 }
 
+/**
+ * 卡片查询的列：列表、首页、搜索共用一份，避免各处列名漂移。
+ * 搜索走两段式（先 id 再取宽字段），也复用这段 SELECT。
+ */
+const CARD_SELECT = `SELECT v.id, v.name, v.sub_name AS subName, v.cover, v.year, v.area, v.remarks,
+        v.episode_count AS episodeCount, v.category_id AS categoryId,
+        COALESCE(c.name, '') AS categoryName
+   FROM lcm_vod v LEFT JOIN lcm_category c ON c.id = v.category_id`;
+
+interface CardRow {
+  id: string;
+  name: string;
+  subName: string;
+  cover: string;
+  year: number;
+  area: string;
+  remarks: string;
+  episodeCount: number;
+  categoryId: string;
+  categoryName: string;
+}
+
+function toCard(row: CardRow): VodCard {
+  return {
+    id: String(row.id),
+    name: row.name,
+    subName: row.subName,
+    cover: row.cover,
+    year: Number(row.year),
+    area: row.area,
+    remarks: row.remarks,
+    episodeCount: Number(row.episodeCount),
+    categoryId: row.categoryId,
+    categoryName: row.categoryName,
+  };
+}
+
 /** 一级分类（带子分类）。 */
 export interface CategoryNode {
   id: string;
@@ -363,7 +400,22 @@ export class PortalService {
     const order =
       input.sort === 'new' ? 'v.created_at DESC, v.id DESC' : 'v.collected_at DESC, v.id DESC';
 
-    const items = await this.queryCards({ where, order, take, skip, params });
+    /**
+     * 两段式查询：先用覆盖索引 idx_search(status, name, year, collected_at, created_at) 取本页 id，
+     * 再按 id 取宽字段。
+     *
+     * 必须 FORCE INDEX：不加的话优化器会为了省掉 filesort 选 idx_status_collected，
+     * 按 collected_at 顺序扫 10 万行再回表校验 name LIKE，实测 5.5s；
+     * 强制走覆盖索引后 0.17s（只有少数命中行参与排序）。
+     */
+    const pageRows = await this.dataSource.query<Array<{ id: string }>>(
+      `SELECT v.id AS id FROM lcm_vod v FORCE INDEX (idx_search)
+        WHERE ${where}
+        ORDER BY ${order}
+        LIMIT ? OFFSET ?`,
+      [...params, take, skip],
+    );
+    const items = await this.queryCardsByIds(pageRows.map((row) => String(row.id)));
     const totalRows = await this.dataSource.query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
       params,
@@ -424,40 +476,23 @@ export class PortalService {
     skip?: number;
     params?: unknown[];
   }): Promise<VodCard[]> {
-    const rows = await this.dataSource.query<
-      Array<{
-        id: string;
-        name: string;
-        subName: string;
-        cover: string;
-        year: number;
-        area: string;
-        remarks: string;
-        episodeCount: number;
-        categoryId: string;
-        categoryName: string;
-      }>
-    >(
-      `SELECT v.id, v.name, v.sub_name AS subName, v.cover, v.year, v.area, v.remarks,
-              v.episode_count AS episodeCount, v.category_id AS categoryId,
-              COALESCE(c.name, '') AS categoryName
-         FROM lcm_vod v LEFT JOIN lcm_category c ON c.id = v.category_id
+    const rows = await this.dataSource.query<CardRow[]>(
+      `${CARD_SELECT}
         WHERE ${input.where}
         ORDER BY ${input.order}
         LIMIT ? OFFSET ?`,
       [...(input.params ?? []), input.take, input.skip ?? 0],
     );
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      subName: row.subName,
-      cover: row.cover,
-      year: Number(row.year),
-      area: row.area,
-      remarks: row.remarks,
-      episodeCount: Number(row.episodeCount),
-      categoryId: row.categoryId,
-      categoryName: row.categoryName,
-    }));
+    return rows.map((row) => toCard(row));
+  }
+
+  /** 按 id 取卡片，并保持传入顺序（搜索分两段查询时用）。 */
+  private async queryCardsByIds(ids: string[]): Promise<VodCard[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.dataSource.query<CardRow[]>(`${CARD_SELECT} WHERE v.id IN (?)`, [ids]);
+    const byId = new Map(rows.map((row) => [String(row.id), toCard(row)]));
+    return ids
+      .map((id) => byId.get(String(id)))
+      .filter((card): card is VodCard => card !== undefined);
   }
 }
