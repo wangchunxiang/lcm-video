@@ -121,11 +121,11 @@ useSeo(() => ({
         maxlength="50"
         placeholder="输入片名，如：流浪地球"
         aria-label="搜索片名"
-        class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 text-body text-ink outline-none placeholder:text-ink-3"
+        class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 pr-1 text-body text-ink outline-none placeholder:text-ink-3"
       />
       <button
         type="submit"
-        class="h-full cursor-pointer border-0 bg-transparent px-4 text-small text-ink-2 transition hover:text-ink"
+        class="h-full cursor-pointer border-0 bg-transparent pl-2 pr-4 text-small text-ink-2 transition hover:text-ink"
       >
         搜索
       </button>
