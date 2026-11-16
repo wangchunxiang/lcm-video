@@ -97,8 +97,6 @@ useSeo(() => ({
 
 <template>
   <div class="flex flex-col gap-4 pt-4">
-    <!-- 标题行按设计去掉；留一个只给读屏和 SEO 的 h1，页面视觉从筛选条直接开始 -->
-    <h1 class="sr-only">{{ categoryName }}</h1>
 
     <FilterBar
       :types="data?.types ?? []"

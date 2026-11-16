@@ -106,7 +106,6 @@ function submitMobile(): void {
 
         <nav
           class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-8"
-          aria-label="分类导航"
         >
           <RouterLink to="/" :class="NAV">
             <House :size="16" :class="NAV_ICON" />
@@ -120,7 +119,6 @@ function submitMobile(): void {
 
         <form
           class="ml-auto hidden h-9 w-[230px] flex-none items-center gap-2 rounded-pill border border-line bg-surface-2 px-4 text-ink-3 transition hover:border-ink-3/50 hover:text-ink focus-within:border-primary-line focus-within:text-ink lg:flex"
-          role="search"
           @submit.prevent="submit"
         >
           <Search :size="14" class="shrink-0" />
@@ -130,7 +128,6 @@ function submitMobile(): void {
             name="wd"
             maxlength="50"
             placeholder="搜索片名、演员"
-            aria-label="搜索影片"
             class="h-full min-w-0 flex-1 border-0 bg-transparent text-input text-ink outline-none placeholder:text-ink-3 sm:text-small"
           />
         </form>
@@ -138,7 +135,6 @@ function submitMobile(): void {
         <button
           type="button"
           class="ml-auto flex h-9 w-9 flex-none cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink lg:hidden"
-          aria-label="搜索"
           @click="openSearch"
         >
           <Search :size="20" class="shrink-0" />
@@ -149,7 +145,6 @@ function submitMobile(): void {
       <div v-if="searchOpen" class="flex h-[var(--header-h)] items-center gap-2 lg:hidden">
         <form
           class="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-pill border border-line bg-surface-2 px-4 text-ink-3 transition focus-within:border-primary-line focus-within:text-ink"
-          role="search"
           @submit.prevent="submitMobile"
         >
           <Search :size="14" class="shrink-0" />
@@ -160,7 +155,6 @@ function submitMobile(): void {
             name="wd"
             maxlength="50"
             placeholder="搜索片名、演员"
-            aria-label="搜索影片"
             class="h-full min-w-0 flex-1 border-0 bg-transparent text-input text-ink outline-none placeholder:text-ink-3 sm:text-small"
             @keydown.esc="closeSearch"
           />

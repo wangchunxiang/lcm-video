@@ -28,7 +28,7 @@ function go(next: number): void {
 </script>
 
 <template>
-  <nav v-if="pageCount > 1" class="flex flex-wrap items-center justify-center gap-2 pt-4" aria-label="分页">
+  <nav v-if="pageCount > 1" class="flex flex-wrap items-center justify-center gap-2 pt-4">
     <button v-if="page > 1" :class="BTN" type="button" @click="go(1)">首页</button>
     <button v-if="page > 1" :class="BTN" type="button" @click="go(page - 1)">上一页</button>
 

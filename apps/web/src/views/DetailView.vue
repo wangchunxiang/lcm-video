@@ -286,7 +286,7 @@ useSeo(() => ({
       <!-- 顶部横幅：封面放大虚化垫底，前面压渐变接到页面底色；横幅通栏，内容仍收进 Container -->
       <section class="relative isolate z-10">
         <!-- 只裁剪背景层（blur 会外溢）；内容层不裁剪，简介浮层才能盖到下面的区块上 -->
-        <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div class="pointer-events-none absolute inset-0 overflow-hidden">
           <div
             v-if="vod.cover"
             class="absolute inset-0 scale-110 bg-cover bg-center opacity-60 blur-2xl max-lg:blur-lg"
@@ -373,7 +373,6 @@ useSeo(() => ({
         <section v-if="lines.length" class="pb-4">
         <div class="mb-4 flex items-end gap-4 border-b border-line">
           <div
-            role="tablist"
             class="-mb-px flex min-w-0 flex-1 gap-4 overflow-x-auto sm:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <button
@@ -381,14 +380,12 @@ useSeo(() => ({
               :id="`line-tab-${line.id}`"
               :key="line.id"
               type="button"
-              role="tab"
               class="flex-none cursor-pointer whitespace-nowrap pb-2 pt-2 text-body transition"
               :class="
                 selectedLine?.id === line.id
                   ? 'text-primary shadow-[inset_0_-2px_0_var(--color-primary)]'
                   : 'text-ink-2 hover:text-ink'
               "
-              :aria-selected="selectedLine?.id === line.id"
               @click="selectLine(line.id)"
             >
               {{ line.name }}
@@ -408,7 +405,6 @@ useSeo(() => ({
           v-if="episodesShown.length"
           class="max-h-[var(--ep-max-h)] overflow-y-auto transition-opacity"
           :class="epLoading ? 'pointer-events-none opacity-40' : ''"
-          :aria-busy="epLoading"
         >
           <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <RouterLink
@@ -440,9 +436,6 @@ useSeo(() => ({
       <div v-if="introOpen" class="fixed inset-0 z-40 bg-scrim" @click="closeIntro" />
       <div
         v-if="introOpen"
-        role="dialog"
-        aria-modal="true"
-        aria-label="详细介绍"
         class="fixed left-1/2 top-1/2 z-50 flex max-h-[70vh] w-[min(640px,calc(100%-48px))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-pop"
       >
         <header class="flex items-center justify-between gap-4 border-b border-line px-4 py-2">

@@ -356,9 +356,6 @@ useSeo(() => ({
             自动连播
             <button
               type="button"
-              role="switch"
-              :aria-checked="autonext"
-              :aria-label="autonext ? '关闭自动连播' : '开启自动连播'"
               class="relative h-[22px] w-[38px] flex-none cursor-pointer rounded-full transition"
               :class="autonext ? 'bg-primary' : 'bg-surface-3'"
               @click="toggleAutonext"
@@ -376,7 +373,6 @@ useSeo(() => ({
       <section class="mt-4">
         <div class="mb-4 flex items-end gap-4 border-b border-line">
           <div
-            role="tablist"
             class="-mb-px flex min-w-0 flex-1 gap-4 overflow-x-auto sm:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <button
@@ -384,14 +380,12 @@ useSeo(() => ({
               :id="`play-line-tab-${item.id}`"
               :key="item.id"
               type="button"
-              role="tab"
               class="flex-none cursor-pointer whitespace-nowrap pb-2 pt-2 text-body transition"
               :class="
                 item.id === line.id
                   ? 'text-primary shadow-[inset_0_-2px_0_var(--color-primary)]'
                   : 'text-ink-2 hover:text-ink'
               "
-              :aria-selected="item.id === line.id"
               @click="selectLine(item.id, item.episodes)"
             >
               {{ item.name }}
