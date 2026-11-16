@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
@@ -17,10 +17,27 @@ const router = useRouter();
 const play = ref<VodPlay | null>(null);
 const loading = ref(true);
 const error = ref('');
-const lineOpen = ref(false);
 const countdown = ref(0);
 const epsRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
+
+/** 选集排序与详情页共用一份偏好：倒序 = 最新集在前 */
+const EP_ORDER_KEY = 'lcm:ep-order';
+const epDesc = ref(false);
+try {
+  epDesc.value = localStorage.getItem(EP_ORDER_KEY) === 'desc';
+} catch {
+  epDesc.value = false;
+}
+
+function toggleEpOrder(): void {
+  epDesc.value = !epDesc.value;
+  try {
+    localStorage.setItem(EP_ORDER_KEY, epDesc.value ? 'desc' : 'asc');
+  } catch {
+    /* 存不了也不影响本次会话 */
+  }
+}
 
 let countdownTimer: number | undefined;
 let requestSeq = 0;
@@ -28,6 +45,7 @@ let requestSeq = 0;
 const vod = computed(() => play.value?.vod ?? null);
 const line = computed(() => play.value?.line ?? null);
 const episodes = computed(() => play.value?.episodes ?? []);
+const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
 const current = computed(() => play.value?.current ?? 1);
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
@@ -73,7 +91,6 @@ async function load(): Promise<void> {
 
   loading.value = true;
   error.value = '';
-  lineOpen.value = false;
   stopCountdown();
   try {
     // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
@@ -136,7 +153,6 @@ async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
 
 /** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集 */
 async function selectLine(lineId: string, lineEpisodes: number): Promise<void> {
-  lineOpen.value = false;
   const p = play.value;
   if (!p) return;
   const ep = Math.max(1, Math.min(p.current, lineEpisodes || p.current));
@@ -352,67 +368,60 @@ useSeo(() => ({
         </label>
       </div>
 
-      <!-- 选集：线路在卡片头部右侧，剧集一整条滚动（不分段） -->
-      <section class="mt-4 rounded-lg bg-surface p-5">
-        <div class="mb-3 flex flex-wrap items-center gap-3">
-          <h2 class="text-[16px] font-semibold">选集</h2>
-          <span class="text-caption text-ink-3">共 {{ episodes.length }} 集</span>
-
-          <div class="relative ml-auto">
+      <!-- 线路与选集：和详情页同一套写法（下划线 tab + 网格），切集仍就地换源 -->
+      <section class="mt-4">
+        <div class="mb-4 flex items-end gap-4 border-b border-line">
+          <div
+            role="tablist"
+            class="-mb-px flex min-w-0 flex-1 gap-4 overflow-x-auto sm:gap-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <button
+              v-for="item in play.lines"
+              :id="`play-line-tab-${item.id}`"
+              :key="item.id"
               type="button"
-              class="flex h-8 cursor-pointer items-center gap-2 rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
-              :aria-expanded="lineOpen"
-              @click="lineOpen = !lineOpen"
+              role="tab"
+              class="flex-none cursor-pointer whitespace-nowrap pb-2 pt-2 text-body transition"
+              :class="
+                item.id === line.id
+                  ? 'text-primary shadow-[inset_0_-2px_0_var(--color-primary)]'
+                  : 'text-ink-2 hover:text-ink'
+              "
+              :aria-selected="item.id === line.id"
+              @click="selectLine(item.id, item.episodes)"
             >
-              <span class="max-w-[160px] truncate">{{ line.name }}</span>
-              <span class="flex-none text-caption text-ink-3">{{ line.episodes }} 集</span>
-              <ChevronDown :size="16" class="shrink-0" />
+              {{ item.name }}
             </button>
-
-            <div
-              v-if="lineOpen"
-              class="absolute right-0 top-full z-20 mt-1 w-[260px] rounded-lg border border-line bg-surface p-1 shadow-pop"
-            >
-              <button
-                v-for="item in play.lines"
-                :key="item.id"
-                type="button"
-                class="flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-sm px-4 text-left text-small transition"
-                :class="
-                  item.id === line.id
-                    ? 'bg-primary-weak text-primary'
-                    : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
-                "
-                @click="selectLine(item.id, item.episodes)"
-              >
-                <span class="truncate">{{ item.name }}</span>
-                <span class="flex-none text-caption text-ink-3">{{ item.episodes }} 集</span>
-              </button>
-            </div>
           </div>
+          <button
+            type="button"
+            class="-mb-px flex-none cursor-pointer pb-2 pt-2 text-small text-ink-3 transition hover:text-ink"
+            :title="epDesc ? '当前倒序，点击切回正序' : '当前正序，点击切换为倒序'"
+            @click="toggleEpOrder"
+          >
+            {{ epDesc ? '倒序' : '正序' }}
+          </button>
         </div>
 
-        <div
-          ref="epsRef"
-          class="grid max-h-[var(--ep-max-h)] grid-cols-4 content-start gap-2 overflow-y-auto sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
-        >
-          <button
-            v-for="ep in episodes"
-            :key="ep.index"
-            type="button"
-            :title="ep.name"
-            :data-active="ep.index === current ? '1' : undefined"
-            class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded-sm px-2 text-caption transition"
-            :class="
-              ep.index === current
-                ? 'bg-primary text-white hover:bg-primary-strong'
-                : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
-            "
-            @click="selectEp(ep.index)"
-          >
-            {{ ep.name }}
-          </button>
+        <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
+          <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+            <button
+              v-for="ep in episodesShown"
+              :key="ep.index"
+              type="button"
+              :title="ep.name"
+              :data-active="ep.index === current ? '1' : undefined"
+              class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] transition"
+              :class="
+                ep.index === current
+                  ? 'bg-primary text-white'
+                  : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
+              "
+              @click="selectEp(ep.index)"
+            >
+              {{ ep.name }}
+            </button>
+          </div>
         </div>
       </section>
     </div>
