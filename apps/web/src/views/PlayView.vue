@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ChevronDown } from 'lucide-vue-next';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
@@ -34,6 +34,27 @@ const player = computed(() => site.config.player);
 
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
 const nextEpItem = computed(() => (nextEp.value ? episodes.value[nextEp.value - 1] : null));
+const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
+
+/** 自动连播开关：默认取站点配置，用户手动改过就记在本地（只影响这台设备） */
+const AUTONEXT_KEY = 'lcm:autonext';
+const autonext = ref(site.config.player.autonext);
+try {
+  const saved = localStorage.getItem(AUTONEXT_KEY);
+  if (saved === '1') autonext.value = true;
+  else if (saved === '0') autonext.value = false;
+} catch {
+  /* 隐私模式读不到就按站点配置 */
+}
+
+function toggleAutonext(): void {
+  autonext.value = !autonext.value;
+  try {
+    localStorage.setItem(AUTONEXT_KEY, autonext.value ? '1' : '0');
+  } catch {
+    /* 存不了也不影响本次会话 */
+  }
+}
 
 /** 标题右侧的小字：当前集 + 源站备注（线路名与总集数在下拉里已有，不重复） */
 const subtitle = computed(() => {
@@ -176,7 +197,7 @@ function startCountdown(): void {
 }
 
 function onEnded(): void {
-  if (!player.value.autonext || !nextEp.value) return;
+  if (!autonext.value || !nextEp.value) return;
   startCountdown();
 }
 
@@ -187,7 +208,10 @@ async function scrollToCurrent(): Promise<void> {
   if (!box) return;
   const active = box.querySelector<HTMLElement>('[data-active="1"]');
   if (!active) return;
-  box.scrollTop = Math.max(0, active.offsetTop - box.clientHeight / 2 + active.clientHeight / 2);
+  // 用相对视口的矩形差算位移：offsetTop 会受最近定位祖先影响，卡片里会算偏
+  const boxRect = box.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
+  box.scrollTop += activeRect.top - boxRect.top - box.clientHeight / 2 + activeRect.height / 2;
 }
 
 watch(
@@ -232,88 +256,123 @@ useSeo(() => ({
 
 <template>
   <div class="pt-4">
-    <div v-if="loading" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div v-if="loading" class="grid gap-4">
       <Skeleton class="aspect-video w-full rounded-md" />
-      <Skeleton class="h-72 rounded-lg" />
+      <Skeleton class="h-40 rounded-lg" />
     </div>
 
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
     <div v-else-if="play && vod && line">
-      <!-- 桌面端标题与集数一行；窄屏折成两行，避免片名被截得只剩几个字 -->
-      <div class="mb-4 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2">
+      <div class="relative aspect-video overflow-hidden rounded-md bg-black">
+        <PlayerBox
+          ref="playerRef"
+          :src="epItem?.url ?? ''"
+          :parse-url="line.parseUrl"
+          :poster="vod.cover"
+          :autoplay="player.autoplay"
+          :resume="player.resume"
+          :resume-key="`${vod.id}:${line.id}:${current}`"
+          :screenshot="player.screenshot"
+          :fullscreen="player.fullscreen"
+          :webfullscreen="player.webfullscreen"
+          :setting="player.setting"
+          @ended="onEnded"
+        />
+
+        <!-- 自动连播倒计时：叠在播放器底部，可取消 -->
+        <div
+          v-if="countdown > 0"
+          class="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-glass px-4 py-2 text-small text-ink backdrop-blur-xl"
+        >
+          <span>{{ countdown }} 秒后播放 {{ nextEpItem?.name }}</span>
+          <button
+            type="button"
+            class="ml-auto h-8 cursor-pointer rounded-md px-4 text-ink-2 transition hover:bg-surface-2 hover:text-ink"
+            @click="stopCountdown"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="h-8 cursor-pointer rounded-md bg-primary px-4 text-white transition hover:bg-primary-strong"
+            @click="selectEp(nextEp)"
+          >
+            立即播放
+          </button>
+        </div>
+      </div>
+
+      <!-- 工具栏：上一集 / 下一集 / 片名 / 自动连播开关 -->
+      <div class="mt-4 flex flex-wrap items-center gap-2 border-b border-line pb-3">
+        <button
+          type="button"
+          class="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-line bg-surface-2 px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:text-line"
+          :disabled="!prevEp"
+          @click="selectEp(prevEp)"
+        >
+          <ChevronLeft :size="16" class="shrink-0" />
+          上一集
+        </button>
+        <button
+          type="button"
+          class="flex h-8 cursor-pointer items-center gap-1 rounded-md border border-line bg-surface-2 px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink disabled:cursor-not-allowed disabled:border-line disabled:text-line"
+          :disabled="!nextEp"
+          @click="selectEp(nextEp)"
+        >
+          下一集
+          <ChevronRight :size="16" class="shrink-0" />
+        </button>
+
         <RouterLink
           :to="`/detail/${vod.id}`"
           :title="vod.name"
-          class="min-w-0 truncate text-[20px] font-semibold leading-tight text-ink hover:text-primary"
+          class="mx-1 min-w-0 truncate text-[18px] font-semibold leading-tight text-ink hover:text-primary"
         >
           {{ vod.name }}
         </RouterLink>
         <span class="shrink-0 truncate text-caption text-ink-3">{{ subtitle }}</span>
-      </div>
 
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div class="min-w-0">
-        <div class="relative aspect-video overflow-hidden rounded-md bg-black">
-          <PlayerBox
-            ref="playerRef"
-            :src="epItem?.url ?? ''"
-            :parse-url="line.parseUrl"
-            :poster="vod.cover"
-            :autoplay="player.autoplay"
-            :resume="player.resume"
-            :resume-key="`${vod.id}:${line.id}:${current}`"
-            :screenshot="player.screenshot"
-            :fullscreen="player.fullscreen"
-            :webfullscreen="player.webfullscreen"
-            :setting="player.setting"
-            @ended="onEnded"
-          />
-
-          <!-- 自动连播倒计时：叠在播放器底部，可取消 -->
-          <div
-            v-if="countdown > 0"
-            class="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-glass px-4 py-2 text-small text-ink backdrop-blur-xl"
+        <label class="ml-auto flex cursor-pointer items-center gap-2 text-small text-ink-2">
+          自动连播
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="autonext"
+            :aria-label="autonext ? '关闭自动连播' : '开启自动连播'"
+            class="relative h-[22px] w-[38px] flex-none cursor-pointer rounded-full transition"
+            :class="autonext ? 'bg-primary' : 'bg-surface-3'"
+            @click="toggleAutonext"
           >
-            <span>{{ countdown }} 秒后播放 {{ nextEpItem?.name }}</span>
-            <button
-              type="button"
-              class="ml-auto h-8 cursor-pointer rounded-md px-4 text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-              @click="stopCountdown"
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              class="h-8 cursor-pointer rounded-md bg-primary px-4 text-white transition hover:bg-primary-strong"
-              @click="selectEp(nextEp)"
-            >
-              立即播放
-            </button>
-          </div>
-        </div>
+            <span
+              class="absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all"
+              :class="autonext ? 'left-[19px]' : 'left-[3px]'"
+            />
+          </button>
+        </label>
       </div>
 
-      <!-- 右侧：线路 + 选集。桌面端高度与播放器对齐，选集在卡片内部滚动 -->
-      <div class="relative">
-        <aside class="flex flex-col gap-4 rounded-lg bg-surface p-5 lg:absolute lg:inset-0">
-          <div class="relative">
+      <!-- 选集：线路在卡片头部右侧，剧集一整条滚动（不分段） -->
+      <section class="mt-4 rounded-lg bg-surface p-5">
+        <div class="mb-3 flex flex-wrap items-center gap-3">
+          <h2 class="text-[16px] font-semibold">选集</h2>
+          <span class="text-caption text-ink-3">共 {{ episodes.length }} 集</span>
+
+          <div class="relative ml-auto">
             <button
               type="button"
-              class="flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
+              class="flex h-8 cursor-pointer items-center gap-2 rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
               :aria-expanded="lineOpen"
               @click="lineOpen = !lineOpen"
             >
-              <span class="truncate">{{ line.name }}</span>
-              <span class="flex flex-none items-center gap-1 text-caption text-ink-3">
-                {{ line.episodes }} 集
-                <ChevronDown :size="16" class="shrink-0" />
-              </span>
+              <span class="max-w-[160px] truncate">{{ line.name }}</span>
+              <span class="flex-none text-caption text-ink-3">{{ line.episodes }} 集</span>
+              <ChevronDown :size="16" class="shrink-0" />
             </button>
 
             <div
               v-if="lineOpen"
-              class="absolute inset-x-0 top-full z-20 mt-1 max-h-[320px] overflow-auto rounded-lg border border-line bg-surface p-1 shadow-pop"
+              class="absolute right-0 top-full z-20 mt-1 w-[260px] rounded-lg border border-line bg-surface p-1 shadow-pop"
             >
               <button
                 v-for="item in play.lines"
@@ -332,33 +391,30 @@ useSeo(() => ({
               </button>
             </div>
           </div>
+        </div>
 
-          <div class="min-h-0 flex-1 max-lg:max-h-[var(--ep-max-h)]">
-            <div
-              ref="epsRef"
-              class="grid h-full max-lg:max-h-[var(--ep-max-h)] grid-cols-4 content-start gap-2 overflow-y-auto"
-            >
-              <button
-                v-for="ep in episodes"
-                :key="ep.index"
-                type="button"
-                :title="ep.name"
-                :data-active="ep.index === current ? '1' : undefined"
-                class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded-sm px-2 text-caption transition"
-                :class="
-                  ep.index === current
-                    ? 'bg-primary text-white hover:bg-primary-strong'
-                    : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
-                "
-                @click="selectEp(ep.index)"
-              >
-                {{ ep.name }}
-              </button>
-            </div>
-          </div>
-        </aside>
-      </div>
-      </div>
+        <div
+          ref="epsRef"
+          class="grid max-h-[var(--ep-max-h)] grid-cols-4 content-start gap-2 overflow-y-auto sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+        >
+          <button
+            v-for="ep in episodes"
+            :key="ep.index"
+            type="button"
+            :title="ep.name"
+            :data-active="ep.index === current ? '1' : undefined"
+            class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded-sm px-2 text-caption transition"
+            :class="
+              ep.index === current
+                ? 'bg-primary text-white hover:bg-primary-strong'
+                : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
+            "
+            @click="selectEp(ep.index)"
+          >
+            {{ ep.name }}
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
