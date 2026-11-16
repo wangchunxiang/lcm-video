@@ -462,30 +462,36 @@ export class PortalService {
       params.push(year);
     }
     const where = clauses.join(' AND ');
-    const order =
-      input.sort === 'new' ? 'v.created_at DESC, v.id DESC' : 'v.collected_at DESC, v.id DESC';
 
     /**
-     * 两段式查询：先用覆盖索引 idx_search(status, name, year, collected_at, created_at) 取本页 id，
-     * 再按 id 取宽字段。
+     * 一次覆盖索引扫描取全部命中行的窄字段（id / 年份 / 两个时间），
+     * 总数、年份选项、排序都在内存里算 —— 沿用 v1 的做法。
+     *
+     * `name LIKE '%kw%'` 没法用索引做范围，只能把 status=1 的索引项整段扫一遍（约 0.16 秒）；
+     * 分两次查（本页 + COUNT）就是双倍时间，所以这里扫一次、剩下的在内存里做。
+     * 常见词命中 1~2 万行也只有 1MB 左右，切页前排序完全扛得住。
      *
      * 必须 FORCE INDEX：不加的话优化器会为了省掉 filesort 选 idx_status_collected，
-     * 按 collected_at 顺序扫 10 万行再回表校验 name LIKE，实测 5.5s；
-     * 强制走覆盖索引后 0.17s（只有少数命中行参与排序）。
+     * 按 collected_at 顺序扫 10 万行再回表校验 name LIKE，实测 5.5s。
      */
-    const pageRows = await this.dataSource.query<Array<{ id: string }>>(
-      `SELECT v.id AS id FROM lcm_vod v FORCE INDEX (idx_search)
-        WHERE ${where}
-        ORDER BY ${order}
-        LIMIT ? OFFSET ?`,
-      [...params, take, skip],
-    );
-    const items = await this.queryCardsByIds(pageRows.map((row) => String(row.id)));
-    const totalRows = await this.dataSource.query<Array<{ total: number }>>(
-      `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
+    const hits = await this.dataSource.query<
+      Array<{ id: string; year: number; collectedAt: Date | string | null; createdAt: Date | string | null }>
+    >(
+      `SELECT v.id AS id, v.year AS year, v.collected_at AS collectedAt, v.created_at AS createdAt
+         FROM lcm_vod v FORCE INDEX (idx_search)
+        WHERE ${where}`,
       params,
     );
-    return { items, total: Number(totalRows[0]?.total ?? 0) };
+
+    const timeOf = (value: Date | string | null): number => (value === null ? 0 : new Date(value).getTime());
+    const sorted = [...hits].sort((a, b) =>
+      input.sort === 'new'
+        ? timeOf(b.createdAt) - timeOf(a.createdAt) || Number(b.id) - Number(a.id)
+        : timeOf(b.collectedAt) - timeOf(a.collectedAt) || Number(b.id) - Number(a.id),
+    );
+    const pageRows = sorted.slice(skip, skip + take);
+    const items = await this.queryCardsByIds(pageRows.map((row) => String(row.id)));
+    return { items, total: hits.length };
   }
 
   /** 影片可用线路：线路设置里的启用项在前，未登记的照旧显示。 */
