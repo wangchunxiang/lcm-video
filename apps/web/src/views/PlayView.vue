@@ -261,7 +261,22 @@ useSeo(() => ({
 
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
-    <div v-else-if="play && vod && line" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div v-else-if="play && vod && line">
+      <!-- 桌面端标题与集数一行；窄屏折成两行，避免片名被截得只剩几个字 -->
+      <div class="mb-4 flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2">
+        <RouterLink
+          :to="`/detail/${vod.id}`"
+          :title="vod.name"
+          class="min-w-0 truncate text-[20px] font-semibold leading-tight text-ink hover:text-primary"
+        >
+          {{ vod.name }}
+        </RouterLink>
+        <span class="shrink-0 truncate text-caption text-ink-3">
+          {{ epItem?.name }} · {{ line.name }} · 共 {{ episodes.length }} 集
+        </span>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div class="min-w-0">
         <div class="relative aspect-video overflow-hidden rounded-md bg-black">
           <PlayerBox
@@ -306,19 +321,6 @@ useSeo(() => ({
       <!-- 右侧：线路 + 选集。桌面端高度与播放器对齐，选集在卡片内部滚动 -->
       <div class="relative">
         <aside class="flex flex-col gap-4 rounded-lg bg-surface p-5 lg:absolute lg:inset-0">
-          <div class="flex flex-col gap-1">
-            <RouterLink
-              :to="`/detail/${vod.id}`"
-              :title="vod.name"
-              class="truncate text-emphasis font-semibold text-ink"
-            >
-              {{ vod.name }}
-            </RouterLink>
-            <span class="truncate text-caption text-ink-3">
-              {{ epItem?.name }} · {{ line.name }} · 共 {{ episodes.length }} 集
-            </span>
-          </div>
-
           <div class="relative">
             <button
               type="button"
@@ -380,6 +382,7 @@ useSeo(() => ({
             </div>
           </div>
         </aside>
+      </div>
       </div>
     </div>
   </div>
