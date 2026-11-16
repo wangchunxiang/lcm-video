@@ -24,6 +24,7 @@ const activeGroup = ref(0);
 const countdown = ref(0);
 const epsRef = ref<HTMLDivElement | null>(null);
 const epsWrapRef = ref<HTMLDivElement | null>(null);
+const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 /** 选集区高度按整行吸附，避免底部露出半行 */
 const epsHeight = ref(0);
 
@@ -106,20 +107,68 @@ async function load(): Promise<void> {
   }
 }
 
-/** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集 */
-function selectLine(lineId: string, lineEpisodes: number): void {
-  lineOpen.value = false;
+/**
+ * 换到另一条线路：要取一次新线路的集数列表，但播放器不重建。
+ * 返回是否切换成功（失败时由调用方决定是否整页重载）。
+ */
+async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
+  const p = play.value;
+  if (!p) return false;
+  const lineIndex = p.lines.findIndex((item) => item.id === lineId);
+  if (lineIndex < 0) return false;
+
+  playerRef.value?.saveProgress();
   stopCountdown();
-  const ep = Math.max(1, Math.min(current.value, lineEpisodes || current.value));
-  void router.push({ name: 'play', params: { id: String(route.params.id), lineId, ep: String(ep) } });
+  try {
+    const next = await portal.play(String(p.vod.id), { line: lineIndex, ep });
+    play.value = next;
+    return true;
+  } catch (e) {
+    error.value = (e as Error).message || '切换线路失败';
+    return false;
+  }
+}
+
+/** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集 */
+async function selectLine(lineId: string, lineEpisodes: number): Promise<void> {
+  lineOpen.value = false;
+  const p = play.value;
+  if (!p) return;
+  const ep = Math.max(1, Math.min(p.current, lineEpisodes || p.current));
+
+  if (lineId === p.line.id) {
+    applyEp(ep);
+    await router.push({
+      name: 'play',
+      params: { id: String(p.vod.id), lineId, ep: String(p.current) },
+    });
+    return;
+  }
+
+  if (!(await switchLineInPlace(lineId, ep))) return;
+  const next = play.value;
+  await router.push({
+    name: 'play',
+    params: { id: String(p.vod.id), lineId, ep: String(next?.current ?? ep) },
+  });
+}
+
+/** 就地换集：只改 current，播放器换源、地址栏更新，不再请求接口 */
+function applyEp(index: number): void {
+  const p = play.value;
+  if (!p || index < 1 || index > p.episodes.length || index === p.current) return;
+  playerRef.value?.saveProgress();
+  stopCountdown();
+  p.current = index;
 }
 
 function selectEp(index: number): void {
-  if (!line.value || index === current.value || index < 1) return;
-  stopCountdown();
+  const p = play.value;
+  if (!p || index < 1 || index > p.episodes.length) return;
+  applyEp(index);
   void router.push({
     name: 'play',
-    params: { id: String(route.params.id), lineId: line.value.id, ep: String(index) },
+    params: { id: String(p.vod.id), lineId: p.line.id, ep: String(p.current) },
   });
 }
 
@@ -159,7 +208,27 @@ async function scrollToCurrent(): Promise<void> {
 
 watch(
   () => [route.params.id, route.params.lineId, route.params.ep],
-  () => void load(),
+  () => {
+    const vodId = String(route.params.id || '');
+    const lineId = typeof route.params.lineId === 'string' ? route.params.lineId : '';
+    const ep = Math.max(1, Number(route.params.ep) || 1);
+    const p = play.value;
+
+    // 同一部片：同线路只换集，不同线路取一次数据后就地换源（前进/后退也走这里）
+    if (p && vodId === String(p.vod.id)) {
+      if (lineId === p.line.id && ep <= p.episodes.length) {
+        applyEp(ep);
+        return;
+      }
+      if (lineId !== p.line.id) {
+        void switchLineInPlace(lineId, ep).then((ok) => {
+          if (!ok) void load();
+        });
+        return;
+      }
+    }
+    void load();
+  },
   { immediate: true },
 );
 
@@ -223,12 +292,13 @@ useSeo(() => ({
       <div class="min-w-0">
         <div class="relative aspect-video overflow-hidden rounded-md bg-black">
           <PlayerBox
+            ref="playerRef"
             :src="epItem?.url ?? ''"
             :parse-url="line.parseUrl"
             :poster="vod.cover"
             :autoplay="player.autoplay"
             :resume="player.resume"
-            :resume-key="`${vod.id}:${line.id}`"
+            :resume-key="`${vod.id}:${line.id}:${current}`"
             :screenshot="player.screenshot"
             :fullscreen="player.fullscreen"
             :webfullscreen="player.webfullscreen"

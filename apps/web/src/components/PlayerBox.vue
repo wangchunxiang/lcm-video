@@ -72,6 +72,11 @@ function destroyPlayer(): void {
  * 其余浏览器用 hls.js，致命错误时回退到原生内核再试一次。
  */
 function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void {
+  // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
   if (video.canPlayType('application/vnd.apple.mpegurl')) {
     video.src = url;
     return;
@@ -118,6 +123,20 @@ function saveResume(player: Artplayer): void {
   }
 }
 
+/**
+ * 立刻把当前进度写进 localStorage（不受 5 秒节流限制）。
+ * 换集前由父组件调用，保证「看了一半切走再切回来」能接上。
+ */
+function saveProgress(): void {
+  if (!art || !props.resume || !props.resumeKey) return;
+  lastSaveAt = Date.now();
+  if (art.currentTime > 5) {
+    localStorage.setItem(resumeStorageKey(), String(Math.floor(art.currentTime)));
+  }
+}
+
+defineExpose({ saveProgress });
+
 function createPlayer(): void {
   failed.value = false;
   const container = containerRef.value;
@@ -163,11 +182,20 @@ function createPlayer(): void {
 }
 
 watch(
-  () => [props.src, props.parseUrl],
-  async () => {
+  () => props.src,
+  async (next, prev) => {
+    if (!next) return;
     await nextTick();
     if (iframeSrc.value) {
+      // 解析页走 iframe：换地址时由 v-if 重新挂载，不需要保留实例
       destroyPlayer();
+      return;
+    }
+    if (art && prev) {
+      // 换集就地切换：同一个 ArtPlayer 实例换源，不销毁重建（避免黑一下）
+      failed.value = false;
+      lastSaveAt = 0;
+      await art.switchUrl(next);
       return;
     }
     createPlayer();
