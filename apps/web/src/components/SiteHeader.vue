@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, ref, watch, type Component } from 'vue';
+import { computed, nextTick, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Clapperboard, Film, House, Search, Sparkles, Tv } from 'lucide-vue-next';
 import { site } from '../site';
@@ -60,8 +60,10 @@ function submit(): void {
 const searchOpen = ref(false);
 const searchInput = ref<HTMLInputElement | null>(null);
 
-function openSearch(): void {
+async function openSearch(): Promise<void> {
   searchOpen.value = true;
+  await nextTick();
+  searchInput.value?.focus();
 }
 
 function closeSearch(): void {
@@ -129,7 +131,7 @@ function submitMobile(): void {
             maxlength="50"
             placeholder="搜索片名、演员"
             aria-label="搜索影片"
-            class="h-full min-w-0 flex-1 border-0 bg-transparent text-small text-ink outline-none placeholder:text-ink-3"
+            class="h-full min-w-0 flex-1 border-0 bg-transparent text-input text-ink outline-none placeholder:text-ink-3 sm:text-small"
           />
         </form>
 
@@ -159,7 +161,7 @@ function submitMobile(): void {
             maxlength="50"
             placeholder="搜索片名、演员"
             aria-label="搜索影片"
-            class="h-full min-w-0 flex-1 border-0 bg-transparent text-small text-ink outline-none placeholder:text-ink-3"
+            class="h-full min-w-0 flex-1 border-0 bg-transparent text-input text-ink outline-none placeholder:text-ink-3 sm:text-small"
             @keydown.esc="closeSearch"
           />
         </form>

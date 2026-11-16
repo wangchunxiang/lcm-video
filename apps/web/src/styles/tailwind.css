@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Tailwind 入口。
  *
  * 只引 theme 与 utilities 两层，故意不引 preflight：页面用 Tailwind 工具类排版，
@@ -46,6 +46,7 @@
   --text-body: var(--fs-body);
   --text-emphasis: var(--fs-emphasis);
   --text-vod: var(--fs-vod);
+  --text-input: var(--fs-input);
   --text-title: var(--fs-title);
   --text-nav: var(--fs-nav);
   --text-nav-sm: var(--fs-nav-sm);

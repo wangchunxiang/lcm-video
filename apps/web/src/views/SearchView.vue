@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { portal, type VodCard } from '../api/portal';
@@ -121,7 +121,7 @@ useSeo(() => ({
         maxlength="50"
         placeholder="输入片名，如：流浪地球"
         aria-label="搜索片名"
-        class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 pr-1 text-body text-ink outline-none placeholder:text-ink-3"
+        class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 pr-1 text-input text-ink outline-none placeholder:text-ink-3 sm:text-body"
       />
       <button
         type="submit"
