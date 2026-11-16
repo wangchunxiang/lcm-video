@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Clapperboard, Film, House, Menu, Search, Sparkles, Tv } from 'lucide-vue-next';
+import { Clapperboard, Film, House, Search, Sparkles, Tv } from 'lucide-vue-next';
 import { site } from '../site';
 import Container from './layout/Container.vue';
-import Sheet from './ui/Sheet.vue';
 
 /**
  * 页面骨架的「顶部」。
  *
- * 三段结构固定：品牌 → 一级分类导航 → 搜索（手机端收成图标 + 抽屉）。
+ * 三段结构固定：品牌 → 一级分类导航 → 搜索。
  * 高度取 --header-h；底色恒定半透明 + 模糊，滚动时底下内容能透出来。
+ * 小屏（<lg）分类改成顶栏下方一行横向滑动条，不再收进抽屉。
  */
 const router = useRouter();
 const route = useRoute();
 const keyword = ref('');
-const navOpen = ref(false);
 
 /**
  * 顶栏输入框与搜索结果页共用同一个关键词：
@@ -36,6 +35,10 @@ const navCategories = computed(() => site.categories.slice(0, 6));
 const NAV =
   'inline-flex flex-none items-center gap-1 whitespace-nowrap text-nav-sm text-ink-2 transition hover:text-ink [&.router-link-active]:text-primary';
 
+/** 小屏分类条：胶囊按钮，选中填主色弱底 */
+const CHIP =
+  'inline-flex h-8 flex-none items-center gap-1 whitespace-nowrap rounded-pill px-4 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink [&.router-link-active]:bg-primary-weak [&.router-link-active]:text-primary';
+
 /** 一级分类的图标按 alias 认；接口里新增的分类没配图标就不画，不猜 */
 const CATEGORY_ICONS: Record<string, Component> = {
   dianying: Film,
@@ -48,11 +51,6 @@ function submit(): void {
   const wd = keyword.value.trim();
   if (!wd) return;
   void router.push({ name: 'search', query: { wd } });
-}
-
-function go(path: string): void {
-  navOpen.value = false;
-  void router.push(path);
 }
 </script>
 
@@ -111,39 +109,26 @@ function go(path: string): void {
           >
             <Search :size="20" class="shrink-0" />
           </RouterLink>
-          <button
-            type="button"
-            class="flex h-9 w-9 cursor-pointer items-center justify-center rounded-md text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-            aria-label="分类菜单"
-            @click="navOpen = true"
-          >
-            <Menu :size="20" class="shrink-0" />
-          </button>
         </div>
       </div>
-    </Container>
 
-    <Sheet v-model:open="navOpen" title="分类" side="left">
-      <nav class="flex flex-col gap-1" aria-label="分类导航">
-        <button
-          type="button"
-          class="flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-left text-body text-ink transition hover:bg-surface-2"
-          @click="go('/')"
-        >
-          <House :size="16" class="shrink-0" />
-          首页
-        </button>
-        <button
-          v-for="cat in site.categories"
-          :key="cat.id"
-          type="button"
-          class="flex cursor-pointer items-center gap-2 rounded-md px-4 py-2 text-left text-body text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-          @click="go(`/list/${cat.alias}`)"
-        >
-          <component :is="CATEGORY_ICONS[cat.alias]" v-if="CATEGORY_ICONS[cat.alias]" :size="16" class="shrink-0" />
-          {{ cat.name }}
-        </button>
+      <!--
+        小屏分类：不再藏进抽屉，改成顶栏下方一行可横向滑动的分类条。
+        抽屉要多一次点击、还挡住内容；分类只有四五个，直接摆出来一步可达。
+      -->
+      <nav
+        class="flex gap-1 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden"
+        aria-label="分类导航"
+      >
+        <RouterLink to="/" :class="CHIP">
+          <House :size="14" class="shrink-0" />
+          <span>首页</span>
+        </RouterLink>
+        <RouterLink v-for="cat in navCategories" :key="cat.id" :to="`/list/${cat.alias}`" :class="CHIP">
+          <component :is="CATEGORY_ICONS[cat.alias]" v-if="CATEGORY_ICONS[cat.alias]" :size="14" class="shrink-0" />
+          <span>{{ cat.name }}</span>
+        </RouterLink>
       </nav>
-    </Sheet>
+    </Container>
   </header>
 </template>
