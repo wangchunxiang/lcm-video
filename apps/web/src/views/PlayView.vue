@@ -336,7 +336,7 @@ useSeo(() => ({
           <div class="min-h-0 flex-1 max-lg:max-h-[var(--ep-max-h)]">
             <div
               ref="epsRef"
-              class="grid h-full grid-cols-4 content-start gap-2 overflow-y-auto"
+              class="grid h-full max-lg:max-h-[var(--ep-max-h)] grid-cols-4 content-start gap-2 overflow-y-auto"
             >
               <button
                 v-for="ep in episodes"
