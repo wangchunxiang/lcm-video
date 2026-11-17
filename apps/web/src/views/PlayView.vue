@@ -144,7 +144,7 @@ async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
   }
 }
 
-/** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集。线路只存页面状态，不写地址栏 */
+/** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集 */
 async function selectLine(lineId: string, lineEpisodes: number): Promise<void> {
   const p = play.value;
   if (!p) return;
@@ -152,13 +152,22 @@ async function selectLine(lineId: string, lineEpisodes: number): Promise<void> {
 
   if (lineId === p.line.id) {
     applyEp(ep);
+    await router.push({
+      name: 'play',
+      params: { id: String(p.vod.id), lineId, ep: String(p.current) },
+    });
     return;
   }
 
-  await switchLineInPlace(lineId, ep);
+  if (!(await switchLineInPlace(lineId, ep))) return;
+  const next = play.value;
+  await router.push({
+    name: 'play',
+    params: { id: String(p.vod.id), lineId, ep: String(next?.current ?? ep) },
+  });
 }
 
-/** 就地换集：只改 current，播放器换源，不再请求接口，也不写地址栏 */
+/** 就地换集：只改 current，播放器换源、地址栏更新，不再请求接口 */
 function applyEp(index: number): void {
   const p = play.value;
   if (!p || index < 1 || index > p.episodes.length || index === p.current) return;
@@ -170,6 +179,10 @@ function selectEp(index: number): void {
   const p = play.value;
   if (!p || index < 1 || index > p.episodes.length) return;
   applyEp(index);
+  void router.push({
+    name: 'play',
+    params: { id: String(p.vod.id), lineId: p.line.id, ep: String(p.current) },
+  });
 }
 
 function onEnded(): void {
