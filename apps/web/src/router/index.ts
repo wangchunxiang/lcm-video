@@ -1,7 +1,13 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import { defaultListAlias } from '../site';
+import { createRouter, createWebHistory, type RouteLocationNormalized, type RouteLocationRaw } from 'vue-router';
+import { defaultListAlias, ensureSite } from '../site';
+
+/** `/list` 与历史 `/list/all` 都落到第一个一级分类：先等分类树到位，否则会落到兜底别名 */
+async function toDefaultList(to: RouteLocationNormalized): Promise<RouteLocationRaw> {
+  await ensureSite();
+  return { name: 'list', params: { alias: defaultListAlias() }, query: to.query };
+}
 /**
- * 前台五个页面（技术方案：单站、PC 优先、纯游客，无登录）。
+ * 前台五个页面（单站、PC 优先、纯游客，无登录）。
  * 路由与 `/api/web/*` 一一对应；筛选与播放位置放在 query/params 上，便于直达与回退。
  */
 export const router = createRouter({
@@ -23,13 +29,23 @@ export const router = createRouter({
       // 首页整页在 Container 里收边（见 App.vue）
       meta: { fullBleed: true },
     },
-    { path: '/list', redirect: () => ({ name: 'list', params: { alias: defaultListAlias() } }) },
+    {
+      // 只用来重定向：等分类树到位后再跳到第一个一级分类
+      path: '/list',
+      name: 'list-root',
+      component: () => import('../views/ListView.vue'),
+      beforeEnter: (to) => toDefaultList(to),
+    },
     {
       path: '/list/:alias',
       name: 'list',
       component: () => import('../views/ListView.vue'),
-      // 没有「全部」聚合页了：老的 /list/all 和任何非分类别名都落到第一个一级分类
-      beforeEnter: (to) => (to.params.alias === 'all' ? { name: 'list', params: { alias: defaultListAlias() }, query: to.query } : true),
+      // 没有「全部」聚合页了：老的 /list/all 落到第一个一级分类
+      beforeEnter: async (to) => {
+        if (to.params.alias !== 'all') return true;
+        await ensureSite();
+        return { name: 'list', params: { alias: defaultListAlias() }, query: to.query };
+      },
     },
     {
       path: '/detail/:id',

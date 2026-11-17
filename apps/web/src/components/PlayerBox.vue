@@ -95,6 +95,30 @@ function destroyPlayer(): void {
  *
  * hls.js 压缩后约 400KB，只有真正需要时才动态加载，不拖慢首屏（播放器外壳先出来）。
  */
+/**
+ * 原生 HLS 能不能放。
+ * 只问 `application/vnd.apple.mpegurl` 不够：iOS 17.1 之后部分内核（含 iOS 上的第三方壳）
+ * 对它返回空串，只认 `application/x-mpegURL`，于是会被误判成「不支持」。三个都问一遍。
+ */
+const NATIVE_HLS_TYPES = ['application/vnd.apple.mpegurl', 'application/x-mpegURL', 'audio/mpegurl'];
+
+/**
+ * 是否 iPhone/iPad。
+ * 这类设备没有 MSE，hls.js 永远起不来，只能走原生内核 —— 哪怕 canPlayType 说不行。
+ */
+function isAppleMobile(): boolean {
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true;
+  // iPadOS 13 起 UA 伪装成 Macintosh，用触摸点区分
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+}
+
+/**
+ * ArtPlayer 的 m3u8 自定义内核。
+ * 顺序是「hls.js 优先、原生兜底」，不能反过来：Chrome/Firefox 对 HLS 的 canPlayType
+ * 会回 "maybe"，但真把 m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4），
+ * 于是每个非 Safari 浏览器都会卡在「该线路暂不支持在线播放」。
+ * iPhone/iPad 没有 MSE，hls.js 起不来，直接交给原生内核（也省掉 400KB 的下载）。
+ */
 function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void {
   // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
   if (hls) {
@@ -103,10 +127,10 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
   }
   // 换集/卸载会让上一次的动态加载作废，用令牌判断回调是否还有效
   const token = ++loadToken;
-  if (video.canPlayType('application/vnd.apple.mpegurl')) {
+
+  const playNatively = (): void => {
     video.src = url;
-    return;
-  }
+  };
 
   const unsupported = (): void => {
     failed.value = true;
@@ -114,11 +138,21 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
     emit('error');
   };
 
+  if (isAppleMobile()) {
+    playNatively();
+    return;
+  }
+
   void import('hls.js')
     .then((module) => {
       if (token !== loadToken) return;
       const Hls = (module as unknown as { default: HlsConstructor }).default;
       if (!Hls.isSupported()) {
+        // 没有 MSE 但内核自己认 HLS（macOS Safari 之外的少量环境）时退回原生
+        if (NATIVE_HLS_TYPES.some((type) => video.canPlayType(type) !== '')) {
+          playNatively();
+          return;
+        }
         unsupported();
         return;
       }
@@ -188,7 +222,10 @@ function createPlayer(): void {
   const player = new Artplayer({
     container,
     url: props.src,
-    type: 'auto',
+    // 必须是空串：artplayer 的 url setter 是 `option.type || 由后缀推断`，写成 'auto'
+    // 会被当成一个叫 auto 的类型名，customType 直接跳过、video.src 被裸赋值 ——
+    // 也就是 hls.js 永远加载不到，非 Safari 一律报「不支持」
+    type: '',
     customType: { m3u8: playM3u8 },
     // 不放封面：加载时保持黑底，避免先闪一下影片海报（poster 也不再作为 prop 传入）
     autoplay: props.autoplay,

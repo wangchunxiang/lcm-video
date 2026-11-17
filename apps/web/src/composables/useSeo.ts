@@ -19,7 +19,7 @@ function setMeta(name: string, content: string): void {
 
 /**
  * 页面级 SEO：标题、描述、robots。
- * 规则见 docs/技术方案.md 7.4；页面卸载后由下一个页面覆盖，不做恢复。
+ * 单页应用没有服务端渲染：路由切换时由新页面覆盖 head，卸载时不做恢复。
  */
 export function useSeo(source: () => SeoOptions): void {
   watchEffect(() => {

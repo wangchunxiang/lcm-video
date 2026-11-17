@@ -120,14 +120,27 @@ export interface SiteConfig {
   };
 }
 
+/** 请求被主动中断（切页、重新筛选）不是错误，catch 里直接忽略即可。 */
+export function isAbortError(error: unknown): boolean {
+  return (error as { name?: string } | null)?.name === 'AbortError';
+}
+
+/** 每个接口都接受 `signal`：视图切换/重新筛选时旧请求要能立刻断掉。 */
+export interface CallOptions {
+  signal?: AbortSignal;
+}
+
 export const portal = {
-  home: () => http.get<HomeResult>('/home'),
-  categories: () => http.get<CategoryNode[]>('/categories'),
-  config: () => http.get<SiteConfig>('/config'),
-  list: (alias: string, params: ListParams = {}) =>
-    http.get<VodListPage>(`/list/${encodeURIComponent(alias)}`, params),
-  detail: (id: string) => http.get<VodDetail>(`/detail/${id}`),
-  play: (id: string, params: { line?: number; ep?: number } = {}) =>
-    http.get<VodPlay>(`/play/${id}`, params),
-  search: (params: SearchParams) => http.get<{ items: VodCard[]; total: number }>('/search', params),
+  home: (options: CallOptions = {}) => http.get<HomeResult>('/home', undefined, options.signal),
+  categories: (options: CallOptions = {}) =>
+    http.get<CategoryNode[]>('/categories', undefined, options.signal),
+  config: (options: CallOptions = {}) => http.get<SiteConfig>('/config', undefined, options.signal),
+  list: (alias: string, params: ListParams = {}, options: CallOptions = {}) =>
+    http.get<VodListPage>(`/list/${encodeURIComponent(alias)}`, params, options.signal),
+  detail: (id: string, options: CallOptions = {}) =>
+    http.get<VodDetail>(`/detail/${id}`, undefined, options.signal),
+  play: (id: string, params: { line?: number; ep?: number } = {}, options: CallOptions = {}) =>
+    http.get<VodPlay>(`/play/${id}`, params, options.signal),
+  search: (params: SearchParams, options: CallOptions = {}) =>
+    http.get<{ items: VodCard[]; total: number }>('/search', params, options.signal),
 };

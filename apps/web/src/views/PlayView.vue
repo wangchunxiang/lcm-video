@@ -16,6 +16,8 @@ const router = useRouter();
 const play = ref<VodPlay | null>(null);
 const loading = ref(true);
 const error = ref('');
+/** 换线路失败只提示，不影响正在播的内容 */
+const lineError = ref('');
 const epsRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 
@@ -50,19 +52,22 @@ const player = computed(() => site.config.player);
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
 const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
 
-/** 自动连播开关：默认取站点配置，用户手动改过就记在本地（只影响这台设备） */
+/**
+ * 自动连播开关：用户手动改过就记在本地（只影响这台设备），否则实时跟随站点配置。
+ * 用 computed 而不是 ref 快照：站点配置是异步加载的，直达播放页时 setup 阶段还是默认值。
+ */
 const AUTONEXT_KEY = 'lcm:autonext';
-const autonext = ref(site.config.player.autonext);
+const autonextPref = ref<boolean | null>(null);
 try {
   const saved = localStorage.getItem(AUTONEXT_KEY);
-  if (saved === '1') autonext.value = true;
-  else if (saved === '0') autonext.value = false;
+  autonextPref.value = saved === '1' ? true : saved === '0' ? false : null;
 } catch {
   /* 隐私模式读不到就按站点配置 */
 }
+const autonext = computed(() => autonextPref.value ?? site.config.player.autonext);
 
 function toggleAutonext(): void {
-  autonext.value = !autonext.value;
+  autonextPref.value = !autonext.value;
   try {
     localStorage.setItem(AUTONEXT_KEY, autonext.value ? '1' : '0');
   } catch {
@@ -79,8 +84,22 @@ const subtitle = computed(() => {
   return parts.join(' · ');
 });
 
+/** 在飞请求的中断句柄：换片/换线路/离开页面时把旧请求断掉，别占着连接和服务器 */
+let loadController: AbortController | null = null;
+let lineController: AbortController | null = null;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException ? error.name === 'AbortError' : (error as Error)?.name === 'AbortError';
+}
+
 async function load(): Promise<void> {
   const seq = ++requestSeq;
+  lineController?.abort();
+  loadController?.abort();
+  const controller = new AbortController();
+  loadController = controller;
+  const { signal } = controller;
+
   const vodId = String(route.params.id || '');
   const lineParam = typeof route.params.lineId === 'string' ? route.params.lineId : '';
   const epParam = Math.max(1, Number(route.params.ep) || 1);
@@ -89,7 +108,7 @@ async function load(): Promise<void> {
   error.value = '';
   try {
     // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
-    let result = await portal.play(vodId, { line: 0, ep: epParam });
+    let result = await portal.play(vodId, { line: 0, ep: epParam }, { signal });
     if (seq !== requestSeq) return;
 
     let lineIndex = 0;
@@ -98,15 +117,11 @@ async function load(): Promise<void> {
       if (found >= 0) lineIndex = found;
     }
     if (lineIndex !== 0) {
-      result = await portal.play(vodId, { line: lineIndex, ep: epParam });
+      result = await portal.play(vodId, { line: lineIndex, ep: epParam }, { signal });
       if (seq !== requestSeq) return;
     }
 
-    if (result.episodes.length && epParam > result.episodes.length) {
-      result = await portal.play(vodId, { line: lineIndex, ep: result.episodes.length });
-      if (seq !== requestSeq) return;
-    }
-
+    // 集数越界由服务端 clamp 并放在 result.current 里，这里不再多发一次请求
     play.value = result;
     // 小屏底栏靠它高亮所属的一级分类（播放页 URL 里只有影片 id）
     setPageCategoryId(result.vod.categoryId);
@@ -117,6 +132,7 @@ async function load(): Promise<void> {
       await router.replace({ name: 'play', params: { id: vodId, lineId: canonicalLine, ep: canonicalEp } });
     }
   } catch (e) {
+    if (isAbortError(e)) return;
     if (seq === requestSeq) {
       play.value = null;
       error.value = (e as Error).message || '播放页加载失败';
@@ -130,19 +146,31 @@ async function load(): Promise<void> {
  * 换到另一条线路：要取一次新线路的集数列表，但播放器不重建。
  * 返回是否切换成功（失败时由调用方决定是否整页重载）。
  */
+let lineSeq = 0;
+
 async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
   const p = play.value;
   if (!p) return false;
   const lineIndex = p.lines.findIndex((item) => item.id === lineId);
   if (lineIndex < 0) return false;
 
+  // 连点线路时只认最后一次：先发后到的响应直接丢掉，否则画面与地址栏会错位
+  const seq = ++lineSeq;
+  lineController?.abort();
+  const controller = new AbortController();
+  lineController = controller;
+
   playerRef.value?.saveProgress();
+  lineError.value = '';
   try {
-    const next = await portal.play(String(p.vod.id), { line: lineIndex, ep });
+    const next = await portal.play(String(p.vod.id), { line: lineIndex, ep }, { signal: controller.signal });
+    if (seq !== lineSeq) return false;
     play.value = next;
     return true;
   } catch (e) {
-    error.value = (e as Error).message || '切换线路失败';
+    if (isAbortError(e) || seq !== lineSeq) return false;
+    // 只影响线路区域，不把整页播放器顶掉
+    lineError.value = (e as Error).message || '切换线路失败';
     return false;
   }
 }
@@ -235,6 +263,8 @@ watch(
 watch(current, () => void scrollToCurrent());
 
 onBeforeUnmount(() => {
+  loadController?.abort();
+  lineController?.abort();
 });
 
 useSeo(() => ({
@@ -355,6 +385,11 @@ useSeo(() => ({
             {{ epDesc ? '倒序' : '正序' }}
           </button>
         </div>
+
+        <!-- 换线路失败只在这里提示：正在播的内容和播放器都不动 -->
+        <p v-if="lineError" class="mb-3 rounded bg-danger/10 px-3 py-2 text-small text-danger">
+          {{ lineError }}
+        </p>
 
         <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
           <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">

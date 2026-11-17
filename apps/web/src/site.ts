@@ -28,6 +28,17 @@ export const site = reactive({
   ready: false,
 });
 
+let pending: Promise<void> | null = null;
+
+/**
+ * 拉站点配置与分类树，全局只发一次。
+ * 路由守卫也等它：`/list` 要按第一个一级分类重定向，分类没到就会落到兜底值。
+ */
+export function ensureSite(): Promise<void> {
+  pending ??= loadSite();
+  return pending;
+}
+
 /** 只在应用启动时调用一次；失败也标记 ready，避免页头无限等待。 */
 export async function loadSite(): Promise<void> {
   const [config, categories] = await Promise.allSettled([
@@ -58,7 +69,7 @@ export function defaultListAlias(): string {
 
 /**
  * 影片挂在二级分类上（如「港台剧」），这里回溯到一级分类。
- * 详情页的「浏览分类」按钮与移动端底栏的高亮共用这一份。
+ * 详情页的「手机观看」二维码取地址、移动端底栏的高亮都靠这一份。
  */
 export function topCategoryOf(categoryId: string): CategoryNode | null {
   if (!categoryId) return null;

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { portal, type EpisodeItem, type VodDetail } from '../api/portal';
-import { site, topCategoryOf } from '../site';
+import qrcode from 'qrcode-generator';
+import { isAbortError, portal, type EpisodeItem, type VodDetail } from '../api/portal';
+import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { setPageCategoryId } from '../composables/usePageCategoryId';
+import { useScrollLock } from '../composables/useScrollLock';
 import VodGrid from '../components/VodGrid.vue';
 import Container from '../components/layout/Container.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
@@ -19,6 +21,34 @@ const error = ref('');
 const episodes = ref<EpisodeItem[]>([]);
 const epLoading = ref(false);
 const introOpen = ref(false);
+
+/**
+ * 手机观看：二维码里放的是「当前地址」（详情页地址），手机扫码就能打开同一部影片，
+ * 不用手动输 URL。地址在打开弹窗时取一次，页面内不会再变，避免渲染中反复读 location。
+ */
+const qrOpen = ref(false);
+const qrUrl = ref('');
+
+/*
+ * qrcode-generator 自带的 stringToBytes 按 latin1 取字节（charCodeAt & 0xff），URL 里带中文或其它
+ * 非 ASCII 字符时会被截断成乱码；换成 UTF-8 编码后扫码才能还原原文。
+ * 注意 ESM 构建里没有 CJS 版的 stringToBytesFuncs['UTF-8']，只能直接覆盖 stringToBytes。
+ */
+qrcode.stringToBytes = (s: string): number[] => Array.from(new TextEncoder().encode(s));
+
+/** 二维码用 SVG：矢量图形，投到平板上也不糊；0 = 按内容自动选版本，M 级容错约 15% */
+const qrSvg = computed(() => {
+  if (!qrUrl.value) return '';
+  try {
+    const code = qrcode(0, 'M');
+    code.addData(qrUrl.value, 'Byte');
+    code.make();
+    // scalable：只给 viewBox 不给宽高，交给 CSS 撑满容器；内容只有几何图形，不含 URL 文本，v-html 无注入风险
+    return code.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  } catch {
+    return '';
+  }
+});
 
 const vod = computed(() => data.value?.vod ?? null);
 const lines = computed(() => data.value?.lines ?? []);
@@ -64,10 +94,6 @@ function toggleEpOrder(): void {
 }
 
 const categoryName = computed(() => vod.value?.categoryName ?? '影片');
-/** 影片挂在二级分类上（如「港台剧」），这里回溯到一级分类，给「浏览分类」按钮落地址 */
-const topCategory = computed(() => topCategoryOf(vod.value?.categoryId ?? ''));
-const browseTo = computed(() => (topCategory.value ? `/list/${topCategory.value.alias}` : ''));
-const browseLabel = computed(() => (topCategory.value ? `浏览${topCategory.value.name}` : ''));
 const poster = computed(() => vod.value?.cover || '/img/poster-placeholder.svg');
 const intro = computed(() => vod.value?.content?.trim() ?? '');
 
@@ -161,21 +187,26 @@ function closeIntro(): void {
   introOpen.value = false;
 }
 
-function onKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') closeIntro();
+function openQr(): void {
+  qrUrl.value = window.location.href;
+  qrOpen.value = true;
 }
 
-/** 弹窗打开时锁滚动，并补回滚动条宽度，避免页面右移一下 */
-watch(introOpen, (open) => {
-  if (open) {
-    const scrollbar = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = 'hidden';
-    document.body.style.paddingRight = scrollbar > 0 ? `${scrollbar}px` : '';
-  } else {
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-  }
-});
+function closeQr(): void {
+  qrOpen.value = false;
+}
+
+/** 两个弹窗共用一套「Esc 关全部 / 锁滚动」逻辑，只用一个 watch 避免互相覆盖 body 样式 */
+const anyModalOpen = computed(() => introOpen.value || qrOpen.value);
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape') return;
+  introOpen.value = false;
+  qrOpen.value = false;
+}
+
+// 弹窗锁滚动交给 composable：组件卸载时会复位，开着弹窗离开页面也不会把全站锁死
+useScrollLock(anyModalOpen);
 
 watch(intro, async () => {
   await nextTick();
@@ -200,17 +231,19 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize);
   document.removeEventListener('keydown', onKeydown);
   window.clearTimeout(fitTimer);
+  detailController?.abort();
+  epController?.abort();
 });
 
 function selectLine(lineId: string): void {
   selectedLineId.value = lineId;
 }
 
-/** 上一轮选集请求的序号：快速连点线路时，先发后到的响应直接丢弃 */
-let epSeq = 0;
+/** 在飞选集请求：快速连点线路时把上一个断掉，先发后到的响应不会再覆盖 */
+let epController: AbortController | null = null;
 
 async function loadEpisodes(): Promise<void> {
-  const seq = ++epSeq;
+  epController?.abort();
   if (!selectedLine.value || !data.value) {
     episodes.value = [];
     return;
@@ -218,36 +251,42 @@ async function loadEpisodes(): Promise<void> {
   const index = lines.value.findIndex((line) => line.id === selectedLine.value?.id);
   if (index < 0) return;
 
+  const controller = new AbortController();
+  epController = controller;
   epLoading.value = true;
   try {
-    const result = await portal.play(id.value, { line: index, ep: 1 });
-    if (seq === epSeq) episodes.value = result.episodes;
-  } catch {
-    if (seq === epSeq) episodes.value = [];
+    const result = await portal.play(id.value, { line: index, ep: 1 }, { signal: controller.signal });
+    episodes.value = result.episodes;
+  } catch (e) {
+    if (isAbortError(e)) return;
+    episodes.value = [];
   } finally {
-    if (seq === epSeq) epLoading.value = false;
+    if (!controller.signal.aborted) epLoading.value = false;
   }
 }
 
-let requestSeq = 0;
+let detailController: AbortController | null = null;
 
 async function load(): Promise<void> {
-  const seq = ++requestSeq;
+  detailController?.abort();
+  const controller = new AbortController();
+  detailController = controller;
   loading.value = true;
   error.value = '';
   data.value = null;
   episodes.value = [];
   introOpen.value = false;
+  qrOpen.value = false;
   try {
-    const result = await portal.detail(id.value);
-    if (seq !== requestSeq) return;
+    const result = await portal.detail(id.value, { signal: controller.signal });
     data.value = result;
     // 小屏底栏靠它高亮所属的一级分类（URL 里只有影片 id）
     setPageCategoryId(result.vod.categoryId);
   } catch (e) {
-    if (seq === requestSeq) error.value = (e as Error).message || '影片加载失败';
+    if (isAbortError(e)) return;
+    error.value = (e as Error).message || '影片加载失败';
   } finally {
-    if (seq === requestSeq) loading.value = false;
+    if (!controller.signal.aborted) loading.value = false;
   }
 }
 
@@ -351,13 +390,13 @@ useSeo(() => ({
             >
               立即播放
             </RouterLink>
-            <RouterLink
-              v-if="browseTo"
-              :to="browseTo"
-              class="inline-flex h-[38px] items-center rounded-md border border-line bg-surface-2 px-4 text-body text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
+            <button
+              type="button"
+              class="inline-flex h-[38px] cursor-pointer items-center rounded-md border border-line bg-surface-2 px-4 text-body text-ink-2 transition hover:border-ink-3/50 hover:text-ink"
+              @click="openQr"
             >
-              {{ browseLabel }}
-            </RouterLink>
+              手机观看
+            </button>
           </div>
           </div>
           </div>
@@ -444,6 +483,33 @@ useSeo(() => ({
           </button>
         </header>
         <div class="overflow-y-auto whitespace-pre-wrap px-4 py-4 leading-[1.9] text-ink-2">{{ intro }}</div>
+      </div>
+    </Teleport>
+
+    <!-- 手机观看：二维码内容是当前地址，关闭＝按钮 / 点遮罩 / Esc -->
+    <Teleport to="body">
+      <div v-if="qrOpen" class="fixed inset-0 z-40 bg-scrim" @click="closeQr" />
+      <div
+        v-if="qrOpen"
+        class="fixed left-1/2 top-1/2 z-50 w-[min(320px,calc(100%-48px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-line bg-surface p-4 shadow-pop"
+      >
+        <header class="mb-3 flex items-center justify-between gap-4">
+          <h2 class="text-body font-semibold text-ink">手机观看</h2>
+          <button
+            type="button"
+            class="cursor-pointer text-small text-primary transition hover:text-ink"
+            @click="closeQr"
+          >
+            关闭
+          </button>
+        </header>
+        <!-- 二维码本体是黑块白底，这里必须给白底：暗色主题下黑底二维码扫不出来 -->
+        <div
+          v-if="qrSvg"
+          class="rounded-md bg-white p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+          v-html="qrSvg"
+        />
+        <p v-else class="rounded-md bg-surface-2 px-4 py-8 text-center text-body text-ink-3">二维码生成失败</p>
       </div>
     </Teleport>
   </div>

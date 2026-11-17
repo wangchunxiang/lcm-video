@@ -25,6 +25,8 @@ export interface RequestOptions {
   json?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** 超时毫秒数；0 表示不限时（采集、AI 分析这类长任务）。默认取客户端配置的 30 秒。 */
+  timeoutMs?: number;
 }
 
 export class ApiError extends Error {
@@ -50,17 +52,21 @@ export interface HttpClientOptions {
   /** 收到 401 / 100401 时回调，用于清理本地登录态并跳转登录页。 */
   onUnauthorized?: (error: ApiError) => void;
   credentials?: CredentialsMode;
+  /** 默认超时毫秒数，默认 30000；0 表示不限时。单个请求可用 `timeoutMs` 覆盖。 */
+  timeoutMs?: number;
   /** 便于测试注入。 */
   fetchImpl?: typeof fetch;
 }
 
 export interface HttpClient {
   request<T>(path: string, options?: RequestOptions): Promise<T>;
-  get<T>(path: string, query?: QueryParams): Promise<T>;
+  get<T>(path: string, query?: QueryParams, signal?: AbortSignal): Promise<T>;
   post<T>(path: string, json?: unknown, query?: QueryParams): Promise<T>;
   put<T>(path: string, json?: unknown, query?: QueryParams): Promise<T>;
   delete<T>(path: string, query?: QueryParams): Promise<T>;
   upload<T>(path: string, file: Blob, field?: string): Promise<T>;
+  /** 流式接口：返回原始 Response，调用方自己读 `body`（SSE、逐行 JSON 等非信封响应）。 */
+  stream(path: string, options?: RequestOptions): Promise<Response>;
 }
 
 /**
@@ -93,7 +99,7 @@ async function readEnvelope<T>(response: Response): Promise<Envelope<T> | null> 
 }
 
 export function createHttpClient(options: HttpClientOptions): HttpClient {
-  const { baseUrl, getToken, onUnauthorized, credentials = 'same-origin' } = options;
+  const { baseUrl, getToken, onUnauthorized, credentials = 'same-origin', timeoutMs = 30_000 } = options;
   const doFetch: typeof fetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
 
   function authHeaders(extra?: Record<string, string>): Record<string, string> {
@@ -118,8 +124,16 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     return payload.data;
   }
 
+  /** 合并超时与外部 signal：任一触发都会中断请求；毫秒数为 0 时只用外部 signal。 */
+  function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal | undefined {
+    if (ms <= 0) return signal;
+    const timer = AbortSignal.timeout(ms);
+    if (!signal) return timer;
+    return typeof AbortSignal.any === 'function' ? AbortSignal.any([signal, timer]) : signal;
+  }
+
   async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
-    const { method = 'GET', query, json, headers, signal } = init;
+    const { method = 'GET', query, json, headers, signal, timeoutMs: perRequest } = init;
     const mergedHeaders = authHeaders(headers);
     let body: string | undefined;
     if (json !== undefined) {
@@ -132,9 +146,31 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       headers: mergedHeaders,
       body,
       credentials,
-      signal,
+      signal: withTimeout(signal, perRequest ?? timeoutMs),
     });
     return unwrap<T>(response, await readEnvelope<T>(response), '请求失败');
+  }
+
+  async function stream(path: string, init: RequestOptions = {}): Promise<Response> {
+    const { method = 'POST', query, json, headers, signal, timeoutMs: perRequest } = init;
+    const mergedHeaders = authHeaders(headers);
+    let body: string | undefined;
+    if (json !== undefined) {
+      mergedHeaders['Content-Type'] = 'application/json';
+      body = JSON.stringify(json);
+    }
+    const response = await doFetch(baseUrl + path + buildQueryString(query), {
+      method,
+      headers: mergedHeaders,
+      body,
+      credentials,
+      signal: withTimeout(signal, perRequest ?? timeoutMs),
+    });
+    if (!response.ok || !response.body) {
+      const payload = await readEnvelope<unknown>(response);
+      throw new ApiError(payload?.msg ?? `请求失败（HTTP ${response.status}）`, payload?.code ?? -1, response.status);
+    }
+    return response;
   }
 
   async function upload<T>(path: string, file: Blob, field = 'file'): Promise<T> {
@@ -145,13 +181,15 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       headers: authHeaders(),
       body: form,
       credentials,
+      signal: withTimeout(undefined, timeoutMs),
     });
     return unwrap<T>(response, await readEnvelope<T>(response), '上传失败');
   }
 
   return {
     request,
-    get: (path, query) => request(path, { query }),
+    stream,
+    get: (path, query, signal) => request(path, { query, signal }),
     post: (path, json, query) => request(path, { method: 'POST', json, query }),
     put: (path, json, query) => request(path, { method: 'PUT', json, query }),
     delete: (path, query) => request(path, { method: 'DELETE', query }),

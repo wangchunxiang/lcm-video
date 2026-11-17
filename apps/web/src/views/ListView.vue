@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { portal, type VodListPage } from '../api/portal';
+import { isAbortError, portal, type VodListPage } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
@@ -50,32 +50,41 @@ function goPage(next: number): void {
   setQuery({ page: String(next) }, true);
 }
 
-let requestSeq = 0;
+/** 在飞请求：连点筛选时把上一个断掉，同时省掉浏览器连接和服务器查询 */
+let controller: AbortController | null = null;
 
 async function load(): Promise<void> {
-  const seq = ++requestSeq;
+  // 站点配置（每页条数）还没到位就别发：否则先用 24 发一次，配置到了再发一次
+  if (!site.ready) return;
+  controller?.abort();
+  controller = new AbortController();
   loading.value = true;
   error.value = '';
   try {
-    const result = await portal.list(alias.value, {
-      type: type.value || undefined,
-      year: year.value || undefined,
-      sort: sort.value,
-      take: pageSize.value,
-      skip: (page.value - 1) * pageSize.value,
-    });
-    if (seq !== requestSeq) return;
+    const result = await portal.list(
+      alias.value,
+      {
+        type: type.value || undefined,
+        year: year.value || undefined,
+        sort: sort.value,
+        take: pageSize.value,
+        skip: (page.value - 1) * pageSize.value,
+      },
+      { signal: controller.signal },
+    );
     data.value = result;
   } catch (e) {
-    if (seq !== requestSeq) return;
+    if (isAbortError(e)) return;
     data.value = null;
     error.value = (e as Error).message || '列表加载失败';
   } finally {
-    if (seq === requestSeq) loading.value = false;
+    if (!controller.signal.aborted) loading.value = false;
   }
 }
 
-watch([alias, page, type, year, sort, pageSize], load, { immediate: true });
+watch([alias, page, type, year, sort, pageSize, () => site.ready], load, { immediate: true });
+
+onBeforeUnmount(() => controller?.abort());
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
 

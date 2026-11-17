@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { portal, type VodCard } from '../api/portal';
+import { isAbortError, portal, type VodCard } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
@@ -49,9 +49,11 @@ function submit(): void {
   void router.push({ name: 'search', query: { wd: value } });
 }
 
-let requestSeq = 0;
+/** 在飞请求：搜索是最容易连点的入口，上一个没回来就断掉 */
+let controller: AbortController | null = null;
 
 async function load(): Promise<void> {
+  controller?.abort();
   if (!wd.value) {
     items.value = [];
     total.value = 0;
@@ -59,35 +61,41 @@ async function load(): Promise<void> {
     loading.value = false;
     return;
   }
-  const seq = ++requestSeq;
+  // 等站点配置到位再查：否则先用 24 条查一次，配置到了又查一次
+  if (!site.ready) return;
+  controller = new AbortController();
   loading.value = true;
   error.value = '';
   try {
-    const result = await portal.search({
-      wd: wd.value,
-      year: year.value || undefined,
-      sort: sort.value,
-      take: pageSize.value,
-      skip: (page.value - 1) * pageSize.value,
-    });
-    if (seq !== requestSeq) return;
+    const result = await portal.search(
+      {
+        wd: wd.value,
+        year: year.value || undefined,
+        sort: sort.value,
+        take: pageSize.value,
+        skip: (page.value - 1) * pageSize.value,
+      },
+      { signal: controller.signal },
+    );
     total.value = result.total;
     items.value = result.items;
     loaded.value = true;
   } catch (e) {
-    if (seq !== requestSeq) return;
+    if (isAbortError(e)) return;
     items.value = [];
     total.value = 0;
     error.value = (e as Error).message || '搜索失败';
   } finally {
-    if (seq === requestSeq) loading.value = false;
+    if (!controller.signal.aborted) loading.value = false;
   }
 }
+
+onBeforeUnmount(() => controller?.abort());
 
 watch(wd, (value) => {
   keyword.value = value;
 });
-watch([wd, page, year, sort, pageSize], load, { immediate: true });
+watch([wd, page, year, sort, pageSize, () => site.ready], load, { immediate: true });
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));
 

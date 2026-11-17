@@ -90,8 +90,9 @@ async function loadSections(): Promise<void> {
   );
 }
 
-onMounted(async () => {
-  await loadToday();
+onMounted(() => {
+  // 两个接口互不依赖，并发发出去：分类单次要 3 秒，串行等于白等一个来回
+  void loadToday();
   void loadSections();
 });
 

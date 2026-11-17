@@ -5,7 +5,7 @@ import SiteHeader from './components/SiteHeader.vue';
 import SiteFooter from './components/SiteFooter.vue';
 import MobileTabBar from './components/MobileTabBar.vue';
 import Container from './components/layout/Container.vue';
-import { loadSite } from './site';
+import { ensureSite } from './site';
 
 /**
  * 页面骨架：顶部 → 内容区 → 底部（+ 小屏底部导航）。
@@ -18,7 +18,7 @@ import { loadSite } from './site';
 const route = useRoute();
 
 onMounted(() => {
-  void loadSite();
+  void ensureSite();
 });
 </script>
 
