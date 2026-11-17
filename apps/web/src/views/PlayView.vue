@@ -8,16 +8,13 @@ import { useSeo } from '../composables/useSeo';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
-/** 自动连播倒计时（秒），期间可取消 */
-const AUTONEXT_SECONDS = 5;
-
+/** 自动连播：播完直接切下一集，不打断 */
 const route = useRoute();
 const router = useRouter();
 
 const play = ref<VodPlay | null>(null);
 const loading = ref(true);
 const error = ref('');
-const countdown = ref(0);
 const epsRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 
@@ -39,7 +36,6 @@ function toggleEpOrder(): void {
   }
 }
 
-let countdownTimer: number | undefined;
 let requestSeq = 0;
 
 const vod = computed(() => play.value?.vod ?? null);
@@ -51,7 +47,6 @@ const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
 
 const nextEp = computed(() => (current.value < episodes.value.length ? current.value + 1 : 0));
-const nextEpItem = computed(() => (nextEp.value ? episodes.value[nextEp.value - 1] : null));
 const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
 
 /** 自动连播开关：默认取站点配置，用户手动改过就记在本地（只影响这台设备） */
@@ -91,7 +86,6 @@ async function load(): Promise<void> {
 
   loading.value = true;
   error.value = '';
-  stopCountdown();
   try {
     // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
     let result = await portal.play(vodId, { line: 0, ep: epParam });
@@ -140,7 +134,6 @@ async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
   if (lineIndex < 0) return false;
 
   playerRef.value?.saveProgress();
-  stopCountdown();
   try {
     const next = await portal.play(String(p.vod.id), { line: lineIndex, ep });
     play.value = next;
@@ -179,7 +172,6 @@ function applyEp(index: number): void {
   const p = play.value;
   if (!p || index < 1 || index > p.episodes.length || index === p.current) return;
   playerRef.value?.saveProgress();
-  stopCountdown();
   p.current = index;
 }
 
@@ -193,28 +185,9 @@ function selectEp(index: number): void {
   });
 }
 
-function stopCountdown(): void {
-  if (countdownTimer !== undefined) {
-    window.clearInterval(countdownTimer);
-    countdownTimer = undefined;
-  }
-  countdown.value = 0;
-}
-
-function startCountdown(): void {
-  stopCountdown();
-  countdown.value = AUTONEXT_SECONDS;
-  countdownTimer = window.setInterval(() => {
-    countdown.value -= 1;
-    if (countdown.value > 0) return;
-    stopCountdown();
-    if (nextEp.value) selectEp(nextEp.value);
-  }, 1000);
-}
-
 function onEnded(): void {
   if (!autonext.value || !nextEp.value) return;
-  startCountdown();
+  selectEp(nextEp.value);
 }
 
 /** 当前集滚到选集区中间，切线路/切集后都能看到它 */
@@ -259,7 +232,6 @@ watch(
 watch(current, () => void scrollToCurrent());
 
 onBeforeUnmount(() => {
-  stopCountdown();
 });
 
 useSeo(() => ({
@@ -295,28 +267,6 @@ useSeo(() => ({
           :setting="player.setting"
           @ended="onEnded"
         />
-
-        <!-- 自动连播倒计时：叠在播放器底部，可取消 -->
-        <div
-          v-if="countdown > 0"
-          class="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-glass px-4 py-2 text-small text-ink backdrop-blur-xl"
-        >
-          <span>{{ countdown }} 秒后播放 {{ nextEpItem?.name }}</span>
-          <button
-            type="button"
-            class="ml-auto h-8 cursor-pointer rounded-md px-4 text-ink-2 transition hover:bg-surface-2 hover:text-ink"
-            @click="stopCountdown"
-          >
-            取消
-          </button>
-          <button
-            type="button"
-            class="h-8 cursor-pointer rounded-md bg-primary px-4 text-white transition hover:bg-primary-strong"
-            @click="selectEp(nextEp)"
-          >
-            立即播放
-          </button>
-        </div>
       </div>
 
       <!-- 标题行：片名 + 当前集，右端是播放控制（上一集 / 下一集 / 自动连播） -->
@@ -412,11 +362,11 @@ useSeo(() => ({
               type="button"
               :title="ep.name"
               :data-active="ep.index === current ? '1' : undefined"
-              class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] transition"
+              class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded text-center text-caption leading-[var(--ep-cell-h)] transition"
               :class="
                 ep.index === current
                   ? 'bg-primary text-white'
-                  : 'text-ink-2 hover:bg-surface-3 hover:text-ink'
+                  : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
               "
               @click="selectEp(ep.index)"
             >

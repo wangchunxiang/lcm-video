@@ -7,12 +7,12 @@ import { defaultListAlias } from '../site';
 export const router = createRouter({
   history: createWebHistory(),
   /**
-   * 换页回顶部；同一页面内只改 query 时按页面决定：
-   * 详情页切线路时选集就在眼前，不该跳回顶部（浏览器/路由默认会回到 0）。
+   * 换页回顶部；同一路由内只改参数/query 时按页面决定：
+   * 详情页切线路、播放页切线路/选集时内容就在眼前，不该跳回顶部（浏览器/路由默认会回到 0）。
    */
   scrollBehavior: (to, from, savedPosition) => {
     if (savedPosition) return savedPosition;
-    if (to.path === from.path && to.name === 'detail') return false;
+    if (to.name === from.name && (to.name === 'detail' || to.name === 'play')) return false;
     return { top: 0 };
   },
   routes: [
