@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import type { FindOptionsWhere } from 'typeorm';
 import { countEpisodes, parsePlayUrl } from '@lcm/shared';
 import type { Episode } from '@lcm/shared';
@@ -85,7 +85,7 @@ export class VodPlayService extends AppCrudService<VodPlayEntity> {
   /** 批量删除：同样拦「会把影片删成没有线路」的情况。 */
   async deleteManyChecked(dto: DeleteManyVodPlayDTO): Promise<{ deleted: number }> {
     if (dto.ids.length === 0) return { deleted: 0 };
-    const rows = await this.repository.find({ where: { id: dto.ids as never } });
+    const rows = await this.repository.find({ where: { id: In(dto.ids) } });
     if (dto.force !== true) await this.assertNotLastLine(rows);
     const result = await this.repository.delete(dto.ids as never);
     return { deleted: result.affected ?? 0 };

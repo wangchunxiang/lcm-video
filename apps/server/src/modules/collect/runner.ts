@@ -412,16 +412,20 @@ export class CollectRunner {
       return;
     }
 
-    const client = new CollectClient({
-      id: source.id,
-      name: source.name,
-      apiUrl: source.apiUrl,
-      apiParams: source.apiParams,
-      intervalSec: source.intervalSec,
-      timeout: source.timeout,
-      retryTimes: source.retryTimes,
-      pagesize: source.pagesize,
-    });
+    const client = new CollectClient(
+      {
+        id: source.id,
+        name: source.name,
+        apiUrl: source.apiUrl,
+        apiParams: source.apiParams,
+        intervalSec: source.intervalSec,
+        timeout: source.timeout,
+        retryTimes: source.retryTimes,
+        pagesize: source.pagesize,
+      },
+      // 「停止采集」要能立刻断掉正在飞的请求，而不是等重试跑完
+      signal,
+    );
 
     const mapping = await this.loadMapping(context.sourceId);
     const categories = await this.loadCategories();

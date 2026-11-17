@@ -19,6 +19,7 @@ import { mergeVodContent, type MergeConfig, type MergeableVod } from './merge';
 import { splitPlayGroups } from './parser';
 import { ID_NONE, compareId, emptyCounters, hasId } from './types';
 import type { CategoryInfo, Counters, FailItem, MappingInfo, SourceVod } from './types';
+import { PlayLineEntity } from '../play-line/play-line.entity';
 
 export interface PageInput {
   sourceId: string;
@@ -250,6 +251,8 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
           }
         }
 
+        // 每条前面打一个同名 savepoint：MySQL 里重名会覆盖上一个，所以不必 RELEASE，
+        // 省掉每条一次往返（一页 100 条就少 100 次网络往返）。
         await manager.query('SAVEPOINT sp_item');
         try {
           let vodId = matchedId;
@@ -360,8 +363,6 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
             prev.sourceUpdatedAt = item.updatedAt;
           }
 
-          await manager.query('RELEASE SAVEPOINT sp_item');
-
           if (insertedNow) counters.inserted += 1;
           else counters.updated += 1;
         } catch (error) {
@@ -383,12 +384,15 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
   return { counters, fails };
 }
 
-/** `INSERT IGNORE` 一次登记多条线路，占位符逐个展开，值全部走参数 */
+/** 一次登记多条线路；已存在的保持原状（`orIgnore` = `INSERT IGNORE`） */
 async function insertIgnorePlayLines(dataSource: DataSource, lines: string[]): Promise<void> {
-  await dataSource.query(
-    `INSERT IGNORE INTO lcm_play_line (source_from) VALUES ${lines.map(() => '(?)').join(', ')}`,
-    lines,
-  );
+  await dataSource
+    .createQueryBuilder()
+    .insert()
+    .into(PlayLineEntity)
+    .values(lines.map((line) => ({ sourceFrom: line })))
+    .orIgnore()
+    .execute();
 }
 
 /**

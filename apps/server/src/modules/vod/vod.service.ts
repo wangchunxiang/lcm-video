@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import type { FindOptionsWhere } from 'typeorm';
 import { looseHash, nameHash } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
@@ -50,6 +50,7 @@ export class VodService extends AppCrudService<VodEntity> {
   }
 
   override async create(data: Partial<VodEntity>): Promise<VodEntity> {
+    // SAFETY: 请求体已由 CRUD 路由上的 CreateVodDTO 校验过；Partial<Entity> 只是为了满足基类签名
     const dto = data as unknown as CreateVodDTO;
     const category = await this.categoryRepository.findOne({ where: { id: dto.categoryId } });
     if (category === null) throw new BadRequestException('分类不存在');
@@ -85,6 +86,7 @@ export class VodService extends AppCrudService<VodEntity> {
     criteria: string | FindOptionsWhere<VodEntity>,
     data: Partial<VodEntity>,
   ): Promise<VodEntity> {
+    // SAFETY: 同上，UpdateVodDTO 已在路由层校验过请求体
     const dto = data as unknown as UpdateVodDTO;
     const patch: Partial<VodEntity> = {};
 
@@ -142,6 +144,24 @@ export class VodService extends AppCrudService<VodEntity> {
     return super.delete(criteria, softDelete);
   }
 
+  /**
+   * 批量删除：基类只删主表，会留下没有归属的线路行。这里和单条删除一样，
+   * 同一事务里先清线路再删影片。
+   */
+  override async deleteMany(
+    params: { ids?: string[] },
+    _softDelete?: boolean,
+  ): Promise<{ success: boolean; message: string }> {
+    // nest-crud 的批量删除从 query 取 ids，标量会被包成 ['1,2,3']，这里统一拆开
+    const ids = (params.ids ?? []).flatMap((id) => String(id).split(',')).filter((id) => id !== '');
+    if (ids.length === 0) return { success: true, message: '没有要删除的影片' };
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(VodPlayEntity, { vodId: In(ids) });
+      await manager.delete(VodEntity, { id: In(ids) });
+    });
+    return { success: true, message: '已删除' };
+  }
+
   /** 分页：补分类名与线路统计。 */
   override async findMany(params: {
     page?: number;
@@ -157,14 +177,14 @@ export class VodService extends AppCrudService<VodEntity> {
     if (dto.ids.length === 0) return { updated: 0 };
     if (dto.action === 'status') {
       const status = dto.status ?? 1;
-      const result = await this.repository.update({ id: dto.ids as never }, { status });
+      const result = await this.repository.update({ id: In(dto.ids) }, { status });
       return { updated: result.affected ?? 0 };
     }
     if (dto.categoryId === undefined) throw new BadRequestException('请选择要移动到的分类');
     const category = await this.categoryRepository.findOne({ where: { id: dto.categoryId } });
     if (category === null) throw new BadRequestException('分类不存在');
     const result = await this.repository.update(
-      { id: dto.ids as never },
+      { id: In(dto.ids) },
       { categoryId: category.id, categoryPid: category.pid },
     );
     return { updated: result.affected ?? 0 };

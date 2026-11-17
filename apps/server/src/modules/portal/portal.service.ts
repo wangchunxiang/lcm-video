@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { countEpisodes, parsePlayUrl } from '@lcm/shared';
+import { compareId, countEpisodes, escapeLike, parsePlayUrl } from '@lcm/shared';
 import { SettingService } from '../setting/setting.service';
 
 
@@ -470,7 +470,8 @@ export class PortalService {
     const take = toInt(input.take, 24, 1, PAGE_LIMIT);
     const skip = toInt(input.skip, 0, 0, 1_000_000);
     const clauses = ['v.status = 1', "v.name LIKE CONCAT('%', ?, '%')"];
-    const params: unknown[] = [keyword];
+    // 输入的 % / _ 必须转义，否则一个 `%` 就变成 LIKE '%%%'，命中全表
+    const params: unknown[] = [escapeLike(keyword)];
     const year = Number(input.year ?? '');
     if (Number.isFinite(year) && year > 0) {
       clauses.push('v.year = ?');
@@ -501,8 +502,8 @@ export class PortalService {
     const timeOf = (value: Date | string | null): number => (value === null ? 0 : new Date(value).getTime());
     const sorted = [...hits].sort((a, b) =>
       input.sort === 'new'
-        ? timeOf(b.createdAt) - timeOf(a.createdAt) || Number(b.id) - Number(a.id)
-        : timeOf(b.collectedAt) - timeOf(a.collectedAt) || Number(b.id) - Number(a.id),
+        ? timeOf(b.createdAt) - timeOf(a.createdAt) || compareId(String(b.id), String(a.id))
+        : timeOf(b.collectedAt) - timeOf(a.collectedAt) || compareId(String(b.id), String(a.id)),
     );
     const pageRows = sorted.slice(skip, skip + take);
     const items = await this.queryCardsByIds(pageRows.map((row) => String(row.id)));

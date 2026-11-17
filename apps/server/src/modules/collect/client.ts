@@ -17,11 +17,15 @@ export class CollectError extends Error {
 export class CollectClient {
   private readonly source: SourceRuntime;
 
+  /** 「停止采集」的中断信号：一旦 abort，当前请求立即断，且不再重试 */
+  private readonly signal?: AbortSignal;
+
   /** 上一次请求结束的时刻，限流计时起点 */
   private lastEndAt = 0;
 
-  constructor(source: SourceRuntime) {
+  constructor(source: SourceRuntime, signal?: AbortSignal) {
     this.source = source;
+    this.signal = signal;
   }
 
   private buildUrl(params: Record<string, string | number | undefined>, base?: string): string {
@@ -53,13 +57,16 @@ export class CollectClient {
 
   private async fetchOnce(url: string): Promise<unknown> {
     const timeout = Math.max(1, this.source.timeout) * 1000;
+    // 超时和「停止采集」两个信号合成一个：任一触发都立即断掉这次请求
+    const signal = this.signal ? AbortSignal.any([this.signal, AbortSignal.timeout(timeout)]) : AbortSignal.timeout(timeout);
     let response: Response;
     try {
       response = await fetch(url, {
-        signal: AbortSignal.timeout(timeout),
+        signal,
         headers: { accept: 'application/json' },
       });
     } catch (error) {
+      if (this.signal?.aborted) throw new CollectError('已停止采集');
       // fetch 只报 'fetch failed'，真正原因（ECONNREFUSED / 证书 / DNS）在 cause 上
       const cause = (error as { cause?: { message?: string } }).cause;
       const reason = cause?.message ?? (error instanceof Error ? error.message : String(error));
@@ -85,6 +92,7 @@ export class CollectClient {
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      if (this.signal?.aborted) throw new CollectError('已停止采集');
       await this.throttle();
       try {
         const data = await this.fetchOnce(url);
@@ -92,6 +100,8 @@ export class CollectClient {
         return data;
       } catch (error) {
         this.lastEndAt = Date.now();
+        // 用户点了停止：不再按 retry_times 重试，立刻退出
+        if (this.signal?.aborted) throw new CollectError('已停止采集');
         lastError = error;
       }
     }

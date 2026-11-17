@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { compareId, countEpisodes } from '@lcm/shared';
 import { DataSource } from 'typeorm';
+import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import type {
   VodMergeBatchDTO,
   VodMergeBatchKeysDTO,
@@ -16,6 +18,29 @@ export interface MergeLine {
   sourceName: string;
   episodes: number;
   updatedAt: string;
+}
+
+interface MergeLineRow {
+  vodId?: string;
+  sourceId: string | null;
+  sourceFrom: string;
+  playUrl: string;
+  sourceVodId: string;
+  sourceUpdatedAt: Date | string | null;
+  collectedAt: Date | string;
+}
+
+/** 同一张表既当源又当目标，`VALUES()` 里的列名会模糊，所以来源与目标分两条语句取 */
+const LINES_OF = `SELECT source_id AS sourceId, source_from AS sourceFrom, play_url AS playUrl,
+    source_vod_id AS sourceVodId, source_updated_at AS sourceUpdatedAt, collected_at AS collectedAt
+  FROM lcm_vod_play WHERE vod_id IN (?)`;
+const LINES_OF_ONE_FOR_UPDATE = `SELECT source_id AS sourceId, source_from AS sourceFrom, play_url AS playUrl,
+    source_vod_id AS sourceVodId, source_updated_at AS sourceUpdatedAt, collected_at AS collectedAt
+  FROM lcm_vod_play WHERE vod_id = ? FOR UPDATE`;
+
+/** 与唯一键 uk_vod_source_from 对齐：源站 id 为 NULL 时 MySQL 视为互不相同 */
+function lineKeyOf(line: MergeLineRow): string {
+  return `${line.sourceId ?? ''}|${line.sourceFrom}`;
 }
 
 export interface MergeMember {
@@ -104,15 +129,6 @@ function formatStamp(value: Date | string | null): string {
 /** 分组键：32 位哈希，宽松键分组可能带 `~年份` 后缀（不能用 #，会被浏览器当锚点截断） */
 const isHashKey = (key: string): boolean => /^[0-9a-f]{32}(~\d{1,4})?$/.test(key);
 const isSameKey = (key: string): boolean => /^\d+-[^\s-][^\s]*$/.test(key);
-
-/** BIGINT 主键按字符串传输，比较大小必须走 BigInt */
-function compareId(a: string, b: string): number {
-  const left = BigInt(a);
-  const right = BigInt(b);
-  if (left < right) return -1;
-  if (left > right) return 1;
-  return 0;
-}
 
 /** 年份相容：所有非 0 年份相同 */
 function yearCompatible(members: MergeMember[]): boolean {
@@ -358,52 +374,53 @@ export class VodMergeService {
     const latest = members.map((item) => item.collectedAt).sort().at(-1) ?? '';
 
     await this.dataSource.transaction(async (manager) => {
-      // 逐条搬线路：同一张表既当源又当目标时，ON DUPLICATE 里的列名会报 ambiguous
-      const lines = await manager.query<
-        Array<{
-          sourceId: string | null;
-          sourceFrom: string;
-          playUrl: string;
-          sourceVodId: string;
-          sourceUpdatedAt: Date | string | null;
-          collectedAt: Date | string;
-        }>
-      >(
-        `SELECT source_id AS sourceId, source_from AS sourceFrom, play_url AS playUrl,
-            source_vod_id AS sourceVodId, source_updated_at AS sourceUpdatedAt, collected_at AS collectedAt
-          FROM lcm_vod_play WHERE vod_id IN (?)`,
-        [others],
-      );
+      const lines = await manager.query<MergeLineRow[]>(LINES_OF, [others]);
+      // FOR UPDATE：下面要在 JS 里比较「新线路更长才覆盖」，读到的现有行必须锁住
+      const kept = await manager.query<MergeLineRow[]>(LINES_OF_ONE_FOR_UPDATE, [keep.id]);
+
+      const existing = new Map(kept.map((line) => [lineKeyOf(line), line]));
+      // 先把来源侧同一条线路的重复行收敛成集数最多的那条（唯一键是 vod+source+from）
+      const chosen = new Map<string, MergeLineRow>();
       for (const line of lines) {
-        await manager.query(
-          `INSERT INTO lcm_vod_play
-              (vod_id, source_id, source_from, play_url, source_vod_id, source_updated_at, collected_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-              source_vod_id = IF(
-                CHAR_LENGTH(VALUES(play_url)) - CHAR_LENGTH(REPLACE(VALUES(play_url), '#', '')) >
-                CHAR_LENGTH(play_url) - CHAR_LENGTH(REPLACE(play_url, '#', '')),
-                VALUES(source_vod_id), source_vod_id),
-              source_updated_at = IF(
-                CHAR_LENGTH(VALUES(play_url)) - CHAR_LENGTH(REPLACE(VALUES(play_url), '#', '')) >
-                CHAR_LENGTH(play_url) - CHAR_LENGTH(REPLACE(play_url, '#', '')),
-                VALUES(source_updated_at), source_updated_at),
-              play_url = IF(
-                CHAR_LENGTH(VALUES(play_url)) - CHAR_LENGTH(REPLACE(VALUES(play_url), '#', '')) >
-                CHAR_LENGTH(play_url) - CHAR_LENGTH(REPLACE(play_url, '#', '')),
-                VALUES(play_url), play_url),
-              updated_at = NOW()`,
-          [
-            keep.id,
-            line.sourceId,
-            line.sourceFrom,
-            line.playUrl,
-            line.sourceVodId,
-            line.sourceUpdatedAt,
-            line.collectedAt,
-          ],
-        );
+        const key = lineKeyOf(line);
+        const prev = chosen.get(key);
+        if (prev === undefined || countEpisodes(line.playUrl) > countEpisodes(prev.playUrl)) {
+          chosen.set(key, line);
+        }
       }
+
+      const rows: MergeLineRow[] = [];
+      for (const [key, line] of chosen) {
+        const prev = existing.get(key);
+        // 新集数少于旧集数视为源站数据残缺，保留原值
+        if (prev !== undefined && countEpisodes(prev.playUrl) >= countEpisodes(line.playUrl)) continue;
+        rows.push({ ...line, vodId: keep.id });
+      }
+
+      // 一条多行 INSERT：一批淘汰影片的线路常有几十条，逐条发就是几十次往返
+      if (rows.length > 0) {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(VodPlayEntity)
+          .values(
+            rows.map((row) => ({
+              vodId: keep.id,
+              sourceId: row.sourceId,
+              sourceFrom: row.sourceFrom,
+              playUrl: row.playUrl,
+              sourceVodId: row.sourceVodId,
+              sourceUpdatedAt: row.sourceUpdatedAt,
+              collectedAt: row.collectedAt,
+              // ON DUPLICATE 里要更新 updated_at，插入列表里就必须有这一列
+              updatedAt: new Date(),
+            })),
+          )
+          // orUpdate 的列名会被原样拼进 `VALUES(...)`，这里必须写库里的列名而不是属性名
+          .orUpdate(['source_vod_id', 'source_updated_at', 'play_url', 'collected_at', 'updated_at'])
+          .execute();
+      }
+
       await manager.query('DELETE FROM lcm_vod_play WHERE vod_id IN (?)', [others]);
       if (latest !== '') {
         // 原生 UPDATE 不会触发 @UpdateDateColumn，时间戳要自己补
@@ -843,8 +860,14 @@ export class VodMergeService {
       };
     }
 
+    // 每组一个独立事务、成员互不重叠，所以可以并发；串行时 50 组要等 50 个事务。
+    const CONCURRENCY = 4;
     let merged = 0;
-    for (const group of mergeable) merged += await this.mergeGroup(group.members);
+    for (let start = 0; start < mergeable.length; start += CONCURRENCY) {
+      const batch = mergeable.slice(start, start + CONCURRENCY);
+      const counts = await Promise.all(batch.map((group) => this.mergeGroup(group.members)));
+      merged += counts.reduce((sum, count) => sum + count, 0);
+    }
     return { needConfirm: false, action: 'merge', groups: mergeable.length, vods, merged, skipped, ignored: 0 };
   }
 
