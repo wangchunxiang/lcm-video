@@ -2,11 +2,10 @@ import { Body, Post, Res } from '@nestjs/common';
 import { AppCrud } from '../../common/crud/app-crud.decorator';
 import type { Response } from 'express';
 import { Raw } from '../../common/decorators/raw.decorator';
-import { SourceIdDTO } from '../../common/dto/id.dto';
 import { AdFeatureEntity } from './ad-feature.entity';
 import { AdFeatureService } from './ad-feature.service';
 import type { AdAnalyzeResult } from './ad-feature.service';
-import { AnalyzeDTO, CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-feature.dto';
+import { AnalyzeDTO, CreateAdFeatureDTO, PickDTO, UpdateAdFeatureDTO } from './dto/ad-feature.dto';
 
 /** 广告特征：标准 REST + 抽样预览 / 流式分析。 */
 @AppCrud({
@@ -17,16 +16,21 @@ import { AnalyzeDTO, CreateAdFeatureDTO, UpdateAdFeatureDTO } from './dto/ad-fea
 export class AdFeatureController {
   constructor(public readonly service: AdFeatureService) {}
 
-  /** 预览抽样结果（10 部作品）。 */
+  /** 预览抽样结果（10 部作品），可按最新更新时间限定范围。 */
   @Post('pick')
-  pick(@Body() dto: SourceIdDTO): Promise<unknown> {
-    return this.service.pick(dto.sourceId);
+  pick(@Body() dto: PickDTO): Promise<unknown> {
+    return this.service.pick(dto.sourceId, dto.range ?? 'all');
   }
 
   /** 一次性分析，返回完整结果（后台脚本/测试用）。 */
   @Post('analyze')
   analyze(@Body() dto: AnalyzeDTO): Promise<AdAnalyzeResult> {
-    return this.service.analyze(dto.sourceId, () => undefined, AdFeatureService.toSamples(dto.sample));
+    return this.service.analyze(
+      dto.sourceId,
+      () => undefined,
+      AdFeatureService.toSamples(dto.sample),
+      dto.range ?? 'all',
+    );
   }
 
   /**
@@ -47,7 +51,12 @@ export class AdFeatureController {
       res.write(`${JSON.stringify(line)}\n`);
     };
     try {
-      const result = await this.service.analyze(dto.sourceId, (line) => write({ type: 'log', msg: line }), AdFeatureService.toSamples(dto.sample));
+      const result = await this.service.analyze(
+        dto.sourceId,
+        (line) => write({ type: 'log', msg: line }),
+        AdFeatureService.toSamples(dto.sample),
+        dto.range ?? 'all',
+      );
       write({ type: 'result', ...result });
     } catch (error) {
       write({ type: 'error', msg: error instanceof Error ? error.message : String(error) });

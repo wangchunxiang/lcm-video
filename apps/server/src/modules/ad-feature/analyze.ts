@@ -1,8 +1,23 @@
-import { fetchText } from '@lcm/shared';
+import { episodeLabel, fetchText, parsePlayUrl } from '@lcm/shared';
 import type { DataSource } from 'typeorm';
 
 /** 一次分析抽多少个作品 */
 export const SAMPLE_SIZE = 10;
+
+/** 选片的时间范围，按 `lcm_vod.collected_at`（最后一次采集/更新时间）判断 */
+export type PickRange = 'all' | 'day' | 'week' | 'month';
+
+/**
+ * 范围起点：从现在往前推（本日 = 最近 24 小时，本周 = 最近 7 天，本月 = 最近 1 个月），
+ * 不是自然日/自然周。用 SQL 表达式算，不在 JS 里拼日期：库会话时区固定 +08:00，
+ * `NOW()` 的语义就是本地时间。这些字符串是常量，没有用户输入拼接。
+ */
+const RANGE_SINCE = {
+  day: 'NOW() - INTERVAL 1 DAY',
+  week: 'NOW() - INTERVAL 7 DAY',
+  month: 'NOW() - INTERVAL 1 MONTH',
+} satisfies Record<Exclude<PickRange, 'all'>, string>;
+
 /** 一段候选广告的最短 / 最长时长（秒），超过 30 秒的不当作广告 */
 const MIN_AD_SECONDS = 6;
 const MAX_AD_SECONDS = 30;
@@ -17,6 +32,22 @@ export interface SampleVod {
   name: string;
   episode: string;
   url: string;
+}
+
+/** 抽中的候选：线路主键 + 所属作品（有名字说明作品上架） */
+interface PickedPlay {
+  id: string;
+  vodId: string;
+  name: string;
+}
+
+function shuffleInPlace<T>(list: T[]): void {
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = list[i]!;
+    list[i] = list[j]!;
+    list[j] = tmp;
+  }
 }
 
 export interface Segment {
@@ -119,14 +150,11 @@ export function signatureOf(durs: number[]): string {
 }
 
 /**
- * 从该源随机抽 N 个有播放地址的作品。
+ * 从该源随机抽 N 个有播放地址的作品，可选限定作品的最新更新时间范围。
  *
  * 不用 `ORDER BY RAND()`：那要全表扫 vod 再 filesort，还得把动辄几十 KB 的
  * play_url 塞进排序缓冲。改为「随机起点向后取一段 → 内存洗牌 → 按主键回表取
  * play_url」，几次往返即可。
- *
- * 起点向后取（而不是「随机开一个固定宽度的窗口」）：各源的线路 id 分布很不均匀，
- * 固定窗口会大量落在空档里，抽不满 N 个。撞到尾段时从最小 id 再补一次。
  *
  * 主键是 BIGINT UNSIGNED（驱动按字符串返回）：区间计算用 Number()，回传 SQL 前
  * 一律 String()。
@@ -135,8 +163,52 @@ export async function pickSampleVods(
   dataSource: DataSource,
   sourceId: string,
   size = SAMPLE_SIZE,
+  range: PickRange = 'all',
 ): Promise<SampleVod[]> {
-  const picked: Array<{ id: string; vodId: string; name: string }> = [];
+  const picked =
+    range === 'all'
+      ? await pickByPlayRows(dataSource, sourceId, size)
+      : await pickByVodRange(dataSource, sourceId, size, range);
+
+  if (!picked.length) return [];
+
+  /* 洗牌后逐个取，直到凑够 size 个「有播放地址」的；地址为空的跳过，不占名额 */
+  shuffleInPlace(picked);
+  const urls = await dataSource.query<Array<{ id: string; playUrl: string | null }>>(
+    'SELECT id, play_url AS playUrl FROM lcm_vod_play WHERE id IN (?)',
+    [picked.map((row) => row.id)],
+  );
+  const urlMap = new Map<string, string>();
+  for (const row of urls) urlMap.set(row.id, row.playUrl ?? '');
+
+  const out: SampleVod[] = [];
+  for (const row of picked) {
+    if (out.length >= size) break;
+    const playUrl = urlMap.get(row.id) ?? '';
+    /* 一条线路可能有几十集：取最后一集（最新那集），更能反映当前的广告情况 */
+    const episodes = parsePlayUrl(playUrl);
+    const lastIndex = episodes.length - 1;
+    const last = episodes[lastIndex];
+    if (!last) continue;
+    const url = last.url;
+    if (!/^https?:\/\//i.test(url)) continue;
+    out.push({ id: row.vodId, name: row.name, episode: episodeLabel(last, lastIndex), url });
+  }
+  return out;
+}
+
+/**
+ * 不限时间范围：直接在 `lcm_vod_play` 上随机起点向后取一段行。
+ *
+ * 起点向后取（而不是「随机开一个固定宽度的窗口」）：各源的线路 id 分布很不均匀，
+ * 固定窗口会大量落在空档里，抽不满 N 个。撞到尾段时从最小 id 再补一次。
+ */
+async function pickByPlayRows(
+  dataSource: DataSource,
+  sourceId: string,
+  size: number,
+): Promise<PickedPlay[]> {
+  const picked: PickedPlay[] = [];
   const seen = new Set<string>();
 
   /** 从 from 起向后取一段行（不带 play_url，省 IO） */
@@ -188,32 +260,72 @@ export async function pickSampleVods(
     }
   }
 
-  if (!picked.length) return [];
+  return picked;
+}
 
-  /* 洗牌后逐个取，直到凑够 size 个「有播放地址」的；地址为空的跳过，不占名额 */
-  for (let i = picked.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = picked[i]!;
-    picked[i] = picked[j]!;
-    picked[j] = tmp;
-  }
-  const urls = await dataSource.query<Array<{ id: string; playUrl: string | null }>>(
-    'SELECT id, play_url AS playUrl FROM lcm_vod_play WHERE id IN (?)',
-    [picked.map((row) => row.id)],
-  );
-  const urlMap = new Map<string, string>();
-  for (const row of urls) urlMap.set(row.id, row.playUrl ?? '');
+/**
+ * 指定时间范围：先在 `lcm_vod` 上按 `collected_at` 过滤，随机起点向后取一段作品，
+ * 再回查这些作品在该源的线路。
+ */
+async function pickByVodRange(
+  dataSource: DataSource,
+  sourceId: string,
+  size: number,
+  range: Exclude<PickRange, 'all'>,
+): Promise<PickedPlay[]> {
+  const since = RANGE_SINCE[range];
+  const picked: PickedPlay[] = [];
+  const seen = new Set<string>();
 
-  const out: SampleVod[] = [];
-  for (const row of picked) {
-    if (out.length >= size) break;
-    const playUrl = urlMap.get(row.id) ?? '';
-    const first = playUrl.split('#')[0] ?? '';
-    const url = first.split('$').pop() ?? '';
-    if (!/^https?:\/\//i.test(url)) continue;
-    out.push({ id: row.vodId, name: row.name, episode: '第 1 集', url });
+  for (let attempt = 0; attempt < 8 && picked.length < size * 3; attempt += 1) {
+    const [bounds] = await dataSource.query<Array<{ low: string; high: string }>>(
+      `SELECT COALESCE(CAST(MIN(id) AS CHAR), '0') AS low,
+              COALESCE(CAST(MAX(id) AS CHAR), '0') AS high
+         FROM lcm_vod
+        WHERE status = 1
+          AND collected_at >= ${since}`,
+    );
+    const low = Number(bounds?.low ?? 0);
+    const high = Number(bounds?.high ?? 0);
+    if (high <= 0) break; // 该范围内没有上架作品
+
+    const start = low + Math.floor(Math.random() * Math.max(1, high - low + 1));
+    const vods = await dataSource.query<Array<{ id: string; name: string }>>(
+      `SELECT id, name
+         FROM lcm_vod
+        WHERE status = 1
+          AND collected_at >= ${since}
+          AND id >= ?
+        ORDER BY id ASC
+        LIMIT 200`,
+      [String(start)],
+    );
+    const fresh = vods.filter((row) => !seen.has(row.id));
+    if (!fresh.length) continue;
+
+    /* 一部作品在该源可能有多条线路，每个作品只留第一条用过的 */
+    const plays = await dataSource.query<Array<{ id: string; vodId: string }>>(
+      `SELECT id, vod_id AS vodId
+         FROM lcm_vod_play
+        WHERE source_id = ?
+          AND play_url <> ''
+          AND vod_id IN (?)
+        ORDER BY id ASC`,
+      [sourceId, fresh.map((row) => row.id)],
+    );
+    const nameMap = new Map<string, string>(fresh.map((row) => [row.id, row.name]));
+
+    for (const play of plays) {
+      if (picked.length >= size * 3) break;
+      if (seen.has(play.vodId)) continue;
+      const name = nameMap.get(play.vodId);
+      if (!name) continue;
+      seen.add(play.vodId);
+      picked.push({ id: play.id, vodId: play.vodId, name });
+    }
   }
-  return out;
+
+  return picked;
 }
 
 /**
@@ -225,9 +337,12 @@ export async function analyzeSource(
   sourceId: string,
   log: (line: string) => void,
   provided?: SampleVod[],
+  range: PickRange = 'all',
 ): Promise<{ features: FoundFeature[]; sampled: number }> {
   const samples =
-    provided && provided.length > 0 ? provided : await pickSampleVods(dataSource, sourceId);
+    provided && provided.length > 0
+      ? provided
+      : await pickSampleVods(dataSource, sourceId, SAMPLE_SIZE, range);
   log(
     provided && provided.length > 0
       ? `使用页面选定的 ${samples.length} 部作品`
@@ -308,7 +423,8 @@ export async function analyzeSource(
       totalMs: value.totalMs,
       kind: value.kind,
       hitVods: value.hits.size,
-      sample: [...value.hits.entries()].slice(0, 3).map(([vodId, hit]) => ({
+      /* 命中样例全留：最多 10 条（只抽 10 部），弹窗里能逐个点开听定位 */
+      sample: [...value.hits.entries()].map(([vodId, hit]) => ({
         vod_id: vodId,
         vod_name: hit.name,
         start: hit.start,

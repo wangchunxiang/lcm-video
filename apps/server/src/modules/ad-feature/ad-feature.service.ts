@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { analyzeSource, pickSampleVods } from './analyze';
-import type { FoundFeature, SampleVod } from './analyze';
+import { analyzeSource, pickSampleVods, SAMPLE_SIZE } from './analyze';
+import type { FoundFeature, PickRange, SampleVod } from './analyze';
 import { AdFeatureEntity } from './ad-feature.entity';
 
 /** 一次分析的结果。 */
@@ -22,9 +22,9 @@ export class AdFeatureService extends AppCrudService<AdFeatureEntity> {
     super(repository);
   }
 
-  /** 预览这次会抽到哪几部作品。 */
-  async pick(sourceId: string): Promise<SampleVod[]> {
-    return pickSampleVods(this.dataSource, sourceId);
+  /** 预览这次会抽到哪几部作品；`range` 限定作品的最新更新时间范围。 */
+  async pick(sourceId: string, range: PickRange = 'all'): Promise<SampleVod[]> {
+    return pickSampleVods(this.dataSource, sourceId, SAMPLE_SIZE, range);
   }
 
   /** 分析一个采集源的广告特征，`log` 用于流式输出进度。 */
@@ -32,8 +32,9 @@ export class AdFeatureService extends AppCrudService<AdFeatureEntity> {
     sourceId: string,
     log: (line: string) => void,
     samples?: SampleVod[],
+    range: PickRange = 'all',
   ): Promise<AdAnalyzeResult> {
-    return analyzeSource(this.dataSource, sourceId, log, samples);
+    return analyzeSource(this.dataSource, sourceId, log, samples, range);
   }
 
   /**

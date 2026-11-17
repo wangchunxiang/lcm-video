@@ -61,9 +61,19 @@ interface SourceItem {
 const loading = ref(false);
 const savingKey = ref('');
 
-/** 去广告：选源 → 抽片 → 分析 → 人工确认，后端接口待接入，这里先跑演示流程 */
+/** 去广告：选源 + 选时间范围 → 抽片 → 分析 → 人工确认 */
 const sources = ref<SourceItem[]>([]);
 const adsSourceId = ref<string | null>(null);
+
+/** 选片范围：按作品最新更新时间（`collected_at`）过滤，只影响「随机选片」 */
+type PickRange = 'all' | 'day' | 'week' | 'month';
+const ADS_RANGES: Array<{ value: PickRange; label: string }> = [
+  { value: 'all', label: '不限' },
+  { value: 'day', label: '本日' },
+  { value: 'week', label: '本周' },
+  { value: 'month', label: '本月' },
+];
+const adsRange = ref<PickRange>('all');
 
 interface SampleVod {
   id: string;
@@ -271,6 +281,13 @@ watch(adsSourceId, () => {
   void loadFeatures();
 });
 
+/** 换选片范围同样让已抽的样片作废（否则列表和范围对不上） */
+watch(adsRange, () => {
+  sampleVods.value = [];
+  candidates.value = [];
+  logs.value = [];
+});
+
 async function loadFeatures() {
   if (!adsSourceId.value) return;
   try {
@@ -284,7 +301,7 @@ async function loadFeatures() {
   }
 }
 
-/** 从该源随机抽 5 部作品 */
+/** 从该源随机抽 5 部作品（范围按最新更新时间过滤） */
 async function pickVods() {
   if (!adsSourceId.value) {
     ElMessage.warning('请先选择采集源');
@@ -292,10 +309,18 @@ async function pickVods() {
   }
   picking.value = true;
   try {
-    const data = await api.post<SampleVod[]>('/ad-feature/pick', { sourceId: adsSourceId.value });
+    const data = await api.post<SampleVod[]>('/ad-feature/pick', {
+      sourceId: adsSourceId.value,
+      range: adsRange.value,
+    });
     sampleVods.value = data;
     candidates.value = [];
     logs.value = [];
+    if (!data.length) {
+      ElMessage.warning(
+        adsRange.value === 'all' ? '该源没有可抽的作品' : '该范围内没有可抽的作品，换个大一点的范围试试',
+      );
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '抽取失败');
   } finally {
@@ -352,6 +377,7 @@ async function startAnalyze() {
       // 用页面上抽好的这几部，服务端不再重新随机（否则分析用的样片与列表对不上）
       json: {
         sourceId: adsSourceId.value,
+        range: adsRange.value,
         sample: sampleVods.value.map((item) => ({
           id: item.id,
           name: item.name,
@@ -497,7 +523,8 @@ onMounted(() => {
           <div class="ads-head">
             <div class="ads-title">去广告设置</div>
             <div class="ads-desc">
-              随机抽取该源 10 部作品解析播放列表，把跨作品重复的片段判为广告；播放时自动跳过。
+              抽该源 10 部作品（各取最后一集）解析播放列表，≥4 部重复即进候选，确认后播放时自动跳过。
+              时间范围只影响选片。
             </div>
 
             <div class="ads-toolbar">
@@ -508,6 +535,14 @@ onMounted(() => {
                 :disabled="analyzing"
               >
                 <el-option v-for="item in sources" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+              <el-select
+                v-model="adsRange"
+                class="ads-select ads-range"
+                :disabled="analyzing"
+                title="只影响随机选片：按作品最新更新时间过滤"
+              >
+                <el-option v-for="item in ADS_RANGES" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
               <el-button :disabled="analyzing || !adsSourceId" :loading="picking" @click="pickVods">随机选片</el-button>
               <el-button type="primary" :loading="analyzing" @click="startAnalyze">开始分析</el-button>
@@ -650,7 +685,7 @@ onMounted(() => {
         </el-descriptions-item>
       </el-descriptions>
       <div class="feature-hint">
-        特征按采集源分别保存；同一片段在 ≥2 部不同作品出现才会被采纳。
+        特征按采集源分别保存；同一片段在 ≥4 部不同作品出现才会被采纳。
       </div>
     </el-dialog>
   </div>
@@ -710,6 +745,10 @@ onMounted(() => {
 .ads-select {
   flex: 1;
   min-width: 0;
+}
+/* 范围选择框固定窄宽，把余下空间留给采集源 */
+.ads-range {
+  flex: 0 0 88px;
 }
 .confirmed-wrap {
   flex: 1;
