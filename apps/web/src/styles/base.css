@@ -1,6 +1,6 @@
 /*
  * 基础重置：只把浏览器默认值对齐，不写任何视觉。
- * 视觉一律走 Tailwind 工具类 + tokens.css 的变量（见 docs/前端决策清单.md D33）。
+ * 视觉一律走 Tailwind 工具类 + tokens.css 的变量（见 docs/03-前端/样式规范.md）。
  *
  * 全部规则必须留在 @layer base 里：无层（unlayered）样式在 CSS 层叠里优先级高于
  * 所有 @layer，会让 `a { color: inherit }` 压掉 utilities 层的 `text-*`，

@@ -4,7 +4,7 @@
  *
  * 宽度取 tokens.css 的 --container / --container-gap（1600px，两侧各 96px），
  * 手机上收到两侧各 14px。横向位置只由这里决定，区块内部不再自己加左右 padding
- * （见 docs/样式规范-v3.md 第三节）。
+ * （见 docs/03-前端/样式规范.md 第三节）。
  */
 </script>
 

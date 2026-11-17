@@ -2,7 +2,7 @@
  * Tailwind 入口。
  *
  * 只引 theme 与 utilities 两层，故意不引 preflight：页面用 Tailwind 工具类排版，
- * 但标题、列表、表单的浏览器默认样式仍由 styles/base.css 负责（见前端决策清单 D33）。
+ * 但标题、列表、表单的浏览器默认样式仍由 styles/base.css 负责（见 docs/03-前端/样式规范.md）。
  *
  * 颜色、圆角、阴影、字号全部来自 styles/tokens.css，这里只做映射，
  * 不新增裸色值或裸尺寸。
@@ -32,7 +32,7 @@
   --color-glass: var(--glass);
   --color-scrim: var(--scrim);
 
-  /* 圆角：rounded-md 取 --radius（8px），不是 tokens 里另起的中间名（见 docs/样式规范-v3.md） */
+  /* 圆角：rounded-md 取 --radius（8px），不是 tokens 里另起的中间名（见 docs/03-前端/样式规范.md） */
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);

@@ -13,7 +13,7 @@
 | 共享包 | `@lcm/shared` 纯契约（CJS 产物）、`@lcm/api-client` 请求层（纯 TS 源码） |
 | 质量门 | TypeScript + ESLint + Vitest，turbo 负责构建顺序 |
 
-接口约定见 [docs/架构-v2.md](docs/架构-v2.md)：HTTP 状态恒为 200，业务结果看 `code`（`0` 为成功）；
+接口约定见 [docs/01-架构/架构总览.md](docs/01-架构/架构总览.md)：HTTP 状态恒为 200，业务结果看 `code`（`0` 为成功）；
 列表分页直接用 nest-crud 的 `take` / `skip`，响应 `data = { items, total }`。
 
 ## 目录
@@ -34,7 +34,7 @@ apps/
 packages/
   shared/              共享契约：enums/ 枚举、types/ 纯类型、cron / html / vod / url-rule / settings / util
   api-client/          http.ts（统一信封、错误码、Bearer token）+ query-builder.ts（nest-crud 协议）
-docs/                  架构、数据库设计、功能对齐与样式规范（样式现行版：样式规范-v3.md）
+docs/                  文档目录，入口见 docs/README.md（01-架构 / 02-数据库 / 03-前端）
 ```
 
 ## 快速开始
@@ -130,4 +130,4 @@ pm2 start ecosystem.config.cjs
 - 服务端（v3，TypeORM）：CRUD、采集任务、门户只读接口 `/api/web/*`、重复影片合并已完成，真库冒烟通过。
 - 管理后台：已对接 v3（Bearer token 存 localStorage、`take` / `skip` 分页、`where` / `order` JSON 过滤、camelCase 字段、`PUT` 更新）；`vue-tsc` 纳入 `npm run typecheck`。
 - 用户端前台：仅骨架（路由 + 五个占位页 + `/api/web` 客户端），样式与播放器待做。
-- 文档：`docs/架构-v2.md` 与 `docs/数据库设计-v2.md` 已对齐 TypeORM 实现；v1 遗留方案（Fastify + LiquidJS）的文档已删除。
+- 文档：`docs/01-架构/架构总览.md` 与 `docs/02-数据库/数据库设计.md` 已对齐 TypeORM 实现；v1 遗留方案（Fastify + LiquidJS）的文档已删除。

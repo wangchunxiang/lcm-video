@@ -43,7 +43,7 @@ function isDefault(fallback: unknown, value: unknown): boolean {
  * 列表页的筛选条件 + 分页，绑定到 `route.query`。
  *
  * 解决两个问题：① 后台 6 个列表页各写一份 page/pageSize/search/reset/rowIndex（约 30 行同构代码）；
- * ② 刷新页面、分享链接、浏览器后退时筛选条件全丢（`docs/架构-v2.md` 5.2 要求可分享）。
+ * ② 刷新页面、分享链接、浏览器后退时筛选条件全丢（`docs/01-架构/架构总览.md` 5.2 要求可分享）。
  *
  * 只接管 state，不管请求：调用方 `watch([...])` 或 `search()` 后自己 load。
  */
