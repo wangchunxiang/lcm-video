@@ -71,6 +71,8 @@ let hls: HlsPlayer | null = null;
 /** hls.js 动态加载令牌：换集或销毁后让上一次加载的回调失效 */
 let loadToken = 0;
 let lastSaveAt = 0;
+/** 当前这一集是否已经发过 ended：timeupdate 兜底与原生 ended 只取一次 */
+let endedSent = false;
 
 function resumeStorageKey(): string {
   return props.resumeKey ? RESUME_PREFIX + props.resumeKey : '';
@@ -183,6 +185,7 @@ function createPlayer(): void {
   if (!container || !props.src) return;
 
   destroyPlayer();
+  endedSent = false;
 
   const player = new Artplayer({
     container,
@@ -210,8 +213,20 @@ function createPlayer(): void {
   art = player;
 
   player.on('video:loadedmetadata', () => restoreResume(player));
-  player.on('video:timeupdate', () => saveResume(player));
+  player.on('video:timeupdate', () => {
+    saveResume(player);
+    // 兜底：个别源站/内核到结尾时不派发 ended，这里按「离结尾不到 0.5 秒」判定一次
+    if (endedSent) return;
+    const video = player.video;
+    if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+    if (video.duration - video.currentTime >= 0.5) return;
+    endedSent = true;
+    if (props.resume && props.resumeKey) localStorage.removeItem(resumeStorageKey());
+    emit('ended');
+  });
   player.on('video:ended', () => {
+    if (endedSent) return;
+    endedSent = true;
     if (props.resume && props.resumeKey) localStorage.removeItem(resumeStorageKey());
     emit('ended');
   });
@@ -235,6 +250,7 @@ watch(
       // 换集就地切换：同一个 ArtPlayer 实例换源，不销毁重建（避免黑一下）
       failed.value = false;
       lastSaveAt = 0;
+      endedSent = false;
       await art.switchUrl(next);
       return;
     }

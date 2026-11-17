@@ -352,7 +352,10 @@ useSeo(() => ({
             <ChevronRight :size="16" class="shrink-0" />
           </button>
 
-          <label class="ml-2 flex cursor-pointer items-center gap-2 text-small text-ink-2">
+          <label
+            v-if="episodes.length > 1"
+            class="ml-2 flex cursor-pointer items-center gap-2 text-small text-ink-2"
+          >
             自动连播
             <button
               type="button"
