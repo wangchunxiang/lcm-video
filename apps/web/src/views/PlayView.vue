@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
+import { setPageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
@@ -107,6 +108,8 @@ async function load(): Promise<void> {
     }
 
     play.value = result;
+    // 小屏底栏靠它高亮所属的一级分类（播放页 URL 里只有影片 id）
+    setPageCategoryId(result.vod.categoryId);
 
     const canonicalLine = result.line.id;
     const canonicalEp = String(result.current);

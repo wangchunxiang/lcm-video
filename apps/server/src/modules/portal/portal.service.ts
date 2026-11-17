@@ -398,15 +398,24 @@ export class PortalService {
     lineIndex: string | undefined,
     ep: string | undefined,
   ): Promise<{
-    vod: { id: string; name: string; cover: string; remarks: string };
+    vod: { id: string; name: string; cover: string; remarks: string; categoryId: string };
     lines: PlayLine[];
     line: PlayLine;
     episodes: EpisodeItem[];
     current: number;
   }> {
     const rows = await this.dataSource.query<
-      Array<{ id: string; name: string; cover: string; remarks: string; status: number }>
-    >('SELECT id, name, cover, remarks, status FROM lcm_vod WHERE id = ? LIMIT 1', [vodId]);
+      Array<{
+        id: string;
+        name: string;
+        cover: string;
+        remarks: string;
+        categoryId: string;
+        status: number;
+      }>
+    >('SELECT id, name, cover, remarks, category_id AS categoryId, status FROM lcm_vod WHERE id = ? LIMIT 1', [
+      vodId,
+    ]);
     const vod = rows[0];
     if (vod === undefined || vod.status !== 1) throw new NotFoundException('影片不存在');
 
@@ -433,7 +442,13 @@ export class PortalService {
 
     const current = toInt(ep, 1, 1, episodes.length);
     return {
-      vod: { id: vod.id, name: vod.name, cover: vod.cover, remarks: vod.remarks },
+      vod: {
+        id: vod.id,
+        name: vod.name,
+        cover: vod.cover,
+        remarks: vod.remarks,
+        categoryId: vod.categoryId,
+      },
       lines,
       line,
       episodes,

@@ -56,3 +56,18 @@ export function defaultListAlias(): string {
   return site.categories[0]?.alias || 'dianying';
 }
 
+/**
+ * 影片挂在二级分类上（如「港台剧」），这里回溯到一级分类。
+ * 详情页的「浏览分类」按钮与移动端底栏的高亮共用这一份。
+ */
+export function topCategoryOf(categoryId: string): CategoryNode | null {
+  if (!categoryId) return null;
+  return (
+    site.categories.find(
+      (item: CategoryNode) =>
+        item.id === categoryId ||
+        item.children.some((child: { id: string }) => child.id === categoryId),
+    ) ?? null
+  );
+}
+

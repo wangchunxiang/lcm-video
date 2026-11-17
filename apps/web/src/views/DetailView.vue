@@ -2,8 +2,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { portal, type EpisodeItem, type VodDetail } from '../api/portal';
-import { site } from '../site';
+import { site, topCategoryOf } from '../site';
 import { useSeo } from '../composables/useSeo';
+import { setPageCategoryId } from '../composables/usePageCategoryId';
 import VodGrid from '../components/VodGrid.vue';
 import Container from '../components/layout/Container.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
@@ -64,15 +65,7 @@ function toggleEpOrder(): void {
 
 const categoryName = computed(() => vod.value?.categoryName ?? '影片');
 /** 影片挂在二级分类上（如「港台剧」），这里回溯到一级分类，给「浏览分类」按钮落地址 */
-const topCategory = computed(() => {
-  const id = vod.value?.categoryId;
-  if (!id) return null;
-  return (
-    site.categories.find(
-      (item) => item.id === id || item.children.some((child) => child.id === id),
-    ) ?? null
-  );
-});
+const topCategory = computed(() => topCategoryOf(vod.value?.categoryId ?? ''));
 const browseTo = computed(() => (topCategory.value ? `/list/${topCategory.value.alias}` : ''));
 const browseLabel = computed(() => (topCategory.value ? `浏览${topCategory.value.name}` : ''));
 const poster = computed(() => vod.value?.cover || '/img/poster-placeholder.svg');
@@ -249,6 +242,8 @@ async function load(): Promise<void> {
     const result = await portal.detail(id.value);
     if (seq !== requestSeq) return;
     data.value = result;
+    // 小屏底栏靠它高亮所属的一级分类（URL 里只有影片 id）
+    setPageCategoryId(result.vod.categoryId);
   } catch (e) {
     if (seq === requestSeq) error.value = (e as Error).message || '影片加载失败';
   } finally {

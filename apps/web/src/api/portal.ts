@@ -80,7 +80,7 @@ export interface VodDetail {
 }
 
 export interface VodPlay {
-  vod: { id: string; name: string; cover: string; remarks: string };
+  vod: { id: string; name: string; cover: string; remarks: string; categoryId: string };
   lines: PlayLine[];
   line: PlayLine;
   episodes: EpisodeItem[];

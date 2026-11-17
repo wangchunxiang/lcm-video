@@ -1,8 +1,9 @@
 ﻿<script setup lang="ts">
-import { computed, nextTick, ref, watch, type Component } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Clapperboard, Film, House, Search, Sparkles, Tv } from 'lucide-vue-next';
+import { House, Search } from 'lucide-vue-next';
 import { site } from '../site';
+import { CATEGORY_ICONS } from './layout/categoryIcons';
 import Container from './layout/Container.vue';
 
 /**
@@ -10,7 +11,8 @@ import Container from './layout/Container.vue';
  *
  * 三段结构固定：品牌 → 一级分类导航 → 搜索。
  * 高度取 --header-h；底色恒定半透明 + 模糊，滚动时底下内容能透出来。
- * 小屏（<sm）只留 logo 图标、隐藏站名，分类导航退成纯文字，一行放得下。
+ * 小屏（<sm）分类导航整体下沉到 MobileTabBar，顶栏只留 logo + 站名 + 搜索；
+ * ≥sm 才出现顶栏里的分类导航，和桌面是同一行。
  */
 const router = useRouter();
 const route = useRoute();
@@ -37,14 +39,6 @@ const NAV =
 
 /** 分类图标：小屏 14px、桌面 16px，够用又不占地方 */
 const NAV_ICON = 'h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4';
-
-/** 一级分类的图标按 alias 认；接口里新增的分类没配图标就不画，不猜 */
-const CATEGORY_ICONS: Record<string, Component> = {
-  dianying: Film,
-  juji: Tv,
-  zongyi: Clapperboard,
-  dongman: Sparkles,
-};
 
 function submit(): void {
   const wd = keyword.value.trim();
@@ -83,10 +77,12 @@ function submitMobile(): void {
 
 <template>
   <!-- 顶栏在流里占位（不浮在内容上）；半透明 + 模糊，滚动时底下内容能透出来 -->
-  <header class="sticky top-0 z-50 border-b border-line/70 bg-glass backdrop-blur-xl">
+  <header
+    class="sticky top-0 z-50 border-b border-line/70 bg-glass pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+  >
     <Container>
       <div
-        class="h-[var(--header-h)] items-center gap-1 lg:gap-8"
+        class="h-[var(--header-h)] items-center gap-2 sm:gap-4 lg:gap-8"
         :class="searchOpen ? 'hidden lg:flex' : 'flex'"
       >
         <RouterLink to="/" class="flex flex-none items-center gap-2 transition-opacity hover:opacity-90">
@@ -98,14 +94,14 @@ function submitMobile(): void {
             height="28"
             class="h-7 w-7 flex-none rounded-md"
           />
-          <!-- 小屏把站名让给分类：375 宽下站名占 120px，五个分类就放不下了 -->
-          <span class="hidden whitespace-nowrap text-logo font-extrabold tracking-tight text-ink sm:inline">
+          <!-- 站名一直显示：小屏的分类已经下沉到底栏，顶栏只剩品牌和搜索，放得下 -->
+          <span class="whitespace-nowrap text-logo font-extrabold tracking-tight text-ink">
             {{ site.config.siteName }}
           </span>
         </RouterLink>
 
         <nav
-          class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-8"
+          class="hidden min-w-0 flex-1 items-center gap-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex sm:gap-3 lg:gap-8"
         >
           <RouterLink to="/" :class="NAV">
             <House :size="16" :class="NAV_ICON" />
