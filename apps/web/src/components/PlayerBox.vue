@@ -7,7 +7,6 @@ const props = withDefaults(
     src: string;
     /** 采集源的解析接口；非空时用 iframe 打开解析页 */
     parseUrl?: string;
-    poster?: string;
     autoplay?: boolean;
     resume?: boolean;
     /** 断点续播的存储键，通常是 `${vodId}:${playId}` */
@@ -20,7 +19,6 @@ const props = withDefaults(
   }>(),
   {
     parseUrl: '',
-    poster: '',
     autoplay: false,
     resume: false,
     resumeKey: '',
@@ -192,8 +190,7 @@ function createPlayer(): void {
     url: props.src,
     type: 'auto',
     customType: { m3u8: playM3u8 },
-    // ArtPlayer 会校验选项类型，poster 传 undefined 会直接抛错
-    ...(props.poster ? { poster: props.poster } : {}),
+    // 不放封面：加载时保持黑底，避免先闪一下影片海报（poster 也不再作为 prop 传入）
     autoplay: props.autoplay,
     theme: '#3b82f6',
     lang: 'zh-cn',

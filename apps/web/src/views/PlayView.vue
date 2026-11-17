@@ -257,7 +257,6 @@ useSeo(() => ({
           ref="playerRef"
           :src="epItem?.url ?? ''"
           :parse-url="line.parseUrl"
-          :poster="vod.cover"
           :autoplay="player.autoplay"
           :resume="player.resume"
           :resume-key="`${vod.id}:${line.id}:${current}`"
