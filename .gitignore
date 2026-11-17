@@ -13,3 +13,6 @@ uploads/
 
 # macOS
 .DS_Store
+
+# 本地 agent 运行目录（pi / 浏览器缓存等，不入库）
+.pi-web/
