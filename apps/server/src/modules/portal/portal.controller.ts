@@ -1,6 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { WEB_API_PREFIX } from '../../common/http/api-prefix';
 import { Public } from '../../common/decorators/public.decorator';
+import { Raw } from '../../common/decorators/raw.decorator';
 import { PortalService } from './portal.service';
 import type { CategoryNode, EpisodeItem, PlayLine, SiteConfig, VodCard, VodRow } from './portal.service';
 
@@ -61,6 +63,31 @@ export class PortalController {
     current: number;
   }> {
     return this.portal.play(id, line, ep);
+  }
+
+  /**
+   * 播放列表代理：`/api/web/play` 返回的 `playUrl` 指向这里。
+   * 命中该源已确认的广告特征时返回删掉广告分片的 m3u8，否则 302 回源地址。
+   * 地址带签名（`playlist-proxy.ts`），不是本服务签出的一律 403。
+   */
+  @Get('playlist')
+  @Raw()
+  async playlist(
+    @Query('sourceId') sourceId: string,
+    @Query('u') token: string,
+    @Query('sig') sig: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    // 地址与签名都在 service 里校验过，这里只往校验通过的那个地址跳
+    const { url: sourceUrl, clean } = await this.portal.proxiedPlaylist(sourceId, token, sig);
+    if (clean === null) {
+      // 没有命中广告：直接回源，不让播放器多缓一层本站返回
+      res.redirect(302, sourceUrl);
+      return;
+    }
+    res.setHeader('content-type', 'application/vnd.apple.mpegurl; charset=utf-8');
+    res.setHeader('cache-control', 'no-store');
+    res.send(clean.text);
   }
 
   /** 搜索。 */

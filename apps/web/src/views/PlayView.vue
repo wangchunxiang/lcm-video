@@ -289,6 +289,7 @@ useSeo(() => ({
         <PlayerBox
           ref="playerRef"
           :src="epItem?.url ?? ''"
+          :play-src="epItem?.playUrl ?? epItem?.url ?? ''"
           :parse-url="line.parseUrl"
           :autoplay="player.autoplay"
           :resume="player.resume"

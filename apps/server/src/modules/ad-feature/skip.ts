@@ -1,4 +1,6 @@
-import { fetchTextOnce } from '@lcm/shared';
+import { get as httpGet } from 'node:http';
+import { get as httpsGet } from 'node:https';
+import { FETCH_UA } from '@lcm/shared';
 import type { DataSource } from 'typeorm';
 
 /** 时长比对容差（秒），源站同一支广告的分片时长是固定的，3% 以内视为一致 */
@@ -83,17 +85,161 @@ function markAds(durations: number[], patterns: number[][]): boolean[] {
 }
 
 const CACHE_TTL = 60_000;
+/**
+ * 默认的整段预算（不是单次超时）。源站的 m3u8 前面挂了 Cloudflare 跳转，
+ * 实测同一个地址 0.4s ~ 19s 都有（西瓜资源），单次超时给多少都会被撞上；
+ * 所以改成「总预算 + 后台预热」：
+ * - 播放请求只等一小段（调用方传 budgetMs），拿不到就 302 回源，绝不让首屏卡住；
+ * - 预热用大预算把 master / 变体都塞进缓存，下一次播放直接毫秒级命中。
+ */
+const FETCH_TIMEOUT_MS = 20_000;
 const cache = new Map<string, { at: number; text: string }>();
+/** 同一个地址的并发拉取只发一次；预热与播放请求撞上时共用同一个 promise */
+const inFlight = new Map<string, Promise<string>>();
 
-async function fetchCached(url: string): Promise<string> {
-  const hit = cache.get(url);
-  const now = Date.now();
-  if (hit && now - hit.at < CACHE_TTL) return hit.text;
-  const text = await fetchTextOnce(url, 8000);
-  if (cache.size > 200) cache.clear();
-  cache.set(url, { at: now, text });
-  return text;
+/** 给一个 promise 套调用方自己的预算；超时只影响这次调用，底层的拉取照旧跑完并回填缓存 */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('拉取上游播放列表超时')), Math.max(500, timeoutMs));
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
 }
+
+/**
+ * 源站 302 的目标缓存。
+ *
+ * 西瓜资源实测：`svip.xgplay20.com`（Cloudflare 跳转那一跳）要 0.4~19 秒，
+ * 而 302 之后的 `vip20.jimxtc.com` 只要 50 毫秒。`fetch` 每次都在慢域名上重走一遍，
+ * 还会撞上 undici 默认 10 秒的**连接超时**（表现为 `fetch failed`）。
+ * 这里自己跟跳转：记下「源站域名 → 最终地址」，下次直接把 host 换成目标、路径与 query 保留；
+ * 目标失效时回退原地址并清掉记录。
+ */
+const REDIRECT_TTL = 10 * 60_000;
+const redirectCache = new Map<string, { at: number; target: string }>();
+/** 跳转最多跟几层，防止源站互相指 */
+const MAX_REDIRECTS = 4;
+
+function rewriteWithRedirect(url: string): string | null {
+  try {
+    const source = new URL(url);
+    const hit = redirectCache.get(source.host);
+    if (hit === undefined) return null;
+    if (Date.now() - hit.at > REDIRECT_TTL) {
+      redirectCache.delete(source.host);
+      return null;
+    }
+    const target = new URL(hit.target);
+    return `${target.origin}${source.pathname}${source.search}`;
+  } catch {
+    return null;
+  }
+}
+
+function rememberRedirect(fromUrl: string, toUrl: string): void {
+  try {
+    const source = new URL(fromUrl);
+    const target = new URL(toUrl, fromUrl);
+    if (source.host === target.host) return;
+    redirectCache.set(source.host, { at: Date.now(), target: target.toString() });
+  } catch {
+    /* 解析不了就不记 */
+  }
+}
+
+/**
+ * 用 `node:https` 而不是 `fetch`：undici 的连接超时固定 10 秒，而这个源站的第一跳
+ * 经常要 9~19 秒才建连，`fetch` 会直接失败。自己发请求则只受调用方给的预算约束，
+ * 顺便把跨域跳转的目标记进 `redirectCache`。
+ */
+function requestText(url: string, timeoutMs: number, depth = 0): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const client = url.startsWith('https:') ? httpsGet : httpGet;
+    const req = client(
+      url,
+      { headers: { 'user-agent': FETCH_UA, accept: '*/*' }, timeout: Math.max(500, timeoutMs) },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const location = res.headers.location;
+        if (status >= 300 && status < 400 && location !== undefined) {
+          res.resume();
+          const next = new URL(location, url).toString();
+          rememberRedirect(url, next);
+          if (depth >= MAX_REDIRECTS) {
+            reject(new Error('跳转层数过多'));
+            return;
+          }
+          resolve(requestText(next, timeoutMs, depth + 1));
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          res.resume();
+          reject(new Error(`HTTP ${status}`));
+          return;
+        }
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk: string) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          if (!body.trim()) reject(new Error('响应为空'));
+          else resolve(body);
+        });
+        res.on('error', reject);
+      },
+    );
+    req.on('timeout', () => req.destroy(new Error('拉取上游播放列表超时')));
+    req.on('error', reject);
+  });
+}
+
+/** 拉一次：优先用缓存的跳转目标直连，失败再回到原地址 */
+async function fetchUpstream(url: string, timeoutMs: number): Promise<string> {
+  const rewritten = rewriteWithRedirect(url);
+  if (rewritten !== null) {
+    try {
+      return await requestText(rewritten, timeoutMs);
+    } catch {
+      const source = new URL(url);
+      redirectCache.delete(source.host);
+    }
+  }
+  return requestText(url, timeoutMs);
+}
+
+async function fetchCached(url: string, timeoutMs: number): Promise<string> {
+  const hit = cache.get(url);
+  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.text;
+
+  /*
+   * 同一个地址的拉取只发一次（在途去重）：预热与播放请求撞上时共用同一个 promise，
+   * 各自只按自己的预算等待，谁也不会把源站拉两遍。
+   */
+  let task = inFlight.get(url);
+  if (task === undefined) {
+    task = fetchUpstream(url, FETCH_TIMEOUT_MS)
+      .then((text) => {
+        if (cache.size > 200) cache.clear();
+        cache.set(url, { at: Date.now(), text });
+        return text;
+      })
+      .finally(() => {
+        inFlight.delete(url);
+      });
+    inFlight.set(url, task);
+  }
+  return withTimeout(task, timeoutMs);
+}
+
 
 export interface CleanResult {
   text: string;
@@ -109,7 +255,11 @@ export async function cleanPlaylist(
   dataSource: DataSource,
   sourceId: string,
   url: string,
+  budgetMs = FETCH_TIMEOUT_MS,
 ): Promise<CleanResult | null> {
+  /* 整段预算：master 与变体两次拉取共用，谁先耗完谁超时 */
+  const deadline = Date.now() + budgetMs;
+  const remaining = (): number => deadline - Date.now();
   const rows = await dataSource.query<Array<{ durations: string }>>(
     'SELECT durations FROM lcm_ad_feature WHERE source_id = ?',
     [sourceId],
@@ -120,7 +270,7 @@ export async function cleanPlaylist(
   if (!patterns.length) return null;
 
   let base = url;
-  let text = await fetchCached(url);
+  let text = await fetchCached(url, remaining());
 
   if (text.includes('#EXT-X-STREAM-INF')) {
     const variant = text
@@ -129,7 +279,7 @@ export async function cleanPlaylist(
       .find((line) => line.length > 0 && !line.startsWith('#'));
     if (!variant) return null;
     base = absolutize(url, variant);
-    text = await fetchCached(base);
+    text = await fetchCached(base, remaining());
   }
 
   const parsed = parseMedia(text);

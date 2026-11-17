@@ -5,6 +5,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const props = withDefaults(
   defineProps<{
     src: string;
+    /**
+     * 直链播放用的地址，通常是后端签出的播放列表代理（`/api/web/playlist`）。
+     * 留空时用 `src`；解析型源仍用 `src` 拼 iframe，两者分工不同。
+     */
+    playSrc?: string;
     /** 采集源的解析接口；非空时用 iframe 打开解析页 */
     parseUrl?: string;
     autoplay?: boolean;
@@ -18,6 +23,7 @@ const props = withDefaults(
     setting?: boolean;
   }>(),
   {
+    playSrc: '',
     parseUrl: '',
     autoplay: false,
     resume: false,
@@ -33,6 +39,9 @@ const emit = defineEmits<{ ended: []; error: [] }>();
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const failed = ref(false);
+
+/** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
+const directSrc = computed(() => props.playSrc || props.src);
 
 const iframeSrc = computed(() => {
   if (!props.parseUrl) return '';
@@ -214,14 +223,14 @@ defineExpose({ saveProgress });
 function createPlayer(): void {
   failed.value = false;
   const container = containerRef.value;
-  if (!container || !props.src) return;
+  if (!container || !directSrc.value) return;
 
   destroyPlayer();
   endedSent = false;
 
   const player = new Artplayer({
     container,
-    url: props.src,
+    url: directSrc.value,
     // 必须是空串：artplayer 的 url setter 是 `option.type || 由后缀推断`，写成 'auto'
     // 会被当成一个叫 auto 的类型名，customType 直接跳过、video.src 被裸赋值 ——
     // 也就是 hls.js 永远加载不到，非 Safari 一律报「不支持」
@@ -271,7 +280,7 @@ function createPlayer(): void {
 }
 
 watch(
-  () => props.src,
+  () => directSrc.value,
   async (next, prev) => {
     if (!next) return;
     await nextTick();

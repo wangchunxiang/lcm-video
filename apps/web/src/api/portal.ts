@@ -50,7 +50,10 @@ export interface VodRow {
 export interface EpisodeItem {
   index: number;
   name: string;
+  /** 源站原始地址（解析型源的 iframe 用） */
   url: string;
+  /** 直链播放地址：指向本站播放列表代理，没有广告特征时等于 `url` */
+  playUrl: string;
 }
 
 /** 首页：分类树 + 今日更新分区。 */

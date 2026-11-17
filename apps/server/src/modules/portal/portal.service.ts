@@ -1,8 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { compareId, countEpisodes, escapeLike, parsePlayUrl } from '@lcm/shared';
 import { SettingService } from '../setting/setting.service';
+import { cleanPlaylist } from '../ad-feature/skip';
+import type { CleanResult } from '../ad-feature/skip';
+import { decodePlaylistToken, signPlaylistPath, verifyPlaylistPath } from './playlist-proxy';
 
 
 /** 卡片：列表/首页统一的最小影片信息。 */
@@ -88,7 +92,13 @@ export interface VodRow {
 export interface EpisodeItem {
   index: number;
   name: string;
+  /** 源站原始地址：解析型源（`parse_url` 非空）用这个地址拼 iframe */
   url: string;
+  /**
+   * 直链播放地址，指向本站的播放列表代理 `/api/web/playlist`。
+   * 该源没有广告特征时后端不会包一层，这个值等于 `url`。
+   */
+  playUrl: string;
 }
 
 /** 前台公开配置：站点信息 + 播放器开关。 */
@@ -113,6 +123,20 @@ const PAGE_LIMIT = 100;
 /** 首页每块给 8 列 × 2 行 = 16 部（前台首页按 16 部一屏两行排） */
 const HOME_ROW = 16;
 
+/**
+ * 播放列表代理最多等上游多久。源站慢的时候（西瓜资源的首页响应 0.4~19 秒都见过）
+ * 与其把首屏卡住，不如先 302 回源让视频起来，再由后台预热把缓存填上。
+ * 15 秒能覆盖绝大多数抖动；真撞上 19 秒那种，预热会在后台补上，下次播放必中。
+ */
+const PLAYLIST_BUDGET_MS = 15_000;
+/** 后台预热的预算：只求最终能拿到，慢一点没关系 */
+const PLAYLIST_WARM_BUDGET_MS = 45_000;
+
+/** 是不是 m3u8 播放列表；只有它才谈得上按分片删广告 */
+function isHlsPlaylist(url: string): boolean {
+  return /^https?:\/\//i.test(url) && /\.m3u8(\?|$)/i.test(url);
+}
+
 /** 取正整数参数，非法时回落默认值。 */
 function toInt(value: string | undefined, fallback: number, min: number, max: number): number {
   const parsed = Number(value ?? '');
@@ -126,6 +150,8 @@ function toInt(value: string | undefined, fallback: number, min: number, max: nu
  */
 @Injectable()
 export class PortalService {
+  private readonly logger = new Logger(PortalService.name);
+
   /** 年份选项缓存：全站同一份，列表页每次请求都会要，60 秒内不重复查库。 */
   private yearsCache: { at: number; years: number[] } | null = null;
 
@@ -139,6 +165,8 @@ export class PortalService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly setting: SettingService,
+    /** 名字不能叫 config：本类已有一个 `config()` 方法 */
+    private readonly configService: ConfigService,
   ) {}
 
   /** 前台公开配置：站点信息 + 播放器开关。后台配置项不在这里暴露。 */
@@ -433,14 +461,35 @@ export class PortalService {
     const parsed = playRows[0] === undefined ? [] : parsePlayUrl(playRows[0].playUrl);
     if (parsed.length === 0) throw new NotFoundException('这条线路没有可播放的集');
 
+    /*
+     * 直链播放走本站的播放列表代理，代理里按该源已确认的广告特征删分片。
+     * 只在「该源有广告特征 + 不是解析型源」时才包这一层：否则省掉一次往返，
+     * 播放链路和以前完全一致。解析型源走 iframe，拿的是源站原始地址。
+     */
+    const proxied = !line.parseUrl && (await this.hasAdFeature(line.sourceId));
+    const secret = this.configService.get<string>('app.jwtSecret') ?? '';
+
     // 集序号从 1 开始，前端直接用，不用再算下标
     const episodes: EpisodeItem[] = parsed.map((item, index) => ({
       index: index + 1,
       name: item.name,
       url: item.url,
+      // 只有 m3u8 才谈得上删分片：mp4 之类直接给原地址，别让代理去拉整个文件
+      playUrl: proxied && secret && isHlsPlaylist(item.url)
+        ? signPlaylistPath(secret, line.sourceId, item.url)
+        : item.url,
     }));
 
     const current = toInt(ep, 1, 1, episodes.length);
+
+    /*
+     * 播放页一打开就在后台预热当前集：播放器要再过一会儿才请求 m3u8，
+     * 预热先发出去，等它真的要的时候多半已经命中（或至少在途共用同一次拉取）。
+     * 只预热当前集，不给整部剧集的每一集都发请求。
+     */
+    const warmTarget = episodes[current - 1];
+    if (proxied && warmTarget !== undefined) this.warmPlaylist(line.sourceId, warmTarget.url);
+
     return {
       vod: {
         id: vod.id,
@@ -454,6 +503,56 @@ export class PortalService {
       episodes,
       current,
     };
+  }
+
+  /** 该源有没有已确认的广告特征（有才值得把播放列表过一遍代理）。 */
+  private async hasAdFeature(sourceId: string): Promise<boolean> {
+    if (!/^\d+$/.test(sourceId)) return false;
+    const rows = await this.dataSource.query<Array<{ hit: number }>>(
+      'SELECT 1 AS hit FROM lcm_ad_feature WHERE source_id = ? LIMIT 1',
+      [sourceId],
+    );
+    return rows.length > 0;
+  }
+
+  /**
+   * 播放列表代理：解出被代理的地址并校验签名，只有 `/api/web/play` 签出的地址才放行，
+   * 否则就成了对外的开放代理（SSRF）。命中广告特征时返回改写后的文本，没命中返回 null。
+   */
+  async proxiedPlaylist(
+    sourceId: string,
+    token: string,
+    sig: string,
+  ): Promise<{ url: string; clean: CleanResult | null }> {
+    const secret = this.configService.get<string>('app.jwtSecret') ?? '';
+    const url = decodePlaylistToken(token);
+    if (!/^\d+$/.test(sourceId) || !/^https?:\/\//i.test(url)) {
+      throw new BadRequestException('播放地址无效');
+    }
+    if (!secret || !verifyPlaylistPath(secret, sourceId, url, sig)) {
+      throw new ForbiddenException('播放地址无效');
+    }
+    if (!isHlsPlaylist(url)) throw new BadRequestException('播放地址无效');
+    /* 返回校验通过的地址本身，控制器只往这个值上跳转，不再自己解 token */
+    try {
+      return { url, clean: await cleanPlaylist(this.dataSource, sourceId, url, PLAYLIST_BUDGET_MS) };
+    } catch (error) {
+      // 去广告是增益功能：拉不到上游 m3u8 就 302 回源，绝不能让播放挂掉
+      this.logger.warn(
+        `播放列表改写失败，回源播放（source ${sourceId}）：${error instanceof Error ? error.message : String(error)}`,
+      );
+      // 顺手用大预算在后台再拉一次：源站慢的时候这一部影片下次播放就能直接命中缓存
+      this.warmPlaylist(sourceId, url);
+      return { url, clean: null };
+    }
+  }
+
+  /**
+   * 后台预热：不阻塞响应、失败就算了。
+   * `skip.ts` 内部有在途去重与 60 秒缓存，重复调用不会打爆源站。
+   */
+  private warmPlaylist(sourceId: string, url: string): void {
+    void cleanPlaylist(this.dataSource, sourceId, url, PLAYLIST_WARM_BUDGET_MS).catch(() => undefined);
   }
 
   /** 搜索：片名模糊 + 年份 + 排序。 */
