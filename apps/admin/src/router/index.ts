@@ -1,56 +1,42 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import type { Component } from 'vue';
 import { flatMenus } from '../menu.ts';
 import { auth, fetchMe } from '../auth.ts';
-import Login from '../views/Login.vue';
-import AdminLayout from '../layout/AdminLayout.vue';
-import Dashboard from '../views/Dashboard.vue';
-import Placeholder from '../views/Placeholder.vue';
-import Categories from '../views/content/Categories.vue';
-import Vods from '../views/content/Vods.vue';
-import Logs from '../views/collect/Logs.vue';
-import Mappings from '../views/collect/Mappings.vue';
-import MergeRules from '../views/collect/MergeRules.vue';
-import SourceRules from '../views/collect/SourceRules.vue';
-import Sources from '../views/collect/Sources.vue';
-import Tasks from '../views/collect/Tasks.vue';
-import SiteSetting from '../views/setting/Site.vue';
-import AccountSetting from '../views/setting/Account.vue';
-import MergeTools from '../views/tools/Merge.vue';
-import CoverCheck from '../views/tools/CoverCheck.vue';
-import PlayLines from '../views/playback/Lines.vue';
-import PlaybackSetting from '../views/playback/Config.vue';
 
-const implemented: Record<string, Component> = {
-  '/sources': Sources,
-  '/source-rules': SourceRules,
-  '/mappings': Mappings,
-  '/merge-rules': MergeRules,
-  '/tasks': Tasks,
-  '/logs': Logs,
-  '/vods': Vods,
-  '/categories': Categories,
-  '/site': SiteSetting,
-  '/account': AccountSetting,
-  '/merge': MergeTools,
-  '/cover-check': CoverCheck,
-  '/play-lines': PlayLines,
-  '/player-settings': PlaybackSetting,
+/**
+ * 路由表：除登录页与布局外全部懒加载。
+ * 播放设置（Config.vue）和重复影片（Merge.vue）单文件都接近 1000 行，
+ * 静态 import 会把它们一并塞进首屏 chunk。
+ */
+const Login = () => import('../views/Login.vue');
+const AdminLayout = () => import('../layout/AdminLayout.vue');
+
+/** 菜单地址 → 页面组件。键与 `menu.ts` 里的叶子节点一一对应。 */
+const pages: Record<string, () => Promise<unknown>> = {
+  '/dashboard': () => import('../views/Dashboard.vue'),
+  '/sources': () => import('../views/collect/Sources.vue'),
+  '/source-rules': () => import('../views/collect/SourceRules.vue'),
+  '/mappings': () => import('../views/collect/Mappings.vue'),
+  '/merge-rules': () => import('../views/collect/MergeRules.vue'),
+  '/tasks': () => import('../views/collect/Tasks.vue'),
+  '/logs': () => import('../views/collect/Logs.vue'),
+  '/vods': () => import('../views/content/Vods.vue'),
+  '/categories': () => import('../views/content/Categories.vue'),
+  '/site': () => import('../views/setting/Site.vue'),
+  '/account': () => import('../views/setting/Account.vue'),
+  '/merge': () => import('../views/tools/Merge.vue'),
+  '/cover-check': () => import('../views/tools/CoverCheck.vue'),
+  '/play-lines': () => import('../views/playback/Lines.vue'),
+  '/player-settings': () => import('../views/playback/Config.vue'),
 };
 
-const implementedRoutes = Object.entries(implemented).map(([path, component]) => ({
-  path: path.replace(/^\//, ''),
-  component,
-  meta: { title: flatMenus().find((menu) => menu.path === path)?.title ?? '' },
-}));
+/** 菜单里登记了却还没实现的地址：留一个占位页，避免点进去是空白 */
+const Missing = () => import('../views/Placeholder.vue');
 
-const placeholderRoutes = flatMenus()
-  .filter((menu) => menu.path !== '/dashboard' && !(menu.path in implemented))
-  .map((menu) => ({
-    path: menu.path.replace(/^\//, ''),
-    component: Placeholder,
-    meta: { title: menu.title },
-  }));
+const childRoutes = flatMenus().map((menu) => ({
+  path: menu.path.replace(/^\//, ''),
+  component: pages[menu.path] ?? Missing,
+  meta: { title: menu.title },
+}));
 
 const routes = [
   {
@@ -64,9 +50,14 @@ const routes = [
     component: AdminLayout,
     children: [
       { path: '', redirect: '/dashboard' },
-      { path: 'dashboard', component: Dashboard, meta: { title: '数据概览' } },
-      ...implementedRoutes,
-      ...placeholderRoutes,
+      ...childRoutes,
+      // 兜底：手输错地址、或菜单项被删掉后回退，不该是一片空白
+      {
+        path: ':pathMatch(.*)*',
+        name: 'not-found',
+        component: () => import('../views/NotFound.vue'),
+        meta: { title: '页面不存在' },
+      },
     ],
   },
 ];

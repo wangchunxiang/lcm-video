@@ -4,7 +4,9 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 import { formatDateTime } from '../../utils/datetime.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 
 interface LogRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -51,10 +53,17 @@ interface SourceRow {
 
 const items = ref<LogRow[]>([]);
 const total = ref(0);
-const page = ref(1);
-const pageSize = ref(20);
 const loading = ref(false);
-const filters = reactive({ status: '', source_id: '' });
+/** 筛选条件与分页跟 URL 绑定 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+  onPageChange: setPage,
+  rowIndex,
+} = useTableQuery({ status: '', source_id: '' }, { pageSize: 20 });
 const sources = ref<SourceRow[]>([]);
 
 const drawerVisible = ref(false);
@@ -66,8 +75,6 @@ const detailPageSize = ref(20);
 const detailLoading = ref(false);
 
 let timer: ReturnType<typeof setInterval> | undefined;
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
 const detailWrapRef = ref<HTMLElement | null>(null);
 const detailTableHeight = ref(300);
 let resizeObserver: ResizeObserver | null = null;
@@ -175,14 +182,13 @@ async function loadDetails(logId: string, targetPage = 1, silent = false) {
 }
 
 function search() {
-  page.value = 1;
+  syncSearch();
   void load();
 }
 
 function reset() {
-  filters.status = '';
-  filters.source_id = '';
-  search();
+  resetQuery();
+  void load();
 }
 
 function liveDuration(row: LogRow): string {
@@ -216,12 +222,8 @@ const progressIndeterminate = computed(() => {
   return Boolean(log && log.status === 1 && log.totalPages <= 0);
 });
 
-function rowIndex(index: number): number {
-  return (page.value - 1) * pageSize.value + index + 1;
-}
-
 function onPageChange(value: number) {
-  page.value = value;
+  setPage(value);
   void load();
 }
 
@@ -335,14 +337,10 @@ function observeDetail() {
 }
 
 onMounted(() => {
+  // 主表格的高度交给 ProTable，这里只剩抽屉里那张明细表
   resizeObserver = new ResizeObserver(() => {
-    if (wrapRef.value) tableHeight.value = wrapRef.value.clientHeight;
     if (detailWrapRef.value) detailTableHeight.value = detailWrapRef.value.clientHeight;
   });
-  if (wrapRef.value) {
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
 });
 
 onBeforeUnmount(() => {
@@ -371,16 +369,19 @@ onBeforeUnmount(() => {
     </el-card>
 
     <el-card shadow="never" class="table-card">
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="items"
-          border
-          stripe
-          :height="tableHeight"
-          empty-text="还没有采集记录"
-        >
-          <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
+      <ProTable
+        :data="items"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        empty-text="还没有采集记录"
+        border
+        stripe
+        @update:page="onPageChange"
+        @update:page-size="(size: number) => ((pageSize = size), search())"
+      >
+<el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
           <el-table-column prop="taskName" label="任务" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
               <span v-if="row.manual" class="muted">手动采集</span>
@@ -447,19 +448,7 @@ onBeforeUnmount(() => {
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-
-      <el-pagination
-        class="pager"
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[20, 50, 100]"
-        :page-size="pageSize"
-        :current-page="page"
-        @current-change="onPageChange"
-        @size-change="(size: number) => ((pageSize = size), search())"
-      />
+              </ProTable>
     </el-card>
 
     <el-drawer v-model="drawerVisible" title="采集明细（按页）" size="42%">
@@ -577,15 +566,6 @@ onBeforeUnmount(() => {
   margin-left: auto;
   color: var(--el-text-color-secondary);
   font-size: 12px;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
-.pager {
-  flex: none;
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .muted {
   color: var(--el-text-color-secondary);

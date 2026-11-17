@@ -7,6 +7,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 
 interface RuleOption {
   value: string;
@@ -40,9 +41,14 @@ const values = reactive<Record<string, string>>({});
 /** 服务端当前值，用来判断「有没有未保存的改动」 */
 const serverValues = reactive<Record<string, string>>({});
 
-const filters = reactive({ keyword: '' });
-const page = ref(1);
-const pageSize = ref(20);
+/** 筛选条件与分页跟 URL 绑定 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+} = useTableQuery({ keyword: '' }, { pageSize: 20 });
 
 /** 每个字段的默认策略就是服务端 options 的第一项（与 MERGE_FIELDS 的 strategies[0] 一致） */
 function defaultOf(item: RuleItem): string {
@@ -119,12 +125,11 @@ async function load(): Promise<void> {
 }
 
 function search(): void {
-  page.value = 1;
+  syncSearch();
 }
 
 function reset(): void {
-  filters.keyword = '';
-  page.value = 1;
+  resetQuery();
 }
 
 function resetOne(item: RuleItem): void {

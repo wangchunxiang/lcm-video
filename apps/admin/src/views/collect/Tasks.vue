@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
 import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
+import { bulkDelete } from '../../utils/bulk.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 import { formatDateTime } from '../../utils/datetime.ts';
 import CronEditor from '../../components/CronEditor.vue';
 
@@ -36,8 +39,6 @@ interface SourceRow {
 const items = ref<TaskRow[]>([]);
 const sources = ref<SourceRow[]>([]);
 const loading = ref(false);
-const page = ref(1);
-const pageSize = ref(20);
 const total = ref(0);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增采集任务');
@@ -46,11 +47,15 @@ const tableRef = ref<TableInstance>();
 const selection = ref<TaskRow[]>([]);
 let timer: ReturnType<typeof setInterval> | undefined;
 
-const filters = reactive({
-  keyword: '',
-  source_id: '',
-  status: '',
-});
+/** 筛选条件与分页跟 URL 绑定 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+  onPageChange: setPage,
+} = useTableQuery({ keyword: '', source_id: '', status: '' }, { pageSize: 20 });
 
 const rangeOptions = [
   { value: 1, label: '本日更新' },
@@ -118,20 +123,18 @@ async function loadSources() {
 }
 
 function search() {
-  page.value = 1;
+  syncSearch();
   void load();
 }
 
 function onPageChange(current: number) {
-  page.value = current;
+  setPage(current);
   void load();
 }
 
 function reset() {
-  filters.keyword = '';
-  filters.source_id = '';
-  filters.status = '';
-  search();
+  resetQuery();
+  void load();
 }
 
 function onSelectionChange(rows: TaskRow[]) {
@@ -218,7 +221,7 @@ async function toggleStatus(row: TaskRow) {
 
 async function run(row: TaskRow) {
   try {
-    const data = await api.post<{ ok: boolean; logId?: string; msg?: string }>('/collect-task/run', {
+    const data = await api.longPost<{ ok: boolean; logId?: string; msg?: string }>('/collect-task/run', {
       id: row.id,
     });
     if (data.ok) {
@@ -289,13 +292,13 @@ async function confirmBatchDelete() {
   } catch {
     return;
   }
-  try {
-    await api.del('/collect-task/delete/bulk', { ids: ids.join(',') });
-    ElMessage.success(`已删除 ${ids.length} 个任务`);
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '删除失败');
+  const { ok, failed } = await bulkDelete('/collect-task', ids);
+  if (failed.length === 0) {
+    ElMessage.success(`已删除 ${ok} 个任务`);
+  } else {
+    ElMessage.error(`删除 ${ok} 个，失败 ${failed.length} 个`);
   }
+  await load();
 }
 
 function rangeLabel(value: number): string {
@@ -367,30 +370,12 @@ const nextRun = computed(() => {
   return { text: formatRunTime(next), relative: formatRelative(next, now) };
 });
 
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
-
 onMounted(async () => {
   await loadSources();
   await load();
   timer = setInterval(() => {
     if (!dialogVisible.value) void load(true);
   }, 5000);
-});
-
-onMounted(() => {
-  if (!wrapRef.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-  });
-  resizeObserver.observe(wrapRef.value);
-  tableHeight.value = wrapRef.value.clientHeight;
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 
 onUnmounted(() => {
@@ -430,18 +415,21 @@ onUnmounted(() => {
         <span class="hint">列表每 5 秒自动刷新</span>
       </div>
 
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          ref="tableRef"
-          v-loading="loading"
-          :data="items"
-          border
-          stripe
-          :height="tableHeight"
-          empty-text="还没有采集任务"
-          @selection-change="onSelectionChange"
-        >
-          <el-table-column type="selection" width="44" fixed="left" />
+      <ProTable
+        ref="tableRef"
+        :data="items"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        empty-text="还没有采集任务"
+        border
+        stripe
+        @update:page="onPageChange"
+        @update:page-size="(size: number) => ((pageSize = size), search())"
+        @selection-change="(rows) => onSelectionChange(rows as TaskRow[])"
+      >
+<el-table-column type="selection" width="44" fixed="left" />
           <el-table-column prop="name" label="任务名称" min-width="120" show-overflow-tooltip />
           <el-table-column prop="sourceName" label="采集源" width="88" show-overflow-tooltip />
           <el-table-column label="采集范围" width="84" align="center">
@@ -495,19 +483,7 @@ onUnmounted(() => {
               <el-button link type="danger" class="op-btn" @click="remove(row)">删除</el-button>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-
-      <el-pagination
-        class="pager"
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[20, 50, 100]"
-        :page-size="pageSize"
-        :current-page="page"
-        @current-change="onPageChange"
-        @size-change="(size: number) => ((pageSize = size), search())"
-      />
+              </ProTable>
 
       <el-dialog v-model="dialogVisible" :title="dialogTitle" width="660px" destroy-on-close>
         <el-form label-width="90px">
@@ -583,15 +559,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin-bottom: 12px;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
-.pager {
-  flex: none;
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .hint {
   color: var(--el-text-color-secondary);

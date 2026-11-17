@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
+import { bulkDelete } from '../../utils/bulk.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 import { formatDateTime } from '../../utils/datetime.ts';
 
 interface SourceRow {
@@ -27,13 +30,16 @@ const items = ref<SourceRow[]>([]);
 const selection = ref<SourceRow[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const total = ref(0);
-const page = ref(1);
-const pageSize = ref(20);
-const filters = reactive({ keyword: '', status: '' });
+/** 筛选条件与分页跟 URL 绑定 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+  onPageChange: setPage,
+} = useTableQuery({ keyword: '', status: '' }, { pageSize: 20 });
 
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
 const loading = ref(false);
 const testing = ref('');
 const dialogVisible = ref(false);
@@ -90,18 +96,17 @@ async function load() {
 }
 
 function search() {
-  page.value = 1;
+  syncSearch();
   void load();
 }
 
 function reset() {
-  filters.keyword = '';
-  filters.status = '';
-  search();
+  resetQuery();
+  void load();
 }
 
 function onPageChange(next: number) {
-  page.value = next;
+  setPage(next);
   void load();
 }
 
@@ -213,13 +218,13 @@ async function batchStatus(action: 'enable' | 'disable') {
 async function batchDelete() {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
-  try {
-    await api.del('/collect-source/delete/bulk', { ids: ids.join(',') });
-    ElMessage.success(`已删除 ${ids.length} 个采集源`);
-    await load();
-  } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '删除失败');
+  const { ok, failed } = await bulkDelete('/collect-source', ids);
+  if (failed.length === 0) {
+    ElMessage.success(`已删除 ${ok} 个采集源`);
+  } else {
+    ElMessage.error(`删除 ${ok} 个，失败 ${failed.length} 个`);
   }
+  await load();
 }
 
 /**
@@ -386,18 +391,6 @@ async function remove(row: SourceRow) {
 
 onMounted(() => {
   void load();
-  if (wrapRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-    });
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 </script>
 
@@ -429,15 +422,18 @@ onBeforeUnmount(() => {
       <el-button type="danger" :disabled="selection.length === 0" @click="confirmBatchDelete">批量删除</el-button>
     </div>
 
-    <div ref="wrapRef" class="table-wrap">
-    <el-table
+    <ProTable
       ref="tableRef"
-      v-loading="loading"
       :data="items"
+      :total="total"
+      :page="page"
+      :page-size="pageSize"
+      :loading="loading"
       border
       stripe
-      :height="tableHeight"
-      @selection-change="onSelectionChange"
+      @update:page="setPage"
+      @update:page-size="(size: number) => ((pageSize = size), search())"
+      @selection-change="(rows) => onSelectionChange(rows as SourceRow[])"
     >
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="name" label="名称" width="110" show-overflow-tooltip />
@@ -486,19 +482,7 @@ onBeforeUnmount(() => {
           </div>
         </template>
       </el-table-column>
-    </el-table>
-    </div>
-
-    <el-pagination
-      class="pager"
-      layout="total, sizes, prev, pager, next"
-      :total="total"
-      :page-sizes="[20, 50, 100]"
-      :page-size="pageSize"
-      :current-page="page"
-      @current-change="onPageChange"
-      @size-change="(size: number) => ((pageSize = size), search())"
-    />
+    </ProTable>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" destroy-on-close>
       <el-form label-width="110px">
@@ -586,10 +570,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
 }
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
 .search-bar {
   display: flex;
   align-items: center;
@@ -626,9 +606,5 @@ onBeforeUnmount(() => {
 }
 .danger {
   color: var(--el-color-danger);
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 </style>

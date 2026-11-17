@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { buildListQuery, likeValue } from '@lcm/api-client';
 import { api, ApiError } from '../../api/client.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 
 interface RuleRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -31,13 +32,16 @@ const items = ref<RuleRow[]>([]);
 const sources = ref<SourceOption[]>([]);
 const loading = ref(false);
 const total = ref(0);
-const page = ref(1);
-const pageSize = ref(20);
-const filters = reactive({ source_id: '', kind: '', status: '', keyword: '' });
+/** 筛选条件与分页跟 URL 绑定 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+  onPageChange: setPage,
+} = useTableQuery({ source_id: '', kind: '', status: '', keyword: '' }, { pageSize: 20 });
 
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
 
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增规则');
@@ -90,12 +94,12 @@ async function load(): Promise<void> {
 
 /** 条件变化后从第一页重新查。 */
 function search(): void {
-  page.value = 1;
+  syncSearch();
   void load();
 }
 
 function onPageChange(value: number): void {
-  page.value = value;
+  setPage(value);
   void load();
 }
 
@@ -112,11 +116,8 @@ async function loadSources(): Promise<void> {
 }
 
 function resetFilters(): void {
-  filters.source_id = '';
-  filters.kind = '';
-  filters.status = '';
-  filters.keyword = '';
-  search();
+  resetQuery();
+  void load();
 }
 
 watch(pageSize, () => {
@@ -236,18 +237,6 @@ async function apply(row: RuleRow): Promise<void> {
 onMounted(() => {
   void loadSources();
   void load();
-  if (wrapRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-    });
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 </script>
 
@@ -283,9 +272,18 @@ onBeforeUnmount(() => {
         <el-button type="primary" @click="openCreate">新增规则</el-button>
         <span class="hint inline">规则在采集写库前自动套用，不影响已有数据；存量数据点「重刷」逐条替换。</span>
       </div>
-      <div ref="wrapRef" class="table-wrap">
-        <el-table v-loading="loading" :data="items" border stripe :height="tableHeight">
-          <el-table-column label="采集源" width="140" show-overflow-tooltip>
+      <ProTable
+        :data="items"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        border
+        stripe
+        @update:page="onPageChange"
+        @update:page-size="(size: number) => (pageSize = size)"
+      >
+<el-table-column label="采集源" width="140" show-overflow-tooltip>
             <template #default="{ row }">{{ sourceName(row.sourceId) }}</template>
           </el-table-column>
           <el-table-column label="类型" width="100" align="center">
@@ -311,19 +309,7 @@ onBeforeUnmount(() => {
           <template #empty>
             <div class="empty">还没有规则。源站换域名或图床时，在这里加一条，采集时自动替换。</div>
           </template>
-        </el-table>
-      </div>
-
-      <el-pagination
-        class="pager"
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[20, 50, 100]"
-        :page-size="pageSize"
-        :current-page="page"
-        @current-change="onPageChange"
-        @size-change="(size: number) => (pageSize = size)"
-      />
+              </ProTable>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" :close-on-click-modal="false">
@@ -390,14 +376,6 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .search-bar {
   display: flex;

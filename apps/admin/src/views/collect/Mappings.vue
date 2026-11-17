@@ -155,7 +155,7 @@ async function fetchCategories() {
   if (!sourceId.value) return;
   fetching.value = true;
   try {
-    const data = await api.post<FetchCategoriesResult>('/collect-source/fetch-categories', {
+    const data = await api.longPost<FetchCategoriesResult>('/collect-source/fetch-categories', {
       id: sourceId.value,
     });
     const mapped = Math.max(data.total - data.unmapped, 0);

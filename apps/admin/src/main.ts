@@ -1,18 +1,14 @@
 import { createApp } from 'vue';
-import ElementPlus from 'element-plus';
-import zhCn from 'element-plus/es/locale/lang/zh-cn';
-import * as ElementPlusIconsVue from '@element-plus/icons-vue';
-import 'element-plus/dist/index.css';
+// 组件由 unplugin-vue-components 按需注入；这几个是命令式 API，样式要自己引
+import 'element-plus/es/components/message/style/css';
+import 'element-plus/es/components/message-box/style/css';
+import 'element-plus/es/components/loading/style/css';
+import 'element-plus/es/components/notification/style/css';
 import './styles/global.css';
 import App from './App.vue';
 import router from './router/index.ts';
 
 const app = createApp(App);
 
-for (const [name, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(name, component);
-}
-
 app.use(router);
-app.use(ElementPlus, { locale: zhCn });
 app.mount('#app');

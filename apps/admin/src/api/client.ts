@@ -14,10 +14,24 @@ const http = createHttpClient({
 
 export { ApiError } from '@lcm/api-client';
 
+/**
+ * 长任务接口：不设超时（默认 30 秒会把这些请求掐掉）。
+ * 适用于回源站抓分类、AI 分析、批量扫描/修复、手动触发整轮采集。
+ */
+const long = <T>(path: string, json?: unknown, query?: Record<string, unknown>): Promise<T> =>
+  http.request<T>(path, { method: 'POST', json, query, timeoutMs: 0 });
+
 export const api = {
   get: http.get,
   post: http.post,
   put: http.put,
+  /** 长任务版 POST，不设超时。 */
+  longPost: long,
+  /** 长任务版 GET，不设超时。 */
+  longGet: <T>(path: string, query?: Record<string, unknown>): Promise<T> =>
+    http.request<T>(path, { query, timeoutMs: 0 }),
+  /** 流式接口：返回原始 Response，调用方自己读 body。 */
+  stream: http.stream,
   patch: <T>(path: string, json?: unknown, query?: Record<string, unknown>) => http.request<T>(path, { method: 'PATCH', json, query }),
   del: http.delete,
 };

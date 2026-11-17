@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import Hls from 'hls.js';
+import {
+  ArrowRight,
+  Camera,
+  FullScreen,
+  Monitor,
+  Mute,
+  Setting,
+  VideoPlay,
+} from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
@@ -337,15 +346,11 @@ async function startAnalyze() {
   logs.value = [];
   logVisible.value = true;
   try {
-    const token = getToken();
-    const res = await fetch('/api/admin/ad-feature/analyze-stream', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+    // 走 api-client：统一注入 token、401 跳登录；分析可能跑几分钟，不设超时
+    const res = await api.stream('/ad-feature/analyze-stream', {
+      timeoutMs: 0,
       // 用页面上抽好的这几部，服务端不再重新随机（否则分析用的样片与列表对不上）
-      body: JSON.stringify({
+      json: {
         sourceId: adsSourceId.value,
         sample: sampleVods.value.map((item) => ({
           id: item.id,
@@ -353,9 +358,9 @@ async function startAnalyze() {
           episode: item.episode,
           url: item.url,
         })),
-      }),
+      },
     });
-    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+    if (!res.body) throw new Error('响应没有可读流');
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';

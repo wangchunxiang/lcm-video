@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 import { buildListQuery } from '@lcm/api-client';
 import VodEditDialog from '../../components/VodEditDialog.vue';
 import { formatDateTime } from '../../utils/datetime.ts';
+import { useTableQuery } from '../../composables/useTableQuery.ts';
 
 interface VodRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -36,21 +38,28 @@ const items = ref<VodRow[]>([]);
 const selection = ref<VodRow[]>([]);
 const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const total = ref(0);
-const page = ref(1);
-const pageSize = ref(20);
 const loading = ref(false);
 const categories = ref<CategoryNode[]>([]);
 
-const filters = reactive({
-  keyword: '',
-  category_id: null as string | null,
-  status: '' as '' | '0' | '1',
-  sort: 'time' as 'time' | 'new',
-});
+/** 筛选条件与分页跟 URL 绑定：刷新、后退、分享链接都不丢 */
+const {
+  filters,
+  page,
+  pageSize,
+  search: syncSearch,
+  reset: resetQuery,
+  onPageChange: setPage,
+  rowIndex,
+} = useTableQuery(
+  {
+    keyword: '',
+    category_id: null as string | null,
+    status: '' as '' | '0' | '1',
+    sort: 'time' as 'time' | 'new',
+  },
+  { pageSize: 20 },
+);
 
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
 
 const treeProps = { label: 'name', children: 'children' };
 
@@ -89,24 +98,17 @@ async function load() {
 }
 
 function search() {
-  page.value = 1;
+  syncSearch();
   void load();
 }
 
 function reset() {
-  filters.keyword = '';
-  filters.category_id = null;
-  filters.status = '';
-  filters.sort = 'time';
-  search();
-}
-
-function rowIndex(index: number): number {
-  return (page.value - 1) * pageSize.value + index + 1;
+  resetQuery();
+  void load();
 }
 
 function onPageChange(next: number) {
-  page.value = next;
+  setPage(next);
   void load();
 }
 
@@ -165,7 +167,7 @@ async function ensureSources(row: VodRow) {
 
 async function recollect(row: VodRow, sourceId: string) {
   try {
-    await api.post('/vod/recollect', { id: row.id, sourceId });
+    await api.longPost('/vod/recollect', { id: row.id, sourceId });
     ElMessage.success('已重新采集');
     await load();
   } catch (error) {
@@ -258,18 +260,6 @@ async function submitBatchCategory() {
 onMounted(() => {
   void loadCategories();
   void load();
-  if (wrapRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-    });
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 </script>
 
@@ -316,18 +306,21 @@ onBeforeUnmount(() => {
       <el-button type="warning" :disabled="selection.length === 0" @click="batchStatus(0)">批量下架</el-button>
     </div>
 
-    <div ref="wrapRef" class="table-wrap">
-    <el-table
+    <ProTable
       ref="tableRef"
-      v-loading="loading"
       :data="items"
+      :total="total"
+      :page="page"
+      :page-size="pageSize"
+      :loading="loading"
+      empty-text="还没有影片，先去采集"
       border
       stripe
-      :height="tableHeight"
-      empty-text="还没有影片，先去采集"
-      @selection-change="onSelectionChange"
+      @update:page="onPageChange"
+      @update:page-size="(size: number) => ((pageSize = size), search())"
+      @selection-change="(rows) => onSelectionChange(rows as VodRow[])"
     >
-      <el-table-column type="selection" width="44" fixed="left" />
+<el-table-column type="selection" width="44" fixed="left" />
       <el-table-column type="index" label="#" width="80" align="center" :index="rowIndex" />
       <el-table-column prop="name" label="影片" min-width="220" show-overflow-tooltip />
       <el-table-column label="分类" width="150" show-overflow-tooltip>
@@ -386,19 +379,7 @@ onBeforeUnmount(() => {
           </div>
         </template>
       </el-table-column>
-    </el-table>
-    </div>
-
-    <el-pagination
-      class="pager"
-      layout="total, sizes, prev, pager, next"
-      :total="total"
-      :page-sizes="[20, 50, 100]"
-      :page-size="pageSize"
-      :current-page="page"
-      @current-change="onPageChange"
-      @size-change="(size: number) => ((pageSize = size), search())"
-    />
+        </ProTable>
 
     <el-dialog v-model="categoryDialog" title="批量改分类" width="440px">
       <el-form label-width="90px">
@@ -450,10 +431,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
 }
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
 .search-bar {
   display: flex;
   align-items: center;
@@ -470,10 +447,6 @@ onBeforeUnmount(() => {
 }
 .muted {
   color: var(--el-text-color-secondary);
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .row-actions {
   display: inline-flex;

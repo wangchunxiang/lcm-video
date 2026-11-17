@@ -224,7 +224,7 @@ function bindScroll(): void {
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const data = await api.post<{ hosts: HostRow[]; summary: typeof summary.value }>('/cover-check/hosts');
+    const data = await api.longPost<{ hosts: HostRow[]; summary: typeof summary.value }>('/cover-check/hosts');
     rows.value = data.hosts;
     summary.value = data.summary;
     measure();
@@ -253,7 +253,7 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
         const row = targets[cursor];
         cursor += 1;
         if (!row) continue;
-        await api.post('/cover-check/scan', { host: row.host });
+        await api.longPost('/cover-check/scan', { host: row.host });
       }
     };
     await Promise.all(Array.from({ length: Math.min(8, targets.length) }, () => worker()));
@@ -268,7 +268,7 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
 async function checkOne(row: HostRow): Promise<void> {
   checking.value = row.host;
   try {
-    await api.post('/cover-check/scan', { host: row.host });
+    await api.longPost('/cover-check/scan', { host: row.host });
     await load();
   } finally {
     checking.value = '';
