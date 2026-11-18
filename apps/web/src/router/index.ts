@@ -15,10 +15,13 @@ export const router = createRouter({
   /**
    * 换页回顶部；同一路由内只改参数/query 时按页面决定：
    * 详情页切线路、播放页切线路/选集时内容就在眼前，不该跳回顶部（浏览器/路由默认会回到 0）。
+   * 但必须同一部片（id 相同）才算「同一页」：详情页底部的相关推荐、播放页跳到另一部片，
+   * 路由 name 一样、组件被复用，之前只看 name 就会沿用上一页的滚动位置（停在页面底部）。
    */
   scrollBehavior: (to, from, savedPosition) => {
     if (savedPosition) return savedPosition;
-    if (to.name === from.name && (to.name === 'detail' || to.name === 'play')) return false;
+    const sameVod = String(to.params.id ?? '') === String(from.params.id ?? '');
+    if (sameVod && to.name === from.name && (to.name === 'detail' || to.name === 'play')) return false;
     return { top: 0 };
   },
   routes: [
