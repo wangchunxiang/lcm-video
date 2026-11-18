@@ -37,6 +37,24 @@ const props = withDefaults(
 
 const emit = defineEmits<{ ended: []; error: [] }>();
 
+/** 本站的播放列表代理：`/api/web/playlist?sourceId=..&u=..&sig=..`（见 `playlist-proxy.ts`） */
+const PLAYLIST_PROXY = /\/api\/web\/playlist(?:\?|$)/;
+
+/**
+ * 给 ArtPlayer 判内核类型。
+ *
+ * artplayer 的 `url` setter 是 `option.type || 由地址后缀推断`，随后 `customType[类型]`：
+ * 类型对不上就 `video.src = url` 裸赋值。所以 `option.type` 不能只会是空串：
+ * 直链地址多半是 `.../index.m3u8`，后缀能推对；但走去广告代理时地址是
+ * `/api/web/playlist?...`——既没后缀、还带查询串，推出来的东西不在 `customType` 里，
+ * hls.js 永远拿不到这条流，Chrome/Firefox 只能得到 MEDIA_ERR_SRC_NOT_SUPPORTED(4)，
+ * 界面就是「该线路暂不支持在线播放」，而且控制台不报任何 JS 错。
+ */
+function inferType(url: string): string {
+  return PLAYLIST_PROXY.test(url) || /\.m3u8(?:[?#]|$)/i.test(url) ? 'm3u8' : '';
+}
+
+
 const containerRef = ref<HTMLDivElement | null>(null);
 const failed = ref(false);
 
@@ -231,10 +249,8 @@ function createPlayer(): void {
   const player = new Artplayer({
     container,
     url: directSrc.value,
-    // 必须是空串：artplayer 的 url setter 是 `option.type || 由后缀推断`，写成 'auto'
-    // 会被当成一个叫 auto 的类型名，customType 直接跳过、video.src 被裸赋值 ——
-    // 也就是 hls.js 永远加载不到，非 Safari 一律报「不支持」
-    type: '',
+    // 不能只靠 artplayer 从后缀推断：去广告代理的地址没有 `.m3u8` 后缀（见 inferType）
+    type: inferType(directSrc.value),
     customType: { m3u8: playM3u8 },
     // 不放封面：加载时保持黑底，避免先闪一下影片海报（poster 也不再作为 prop 传入）
     autoplay: props.autoplay,
@@ -294,6 +310,9 @@ watch(
       failed.value = false;
       lastSaveAt = 0;
       endedSent = false;
+      // 就地换源时 artplayer 用 `option.type` 判内核，换集地址可能变成代理地址（或反过来），
+      // 所以每次换源前都要按新地址重算一次
+      art.option.type = inferType(next);
       await art.switchUrl(next);
       return;
     }

@@ -61,13 +61,18 @@ async function bootstrap(): Promise<void> {
   // 放在 Nest 路由之前注册，命中就结束，不会走到统一信封。
   //
   // 缓存策略：`/assets/` 下的文件名带内容哈希，内容一变文件名就变，可以永久缓存；
-  // 其余（index.html、图标等固定名字）只缓存 1 小时，发版后能及时更新。
+  // 其余（index.html、图标等固定名字）每次都要回源校验（no-cache）。index.html 一旦被
+  // 浏览器缓存住，发版后旧页面会去要旧哈希的 chunk，服务端对带扩展名的 404 只回 JSON，
+  // 动态 import 直接失败。
   const staticCache = () => ({
     index: 'index.html' as const,
-    maxAge: '1h',
+    maxAge: 0,
+    etag: true,
     setHeaders: (response: Response, path: string) => {
       if (path.includes(`${sep}assets${sep}`)) {
         response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else {
+        response.setHeader('Cache-Control', 'no-cache');
       }
     },
   });

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { ArrowDown } from '@element-plus/icons-vue';
 import { api } from '../../api/client.ts';
 import ProTable from '../../components/ProTable.vue';
 import { buildListQuery } from '@lcm/api-client';

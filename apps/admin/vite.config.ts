@@ -17,8 +17,11 @@ export default defineConfig({
       dts: false,
     }),
   ],
-  // @lcm/shared 的入口指向 CommonJS 构建产物，dev 下让 Vite 预打包以提供 ESM 命名导出
-  optimizeDeps: { include: ['@lcm/shared/cron'] },
+  // @lcm/shared 的入口指向 CommonJS 构建产物，dev 下让 Vite 预打包以提供 ESM 命名导出。
+  // hls.js 只被按需加载的「播放配置」页引用：不写进这里的话，Vite 要等你第一次点进
+  // 那个页面才发现它，然后当场重新预打包并强制整页刷新（控制台会打
+  // "new dependencies optimized" + "page reload"，表现为点菜单时整屏白一下）。
+  optimizeDeps: { include: ['@lcm/shared/cron', 'hls.js'] },
   build: {
     // @lcm/shared 是 CommonJS 编译产物（供服务端 require），打包时需交给 commonjs 插件处理
     commonjsOptions: { include: [/node_modules/, /packages[\\/]shared/] },
