@@ -4,6 +4,9 @@ import { portal, type CategoryNode, type SiteConfig } from './api/portal';
 /**
  * 全站共享的站点配置与分类树。
  * 配置失败时用兜底值渲染，页面不因为 /api/web/config 不可用而白屏。
+ *
+ * player 下各项必须与后台打包值一致（packages/shared/src/settings.ts 的 default + portal.service.ts 的 flag 兜底）：
+ * 否则请求慢/失败的那一瞬间，控制栏按钮跟正常情况不一样，看着像“随机丢按钮”。
  */
 const DEFAULT_CONFIG: SiteConfig = {
   siteName: '蓝草莓影视',
@@ -15,10 +18,10 @@ const DEFAULT_CONFIG: SiteConfig = {
     autoplay: false,
     autonext: true,
     resume: true,
-    screenshot: false,
+    screenshot: true,
     fullscreen: true,
-    webfullscreen: true,
-    setting: false,
+    webfullscreen: false,
+    setting: true,
   },
 };
 
