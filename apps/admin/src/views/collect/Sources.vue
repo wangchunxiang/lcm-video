@@ -4,7 +4,6 @@ import { ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
 import ProTable from '../../components/ProTable.vue';
-import { bulkDelete } from '../../utils/bulk.ts';
 import { useTableQuery } from '../../composables/useTableQuery.ts';
 import { formatDateTime } from '../../utils/datetime.ts';
 
@@ -215,14 +214,32 @@ async function batchStatus(action: 'enable' | 'disable') {
   }
 }
 
+/**
+ * 删源是一个重活（一个源下去要连带删几万行播放地址与影片），
+ * 所以不走 bulkDelete 的并发请求，而是逐个按顺序删并各给足超时。
+ */
+async function sequentialDelete(ids: string[]): Promise<Set<string>> {
+  const done = new Set<string>();
+  for (const id of ids) {
+    try {
+      await api.longDelete(`/collect-source/${id}`);
+      done.add(id);
+    } catch {
+      // 单个失败不影响其余，失败数由调用方统计
+    }
+  }
+  return done;
+}
+
 async function batchDelete() {
   const ids = selection.value.map((row) => row.id);
   if (ids.length === 0) return;
-  const { ok, failed } = await bulkDelete('/collect-source', ids);
+  const ok = await sequentialDelete(ids);
+  const failed: string[] = ids.filter((id) => !ok.has(id));
   if (failed.length === 0) {
-    ElMessage.success(`已删除 ${ok} 个采集源`);
+    ElMessage.success(`已删除 ${ok.size} 个采集源`);
   } else {
-    ElMessage.error(`删除 ${ok} 个，失败 ${failed.length} 个`);
+    ElMessage.error(`删除 ${ok.size} 个，失败 ${failed.length} 个`);
   }
   await load();
 }
@@ -255,7 +272,7 @@ async function confirmRemove(message: string, title: string): Promise<boolean> {
 
 async function confirmBatchDelete() {
   const confirmed = await confirmRemove(
-    `确定删除选中的 ${selection.value.length} 个采集源吗？该源的分类映射与采集任务会一并删除。`,
+    `确定删除选中的 ${selection.value.length} 个采集源吗？会一并清掉它们的分类映射、采集任务与历史采集记录、替换规则、广告特征、播放地址；删完一条线路都不剩的影片也会一起删掉，不可恢复。`,
     '批量删除',
   );
   if (!confirmed) return;
@@ -375,14 +392,14 @@ async function toggleStatus(row: SourceRow) {
 
 async function remove(row: SourceRow) {
   const confirmed = await confirmRemove(
-    `确定删除采集源「${row.name}」吗？该源的分类映射与采集任务会一并删除。`,
+    `确定删除采集源「${row.name}」吗？会一并清掉它的分类映射、采集任务与历史采集记录、替换规则、广告特征、播放地址；删完一条线路都不剩的影片也会一起删掉，不可恢复。`,
     '删除采集源',
   );
   if (!confirmed) return;
 
   try {
-    await api.del(`/collect-source/${row.id}`);
-    ElMessage.success('已删除采集源');
+    const result = await api.longDelete<{ success: boolean; message: string }>(`/collect-source/${row.id}`);
+    ElMessage.success(result.message);
     await load();
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '删除失败');

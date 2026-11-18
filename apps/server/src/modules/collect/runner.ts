@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/category.entity';
 import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
 import { CollectSourceEntity } from '../collect-source/collect-source.entity';
@@ -59,6 +59,9 @@ export const RANGE_LABELS: Record<number, string> = {
   4: '全部',
   0: '全部',
 };
+
+/** 取消采集后等收尾的上限，超时也继续往下删，不让后台请求无限等 */
+const CANCEL_WAIT_MS = 20_000;
 
 /** 运行中的采集：只在本进程内存里，重启后由 closeInterruptedLogs 收尾 */
 const running = new Map<string, RunHandle>();
@@ -295,6 +298,28 @@ export class CollectRunner {
       { lastRunStatus: 4, lastRunMsg: formatSummary(emptyCounters()) },
     );
     return (tasks.affected ?? 0) > 0;
+  }
+
+  /** 按源站取消：停掉这个源下所有运行中的采集，并等它们真正收尾（删源前必须先做） */
+  async cancelBySource(sourceIds: string[]): Promise<number> {
+    const ids = sourceIds.filter((id) => id !== '');
+    if (ids.length === 0) return 0;
+    const logs = await this.logRepository.find({
+      where: { sourceId: In(ids), status: 1 },
+      select: { id: true },
+    });
+    if (logs.length === 0) return 0;
+    const handles = logs
+      .map((log) => running.get(log.id))
+      .filter((handle): handle is RunHandle => handle !== undefined);
+    await Promise.all(logs.map((log) => this.cancel(log.id)));
+    // abort 之后 execute() 还要把收尾结果写进日志，必须等它落完再往下删，
+    // 否则删除事务提交后它又写回一条指向已删源的记录。超时兜底，不让接口卡死。
+    await Promise.race([
+      Promise.all(handles.map((handle) => handle.finished)),
+      sleep(CANCEL_WAIT_MS),
+    ]);
+    return logs.length;
   }
 
   isRunning(logId: string): boolean {

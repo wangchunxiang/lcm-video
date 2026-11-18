@@ -1,6 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
+import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
+import { AdFeatureEntity } from '../ad-feature/ad-feature.entity';
+import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
+import { CollectTaskLogDetailEntity } from '../collect-task-log-detail/collect-task-log-detail.entity';
+import { CollectTaskLogEntity } from '../collect-task-log/collect-task-log.entity';
+import { CollectTaskEntity } from '../collect-task/collect-task.entity';
+import { CoverCheckEntity } from '../cover-check/cover-check.entity';
+import { PlayLineEntity } from '../play-line/play-line.entity';
+import { SourceRuleEntity } from '../source-rule/source-rule.entity';
+import { VodPlayEntity } from '../vod-play/vod-play.entity';
+import { VodEntity } from '../vod/vod.entity';
 import { autoMatchCategory } from '@lcm/shared';
 import type { CategoryMatchInfo } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
@@ -28,6 +39,22 @@ export interface FetchCategoriesResult {
   unmapped: number;
 }
 
+/** 删源时连带清理的统计，前端可用来提示「到底删掉了什么」。 */
+export interface PurgeResult {
+  sources: number;
+  mappings: number;
+  tasks: number;
+  logs: number;
+  logDetails: number;
+  rules: number;
+  adFeatures: number;
+  plays: number;
+  vods: number;
+  playLines: number;
+  coverHosts: number;
+  cancelled: number;
+}
+
 /** 采集源站：标准 REST + 连通性测试 / 拉取分类并自动映射。 */
 @Injectable()
 export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
@@ -37,6 +64,143 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
     private readonly runner: CollectRunner,
   ) {
     super(repository);
+  }
+
+  /** 删除采集源：连着它的映射、任务、日志、规则、广告特征、播放地址与孤儿影片一起清掉。 */
+  override async delete(
+    criteria: string | FindOptionsWhere<CollectSourceEntity>,
+    _softDelete?: boolean,
+  ): Promise<{ success: boolean; message: string }> {
+    const ids =
+      typeof criteria === 'string'
+        ? [criteria]
+        : (await this.repository.find({ where: criteria, select: { id: true } })).map((row) => row.id);
+    return this.purgeAndReport(ids);
+  }
+
+  override async deleteMany(
+    params: { ids?: string[] },
+    _softDelete?: boolean,
+  ): Promise<{ success: boolean; message: string }> {
+    // nest-crud 的 `/delete/bulk` 从 query 取 ids，标量会被包成 `['1,2,3']`，不拆会当成一个 id
+    const ids = (params.ids ?? [])
+      .flatMap((id) => String(id).split(','))
+      .map((id) => id.trim())
+      .filter((id) => id !== '');
+    if (ids.length === 0) return { success: true, message: '没有需要删除的采集源' };
+    return this.purgeAndReport(ids);
+  }
+
+  /** 跑一次彻底清理，把结果拼成一句能看懂的话。 */
+  private async purgeAndReport(ids: string[]): Promise<{ success: boolean; message: string }> {
+    const result = await this.purge(ids);
+    if (result.sources === 0) return { success: false, message: '采集源不存在' };
+    const parts = [
+      result.cancelled > 0 ? `${result.cancelled} 个正在跑的采集已停止` : '',
+      result.plays > 0 ? `${result.plays} 条播放地址` : '',
+      result.vods > 0 ? `${result.vods} 部失去全部线路的影片` : '',
+      result.logs > 0 ? `${result.logs} 条采集记录` : '',
+      result.logDetails > 0 ? `${result.logDetails} 条采集明细` : '',
+      result.mappings > 0 ? `${result.mappings} 条分类映射` : '',
+      result.tasks > 0 ? `${result.tasks} 个采集任务` : '',
+      result.rules > 0 ? `${result.rules} 条替换规则` : '',
+      result.adFeatures > 0 ? `${result.adFeatures} 条广告特征` : '',
+      result.playLines > 0 ? `${result.playLines} 条线路注册` : '',
+      result.coverHosts > 0 ? `${result.coverHosts} 条域名体检记录` : '',
+    ].filter((item) => item !== '');
+    return {
+      success: true,
+      message: parts.length === 0 ? '已删除' : `已删除，同时清掉 ${parts.join('、')}`,
+    };
+  }
+
+  /**
+   * 彻底删掉采集源及其全部痕迹。
+   *
+   * 全库没有外键，只能按顺序手工清，顺序不能错：日志明细 → 日志 → 任务 → 分类映射 /
+   * 替换规则 / 广告特征 → 播放地址 → 没线路的影片 → 线路注册 → 域名体检 → 源本身。
+   * 整段跑在一个事务里，中途失败全部回滚。
+   */
+  async purge(ids: string[]): Promise<PurgeResult> {
+    const targets = [...new Set(ids.filter((id) => id !== ''))];
+    const result: PurgeResult = {
+      sources: 0,
+      mappings: 0,
+      tasks: 0,
+      logs: 0,
+      logDetails: 0,
+      rules: 0,
+      adFeatures: 0,
+      plays: 0,
+      vods: 0,
+      playLines: 0,
+      coverHosts: 0,
+      cancelled: 0,
+    };
+    if (targets.length === 0) return result;
+
+    // 先停掉这个源正在跑的采集，并等它收尾写完，否则删完又会冒出一条指向已删源的日志
+    result.cancelled = await this.runner.cancelBySource(targets);
+
+    await this.dataSource.transaction(async (manager) => {
+      // 日志明细挂在日志上，先拿到日志 id 才能删
+      const logs = await manager.find(CollectTaskLogEntity, {
+        where: { sourceId: In(targets) },
+        select: { id: true },
+      });
+      const logIds = logs.map((log) => log.id);
+      result.logs = logs.length;
+      if (logIds.length > 0) {
+        result.logDetails = await affected(manager.delete(CollectTaskLogDetailEntity, { logId: In(logIds) }));
+        await manager.delete(CollectTaskLogEntity, { id: In(logIds) });
+      }
+
+      result.tasks = await affected(manager.delete(CollectTaskEntity, { sourceId: In(targets) }));
+      result.mappings = await affected(
+        manager.delete(CollectSourceCategoryEntity, { sourceId: In(targets) }),
+      );
+      result.rules = await affected(manager.delete(SourceRuleEntity, { sourceId: In(targets) }));
+      result.adFeatures = await affected(manager.delete(AdFeatureEntity, { sourceId: In(targets) }));
+
+      // 删播放地址之前先把受影响的影片记下来：删完这些影片里会有一批一条线路都不剩
+      const affectedVods = await vodsOfSource(manager, targets);
+      const lineIds = await linesOfSource(manager, targets);
+      result.plays = await affected(manager.delete(VodPlayEntity, { sourceId: In(targets) }));
+
+      // 失去全部线路的影片一并删掉，否则前台点进去只会「还没有可播放的线路」
+      const orphans = await orphanVods(manager, affectedVods);
+      result.vods = orphans.length;
+      if (orphans.length > 0) await manager.delete(VodEntity, { id: In(orphans) });
+
+      // 线路注册表：还有影片在用就留（前台线路名靠它），彻底没人用了才删
+      if (lineIds.length > 0) {
+        const stillUsed = await manager.find(VodPlayEntity, {
+          where: { sourceFrom: In(lineIds) },
+          select: { sourceFrom: true },
+        });
+        const used = new Set(stillUsed.map((row) => row.sourceFrom));
+        const unused = lineIds.filter((line) => !used.has(line));
+        if (unused.length > 0) {
+          result.playLines = await affected(manager.delete(PlayLineEntity, { sourceFrom: In(unused) }));
+        }
+      }
+
+      // 域名体检是快照表：影片删掉后可能整页空掉，顺手清掉已经没有封面引用的域名
+      const hosts = await manager
+        .createQueryBuilder(VodEntity, 'vod')
+        .select('DISTINCT vod.coverHost', 'host')
+        .where("vod.coverHost <> ''")
+        .getRawMany<{ host: string }>();
+      if (hosts.length > 0) {
+        result.coverHosts = await affected(
+          manager.delete(CoverCheckEntity, { host: Not(In(hosts.map((row) => row.host))) }),
+        );
+      }
+
+      result.sources = await affected(manager.delete(CollectSourceEntity, { id: In(targets) }));
+    });
+
+    return result;
   }
 
   /** 手动采集这个源站：rangeType 决定时间窗，缺省全部。 */
@@ -186,4 +350,56 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
       unmapped: Number(counts[0]?.unmapped ?? 0),
     };
   }
+}
+
+/** 把 `delete()` 的返回值收成条数 */
+async function affected(pending: Promise<DeleteResult>): Promise<number> {
+  return (await pending).affected ?? 0;
+}
+
+/** 这些源下被播放地址引用的影片 id（去重） */
+async function vodsOfSource(manager: EntityManager, sourceIds: string[]): Promise<string[]> {
+  const rows = await manager
+    .createQueryBuilder(VodPlayEntity, 'play')
+    .select('DISTINCT play.vodId', 'vodId')
+    .where('play.sourceId IN (:...ids)', { ids: sourceIds })
+    .getRawMany<{ vodId: string }>();
+  return rows.map((row) => row.vodId);
+}
+
+/** 这些源用到的线路标识：`play_from` 里登记的 + 播放地址里实际出现的 */
+async function linesOfSource(manager: EntityManager, sourceIds: string[]): Promise<string[]> {
+  const lines = new Set<string>();
+  const sources = await manager.find(CollectSourceEntity, {
+    where: { id: In(sourceIds) },
+    select: { playFrom: true },
+  });
+  for (const source of sources) {
+    for (const part of source.playFrom.split(',')) {
+      const key = part.trim();
+      if (key !== '') lines.add(key);
+    }
+  }
+  const used = await manager.find(VodPlayEntity, {
+    where: { sourceId: In(sourceIds) },
+    select: { sourceFrom: true },
+  });
+  for (const row of used) if (row.sourceFrom !== '') lines.add(row.sourceFrom);
+  return [...lines];
+}
+
+/** 给走定影片里，一条线路都不剩的那些（删完播放地址之后调用） */
+async function orphanVods(manager: EntityManager, vodIds: string[]): Promise<string[]> {
+  const orphans: string[] = [];
+  const chunkSize = 2_000;
+  for (let index = 0; index < vodIds.length; index += chunkSize) {
+    const chunk = vodIds.slice(index, index + chunkSize);
+    const alive = await manager.find(VodPlayEntity, {
+      where: { vodId: In(chunk) },
+      select: { vodId: true },
+    });
+    const aliveIds = new Set(alive.map((row) => row.vodId));
+    for (const id of chunk) if (!aliveIds.has(id)) orphans.push(id);
+  }
+  return orphans;
 }

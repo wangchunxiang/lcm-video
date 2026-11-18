@@ -30,6 +30,9 @@ export const api = {
   /** 长任务版 GET，不设超时。 */
   longGet: <T>(path: string, query?: Record<string, unknown>): Promise<T> =>
     http.request<T>(path, { query, timeoutMs: 0 }),
+  /** 长任务版 DELETE，不设超时（删采集源要连带清几万行，30 秒不够）。 */
+  longDelete: <T>(path: string, query?: Record<string, unknown>): Promise<T> =>
+    http.request<T>(path, { method: 'DELETE', query, timeoutMs: 0 }),
   /** 流式接口：返回原始 Response，调用方自己读 body。 */
   stream: http.stream,
   patch: <T>(path: string, json?: unknown, query?: Record<string, unknown>) => http.request<T>(path, { method: 'PATCH', json, query }),
