@@ -108,15 +108,36 @@ async function requestOnce(
   }
 }
 
+/** 域名统一口径：小写、去端口（与 `hostOf()` 对 cover 的结果对齐） */
+function normalizeHost(host: string): string {
+  return host.trim().toLowerCase().replace(/:\d+$/, '');
+}
+
 /** 检查单个域名：抽 2 张，同一域名内两次请求间隔 3 秒 */
 export async function checkHost(dataSource: DataSource, host: string): Promise<CheckResult> {
   const rows = await dataSource.query<Array<{ cover: string }>>(
     'SELECT cover FROM lcm_vod WHERE cover_host = ? LIMIT ?',
     [host, SAMPLE_COUNT],
   );
-  const urls = rows.map((row) => row.cover).filter((cover) => hostOf(cover) === host);
+  const covers = rows.map((row) => row.cover).filter((cover) => cover !== '');
+  // cover_host 是写入时从 cover 派生的冗余列，历史数据里两边会漂移：旧库导入的
+  // cover_host 带端口（www.imgzy360.com:7788），而 hostOf() 会把端口去掉。
+  // 所以比对前先统一口径；万一全都对不上（脏数据），仍以 cover_host 选出来的行为准，
+  // 否则整个域名会被误报成「库里没有该域名的图片」。
+  const target = normalizeHost(host);
+  const matched = covers.filter((cover) => normalizeHost(hostOf(cover)) === target);
+  const urls = matched.length > 0 ? matched : covers;
   if (urls.length === 0) {
-    return { host, ok: false, status: 1, okCount: 0, failCount: 0, message: '库里没有该域名的图片' };
+    // 体检表会留着「已经没有影片归属」的历史域名（图床换掉、封面被清空后就是这样），
+    // 这类不是图片坏了，而是库里已经没有影片再引用它，清掉记录即可。
+    return {
+      host,
+      ok: false,
+      status: 1,
+      okCount: 0,
+      failCount: 0,
+      message: rows.length === 0 ? '该域名已无影片引用，可清理这条记录' : '库里没有该域名的图片',
+    };
   }
 
   const results: ProbeResult[] = [];

@@ -28,6 +28,7 @@
         <el-button :loading="loading" @click="load">刷新</el-button>
         <el-button type="primary" :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
         <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
+        <el-button :loading="pruning" @click="pruneHosts">清理无引用</el-button>
       </div>
     </el-card>
 
@@ -156,6 +157,7 @@ interface CoverVod {
 const rows = ref<HostRow[]>([]);
 const loading = ref(false);
 const scanning = ref(false);
+const pruning = ref(false);
 const checking = ref('');
 const repairing = ref('');
 const webfix = ref('');
@@ -262,6 +264,32 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
     ElNotification.success({ title: '检查完成', message: `共检查 ${targets.length} 个域名${tail}` });
   } finally {
     scanning.value = false;
+  }
+}
+
+/** 清掉已经没有影片引用的域名记录（只删体检记录，不动影片数据） */
+async function pruneHosts(): Promise<void> {
+  const stale = rows.value.filter((row) => row.vodCount === 0).length;
+  if (stale === 0) {
+    ElNotification.info({ title: '没有可清理的记录', message: '每个域名下都还有影片引用' });
+    return;
+  }
+  const ok = await ElMessageBox.confirm(
+    `会删掉 ${stale} 条已经没有影片引用的域名记录，只删体检记录，不动影片数据。继续吗？`,
+    '清理无引用',
+    { type: 'warning', confirmButtonText: '清理', cancelButtonText: '取消' },
+  ).then(
+    () => true,
+    () => false,
+  );
+  if (!ok) return;
+  pruning.value = true;
+  try {
+    const result = await api.longPost<{ deleted: number }>('/cover-check/prune', {});
+    await load();
+    ElNotification.success({ title: '已清理', message: `删掉 ${result.deleted} 条记录` });
+  } finally {
+    pruning.value = false;
   }
 }
 
