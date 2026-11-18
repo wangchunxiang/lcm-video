@@ -3,7 +3,7 @@ import type { SettingField } from './types/setting.ts';
 export const SETTINGS: SettingField[] = [
   {
     key: 'list_page_size',
-    section: '列表与上传',
+    section: '列表',
     group: 'site',
     label: '列表每页条数',
     type: 'number',
@@ -12,20 +12,12 @@ export const SETTINGS: SettingField[] = [
   },
   {
     key: 'collect_log_keep_days',
-    section: '列表与上传',
+    section: '列表',
     group: 'site',
     label: '采集记录保留天数',
     type: 'number',
     default: '30',
     hint: '调度器每天清理一次超出天数的采集记录。',
-  },
-  {
-    key: 'upload_max_mb',
-    section: '列表与上传',
-    group: 'site',
-    label: '单文件上传上限（MB）',
-    type: 'number',
-    default: '2',
   },
   {
     key: 'site_name',
@@ -44,24 +36,6 @@ export const SETTINGS: SettingField[] = [
     default: '高清影视在线观看',
   },
   {
-    key: 'site_logo',
-    section: '品牌与外观',
-    group: 'site',
-    label: '站点 LOGO',
-    type: 'text',
-    default: '',
-    hint: '填写图片地址，或通过上传得到 /uploads/ 开头的路径。',
-  },
-  {
-    key: 'site_favicon',
-    section: '品牌与外观',
-    group: 'site',
-    label: '站点图标',
-    type: 'text',
-    default: '',
-    hint: '留空则使用主题自带图标。自定义建议上传 48×48 PNG/ICO，iOS 主屏图标另需 180×180。',
-  },
-  {
     key: 'site_disclaimer',
     section: '页脚',
     group: 'site',
@@ -78,15 +52,6 @@ export const SETTINGS: SettingField[] = [
     type: 'textarea',
     default: '',
     hint: '原样输出到前台页面底部。',
-  },
-  {
-    key: 'site_theme',
-    section: '品牌与外观',
-    group: 'site',
-    label: '当前模板',
-    type: 'select',
-    default: 'default',
-    options: [{ label: '默认模板', value: 'default' }],
   },
   {
     key: 'player_autoplay',
