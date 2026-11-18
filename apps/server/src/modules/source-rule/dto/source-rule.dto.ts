@@ -14,7 +14,7 @@ export class CreateSourceRuleDTO {
 
   @IsString({ message: '必须是字符串' })
   @MinLength(1, { message: '不能为空' })
-  @MaxLength(255, { message: '最长 255 个字符' })
+  @MaxLength(2000, { message: '最长 2000 个字符（多个原地址按行分隔）' })
   fromUrl!: string;
 
   @IsOptional()
@@ -47,7 +47,7 @@ export class UpdateSourceRuleDTO {
 
   @IsOptional()
   @IsString({ message: '必须是字符串' })
-  @MaxLength(255, { message: '最长 255 个字符' })
+  @MaxLength(2000, { message: '最长 2000 个字符（多个原地址按行分隔）' })
   fromUrl?: string;
 
   @IsOptional()

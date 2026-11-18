@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { applyCoverRules, applyPlayUrlRules, hostOf, urlRuleNeedle } from '@lcm/shared';
+import { applyCoverRules, applyPlayUrlRules, hostOf, splitUrlPatterns, urlRuleNeedles } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
-import { CollectSourceService } from '../collect-source/collect-source.service';
 import { SourceRuleEntity } from './source-rule.entity';
 import type { CreateSourceRuleDTO, UpdateSourceRuleDTO } from './dto/source-rule.dto';
 
@@ -17,24 +16,46 @@ export interface SourceRuleApplyResult {
 /** 线下重刷按批提交，避免单条 UPDATE 撑爆 max_allowed_packet。 */
 const APPLY_BATCH = 100;
 
+/** 原地址统一成「一行一条」：去空行、去重复、去首尾空格，存库与比较都按这个形式 */
+function normalizeFromUrl(value: string): string {
+  const patterns = splitUrlPatterns(value);
+  if (patterns.length === 0) throw new BadRequestException('原地址不能为空');
+  return patterns.join('\n');
+}
+
+/** 新地址不能是原地址之一，否则规则自己转自己没意义 */
+function assertNotSelf(fromUrl: string, toUrl: string): void {
+  const target = urlRuleNeedles(toUrl)[0];
+  if (target === undefined) return;
+  if (urlRuleNeedles(fromUrl).includes(target)) {
+    throw new BadRequestException('新地址不能与原地址相同');
+  }
+}
+
+/** 重刷时的 LIKE 预筛条件，一条规则可能带多个原地址 */
+function requireNeedles(rule: SourceRuleEntity): string[] {
+  const needles = urlRuleNeedles(rule.fromUrl);
+  if (needles.length === 0) throw new BadRequestException('原地址为空，无法重刷');
+  return needles;
+}
+
 /** 地址替换规则：采集写库前套用，另提供对历史数据的重刷。 */
 @Injectable()
 export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
   constructor(
     @InjectRepository(SourceRuleEntity) repository: Repository<SourceRuleEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
-    private readonly sources: CollectSourceService,
   ) {
     super(repository);
   }
 
   override async create(dto: CreateSourceRuleDTO): Promise<SourceRuleEntity> {
     await this.requireSource(dto.sourceId);
-    if ((dto.toUrl ?? '') === dto.fromUrl) {
-      throw new BadRequestException('原地址与新地址不能相同');
-    }
-    await this.assertUnique(dto.sourceId, dto.kind, dto.fromUrl);
-    return super.create(dto);
+    const fromUrl = normalizeFromUrl(dto.fromUrl);
+    const toUrl = (dto.toUrl ?? '').trim();
+    assertNotSelf(fromUrl, toUrl);
+    await this.assertNoOverlap(dto.sourceId, dto.kind, fromUrl);
+    return super.create({ ...dto, fromUrl, toUrl });
   }
 
   override async update(id: string, dto: UpdateSourceRuleDTO): Promise<SourceRuleEntity> {
@@ -43,18 +64,14 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
 
     const sourceId = dto.sourceId ?? current.sourceId;
     const kind = dto.kind ?? current.kind;
-    const fromUrl = dto.fromUrl ?? current.fromUrl;
-    const toUrl = dto.toUrl ?? current.toUrl;
-    if (fromUrl === toUrl) throw new BadRequestException('原地址与新地址不能相同');
+    const fromUrl = dto.fromUrl === undefined ? current.fromUrl : normalizeFromUrl(dto.fromUrl);
+    const toUrl = dto.toUrl === undefined ? current.toUrl : dto.toUrl.trim();
+    assertNotSelf(fromUrl, toUrl);
     if (sourceId !== current.sourceId) await this.requireSource(sourceId);
-    if (
-      sourceId !== current.sourceId ||
-      kind !== current.kind ||
-      fromUrl !== current.fromUrl
-    ) {
-      await this.assertUnique(sourceId, kind, fromUrl, id);
+    if (sourceId !== current.sourceId || kind !== current.kind || fromUrl !== current.fromUrl) {
+      await this.assertNoOverlap(sourceId, kind, fromUrl, id);
     }
-    return super.update(id, dto);
+    return super.update(id, { ...dto, fromUrl, toUrl });
   }
 
   /**
@@ -73,10 +90,11 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
     rule: SourceRuleEntity,
     confirm: boolean,
   ): Promise<SourceRuleApplyResult> {
-    const needle = urlRuleNeedle(rule.fromUrl);
+    const needles = requireNeedles(rule);
+    const params = needles.map((needle) => `%${needle}%`);
     const rows = await this.dataSource.query<Array<{ id: string; cover: string }>>(
-      'SELECT id, cover FROM lcm_vod WHERE cover LIKE ?',
-      [`%${needle}%`],
+      `SELECT id, cover FROM lcm_vod WHERE ${needles.map(() => 'cover LIKE ?').join(' OR ')}`,
+      params,
     );
     const changes: Array<{ id: string; cover: string; coverHost: string }> = [];
     for (const row of rows) {
@@ -113,9 +131,12 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
     rule: SourceRuleEntity,
     confirm: boolean,
   ): Promise<SourceRuleApplyResult> {
+    const needles = requireNeedles(rule);
+    const params = [rule.sourceId, ...needles.map((needle) => `%${needle}%`)];
     const rows = await this.dataSource.query<Array<{ id: string; playUrl: string }>>(
-      'SELECT id, play_url AS playUrl FROM lcm_vod_play WHERE source_id = ? AND play_url LIKE ?',
-      [rule.sourceId, `%${urlRuleNeedle(rule.fromUrl)}%`],
+      `SELECT id, play_url AS playUrl FROM lcm_vod_play
+        WHERE source_id = ? AND (${needles.map(() => 'play_url LIKE ?').join(' OR ')})`,
+      params,
     );
     const changes: Array<{ id: string; playUrl: string }> = [];
     for (const row of rows) {
@@ -152,20 +173,30 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
     if (rows.length === 0) throw new NotFoundException('采集源不存在');
   }
 
-  private async assertUnique(
+  /**
+   * 同一采集源 + 同一类型下，一个原地址只能出现在一条规则里，否则重刷时谁先套谁不确定。
+   * 原地址是多行文本，没法再用唯一索引兜底（文本列无法做全列索引），改在服务层比对。
+   */
+  private async assertNoOverlap(
     sourceId: string,
     kind: number,
     fromUrl: string,
     excludeId?: string,
   ): Promise<void> {
-    const params: string[] = [sourceId, String(kind), fromUrl];
-    let sql =
-      'SELECT id FROM lcm_source_rule WHERE source_id = ? AND kind = ? AND from_url = ?';
+    const params: string[] = [sourceId, String(kind)];
+    let sql = 'SELECT id, from_url AS fromUrl FROM lcm_source_rule WHERE source_id = ? AND kind = ?';
     if (excludeId !== undefined) {
       sql += ' AND id <> ?';
       params.push(excludeId);
     }
-    const rows = await this.dataSource.query<Array<{ id: string }>>(`${sql} LIMIT 1`, params);
-    if (rows.length > 0) throw new BadRequestException('该采集源下已有相同的原地址规则');
+    const rows = await this.dataSource.query<Array<{ id: string; fromUrl: string }>>(sql, params);
+    const mine = urlRuleNeedles(fromUrl);
+    for (const row of rows) {
+      const others = urlRuleNeedles(row.fromUrl ?? '');
+      const duplicated = mine.find((needle) => others.includes(needle));
+      if (duplicated !== undefined) {
+        throw new BadRequestException(`原地址「${duplicated}」已被规则 #${row.id} 使用`);
+      }
+    }
   }
 }

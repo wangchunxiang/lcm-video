@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { buildListQuery, likeValue } from '@lcm/api-client';
 import { api, ApiError } from '../../api/client.ts';
 import { useTableQuery } from '../../composables/useTableQuery.ts';
+import ProTable from '../../components/ProTable.vue';
 
 interface RuleRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -59,6 +60,26 @@ const form = reactive({
 });
 
 const kindText = (kind: number): string => (kind === 2 ? '图片地址' : '播放地址');
+
+/** 原地址可填多条（一行一个，或逗号分隔），与 `packages/shared/src/url-rule.ts` 的分隔规则一致 */
+function splitPatterns(value: string): string[] {
+  return value
+    .split(/[\n\r,，;；]+/)
+    .map((part) => part.trim())
+    .filter((part) => part !== '');
+}
+
+/** 列表里只显示第一条和条数，完整内容放 title */
+function patternSummary(value: string): string {
+  const patterns = splitPatterns(value);
+  if (patterns.length <= 1) return patterns[0] ?? '';
+  return `${patterns[0]} 等 ${patterns.length} 个`;
+}
+
+/** 鼠标悬停时看到全部原地址 */
+function patternTitle(value: string): string {
+  return splitPatterns(value).join('、');
+}
 
 /** 规则表只存 sourceId，列表里按采集源列表翻译成名称。 */
 function sourceName(id: string): string {
@@ -216,7 +237,7 @@ async function apply(row: RuleRow): Promise<void> {
     }
     try {
       await ElMessageBox.confirm(
-        `将把 ${preview.total} 条数据的「${row.fromUrl}」替换为「${row.toUrl}」，此操作不可撤销。`,
+        `将把 ${preview.total} 条数据的「${patternSummary(row.fromUrl)}」替换为「${row.toUrl}」，此操作不可撤销。`,
         '重刷历史数据',
         { type: 'warning', confirmButtonText: '开始替换', cancelButtonText: '取消' },
       );
@@ -278,38 +299,40 @@ onMounted(() => {
         :page="page"
         :page-size="pageSize"
         :loading="loading"
+        empty-text="还没有规则。源站换域名或图床时，在这里加一条，采集时自动替换。"
         border
         stripe
         @update:page="onPageChange"
         @update:page-size="(size: number) => (pageSize = size)"
       >
-<el-table-column label="采集源" width="140" show-overflow-tooltip>
-            <template #default="{ row }">{{ sourceName(row.sourceId) }}</template>
-          </el-table-column>
-          <el-table-column label="类型" width="100" align="center">
-            <template #default="{ row }">{{ kindText(row.kind) }}</template>
-          </el-table-column>
-          <el-table-column prop="fromUrl" label="原地址" min-width="240" show-overflow-tooltip />
-          <el-table-column prop="toUrl" label="新地址" min-width="240" show-overflow-tooltip />
-          <el-table-column prop="sort" label="排序" width="80" align="center" />
-          <el-table-column label="启用" width="80" align="center">
-            <template #default="{ row }">
-              <el-switch :model-value="row.isEnabled === 1" @change="toggle(row)" />
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="180" align="center" fixed="right">
-            <template #default="{ row }">
-              <div class="row-actions">
-                <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-                <el-button link type="warning" :loading="applying === row.id" @click="apply(row)">重刷</el-button>
-                <el-button link type="danger" @click="remove(row)">删除</el-button>
-              </div>
-            </template>
-          </el-table-column>
-          <template #empty>
-            <div class="empty">还没有规则。源站换域名或图床时，在这里加一条，采集时自动替换。</div>
+        <el-table-column label="采集源" width="140" show-overflow-tooltip>
+          <template #default="{ row }">{{ sourceName(row.sourceId) }}</template>
+        </el-table-column>
+        <el-table-column label="类型" width="100" align="center">
+          <template #default="{ row }">{{ kindText(row.kind) }}</template>
+        </el-table-column>
+        <el-table-column label="原地址" min-width="240" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span :title="patternTitle(row.fromUrl)">{{ patternSummary(row.fromUrl) }}</span>
           </template>
-              </ProTable>
+        </el-table-column>
+        <el-table-column prop="toUrl" label="新地址" min-width="240" show-overflow-tooltip />
+        <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column label="启用" width="80" align="center">
+          <template #default="{ row }">
+            <el-switch :model-value="row.isEnabled === 1" @change="toggle(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="180" align="center" fixed="right">
+          <template #default="{ row }">
+            <div class="row-actions">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="warning" :loading="applying === row.id" @click="apply(row)">重刷</el-button>
+              <el-button link type="danger" @click="remove(row)">删除</el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </ProTable>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" :close-on-click-modal="false">
@@ -326,8 +349,15 @@ onMounted(() => {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="原地址">
-          <el-input v-model="form.from_url" placeholder="如 vod.360zyx.vip" />
-          <div class="hint">地址里出现这一串就替换，不限开头、出现几次换几次；可省略 https://。</div>
+          <el-input
+            v-model="form.from_url"
+            type="textarea"
+            :rows="4"
+            placeholder="一行一个，例如：&#10;img.ffzy888.com&#10;pps.vodfeiss.com"
+          />
+          <div class="hint">
+            可填多条（一行一个，或逗号分隔），共用下面的新地址。源站反复换域名时，把历史的旧域名都列进来，重刷一次全部指到新域名；地址里出现就替换，不限开头，可省略 https://。同一规则内长的地址先替换。
+          </div>
         </el-form-item>
         <el-form-item label="新地址">
           <el-input v-model="form.to_url" placeholder="如 vod1.maowushi.com" />

@@ -1,9 +1,15 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
+import { Column, Entity, Index } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
-/** 采集源的地址替换规则，按 sort 升序依次套用。 */
+/**
+ * 采集源的地址替换规则，按 sort 升序依次套用。
+ *
+ * `from_url` 存多条原地址（一行一条，共用同一个 `to_url`）：源站反复换域名时，把历史上
+ * 的老域名都写进同一条规则，重刷一次就全部指向新域名。因为是多值文本，原来按
+ * (source_id, kind, from_url) 建的唯一索引改成由服务层做「同一原地址不能出现在两条规则里」的校验，
+ * 详见 `SourceRuleService.assertNoOverlap`。
+ */
 @Entity('lcm_source_rule', { comment: '采集源的地址替换规则，按 sort 升序依次套用' })
-@Unique('uk_source_kind_from', ['sourceId', 'kind', 'fromUrl'])
 @Index('idx_source_kind', ['sourceId', 'kind'])
 export class SourceRuleEntity extends AppBaseEntity {
   @Column({
@@ -25,10 +31,8 @@ export class SourceRuleEntity extends AppBaseEntity {
 
   @Column({
     name: 'from_url',
-    type: 'varchar',
-    length: 255,
-    default: '',
-    comment: '原地址：地址中出现即替换，可省略协议',
+    type: 'text',
+    comment: '原地址（可多条，一行一条）：地址中出现即替换，可省略协议',
   })
   fromUrl!: string;
 
