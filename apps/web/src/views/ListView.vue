@@ -7,7 +7,7 @@ import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
-import Skeleton from '../components/ui/Skeleton.vue';
+import GridSkeleton from '../components/ui/GridSkeleton.vue';
 
 /**
  * 列表页（D1 版式）：标题 / 筛选条 / 海报网格 / 分页，单列通宽，没有侧栏。
@@ -119,17 +119,15 @@ useSeo(() => ({
       :type="type"
       :year="year"
       :sort="sort"
+      :loading-types="loading && !data?.types.length"
+      :loading-years="loading && !data?.years.length"
       @update:type="(value: string) => setQuery({ type: value })"
       @update:year="(value: string) => setQuery({ year: value })"
       @update:sort="(value: string) => setQuery({ sort: value === 'time' ? undefined : value })"
     />
 
-    <div v-if="loading && !shown.length" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-      <div v-for="index in 12" :key="index" class="flex flex-col gap-2">
-        <Skeleton class="aspect-[2/3] w-full rounded-md" />
-        <Skeleton class="h-4 w-3/4 rounded-md" />
-      </div>
-    </div>
+    <!-- 骨架条数与每页条数一致，列数/8 列断点与 VodGrid 共用同一份实现 -->
+    <GridSkeleton v-if="loading && !shown.length" :count="pageSize" />
 
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 

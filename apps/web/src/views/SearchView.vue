@@ -6,6 +6,7 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
 import GridSkeleton from '../components/ui/GridSkeleton.vue';
+import Skeleton from '../components/ui/Skeleton.vue';
 import FilterBar from '../components/FilterBar.vue';
 import PaginationBar from '../components/PaginationBar.vue';
 
@@ -61,11 +62,12 @@ async function load(): Promise<void> {
     loading.value = false;
     return;
   }
+  // 站点配置还没到位也要先进加载态：否则这里是空白，配置到了骨架才出现，等于又跳一次
+  loading.value = true;
+  error.value = '';
   // 等站点配置到位再查：否则先用 24 条查一次，配置到了又查一次
   if (!site.ready) return;
   controller = new AbortController();
-  loading.value = true;
-  error.value = '';
   try {
     const result = await portal.search(
       {
@@ -144,6 +146,8 @@ useSeo(() => ({
 
     <template v-if="wd">
       <p v-if="loaded" class="mb-4 text-small text-ink-3">“{{ wd }}” 共 {{ total }} 部</p>
+      <!-- 加载中先占住「共 N 部」这一行的高度，结果回来时网格不会被顶下去 -->
+      <Skeleton v-else-if="loading" class="mb-4 h-[22px] w-40" />
 
       <FilterBar
         class="mb-4"
@@ -157,7 +161,7 @@ useSeo(() => ({
         @update:sort="(value: string) => setQuery({ sort: value === 'time' ? undefined : value })"
       />
 
-      <GridSkeleton v-if="loading && !items.length" />
+      <GridSkeleton v-if="loading && !items.length" :count="pageSize" />
       <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <template v-else-if="loaded">
         <VodGrid v-if="items.length" :items="items" />

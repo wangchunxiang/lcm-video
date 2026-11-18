@@ -1,22 +1,18 @@
 <template>
-  <!-- 区块加载占位：标题条 + 8 列 × 2 行海报骨架，列数与 VodGrid 一致，填充时不跳版 -->
-  <div class="flex flex-col gap-4">
-    <div class="flex items-baseline gap-4">
-      <div class="h-6 w-24 animate-pulse rounded-md bg-surface-2" />
-      <div class="h-3 w-20 animate-pulse rounded-md bg-surface-2" />
-    </div>
-    <div class="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-      <div v-for="index in count" :key="index" class="flex flex-col gap-2">
-        <div class="aspect-[2/3] w-full animate-pulse rounded-md bg-surface-2" />
-        <div class="h-4 w-3/4 animate-pulse rounded-md bg-surface-2" />
-        <div class="h-3 w-1/2 animate-pulse rounded-md bg-surface-2" />
-      </div>
+  <!--
+    纯海报网格骨架：列数与 VodGrid 完全一致（2/3/4/6/8），每张卡只画「海报 + 一行片名」，
+    与 VodCard 当前的结构对齐；不带头部，头部由 SectionSkeleton 负责。
+  -->
+  <div class="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+    <div v-for="index in count" :key="index" class="flex flex-col gap-2">
+      <div class="aspect-[2/3] w-full animate-pulse rounded-md bg-surface-2" />
+      <div class="h-5 w-3/4 animate-pulse rounded-md bg-surface-2" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-/** 骨架块数量：默认 16 = 8 列 × 2 行 */
+/** 骨架卡片数量：默认 16 = 8 列 × 2 行（首页区块），列表/搜索按每页条数传 */
 withDefaults(defineProps<{ count?: number }>(), { count: 16 });
 </script>
 

@@ -7,6 +7,9 @@ const props = defineProps<{
   type: string;
   year: string;
   sort: string;
+  /** 类型/年份还没回来时，先用等高的骨架条占位，筛选项出现时不会把下面的海报网格顶下去 */
+  loadingTypes?: boolean;
+  loadingYears?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -43,34 +46,62 @@ const LABEL = 'w-8 flex-none text-small text-ink-3';
 const ITEM = 'cursor-pointer text-body leading-6 transition';
 const ACTIVE = 'text-primary';
 const IDLE = 'text-ink-2 hover:text-ink';
+const BAR = 'h-6 self-center animate-pulse rounded bg-surface-2';
+
+/**
+ * 占位条宽度按现有数据取：每个一级分类的「类型」是 6~16 项、年份固定最多 15 项（+「全部」）。
+ * 这里按条目最多的「电影」画 16 条，标题条宽度也贴近真实文字，首屏落地分类的行数与真选项一致。
+ */
+const TYPE_BARS = [28, ...Array.from({ length: 15 }, () => 42)];
+const YEAR_BARS = [28, ...Array.from({ length: 15 }, () => 31)];
 </script>
 
 <template>
   <div class="flex flex-col gap-2">
-    <div v-if="types.length" :class="ROW">
+    <div v-if="types.length || loadingTypes" :class="ROW">
       <span :class="LABEL">类型</span>
-      <button
-        v-for="option in typeOptions"
-        :key="`type-${option.value}`"
-        type="button"
-        :class="[ITEM, option.value === type ? ACTIVE : IDLE]"
-        @click="emit('update:type', option.value)"
-      >
-        {{ option.label }}
-      </button>
+      <template v-if="types.length">
+        <button
+          v-for="option in typeOptions"
+          :key="`type-${option.value}`"
+          type="button"
+          :class="[ITEM, option.value === type ? ACTIVE : IDLE]"
+          @click="emit('update:type', option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </template>
+      <template v-else>
+        <span
+          v-for="(width, index) in TYPE_BARS"
+          :key="`type-skeleton-${index}`"
+          :class="BAR"
+          :style="{ width: `${width}px` }"
+        />
+      </template>
     </div>
 
-    <div v-if="years.length" :class="ROW">
+    <div v-if="years.length || loadingYears" :class="ROW">
       <span :class="LABEL">年份</span>
-      <button
-        v-for="option in yearOptions"
-        :key="`year-${option.value}`"
-        type="button"
-        :class="[ITEM, option.value === year ? ACTIVE : IDLE]"
-        @click="emit('update:year', option.value)"
-      >
-        {{ option.label }}
-      </button>
+      <template v-if="years.length">
+        <button
+          v-for="option in yearOptions"
+          :key="`year-${option.value}`"
+          type="button"
+          :class="[ITEM, option.value === year ? ACTIVE : IDLE]"
+          @click="emit('update:year', option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </template>
+      <template v-else>
+        <span
+          v-for="(width, index) in YEAR_BARS"
+          :key="`year-skeleton-${index}`"
+          :class="BAR"
+          :style="{ width: `${width}px` }"
+        />
+      </template>
     </div>
 
     <div :class="ROW">

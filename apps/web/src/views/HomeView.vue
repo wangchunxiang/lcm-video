@@ -5,7 +5,7 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import VodSection from '../components/VodSection.vue';
 import Container from '../components/layout/Container.vue';
-import GridSkeleton from '../components/ui/GridSkeleton.vue';
+import SectionSkeleton from '../components/ui/SectionSkeleton.vue';
 
 /**
  * 首页内容区：今日更新 + 四个一级分类。
@@ -104,16 +104,12 @@ useSeo(() => ({
 
 <template>
   <div class="flex flex-col">
-    <Container v-if="loading" class="flex flex-col gap-8 pt-4">
-      <GridSkeleton />
-      <GridSkeleton />
-    </Container>
-
-    <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
-
-    <Container v-else class="flex flex-col gap-8 pt-4">
+    <Container class="flex flex-col gap-8 pt-4">
+      <!-- 首屏一次性摆满 5 块（今日更新 + 4 个一级分类），与最终版式一致 -->
+      <SectionSkeleton v-if="loading" />
+      <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <VodSection
-        v-if="today.length"
+        v-else-if="today.length"
         title="今日更新"
         :sub="`${today.length} 部`"
         :items="today"
@@ -127,11 +123,11 @@ useSeo(() => ({
           :more="`/list/${section.alias}`"
           :items="section.items"
         />
-        <GridSkeleton v-else-if="!section.ready" />
+        <SectionSkeleton v-else-if="!section.ready" />
       </template>
 
       <p
-        v-if="!today.length && !sections.some((s) => s.items.length)"
+        v-if="!loading && !error && !today.length && !sections.some((s) => s.items.length)"
         class="py-16 text-center text-body text-ink-3"
       >
         暂无影片，先去后台采集一些吧。

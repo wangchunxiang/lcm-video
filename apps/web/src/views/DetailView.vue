@@ -9,6 +9,8 @@ import { setPageCategoryId } from '../composables/usePageCategoryId';
 import { useScrollLock } from '../composables/useScrollLock';
 import VodGrid from '../components/VodGrid.vue';
 import Container from '../components/layout/Container.vue';
+import GridSkeleton from '../components/ui/GridSkeleton.vue';
+import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 
 const route = useRoute();
@@ -310,16 +312,47 @@ useSeo(() => ({
 
 <template>
   <div>
-    <Container v-if="loading" class="pt-4">
-      <div class="flex flex-col gap-4 lg:flex-row">
-        <Skeleton class="aspect-[2/3] w-[240px] flex-none self-start rounded-md" />
-        <div class="flex-1 space-y-2">
-          <Skeleton class="h-8 w-2/3" />
-          <Skeleton class="h-4 w-1/2" />
-          <Skeleton class="h-4 w-full" />
+    <!-- 骨架按真实版式 1:1 摆：海报 + 标签/四行信息 + 按钮 + 线路/选集 + 相关推荐 -->
+    <template v-if="loading">
+      <Container>
+        <div class="flex gap-8 py-4 max-lg:flex-col max-lg:gap-4">
+          <Skeleton class="aspect-[2/3] w-[240px] flex-none self-start rounded-md max-lg:w-[200px]" />
+          <div class="flex min-w-0 flex-1 flex-col justify-between gap-4">
+            <div class="flex flex-col gap-4">
+              <Skeleton class="h-7 w-2/3" />
+              <!-- 又名平均 17 字，窄屏会折成两行 -->
+              <Skeleton class="h-[45px] w-1/3" />
+              <div class="flex flex-wrap gap-2">
+                <Skeleton v-for="index in 3" :key="index" class="h-7 w-14" />
+              </div>
+              <!-- 导演 / 演员 / 上映 / 简介：简介固定截两行，演员行按窄屏常见折行数占位 -->
+              <div class="grid gap-2">
+                <Skeleton class="h-[22px] w-full" />
+                <Skeleton class="h-[66px] w-full sm:h-[44px] lg:h-[22px]" />
+                <Skeleton class="h-[22px] w-full" />
+                <Skeleton class="h-[53px] w-full" />
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Skeleton class="h-[38px] w-24" />
+              <Skeleton class="h-[38px] w-24" />
+            </div>
+          </div>
         </div>
-      </div>
-    </Container>
+      </Container>
+
+      <Container class="pt-4">
+        <EpisodeSkeleton class="pb-4" />
+
+        <!-- 相关推荐固定 8 部（后端 take: 8），大屏正好一行、窄屏自动折行 -->
+        <section>
+          <div class="mb-4 flex h-[35px] items-center">
+            <Skeleton class="h-6 w-24" />
+          </div>
+          <GridSkeleton :count="8" />
+        </section>
+      </Container>
+    </template>
 
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 

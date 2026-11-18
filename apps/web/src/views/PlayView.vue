@@ -8,6 +8,7 @@ import { useSeo } from '../composables/useSeo';
 import { setPageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
+import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
 
 /** 自动连播：播完直接切下一集，不打断 */
 const route = useRoute();
@@ -277,9 +278,22 @@ useSeo(() => ({
 
 <template>
   <div class="pt-4">
-    <div v-if="loading" class="grid gap-4">
+    <!-- 骨架按真实版式摆：播放器 + 标题/控制行 + 线路 tab + 选集区（--ep-max-h） -->
+    <div v-if="loading">
       <Skeleton class="aspect-video w-full rounded-md" />
-      <Skeleton class="h-40 rounded-lg" />
+
+      <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div class="flex min-w-0 flex-1 basis-full items-baseline gap-3 sm:basis-auto">
+          <Skeleton class="h-6 w-40" />
+          <Skeleton class="h-[22px] w-24" />
+        </div>
+        <div class="ml-auto flex flex-none items-center gap-2">
+          <Skeleton class="h-8 w-20" />
+          <Skeleton class="h-8 w-20" />
+        </div>
+      </div>
+
+      <EpisodeSkeleton class="mt-4" />
     </div>
 
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
