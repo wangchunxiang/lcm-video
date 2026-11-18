@@ -98,7 +98,8 @@ const poster = computed(() => vod.value?.cover || '/img/poster-placeholder.svg')
 const intro = computed(() => vod.value?.content?.trim() ?? '');
 
 /**
- * 摘要截断：算出「两行内能放下多少字 + 省略号 + 详情」，让按钮紧跟最后一个字。
+ * 摘要截断：先看整段能否在 2 行内完整放下——能就原样全显，末尾不要「详情」；
+ * 放不下才算「两行内能放下多少字 + 省略号 + 详情」，让按钮紧跟最后一个字。
  * 按钮只负责打开详情弹窗。
  */
 const introRef = ref<HTMLElement | null>(null);
@@ -134,21 +135,27 @@ function fitIntro(): void {
   ].join(';');
   document.body.appendChild(probe);
 
-  const fits = (text: string): boolean => {
-    probe.textContent = `${text}…`;
-    const tail = document.createElement('span');
-    tail.style.fontSize = `${fontSize}px`;
-    tail.style.marginLeft = '4px';
-    tail.textContent = '详情';
-    // 末尾再留 2 个字宽的空白，按钮就不会顶到内容区右边界
-    const spacer = document.createElement('span');
-    spacer.style.display = 'inline-block';
-    spacer.style.width = `${fontSize * 2}px`;
-    probe.append(tail, spacer);
+  // withLink=true 时把「…详情」也一起量进去，保证按钮不换行、不顶到右边界；
+  // withLink=false 时不加任何尾巴，用来判断整段本身是否已经能完整显示。
+  const fits = (text: string, withLink: boolean): boolean => {
+    probe.replaceChildren();
+    probe.textContent = withLink ? `${text}…` : text;
+    if (withLink) {
+      const tail = document.createElement('span');
+      tail.style.fontSize = `${fontSize}px`;
+      tail.style.marginLeft = '4px';
+      tail.textContent = '详情';
+      // 末尾再留 2 个字宽的空白，按钮就不会顶到内容区右边界
+      const spacer = document.createElement('span');
+      spacer.style.display = 'inline-block';
+      spacer.style.width = `${fontSize * 2}px`;
+      probe.append(tail, spacer);
+    }
     return probe.scrollHeight <= maxHeight;
   };
 
-  if (fits(full)) {
+  if (fits(full, false)) {
+    // 已经完全显示了，就不出「详情」链接
     introLong.value = false;
     introCut.value = full;
   } else {
@@ -158,7 +165,7 @@ function fitIntro(): void {
     let best = 0;
     while (lo <= hi) {
       const mid = Math.floor((lo + hi) / 2);
-      if (fits(full.slice(0, mid))) {
+      if (fits(full.slice(0, mid), true)) {
         best = mid;
         lo = mid + 1;
       } else {
@@ -373,6 +380,7 @@ useSeo(() => ({
                 <dt class="w-[42px] flex-none text-ink-3">简介</dt>
                 <dd class="min-w-0 flex-1">
                   <p ref="introRef" class="whitespace-pre-wrap leading-[1.9] text-ink-2">{{ introShown }}<button
+                      v-if="introLong"
                       type="button"
                       class="ml-1 inline cursor-pointer text-body text-primary transition hover:text-ink"
                       @click.stop="introOpen = true"
@@ -504,11 +512,15 @@ useSeo(() => ({
           </button>
         </header>
         <!-- 二维码本体是黑块白底，这里必须给白底：暗色主题下黑底二维码扫不出来 -->
+        <!-- eslint-disable vue/no-v-html --
+             内容是本机用 qrcode 生成、只含 path/rect 的 SVG 字符串，不含接口数据。
+             用 disable/enable 包围而不是 disable-next-line：v-html 在这个多行标签的第三行。 -->
         <div
           v-if="qrSvg"
           class="rounded-md bg-white p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
           v-html="qrSvg"
         />
+        <!-- eslint-enable vue/no-v-html -->
         <p v-else class="rounded-md bg-surface-2 px-4 py-8 text-center text-body text-ink-3">二维码生成失败</p>
       </div>
     </Teleport>

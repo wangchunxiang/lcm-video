@@ -13,7 +13,6 @@ import {
 import { ElMessage } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
-import { getToken } from '../../session.ts';
 
 interface Row {
   key: string;
@@ -134,10 +133,6 @@ function observeConfirmed() {
 }
 const activeResult = ref<AdFeature | null>(null);
 const activeCandidate = ref<Candidate | null>(null);
-
-const adsSourceName = computed(
-  () => sources.value.find((item) => item.id === adsSourceId.value)?.name ?? '',
-);
 
 function pushLog(text: string) {
   const now = new Date();

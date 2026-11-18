@@ -104,11 +104,6 @@ function reset() {
   void load();
 }
 
-function onPageChange(next: number) {
-  setPage(next);
-  void load();
-}
-
 function resetForm() {
   form.name = '';
   form.api_url = '';

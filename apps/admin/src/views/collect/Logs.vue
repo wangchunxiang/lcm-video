@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, onUnmounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TagProps } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
@@ -110,10 +110,6 @@ function elapsedText(startText: string, endText: string | null): string {
   const end = endText ? new Date(endText.replace(' ', 'T')).getTime() : nowTick.value;
   if (!Number.isFinite(start) || !Number.isFinite(end)) return '—';
   return hmsText(Math.round((end - start) / 1000));
-}
-
-function durationText(row: LogRow): string {
-  return elapsedText(row.startedAt, row.finishedAt);
 }
 
 function decorate(rows: LogRow[]): LogRow[] {
