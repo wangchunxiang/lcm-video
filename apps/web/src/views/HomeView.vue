@@ -113,15 +113,17 @@ useSeo(() => ({
         title="今日更新"
         :sub="`${today.length} 部`"
         :items="today"
+        :eager-count="8"
       />
 
-      <template v-for="section in sections" :key="section.alias">
+      <template v-for="(section, index) in sections" :key="section.alias">
         <VodSection
           v-if="section.ready && section.items.length"
           :title="section.title"
           :sub="`在库 ${section.total.toLocaleString()} 部`"
           :more="`/list/${section.alias}`"
           :items="section.items"
+          :eager-count="!today.length && index === 0 ? 8 : 0"
         />
         <SectionSkeleton v-else-if="!section.ready" />
       </template>

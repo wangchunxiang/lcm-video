@@ -132,7 +132,7 @@ useSeo(() => ({
     <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
 
     <template v-else>
-      <VodGrid v-if="shown.length" :items="shown" />
+      <VodGrid v-if="shown.length" :items="shown" :eager-count="8" />
       <p v-else class="py-16 text-center text-body text-ink-3">该分类下暂无影片。</p>
 
       <PaginationBar

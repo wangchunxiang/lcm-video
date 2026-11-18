@@ -164,7 +164,7 @@ useSeo(() => ({
       <GridSkeleton v-if="loading && !items.length" :count="pageSize" />
       <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <template v-else-if="loaded">
-        <VodGrid v-if="items.length" :items="items" />
+        <VodGrid v-if="items.length" :items="items" :eager-count="8" />
         <p v-else class="py-16 text-center text-body text-ink-3">没有找到「{{ wd }}」，换个关键词试试。</p>
 
         <PaginationBar

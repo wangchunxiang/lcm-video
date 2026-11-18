@@ -2,12 +2,28 @@
 import type { VodCard as VodCardData } from '../api/portal';
 import VodCard from './VodCard.vue';
 
-defineProps<{ items: VodCardData[] }>();
+withDefaults(
+  defineProps<{
+    items: VodCardData[];
+    /**
+     * 前 N 张按 eager 加载（首屏可见的那部分）：
+     * 原生 lazy 要等图片快进视口才开始下载，小屏首屏只有 2 列 2~3 行，
+     * 不提前拉的话首屏海报会明显晚一拍出来。默认全 lazy。
+     */
+    eagerCount?: number;
+  }>(),
+  { eagerCount: 0 },
+);
 </script>
 
 <template>
   <div class="vod-grid grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-    <VodCard v-for="item in items" :key="item.id" :vod="item" />
+    <VodCard
+      v-for="(item, index) in items"
+      :key="item.id"
+      :vod="item"
+      :eager="index < eagerCount"
+    />
   </div>
 </template>
 

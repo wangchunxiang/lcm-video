@@ -1,35 +1,59 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { VodCard as VodCardData } from '../api/portal';
 
-const props = defineProps<{ vod: VodCardData }>();
+const props = defineProps<{
+  vod: VodCardData;
+  /**
+   * 首屏可见的那几张：`loading="eager"` + `fetchpriority="high"`，其余走原生 lazy。
+   * 见 VodGrid 的 eagerCount。
+   */
+  eager?: boolean;
+}>();
 
-const PLACEHOLDER = '/img/poster-placeholder.svg';
+/*
+ * 占位图始终作为卡片底图（见 <style> 里的 .poster），真实封面加载完再淡入。
+ * 不用「加载前整块透明」的写法：iOS Safari 的原生懒加载有已知缺陷（WebKit 237703 / 240083），
+ * 图片偶尔永远不触发 load，那样卡片会一直是空块；有底图时最差也只是显示「暂无封面」。
+ */
 const broken = ref(false);
 const loaded = ref(false);
+const posterRef = ref<HTMLImageElement | null>(null);
 
-const cover = computed(() => (broken.value || !props.vod.cover ? PLACEHOLDER : props.vod.cover));
+const cover = computed(() => props.vod.cover);
 const badge = computed(
   () => props.vod.remarks || (props.vod.episodeCount > 0 ? `全${props.vod.episodeCount}集` : ''),
 );
 
 function onError(): void {
+  // 坏图直接撤掉 <img>，让底图露出来；比把 src 换成占位图少一次请求/解码
   broken.value = true;
-  loaded.value = true;
 }
+
+/**
+ * 兜底：缓存命中或浏览器漏发 load 时，`complete` 已经是 true，直接置为可见。
+ * 懒加载的图此时还没开始下载，complete 为 false，不影响原有行为。
+ */
+onMounted(() => {
+  const img = posterRef.value;
+  if (img && img.complete && img.naturalWidth > 0) loaded.value = true;
+});
 </script>
 
 <template>
   <RouterLink :to="`/detail/${vod.id}`" :title="vod.name" class="group flex min-w-0 flex-col gap-2">
     <div
-      class="relative aspect-[2/3] overflow-hidden rounded-md bg-[linear-gradient(135deg,#1f2733,#171d26)] transition-shadow duration-200 group-hover:ring-1 group-hover:ring-primary-line"
+      class="poster relative aspect-[2/3] overflow-hidden rounded-md bg-surface-2 transition-shadow duration-200 group-hover:ring-1 group-hover:ring-primary-line"
     >
       <img
+        v-if="!broken && cover"
+        ref="posterRef"
         :src="cover"
         :alt="vod.name"
-        loading="lazy"
+        :loading="eager ? 'eager' : 'lazy'"
+        :fetchpriority="eager ? 'high' : 'auto'"
         decoding="async"
-        class="h-full w-full object-fill transition-transform duration-500 group-hover:scale-[1.14]"
+        class="relative h-full w-full object-fill transition-[transform,opacity] duration-500 group-hover:scale-[1.14]"
         :class="loaded ? 'opacity-100' : 'opacity-0'"
         @load="loaded = true"
         @error="onError"
@@ -45,3 +69,12 @@ function onError(): void {
     <span class="truncate text-vod leading-tight transition-colors">{{ vod.name }}</span>
   </RouterLink>
 </template>
+
+<style scoped>
+/* 底图：海报位永远有内容，真实封面淡入时不会有「先空一块」的观感 */
+.poster {
+  background-image: url('/img/poster-placeholder.svg');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+</style>
