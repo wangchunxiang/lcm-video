@@ -45,11 +45,11 @@ describe('删除采集源 /api/admin/collect-source', () => {
     return String(result.insertId);
   }
 
-  async function createSource(name: string, playFrom: string): Promise<string> {
+  async function createSource(name: string, slug: string): Promise<string> {
     const response = await request(app.getHttpServer())
       .post('/api/admin/collect-source')
       .set(auth())
-      .send({ name, apiUrl: `http://${playFrom}.example.com/api.php/provide/vod`, playFrom });
+      .send({ name, apiUrl: `http://${slug}.example.com/api.php/provide/vod` });
     const body = response.body as Envelope<IdRow>;
     expect(body.code).toBe(0);
     return body.data.id;
@@ -119,10 +119,12 @@ describe('删除采集源 /api/admin/collect-source', () => {
       sourceA,
     ]);
     await dataSource.query(
-      `INSERT INTO lcm_play_line (source_from, name, sort, is_enabled) VALUES ('e2ea', 'A 线路', 5, 1)`,
+      `INSERT INTO lcm_play_line (source_from, source_id, name, sort, is_enabled) VALUES ('e2ea', ?, 'A 线路', 5, 1)`,
+      [sourceA],
     );
     await dataSource.query(
-      `INSERT INTO lcm_play_line (source_from, name, sort, is_enabled) VALUES ('e2eb', 'B 线路', 6, 1)`,
+      `INSERT INTO lcm_play_line (source_from, source_id, name, sort, is_enabled) VALUES ('e2eb', ?, 'B 线路', 6, 1)`,
+      [sourceB],
     );
 
     vodOnlyA = await createVod('删源用例孤片');
@@ -173,6 +175,8 @@ describe('删除采集源 /api/admin/collect-source', () => {
     // 线路注册表：e2ea 已经没人用 → 删；e2eb 还有影片在用 → 留
     expect(await countOf('lcm_play_line', 'source_from = ?', ['e2ea'])).toBe(0);
     expect(await countOf('lcm_play_line', 'source_from = ?', ['e2eb'])).toBe(1);
+    // 活下来的线路不该还挂着已删源的 id
+    expect(await countOf('lcm_play_line', 'source_id = ?', [sourceA])).toBe(0);
   });
 
   it('删不存在的源返回失败，且不动任何数据', async () => {

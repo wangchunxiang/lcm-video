@@ -19,10 +19,19 @@ export class PlayLineEntity extends AppBaseEntity {
   sourceFrom!: string;
 
   @Column({
+    name: 'source_id',
+    type: 'bigint',
+    unsigned: true,
+    nullable: true,
+    comment: '供应该线路的采集源：首次登记时写入，手工维护的线路为 NULL',
+  })
+  sourceId!: string | null;
+
+  @Column({
     type: 'varchar',
     length: 50,
     default: '',
-    comment: '前台显示名，空则回退到采集源名',
+    comment: '前台显示名，首次登记时默认填源站名，可手动修改',
   })
   name!: string;
 

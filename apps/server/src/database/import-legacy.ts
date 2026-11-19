@@ -76,7 +76,7 @@ const TABLES: readonly TablePlan[] = [
     columns: [
       'id', 'created_at', 'updated_at', 'name', 'api_url', 'api_params', 'parse_url', 'is_enabled',
       'interval_sec', 'pagesize', 'timeout', 'retry_times', 'last_sync_at', 'last_sync_status',
-      'last_sync_msg', 'play_from',
+      'last_sync_msg',
     ],
   },
   {

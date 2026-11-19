@@ -109,13 +109,4 @@ export class CollectSourceEntity extends AppBaseEntity {
     comment: '最近一次同步结果说明',
   })
   lastSyncMsg!: string;
-
-  @Column({
-    name: 'play_from',
-    type: 'varchar',
-    length: 500,
-    default: '',
-    comment: '最近一次采集到的线路标识，逗号分隔，后台候选提示用',
-  })
-  playFrom!: string;
 }

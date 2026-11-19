@@ -378,30 +378,23 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
   );
 
   if (seenLines.size > 0) {
-    const lines = [...seenLines];
-    // 全站线路注册表：已在表里的保持原状（不改显示名/排序），只补缺失的
-    await insertIgnorePlayLines(dataSource, lines);
-    // 回写源站上登记过的线路标识：后台线路表的「来源」列靠它反查，写回之前一直是空的
+    // 全站线路注册表：首次出现的线路在这里登记归属，显示名默认取源站名（之后可在后台手动改）
+    const source = await dataSource.getRepository(CollectSourceEntity).findOne({
+      where: { id: sourceId },
+      select: { name: true },
+    });
     await dataSource
       .createQueryBuilder()
-      .update(CollectSourceEntity)
-      .set({ playFrom: lines.join(',') })
-      .where({ id: sourceId })
+      .insert()
+      .into(PlayLineEntity)
+      .values(
+        [...seenLines].map((line) => ({ sourceFrom: line, sourceId, name: source?.name ?? '' })),
+      )
+      .orIgnore()
       .execute();
   }
 
   return { counters, fails };
-}
-
-/** 一次登记多条线路；已存在的保持原状（`orIgnore` = `INSERT IGNORE`） */
-async function insertIgnorePlayLines(dataSource: DataSource, lines: string[]): Promise<void> {
-  await dataSource
-    .createQueryBuilder()
-    .insert()
-    .into(PlayLineEntity)
-    .values(lines.map((line) => ({ sourceFrom: line })))
-    .orIgnore()
-    .execute();
 }
 
 /**

@@ -63,11 +63,6 @@ export class CreateCollectSourceDTO {
   @IsString({ message: '必须是字符串' })
   @MaxLength(255, { message: '最长 255 个字符' })
   lastSyncMsg?: string;
-
-  @IsOptional()
-  @IsString({ message: '必须是字符串' })
-  @MaxLength(500, { message: '最长 500 个字符' })
-  playFrom?: string;
 }
 
 /** 修改CollectSource。 */
@@ -131,11 +126,6 @@ export class UpdateCollectSourceDTO {
   @IsString({ message: '必须是字符串' })
   @MaxLength(255, { message: '最长 255 个字符' })
   lastSyncMsg?: string;
-
-  @IsOptional()
-  @IsString({ message: '必须是字符串' })
-  @MaxLength(500, { message: '最长 500 个字符' })
-  playFrom?: string;
 }
 
 /** 采集入参：rangeType 是时间窗（1 最近24小时 / 2 最近7天 / 3 最近30天 / 4 全部）。 */

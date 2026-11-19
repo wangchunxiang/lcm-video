@@ -20,6 +20,7 @@ describe('采集写入：同页内的重复影片', () => {
   let categoryPid: string;
 
   const NAME = '【测试】同页重复影片';
+  const SOURCE = '测试源-同页重复';
   const LINE_A = 'e2edup-a';
   const LINE_B = 'e2edup-b';
 
@@ -67,6 +68,11 @@ describe('采集写入：同页内的重复影片', () => {
   });
 
   afterAll(async () => {
+    // 各 spec 共用一个测试库，用例自己收拾干净（线路注册表、播放地址、影片、源）
+    await dataSource.query('DELETE FROM lcm_play_line WHERE source_from IN (?, ?)', [LINE_A, LINE_B]);
+    await dataSource.query('DELETE FROM lcm_vod_play WHERE source_id = ?', [sourceId]);
+    await dataSource.query('DELETE FROM lcm_vod WHERE name = ?', [NAME]);
+    await dataSource.query('DELETE FROM lcm_collect_source WHERE id = ?', [sourceId]);
     await app.close();
   });
 
@@ -91,11 +97,15 @@ describe('采集写入：同页内的重复影片', () => {
     );
     expect(lines.map((line) => line.source_from)).toEqual([LINE_A, LINE_B]);
 
-    // 采集结束要把本次实际出现的线路标识回写到源站上，后台线路表的「来源」列靠它反查
-    const sources = await dataSource.query<Array<{ play_from: string }>>(
-      'SELECT play_from FROM lcm_collect_source WHERE id = ?',
-      [sourceId],
+    // 采集结束把本次第一次出现的线路登记进线路表：写下归属与默认显示名（源站名）
+    const registered = await dataSource.query<Array<{ source_from: string; source_id: string; name: string }>>(
+      'SELECT source_from, source_id, name FROM lcm_play_line WHERE source_from IN (?, ?) ORDER BY source_from',
+      [LINE_A, LINE_B],
     );
-    expect(sources[0]?.play_from).toBe(`${LINE_A},${LINE_B}`);
+    expect(registered.map((row) => row.source_from)).toEqual([LINE_A, LINE_B]);
+    for (const row of registered) {
+      expect(String(row.source_id)).toBe(String(sourceId));
+      expect(row.name).toBe(SOURCE);
+    }
   });
 });

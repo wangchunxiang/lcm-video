@@ -14,7 +14,6 @@ interface SourceRow {
   apiUrl: string;
   apiParams: string;
   parseUrl: string;
-  playFrom: string;
   isEnabled: number;
   pagesize: number;
   intervalSec: number;

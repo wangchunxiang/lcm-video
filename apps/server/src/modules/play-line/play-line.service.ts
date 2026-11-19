@@ -58,48 +58,26 @@ export class PlayLineService extends AppCrudService<PlayLineEntity> {
     return { updated: result.affected ?? 0 };
   }
 
-  /** 列表行带上采集源名（`play_from` 里登记了这条线路标识的源站名）。 */
+  /** 列表行带上采集源名：线路表在首次登记时记住了供应的源（`source_id`），直接 join 出名字。 */
   override async findMany(
     params: Parameters<AppCrudService<PlayLineEntity>['findMany']>[0],
   ): Promise<{ items: PlayLineEntity[]; total: number }> {
     const page = await super.findMany(params);
-    const names = await this.sourceNameMap();
+    const names = await this.sourceNameMap(page.items.map((row) => row.sourceId));
     return {
       total: page.total,
-      items: page.items.map((row) => ({ ...row, sourceName: names.get(row.sourceFrom) ?? '' })),
+      items: page.items.map((row) => ({ ...row, sourceName: names.get(String(row.sourceId)) ?? '' })),
     };
   }
 
-  /**
-   * 线路 → 采集源名，两条路取并集：
-   * 1. `lcm_collect_source.play_from`（采集时回写的登记值），
-   * 2. 反查 `lcm_vod_play.source_id`：老数据的源上没有登记，就用实际持有该线路影片最多的源。
-   */
-  async sourceNameMap(): Promise<Map<string, string>> {
-    const registered = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
-      "SELECT name, play_from AS playFrom FROM lcm_collect_source WHERE play_from <> ''",
+  /** 源 id → 源站名；只查本页出现的那几个源。 */
+  private async sourceNameMap(ids: Array<string | null>): Promise<Map<string, string>> {
+    const keys = [...new Set(ids.filter((id): id is string => id !== null && id !== ''))];
+    if (keys.length === 0) return new Map();
+    const rows = await this.dataSource.query<Array<{ id: string; name: string }>>(
+      'SELECT id, name FROM lcm_collect_source WHERE id IN (?)',
+      [keys],
     );
-    const map = new Map<string, string>();
-    for (const row of registered) {
-      for (const key of row.playFrom.split(',')) {
-        const trimmed = key.trim();
-        if (trimmed !== '' && !map.has(trimmed)) map.set(trimmed, row.name);
-      }
-    }
-
-    const owned = await this.dataSource.query<Array<{ line: string; name: string }>>(
-      `SELECT p.source_from AS line, s.name AS name
-         FROM (SELECT source_from, source_id, COUNT(*) AS n
-                 FROM lcm_vod_play
-                WHERE source_from <> ''
-                GROUP BY source_from, source_id) p
-         JOIN lcm_collect_source s ON s.id = p.source_id
-        ORDER BY p.source_from, p.n DESC`,
-    );
-    // 按影片数降序取第一条，也就是这条线路主要由哪个源在供
-    for (const row of owned) {
-      if (!map.has(row.line)) map.set(row.line, row.name);
-    }
-    return map;
+    return new Map(rows.map((row) => [String(row.id), row.name]));
   }
 }

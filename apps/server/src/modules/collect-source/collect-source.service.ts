@@ -183,6 +183,8 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
         if (unused.length > 0) {
           result.playLines = await affected(manager.delete(PlayLineEntity, { sourceFrom: In(unused) }));
         }
+        // 剩下的线路还活着，但已不属于任何源（防御：一条线路只归属一个源）
+        await manager.update(PlayLineEntity, { sourceId: In(targets) }, { sourceId: null });
       }
 
       // 域名体检是快照表：影片删掉后可能整页空掉，顺手清掉已经没有封面引用的域名
@@ -352,19 +354,14 @@ async function vodsOfSource(manager: EntityManager, sourceIds: string[]): Promis
   return rows.map((row) => row.vodId);
 }
 
-/** 这些源用到的线路标识：`play_from` 里登记的 + 播放地址里实际出现的 */
+/** 这些源用到的线路标识：登记表里归属它 + 播放地址里实际出现的 */
 async function linesOfSource(manager: EntityManager, sourceIds: string[]): Promise<string[]> {
   const lines = new Set<string>();
-  const sources = await manager.find(CollectSourceEntity, {
-    where: { id: In(sourceIds) },
-    select: { playFrom: true },
+  const owned = await manager.find(PlayLineEntity, {
+    where: { sourceId: In(sourceIds) },
+    select: { sourceFrom: true },
   });
-  for (const source of sources) {
-    for (const part of source.playFrom.split(',')) {
-      const key = part.trim();
-      if (key !== '') lines.add(key);
-    }
-  }
+  for (const row of owned) if (row.sourceFrom !== '') lines.add(row.sourceFrom);
   const used = await manager.find(VodPlayEntity, {
     where: { sourceId: In(sourceIds) },
     select: { sourceFrom: true },
