@@ -90,5 +90,12 @@ describe('采集写入：同页内的重复影片', () => {
       [vods[0]?.id],
     );
     expect(lines.map((line) => line.source_from)).toEqual([LINE_A, LINE_B]);
+
+    // 采集结束要把本次实际出现的线路标识回写到源站上，后台线路表的「来源」列靠它反查
+    const sources = await dataSource.query<Array<{ play_from: string }>>(
+      'SELECT play_from FROM lcm_collect_source WHERE id = ?',
+      [sourceId],
+    );
+    expect(sources[0]?.play_from).toBe(`${LINE_A},${LINE_B}`);
   });
 });

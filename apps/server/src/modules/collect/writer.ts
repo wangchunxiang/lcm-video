@@ -20,6 +20,7 @@ import { splitPlayGroups } from './parser';
 import { ID_NONE, compareId, emptyCounters, hasId } from './types';
 import type { CategoryInfo, Counters, FailItem, MappingInfo, SourceVod } from './types';
 import { PlayLineEntity } from '../play-line/play-line.entity';
+import { CollectSourceEntity } from '../collect-source/collect-source.entity';
 
 export interface PageInput {
   sourceId: string;
@@ -377,8 +378,16 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
   );
 
   if (seenLines.size > 0) {
+    const lines = [...seenLines];
     // 全站线路注册表：已在表里的保持原状（不改显示名/排序），只补缺失的
-    await insertIgnorePlayLines(dataSource, [...seenLines]);
+    await insertIgnorePlayLines(dataSource, lines);
+    // 回写源站上登记过的线路标识：后台线路表的「来源」列靠它反查，写回之前一直是空的
+    await dataSource
+      .createQueryBuilder()
+      .update(CollectSourceEntity)
+      .set({ playFrom: lines.join(',') })
+      .where({ id: sourceId })
+      .execute();
   }
 
   return { counters, fails };

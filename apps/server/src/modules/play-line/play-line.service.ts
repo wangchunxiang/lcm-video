@@ -70,17 +70,35 @@ export class PlayLineService extends AppCrudService<PlayLineEntity> {
     };
   }
 
-  /** 线路 → 采集源名：`lcm_collect_source.play_from` 是逗号串，反查第一条命中的源。 */
+  /**
+   * 线路 → 采集源名，两条路取并集：
+   * 1. `lcm_collect_source.play_from`（采集时回写的登记值），
+   * 2. 反查 `lcm_vod_play.source_id`：老数据的源上没有登记，就用实际持有该线路影片最多的源。
+   */
   async sourceNameMap(): Promise<Map<string, string>> {
-    const rows = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
-      'SELECT name, play_from AS playFrom FROM lcm_collect_source WHERE play_from <> \'\'',
+    const registered = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
+      "SELECT name, play_from AS playFrom FROM lcm_collect_source WHERE play_from <> ''",
     );
     const map = new Map<string, string>();
-    for (const row of rows) {
+    for (const row of registered) {
       for (const key of row.playFrom.split(',')) {
         const trimmed = key.trim();
         if (trimmed !== '' && !map.has(trimmed)) map.set(trimmed, row.name);
       }
+    }
+
+    const owned = await this.dataSource.query<Array<{ line: string; name: string }>>(
+      `SELECT p.source_from AS line, s.name AS name
+         FROM (SELECT source_from, source_id, COUNT(*) AS n
+                 FROM lcm_vod_play
+                WHERE source_from <> ''
+                GROUP BY source_from, source_id) p
+         JOIN lcm_collect_source s ON s.id = p.source_id
+        ORDER BY p.source_from, p.n DESC`,
+    );
+    // 按影片数降序取第一条，也就是这条线路主要由哪个源在供
+    for (const row of owned) {
+      if (!map.has(row.line)) map.set(row.line, row.name);
     }
     return map;
   }

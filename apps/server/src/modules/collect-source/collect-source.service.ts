@@ -235,21 +235,6 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
     return new Map(rows.map((row) => [row.id, row.name]));
   }
 
-  /** `play_from` → 源站名，用于线路表显示来源。 */
-  async playFromNameMap(): Promise<Map<string, string>> {
-    const rows = await this.dataSource.query<Array<{ name: string; playFrom: string }>>(
-      'SELECT name, play_from AS playFrom FROM lcm_collect_source WHERE play_from <> ""',
-    );
-    const map = new Map<string, string>();
-    for (const row of rows) {
-      for (const from of row.playFrom.split(',')) {
-        const key = from.trim();
-        if (key !== '' && !map.has(key)) map.set(key, row.name);
-      }
-    }
-    return map;
-  }
-
   /** 只拉一次分类列表，不落库；探测失败不算接口失败。 */
   async test(id: string): Promise<CollectSourceTestResult> {
     const runtime = await this.loadRuntime(id);
