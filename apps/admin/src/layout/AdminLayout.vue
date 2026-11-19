@@ -25,21 +25,23 @@ async function onLogout() {
   <el-container class="layout">
     <el-aside width="220px" class="aside">
       <div class="logo">蓝草莓影视</div>
-      <el-menu :default-active="activeMenu" router class="menu">
-        <template v-for="item in menus" :key="item.path">
-          <el-sub-menu v-if="item.children?.length" :index="item.path">
-            <template #title>
+      <el-scrollbar class="aside-scroll">
+        <el-menu :default-active="activeMenu" router class="menu">
+          <template v-for="item in menus" :key="item.path">
+            <el-sub-menu v-if="item.children?.length" :index="item.path">
+              <template #title>
+                <span>{{ item.title }}</span>
+              </template>
+              <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
+                <span>{{ child.title }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+            <el-menu-item v-else :index="item.path">
               <span>{{ item.title }}</span>
-            </template>
-            <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
-              <span>{{ child.title }}</span>
             </el-menu-item>
-          </el-sub-menu>
-          <el-menu-item v-else :index="item.path">
-            <span>{{ item.title }}</span>
-          </el-menu-item>
-        </template>
-      </el-menu>
+          </template>
+        </el-menu>
+      </el-scrollbar>
     </el-aside>
 
     <el-container>
@@ -76,7 +78,22 @@ async function onLogout() {
   --el-menu-hover-bg-color: #16202b;
   --el-menu-active-color: var(--el-color-primary-light-3);
   background: var(--el-menu-bg-color);
-  overflow-y: auto;
+  /* 菜单区交给 el-scrollbar：它把滚动条画在内容之上，不占布局宽度，
+     菜单展开多了也不会把侧栏撑宽或挤动菜单文字 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.aside-scroll {
+  flex: 1;
+  min-height: 0;
+}
+/* 深色侧栏里的滚动条：细、半透明，和背景融合 */
+.aside-scroll :deep(.el-scrollbar__thumb) {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+.aside-scroll :deep(.el-scrollbar__bar) {
+  right: 2px;
 }
 .logo {
   height: var(--lcm-header-height);
