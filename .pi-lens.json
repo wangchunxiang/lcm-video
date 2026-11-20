@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "no-unknown-parameters": {
+      "ignorePaths": ["packages/api-client/**"]
+    },
+    "prefer-const-type-parameter": {
+      "ignorePaths": ["packages/api-client/**"]
+    }
+  }
+}
