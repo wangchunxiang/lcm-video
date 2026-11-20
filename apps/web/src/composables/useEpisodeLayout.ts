@@ -6,22 +6,16 @@ export interface EpisodeLike {
   name: string;
 }
 
-export interface EpisodeCell extends EpisodeLike {
-  /** 这一格要跨几列（1–4） */
-  span: number;
-}
-
-/** 与 tokens.css 的 --ep-gap 一致：估跨度时要把格子之间的间距算进去 */
+/** 与 tokens.css 的 --ep-gap 一致：算可用宽度时要把格子之间的间距算进去 */
 const EP_GAP = 8;
-/** 跨 2 格以上时的左右内边距（px-2），估宽度时预留 */
-const EP_PADDING = 16;
 /** 12px 字号（text-caption）：一个全角字占 12px */
 const EP_FONT = 12;
-/** 最多跨 4 格；再宽也只在 4 格里单行省略，与以前的观感一致 */
-const EP_MAX_SPAN = 4;
+/** 网格布局下没有内边距，文字直接铺满格子 */
+const EP_GRID_PADDING = 4;
+
 /**
- * 只在小屏（Tailwind 的 sm 断点以下）才按名字宽度跨列。
- * PC 上 8/10 列本来一格就有一百多 px，跨列会把格子撑成一块大色块、也打乱「数格子」的节奏。
+ * 只在小屏（Tailwind 的 sm 断点以下）才考虑改版式。
+ * PC 上 8/10 列、一格一百多 px，绝大多数集名天然放得下，版式不用动。
  */
 const COMPACT_QUERY = '(max-width: 639px)';
 
@@ -34,32 +28,27 @@ export function textWidth(text: string): number {
   return width;
 }
 
-/**
- * 这一格要跨几列：名字多宽就占几列，取第一个装得下的跨度。
- * 跨 N 格的实际宽度 = N * 格宽 + (N - 1) * 间距，所以不能直接 width / 格宽 取整。
- * grid 的自动放置不会回填空洞（开 dense 会打乱集序），剩下的空位就让它空着。
- */
-export function episodeSpan(name: string, cellWidth: number): number {
-  if (cellWidth <= 0) return 1;
-  const needed = textWidth(name) * EP_FONT + EP_PADDING;
-  for (let span = 1; span < EP_MAX_SPAN; span += 1) {
-    if (span * cellWidth + (span - 1) * EP_GAP >= needed) return span;
-  }
-  return EP_MAX_SPAN;
+/** 这个名字排成一行实际要多少 px（估算，含内边距） */
+export function nameWidth(name: string, padding = EP_GRID_PADDING): number {
+  return textWidth(name) * EP_FONT + padding;
 }
 
 /**
- * 选集网格的动态跨列：小屏 4 列、xl 10 列，同一份 DOM 每个断点的格宽都不同，
- * 只能量出来再算；量到之前一律按 1 格排，避免首帧闪动。
- * 详情页与播放页共用这一套（两处的网格列数、`--ep-*` 令牌完全相同）。
+ * 小屏选集版式：
+ * - `grid`：4 列网格，所有集名都在一格内放得下 —— 保持整齐、能「数格子」；
+ * - `flow`：只要有一个名字一格放不下，整块改用 flex-wrap 自然宽度（每个格子按内容宽度），
+ *   长的名字不会被切、也不会出现「一行 2 个 + 右边空一大块」的空洞。
+ * PC 上一律返回 `grid`。
  */
-export function useEpisodeCells<T extends EpisodeLike>(
+export type EpisodeLayout = 'grid' | 'flow';
+
+export function useEpisodeLayout<T extends EpisodeLike>(
   episodes: Ref<T[]>,
   gridRef: Ref<HTMLDivElement | null>,
-): { episodeCells: Ref<EpisodeCell[]> } {
+): { layout: Ref<EpisodeLayout> } {
   /** 一格宽（px），0 表示还没量到 */
   const cellWidth = ref(0);
-  /** 是否小屏：只有小屏才启用动态跨列 */
+  /** 是否小屏 */
   const compact = ref(false);
 
   let query: MediaQueryList | undefined;
@@ -76,13 +65,13 @@ export function useEpisodeCells<T extends EpisodeLike>(
   function measure(): void {
     const grid = gridRef.value;
     if (!grid) return;
+    // 量的时候网格可能正处在 flow 状态（那是 flex），此时退回到容器宽度按 4 列折算
     const template = getComputedStyle(grid).gridTemplateColumns;
     const first = Number.parseFloat(template.split(' ')[0] ?? '');
     if (Number.isFinite(first) && first > 0) {
       cellWidth.value = first;
       return;
     }
-    // 还没布局完时浏览器可能原样返回 repeat(4, minmax(0px, 1fr))，这时按列数倒推
     const count = Number(/repeat\((\d+)/.exec(template)?.[1] ?? 0) || 4;
     cellWidth.value = Math.max(0, (grid.clientWidth - EP_GAP * (count - 1)) / count);
   }
@@ -105,13 +94,11 @@ export function useEpisodeCells<T extends EpisodeLike>(
     query?.removeEventListener('change', onCompactChange);
   });
 
-  // span = 1 时模板不加 `grid-column` 也不改对齐，所以 PC 上的样式与改动前一模一样
-  const episodeCells = computed<EpisodeCell[]>(() =>
-    episodes.value.map((ep) => ({
-      ...ep,
-      span: compact.value ? episodeSpan(ep.name, cellWidth.value) : 1,
-    })),
-  );
+  const layout = computed<EpisodeLayout>(() => {
+    if (!compact.value || cellWidth.value <= 0) return 'grid';
+    const overflow = episodes.value.some((ep) => nameWidth(ep.name) > cellWidth.value);
+    return overflow ? 'flow' : 'grid';
+  });
 
-  return { episodeCells };
+  return { layout };
 }

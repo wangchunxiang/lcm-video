@@ -8,6 +8,9 @@ import { menuIcon } from './menuIcons.ts';
 
 import { auth, logout } from '../auth.ts';
 
+/** 侧栏 logo：与前台同一张图，路径跟随 admin 的 base（构建后是 /admin/） */
+const logoUrl = `${import.meta.env.BASE_URL}img/logo.png`;
+
 const route = useRoute();
 const router = useRouter();
 
@@ -25,7 +28,10 @@ async function onLogout() {
 <template>
   <el-container class="layout">
     <el-aside width="220px" class="aside">
-      <div class="logo">蓝草莓影视</div>
+      <div class="logo">
+        <img :src="logoUrl" alt="蓝草莓影视" class="logo-img" />
+        <span class="logo-text">蓝草莓影视</span>
+      </div>
       <el-scrollbar class="aside-scroll">
         <el-menu :default-active="activeMenu" router class="menu">
           <template v-for="item in menus" :key="item.path">
@@ -107,13 +113,26 @@ async function onLogout() {
 }
 .logo {
   height: var(--lcm-header-height);
-  line-height: var(--lcm-header-height);
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
   color: var(--el-color-white);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.logo-img {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+.logo-text {
+  min-width: 0;
   font-size: 16px;
   font-weight: 600;
-  letter-spacing: 1px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .menu {
   border-right: none;

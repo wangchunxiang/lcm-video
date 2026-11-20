@@ -9,7 +9,7 @@ import { setPageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
-import { useEpisodeCells } from '../composables/useEpisodeCells';
+import { useEpisodeLayout } from '../composables/useEpisodeLayout';
 
 /** 自动连播：播完直接切下一集，不打断 */
 const route = useRoute();
@@ -49,7 +49,8 @@ const line = computed(() => play.value?.line ?? null);
 const episodes = computed(() => play.value?.episodes ?? []);
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
 
-const { episodeCells } = useEpisodeCells(episodesShown, epsGridRef);
+/** 小屏下若有一格放不下的集名，整块改用 flex-wrap 自然宽度；PC 上恒为 grid */
+const { layout } = useEpisodeLayout(episodesShown, epsGridRef);
 const current = computed(() => play.value?.current ?? 1);
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
@@ -80,13 +81,10 @@ function toggleAutonext(): void {
   }
 }
 
-/** 标题右侧的小字：当前集 + 源站备注（线路名与总集数在下拉里已有，不重复） */
+/** 标题右侧的小字：只显示当前集名（片名就在左边、备注已在页面其他地方） */
 const subtitle = computed(() => {
-  const parts: string[] = [];
-  if (episodes.value.length > 1 && epItem.value) parts.push(epItem.value.name);
-  const remarks = vod.value?.remarks ?? '';
-  if (remarks) parts.push(remarks);
-  return parts.join(' · ');
+  if (episodes.value.length <= 1) return '';
+  return epItem.value?.name ?? '';
 });
 
 /** 在飞请求的中断句柄：换片/换线路/离开页面时把旧请求断掉，别占着连接和服务器 */
@@ -330,7 +328,7 @@ useSeo(() => ({
           >
             {{ vod.name }}
           </RouterLink>
-          <span class="shrink-0 truncate text-small text-ink-3">{{ subtitle }}</span>
+          <span class="min-w-0 truncate text-small text-ink-3">{{ subtitle }}</span>
         </div>
 
         <div class="ml-auto flex flex-none items-center gap-2">
@@ -413,10 +411,14 @@ useSeo(() => ({
         <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
           <div
             ref="epsGridRef"
-            class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+            :class="
+              layout === 'flow'
+                ? 'flex flex-wrap gap-[var(--ep-gap)]'
+                : 'grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10'
+            "
           >
             <button
-              v-for="ep in episodeCells"
+              v-for="ep in episodesShown"
               :key="ep.index"
               type="button"
               :title="ep.name"
@@ -426,9 +428,8 @@ useSeo(() => ({
                 ep.index === current
                   ? 'bg-primary text-white'
                   : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
-                ep.span > 1 ? 'px-2 text-left' : '',
+                layout === 'flow' ? 'max-w-full px-3' : '',
               ]"
-              :style="ep.span > 1 ? { gridColumn: `span ${ep.span}` } : undefined"
               @click="selectEp(ep.index)"
             >
               {{ ep.name }}

@@ -7,7 +7,7 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { setPageCategoryId } from '../composables/usePageCategoryId';
 import { useScrollLock } from '../composables/useScrollLock';
-import { useEpisodeCells } from '../composables/useEpisodeCells';
+import { useEpisodeLayout } from '../composables/useEpisodeLayout';
 import VodGrid from '../components/VodGrid.vue';
 import Container from '../components/layout/Container.vue';
 import GridSkeleton from '../components/ui/GridSkeleton.vue';
@@ -88,7 +88,8 @@ try {
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
 const epsGridRef = ref<HTMLDivElement | null>(null);
 /** 小屏下按集名宽度动态跨列（1–4 格），PC 上一律 1 格 */
-const { episodeCells } = useEpisodeCells(episodesShown, epsGridRef);
+/** 小屏下若有一格放不下的集名，整块改用 flex-wrap 自然宽度；PC 上恒为 grid */
+const { layout } = useEpisodeLayout(episodesShown, epsGridRef);
 
 function toggleEpOrder(): void {
   epDesc.value = !epDesc.value;
@@ -487,16 +488,19 @@ useSeo(() => ({
         >
           <div
             ref="epsGridRef"
-            class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+            :class="
+              layout === 'flow'
+                ? 'flex flex-wrap gap-[var(--ep-gap)]'
+                : 'grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10'
+            "
           >
             <RouterLink
-              v-for="ep in episodeCells"
+              v-for="ep in episodesShown"
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
               class="h-[var(--ep-cell-h)] truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] text-ink-2 transition hover:bg-surface-3 hover:text-ink"
-              :class="ep.span > 1 ? 'px-2 text-left' : ''"
-              :style="ep.span > 1 ? { gridColumn: `span ${ep.span}` } : undefined"
+              :class="layout === 'flow' ? 'max-w-full px-3' : ''"
             >
               {{ ep.name }}
             </RouterLink>
