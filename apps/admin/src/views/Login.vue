@@ -43,6 +43,9 @@ onMounted(() => {
 });
 
 async function onSubmit() {
+  // 回车会同时触发 keyup.enter 与原生表单 submit；已在提交中就直接忽略，
+  // 否则两次请求带同一个验证码令牌，第一次成功、第二次必然“验证码已过期”。
+  if (loading.value) return;
   if (!form.value.username || !form.value.password) {
     ElMessage.warning('请输入账号和密码');
     return;
@@ -100,7 +103,6 @@ async function onSubmit() {
             placeholder="请输入密码"
             show-password
             autocomplete="current-password"
-            @keyup.enter="onSubmit"
           />
         </el-form-item>
         <el-form-item label="验证码">
@@ -111,7 +113,6 @@ async function onSubmit() {
               placeholder="请输入右侧字符"
               maxlength="8"
               autocomplete="off"
-              @keyup.enter="onSubmit"
             />
             <button
               type="button"
