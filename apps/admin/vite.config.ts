@@ -35,6 +35,12 @@ export default defineConfig({
       '@element-plus/icons-vue',
       'element-plus',
       'element-plus/es/locale/lang/zh-cn',
+      // 概览页的趋势图用 ECharts（只引入 echarts/core + 折线图 + 网格/图例/tooltip）
+      'echarts/core',
+      'echarts/charts',
+      'echarts/components',
+      'echarts/renderers',
+      'vue-echarts',
     ],
   },
   build: {

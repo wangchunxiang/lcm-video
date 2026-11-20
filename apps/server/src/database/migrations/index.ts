@@ -8,6 +8,7 @@ import { DropObsoleteSettings1794400006000 } from './1794400006000-drop-obsolete
 import { SourceRuleMultiFrom1794400007000 } from './1794400007000-source-rule-multi-from';
 import { NormalizeCoverHost1794400008000 } from './1794400008000-normalize-cover-host';
 import { PlayLineSource1794400009000 } from './1794400009000-play-line-source';
+import { VodUpdatedAtIndex1794400010000 } from './1794400010000-vod-updated-at-index';
 
 /**
  * 迁移清单：显式注册，理由同 `../entities.ts`（glob 在 e2e 里会 require 到 `.ts`）。
@@ -24,4 +25,5 @@ export const MIGRATIONS = [
   SourceRuleMultiFrom1794400007000,
   NormalizeCoverHost1794400008000,
   PlayLineSource1794400009000,
+  VodUpdatedAtIndex1794400010000,
 ];
