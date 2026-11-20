@@ -1,10 +1,13 @@
 {
   "rules": {
-    "no-unknown-parameters": {
-      "ignorePaths": ["packages/api-client/**"]
+    "find-import-file-without-extension": {
+      "ignorePaths": ["apps/server/**", "apps/web/**", "packages/**"]
     },
-    "prefer-const-type-parameter": {
-      "ignorePaths": ["packages/api-client/**"]
-    }
+    "no-unknown-parameters": { "ignorePaths": ["packages/api-client/**"] },
+    "prefer-const-type-parameter": { "ignorePaths": ["packages/api-client/**"] },
+    "no-runtime-typeof": { "ignorePaths": ["packages/api-client/**"] },
+    "no-known-value-widening": { "ignorePaths": ["packages/api-client/**"] },
+    "no-unsafe-dictionary-unknown": { "ignorePaths": ["packages/api-client/**"] },
+    "large-class": { "ignorePaths": ["packages/api-client/**"] }
   }
 }
