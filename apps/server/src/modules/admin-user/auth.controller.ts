@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, Post, Put, Req } from '@nestjs/common';
 import { ADMIN_API_PREFIX } from '../../common/http/api-prefix';
 import type { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { createCaptcha } from '../../common/security/captcha';
+import type { CaptchaVO } from '../../common/security/captcha';
 import { AdminUserService } from './admin-user.service';
 import type { AdminUserVO } from './admin-user.service';
 import { ChangePasswordDTO, LoginDTO, UpdateProfileDTO } from './dto/admin-user.dto';
@@ -16,6 +18,17 @@ import type { LoginVO } from './dto/admin-user.dto';
 @Controller(`${ADMIN_API_PREFIX}/auth`)
 export class AuthController {
   constructor(private readonly adminUserService: AdminUserService) {}
+
+  /**
+   * 登录验证码。答案只在服务端内存里，响应里只带 SVG 与一次性 id。
+   * `no-store`：验证码是随机的，任何一个中间层缓存都会让所有人看到同一张图。
+   */
+  @Public()
+  @Get('captcha')
+  @Header('Cache-Control', 'no-store')
+  captcha(): CaptchaVO {
+    return createCaptcha();
+  }
 
   @Public()
   @Post('login')

@@ -35,8 +35,19 @@ export async function fetchMe(): Promise<AdminUser | null> {
   return auth.user;
 }
 
-export async function login(username: string, password: string): Promise<AdminUser> {
-  const result = await api.post<LoginResult>('/auth/login', { username, password });
+/** 登录：验证码令牌与字符一并提交，服务端校验后立即作废该令牌 */
+export async function login(
+  username: string,
+  password: string,
+  captchaId: string,
+  captchaCode: string,
+): Promise<AdminUser> {
+  const result = await api.post<LoginResult>('/auth/login', {
+    username,
+    password,
+    captchaId,
+    captchaCode,
+  });
   setToken(result.token);
   auth.user = result.user;
   auth.loaded = true;

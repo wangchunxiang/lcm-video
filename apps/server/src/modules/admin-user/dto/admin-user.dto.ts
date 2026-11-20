@@ -62,6 +62,17 @@ export class LoginDTO {
   @MinLength(1, { message: '请输入密码' })
   @MaxLength(50, { message: '密码最长 50 个字符' })
   password!: string;
+
+  /**
+   * 验证码令牌：`GET /auth/captcha` 返回的 id，一次性。
+   * 这里只做「是不是字符串」的类型校验，真伪交给 `verifyCaptcha()`——
+   * 每个字段挂多个装饰器会让同一个字段回一串重复的错误文案。
+   */
+  @IsString({ message: '验证码已失效，请刷新后重试' })
+  captchaId!: string;
+
+  @IsString({ message: '请输入验证码' })
+  captchaCode!: string;
 }
 
 /** 改自己的密码。 */

@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { FindOptionsWhere, Repository } from 'typeorm';
 import { AppCrudService } from '../../common/crud/app-crud.service';
 import { hashPassword, verifyPassword } from '../../common/security/password';
+import { verifyCaptcha } from '../../common/security/captcha';
 import { isLocked, recordFailure, resetFailures } from '../../common/security/login-lock';
 import { signToken } from '../../common/security/jwt';
 import { SettingService } from '../setting/setting.service';
@@ -67,8 +68,17 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     super(repository);
   }
 
-  /** 登录：连续失败 5 次锁 15 分钟；成功后记最后登录时间与 IP。 */
+  /**
+   * 登录：验证码 → 锁定检查 → 账号密码；连续失败 5 次锁 15 分钟；成功后记最后登录时间与 IP。
+   *
+   * 验证码排在锁定检查前：猜密码的脚本必须每次都过图形识别，成本从「一次 HTTP」
+   * 变成「一次 OCR」；同时验证码错误**不计入**失败次数，避免手滑打错就把自己锁 15 分钟。
+   */
   async login(dto: LoginDTO, ip: string): Promise<LoginVO> {
+    if (!verifyCaptcha(dto.captchaId, dto.captchaCode)) {
+      throw new BadRequestException('验证码不正确或已过期，请刷新后重试');
+    }
+
     const lockKey = `login:${ip}`;
     if (isLocked(lockKey)) {
       throw new ForbiddenException('密码错误次数过多，请 15 分钟后再试');

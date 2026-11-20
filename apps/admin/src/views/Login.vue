@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { api } from '../api/client.ts';
 import { login } from '../auth.ts';
 import { stripBase } from '../session.ts';
 
@@ -11,22 +12,55 @@ const route = useRoute();
 /** 与侧栏同一张图，路径跟随 admin 的 base（构建后是 /admin/） */
 const logoUrl = `${import.meta.env.BASE_URL}img/logo.png`;
 
-const form = ref({ username: 'admin', password: '' });
+const form = ref({ username: 'admin', password: '', captchaCode: '' });
 const loading = ref(false);
+
+/** 验证码：id 是一次性令牌，答案只在服务端；这里拿到的只是 SVG */
+const captchaId = ref('');
+const captchaSvg = ref('');
+const captchaLoading = ref(false);
+/** 用 data URL 交给 <img>，比 v-html 更安全（SVG 里的脚本/事件不会执行） */
+const captchaSrc = computed(() =>
+  captchaSvg.value === '' ? '' : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(captchaSvg.value)}`,
+);
+
+async function loadCaptcha(): Promise<void> {
+  captchaLoading.value = true;
+  try {
+    const data = await api.get<{ id: string; svg: string }>('/auth/captcha');
+    captchaId.value = data.id;
+    captchaSvg.value = data.svg;
+    form.value.captchaCode = '';
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '验证码加载失败');
+  } finally {
+    captchaLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadCaptcha();
+});
 
 async function onSubmit() {
   if (!form.value.username || !form.value.password) {
     ElMessage.warning('请输入账号和密码');
     return;
   }
+  if (!form.value.captchaCode.trim()) {
+    ElMessage.warning('请输入验证码');
+    return;
+  }
   loading.value = true;
   try {
-    await login(form.value.username.trim(), form.value.password);
+    await login(form.value.username.trim(), form.value.password, captchaId.value, form.value.captchaCode);
     ElMessage.success('登录成功');
     const redirect = typeof route.query.redirect === 'string' ? stripBase(route.query.redirect) : '/dashboard';
     await router.replace(redirect);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '登录失败');
+    // 服务端校验后就把令牌作废了，失败一定要换一张，否则重试用的是废票
+    void loadCaptcha();
   } finally {
     loading.value = false;
   }
@@ -68,6 +102,28 @@ async function onSubmit() {
             autocomplete="current-password"
             @keyup.enter="onSubmit"
           />
+        </el-form-item>
+        <el-form-item label="验证码">
+          <div class="captcha-row">
+            <el-input
+              v-model="form.captchaCode"
+              size="large"
+              placeholder="请输入右侧字符"
+              maxlength="8"
+              autocomplete="off"
+              @keyup.enter="onSubmit"
+            />
+            <button
+              type="button"
+              class="captcha-img"
+              title="看不清？点击刷新"
+              :disabled="captchaLoading"
+              @click="loadCaptcha"
+            >
+              <img v-if="captchaSrc" :src="captchaSrc" alt="验证码" width="108" height="38" />
+              <span v-else class="captcha-placeholder">{{ captchaLoading ? '加载中…' : '点击加载' }}</span>
+            </button>
+          </div>
         </el-form-item>
         <el-button type="primary" size="large" class="submit" :loading="loading" native-type="submit">
           登录
@@ -182,6 +238,39 @@ async function onSubmit() {
 }
 .form :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.captcha-row :deep(.el-input) {
+  flex: 1;
+  min-width: 0;
+}
+.captcha-img {
+  flex: none;
+  width: 108px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--el-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f7fb;
+  cursor: pointer;
+  line-height: 0;
+}
+.captcha-img:disabled {
+  cursor: progress;
+}
+.captcha-placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
 }
 
 .submit {
