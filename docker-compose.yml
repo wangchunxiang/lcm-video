@@ -4,12 +4,15 @@
 #   npm run docker:export   # 产出 lcm-video.tar
 # 然后在 fnOS「Docker → 镜像 → 导入」中选中它。
 #
-# 使用前把仓库根的 .env.example 复制成 .env，填好 JWT_SECRET、DB_PASSWORD、
-# DB_ROOT_PASSWORD。应用容器的 DATABASE_URL 由 DB_* 自动拼成，指向下面的 db 服务。
+# 本文件不管数据库：NAS 上已有 MariaDB/MySQL，直接通过 .env 的 DATABASE_URL 连接。
+# 使用前把仓库根的 .env.example 复制成 .env，填好 DATABASE_URL 与 JWT_SECRET。
 #
-# 用 NAS 上已有的 MySQL/MariaDB 时：
-#   1. 删掉本文件的 db 服务、volumes 以及 app 的 depends_on；
-#   2. 把 app 的 DATABASE_URL 改成 mysql://用户:密码@NAS局域网IP:3306/lcm_video。
+# 连接已有数据库的三种情况：
+#   1. 数据库容器已映射 3306：mysql://用户:密码@NAS局域网IP:3306/lcm_video
+#   2. 数据库容器没映射端口：让本服务加入它的 Docker 网络（见文件末尾注释），
+#      主机名换成数据库容器名，如 mysql://用户:密码@mariadb:3306/lcm_video
+#   3. 数据库直接装在 NAS 宿主机：mysql://用户:密码@host.docker.internal:3306/lcm_video
+#      （下面已配 extra_hosts，Linux 下也能解析 host.docker.internal）
 #
 # 只能跑单副本：验证码与登录失败计数在进程内存，定时采集也在进程内，
 # 多副本会出现验证码随机失效、锁定绕过、任务重复执行。
@@ -24,12 +27,11 @@ services:
       NODE_ENV: production
       PORT: "3100"
       TZ: Asia/Shanghai
-      DATABASE_URL: mysql://${DB_USER:-lcm}:${DB_PASSWORD:?DB_PASSWORD 未在 .env 中配置}@db:3306/${DB_NAME:-lcm_video}
     ports:
       - "3100:3100"
-    depends_on:
-      db:
-        condition: service_healthy
+    # 数据库装在 NAS 宿主机（不是容器）时，用 host.docker.internal 访问
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -39,31 +41,10 @@ services:
     # 采集任务收到 SIGTERM 后会收尾，给足退出时间
     stop_grace_period: 30s
 
-  db:
-    image: mariadb:11
-    container_name: lcm-video-db
-    restart: unless-stopped
-    environment:
-      MARIADB_DATABASE: ${DB_NAME:-lcm_video}
-      MARIADB_USER: ${DB_USER:-lcm}
-      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 未在 .env 中配置}
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD 未在 .env 中配置}
-      TZ: Asia/Shanghai
-    # 排序规则与默认时区都必须对上：应用按 +08:00 读写，DEFAULT CURRENT_TIMESTAMP
-    # 用的是数据库实例时区，不一致会差 8 小时。
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-      - --default-time-zone=+08:00
-    volumes:
-      - dbdata:/var/lib/mysql
-    # 不映射 3306：只在 compose 网络内由 app 通过服务名 db 访问
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-volumes:
-  dbdata:
+# 数据库容器没有映射 3306、想直接用容器名访问时，取消下面注释，
+# 把 name 换成数据库容器所在的网络（`docker inspect <容器名> -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'`）。
+# 加入外部网络后，默认网络不再创建，app 通过该网络解析数据库容器名。
+# networks:
+#   default:
+#     name: 已有数据库的网络名
+#     external: true

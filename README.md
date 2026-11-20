@@ -116,7 +116,8 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ### 方式一：PC 构建 → 飞牛 NAS 导入（推荐）
 
 镜像在 PC 上构建，NAS 只负责跑容器；迭代时重复「导出 → 导入 → 重建应用」即可。
-仓库根的 `docker-compose.yml` 已包含应用与 MariaDB，NAS 上只需要这个文件和 `.env`。
+仓库根的 `docker-compose.yml` 只启动应用，数据库用 NAS 上已有的 MariaDB/MySQL，
+通过 `.env` 的 `DATABASE_URL` 连接；NAS 上只需要这个文件和 `.env`。
 
 PC（仓库根目录，需 Docker Desktop / Docker Engine）：
 
@@ -135,8 +136,11 @@ NAS：
 
 1. fnOS「Docker → 镜像 → 导入」选择 `lcm-video.tar`。
 2. 新建部署目录（例：`/vol1/1000/docker/lcm-video`），放入仓库的 `docker-compose.yml`，
-   再把 `.env.example` 复制成同目录的 `.env`，填好 `JWT_SECRET`、`DB_PASSWORD`、`DB_ROOT_PASSWORD`。
-   应用容器的 `DATABASE_URL` 由 compose 用 `DB_*` 自动拼成，不用手写。
+   再把 `.env.example` 复制成同目录的 `.env`，填好 `JWT_SECRET` 与 `DATABASE_URL`。
+   `DATABASE_URL` 的主机名按数据库的部署方式选：
+   - 数据库容器已映射 3306：用 `NAS局域网IP`
+   - 数据库容器没映射端口：加入它的 Docker 网络后用容器名（见 `docker-compose.yml` 末尾注释）
+   - 数据库装在 NAS 宿主机：用 `host.docker.internal`
 3. fnOS「Docker → Compose → 新建项目」选该目录启动；或 SSH 进去
    `cd /vol1/1000/docker/lcm-video && docker compose up -d`。
 4. 打开 `http://NAS局域网IP:3100/`，后台在 `/admin/`。
@@ -149,7 +153,7 @@ npm run docker:export
 docker compose up -d --force-recreate app
 ```
 
-容器启动时会自动执行迁移建表，`dbdata` 卷保存数据库数据，重建应用不会丢数据。
+容器启动时会自动执行迁移建表，数据仍在已有数据库里，重建应用不会丢数据。
 空库没有管理员账号，先按下节初始化。
 
 ### 首次初始化管理员
@@ -160,7 +164,8 @@ docker compose up -d --force-recreate app
 
 ```bash
 mysqldump -h 旧地址 -u用户 -p --single-transaction lcm_video > lcm.sql
-docker compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" lcm_video' < lcm.sql
+# 数据库也是容器时（数据库装在宿主机就改用宿主机的 mysql/mariadb 命令）：
+docker exec -i <数据库容器名> mariadb -u<用户> -p'<密码>' lcm_video < lcm.sql
 ```
 
 **新建一个管理员**：先生成 scrypt 哈希（Git Bash / NAS shell）
@@ -177,7 +182,7 @@ cat > insert-admin.sql <<'SQL'
 INSERT INTO lcm_admin_user (id, username, password, nickname, is_enabled, password_version)
 VALUES (1, 'admin', '<上一步的哈希>', '管理员', 1, 0);
 SQL
-docker compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" lcm_video' < insert-admin.sql
+docker exec -i <数据库容器名> mariadb -u<用户> -p'<密码>' lcm_video < insert-admin.sql
 rm insert-admin.sql
 ```
 
@@ -193,9 +198,9 @@ pm2 start ecosystem.config.cjs
 ### 说明
 
 - 数据库与 `.env` 都不进镜像。
+- compose 只起应用，数据库用 NAS 上已有的实例；`DATABASE_URL` 的主机名按上文的三种情况选。
 - 只跑单副本：验证码、登录失败计数、定时采集都在进程内存里，多副本会出问题（见 `docker-compose.yml` 顶部注释）。
-- 时间列按北京时间存，MariaDB 必须设 `--default-time-zone=+08:00`（compose 已带）。
-- 用 NAS 上已有数据库时，删掉 compose 的 `db` 与 `depends_on`，把 `app.DATABASE_URL` 指向 NAS 局域网 IP。
+- 时间列按北京时间存，已有 MariaDB 必须把时区设成 `+08:00`（`--default-time-zone=+08:00` 或实例配置），否则差 8 小时。
 
 ## 当前状态
 
