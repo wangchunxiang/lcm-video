@@ -5,9 +5,6 @@ import { parseVodPage } from '../collect/parser';
 import type { SourceRuntime } from '../collect/types';
 import { checkHost, probeImage } from './probe';
 
-/** 检查全部域名时同时进行的域名数；只影响不同域名之间，同一域名内仍抽 2 张、间隔 3 秒 */
-export const HOST_PARALLEL = 8;
-
 export type ScanResult = Awaited<ReturnType<typeof checkHost>> & { vodCount: number };
 
 /** 检查一个域名并写入 lcm_cover_check */

@@ -25,10 +25,28 @@
           共 {{ summary.hosts }} 个域名 · 正常 {{ summary.ok }} · 失效 {{ summary.bad }} · 无法验证
           {{ summary.unverified }} · 未检查 {{ summary.unchecked }}
         </span>
-        <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button type="primary" :loading="scanning" @click="scanAll('pending')">检查待检</el-button>
-        <el-button :loading="scanning" @click="scanAll('all')">全部重检</el-button>
-        <el-button :loading="pruning" @click="pruneHosts">清理无引用</el-button>
+        <!-- 没有可清理的记录时不显示，避免点了才知道是空的 -->
+        <span v-if="staleCount > 0" class="stale-hint">
+          另有 {{ staleCount }} 个域名已无影片引用
+          <el-button link type="primary" :loading="pruning" @click="pruneHosts">清理</el-button>
+        </span>
+        <!-- 检查：主按钮就是「待检」（日常唯一会用到的），全部重检藏在右侧下拉里 -->
+        <el-button-group class="scan-group">
+          <el-button type="primary" :loading="scanning" @click="scanAll('pending')">
+            检查待检（{{ pendingCount }}）
+          </el-button>
+          <el-dropdown trigger="click" :disabled="scanning" @command="onScanCommand">
+            <el-button type="primary" :icon="ArrowDown" :disabled="scanning" />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="pending">
+                  检查待检域名（{{ pendingCount }} 个）
+                </el-dropdown-item>
+                <el-dropdown-item command="all">全部重检（{{ summary.hosts }} 个）</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </el-button-group>
       </div>
     </el-card>
 
@@ -134,6 +152,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ElLoading, ElMessage, ElMessageBox, ElNotification } from 'element-plus';
+import { ArrowDown } from '@element-plus/icons-vue';
 import { api } from '../../api/client';
 import { formatDateTime } from '../../utils/datetime';
 
@@ -184,6 +203,11 @@ const drawerWrapRef = ref<HTMLElement | null>(null);
 const drawerTableHeight = ref(400);
 let drawerObserver: ResizeObserver | null = null;
 
+/** 待检 = 上次不是「正常」的域名（未检查 / 失效 / 无法验证） */
+const pendingCount = computed(() => rows.value.filter((row) => row.status !== 1).length);
+/** 已经没有影片引用的域名，只能清理，重检只会得出「库里没有该域名的图片」 */
+const staleCount = computed(() => rows.value.filter((row) => row.vodCount === 0).length);
+
 const filtered = computed(() =>
   rows.value.filter((row) => {
     if (applied.value.host && !row.host.toLowerCase().includes(applied.value.host.trim().toLowerCase())) {
@@ -195,14 +219,20 @@ const filtered = computed(() =>
 
 const visibleRows = computed(() => filtered.value.slice(0, visibleCount.value));
 
-function search(): void {
+/**
+ * 查询：先重新取一次域名列表，再应用筛选条件。
+ * 原来「刷新」是唯一重新拉数据的入口，和「查询」并存会让人以为查询也刷新了数据，
+ * 实际只做前端过滤；这里合并成一个入口。
+ */
+async function search(): Promise<void> {
+  await load();
   applied.value = { ...filters.value };
   visibleCount.value = PAGE;
 }
 
 function reset(): void {
   filters.value = { host: '', status: '' };
-  search();
+  void search();
 }
 
 /** el-table 自带固定高度，滚动条在内部的 .el-scrollbar__wrap 上 */
@@ -235,10 +265,27 @@ async function load(): Promise<void> {
   }
 }
 
+/**
+ * 同时扫描的域名数。只影响不同域名之间：单个域名内抽 2 张图是紧接着发的，没有间隔等待
+ * （见 probe.ts 的 probeImage）。每个域名通常 0.3~0.5 秒，按 0.5 秒估算整体耗时。
+ */
+const SCAN_PARALLEL = 8;
+/** 单个域名扫描的粗估耗时（毫秒），只用于确认框里的预计时间 */
+const SCAN_PER_HOST_MS = 500;
+
+function onScanCommand(command: string): void {
+  void scanAll(command === 'all' ? 'all' : 'pending');
+}
+
 async function scanAll(mode: 'pending' | 'all'): Promise<void> {
+  // 先现拉一次域名列表：域名来自 lcm_vod 的实时分组，页面打开后新入库的影片会带来新域名，
+  // 不重新拉就会漏掉它们（确认框里的数量也会是旧的）。
+  await load();
   if (mode === 'all') {
     const ok = await ElMessageBox.confirm(
-      `全部重检会忽略历史结果，把 ${summary.value.hosts} 个域名重新跑一遍，大约需要几十秒。`,
+      `全部重检会忽略历史结果，把 ${summary.value.hosts} 个域名重新跑一遍（每个域名抽 2 张图），预计 ${
+        Math.max(1, Math.round((summary.value.hosts / SCAN_PARALLEL) * (SCAN_PER_HOST_MS / 1000)))
+      } 秒。`,
       '全部重检',
       { type: 'warning', confirmButtonText: '开始重检', cancelButtonText: '取消' },
     ).then(() => true, () => false);
@@ -246,9 +293,13 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
   }
   const targets = mode === 'all' ? rows.value : rows.value.filter((row) => row.status !== 1);
   const skipped = rows.value.length - targets.length;
+  if (targets.length === 0) {
+    ElNotification.info({ title: '没有需要检查的域名', message: '所有域名上次检查都正常' });
+    return;
+  }
   scanning.value = true;
   try {
-    // v3 只有单域名扫描接口，这里按 8 个并发把待检域名跑一遍（与服务端原先的 HOST_PARALLEL 一致）
+    // v3 只有单域名扫描接口，这里按 SCAN_PARALLEL 个并发把目标域名跑一遍
     let cursor = 0;
     const worker = async (): Promise<void> => {
       while (cursor < targets.length) {
@@ -258,7 +309,7 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
         await api.longPost('/cover-check/scan', { host: row.host });
       }
     };
-    await Promise.all(Array.from({ length: Math.min(8, targets.length) }, () => worker()));
+    await Promise.all(Array.from({ length: Math.min(SCAN_PARALLEL, targets.length) }, () => worker()));
     await load();
     const tail = mode === 'pending' && skipped > 0 ? `，跳过 ${skipped} 个上次正常的域名` : '';
     ElNotification.success({ title: '检查完成', message: `共检查 ${targets.length} 个域名${tail}` });
@@ -542,6 +593,30 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   font-variant-numeric: tabular-nums;
+}
+
+/* 「另有 N 个域名已无影片引用 · 清理」：只在真有这类记录时出现 */
+.stale-hint {
+  margin-right: 12px;
+  font-size: 12px;
+  color: var(--el-color-warning);
+  font-variant-numeric: tabular-nums;
+}
+.stale-hint :deep(.el-button) {
+  font-size: 12px;
+  vertical-align: baseline;
+}
+
+/* 检查主按钮 + 下拉，两者共享一组边框，看起来是一个控件 */
+.scan-group :deep(.el-button:first-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.scan-group :deep(.el-dropdown .el-button) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .toolbar {
