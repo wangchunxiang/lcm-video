@@ -85,6 +85,35 @@ const TREND_POINTS = TREND_DAYS + 1;
  */
 const FULL_RANGE = 4;
 
+/**
+ * 今日/按小时的五个量：`COUNT(*)` 算全部运行（全量采集也是一次运行），
+ * 数据量只算增量采集——全量一次能写几万行，混进来会把 KPI 和曲线一起顶成尖峰。
+ * 两处查询共用，参数是 5 个 `FULL_RANGE`。
+ */
+const LOG_SUMS = `COUNT(*) AS runs,
+              COALESCE(SUM(CASE WHEN range_type <> ? THEN inserted END), 0) AS inserted,
+              COALESCE(SUM(CASE WHEN range_type <> ? THEN updated END), 0) AS updated,
+              COALESCE(SUM(CASE WHEN range_type <> ? THEN skipped END), 0) AS skipped,
+              COALESCE(SUM(CASE WHEN range_type <> ? THEN ignored END), 0) AS ignored,
+              COALESCE(SUM(CASE WHEN range_type <> ? THEN failed END), 0) AS failed`;
+
+/** `LOG_SUMS` 的占位符参数 */
+const LOG_PARAMS = [FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE];
+
+/** 一行聚合结果：mysql2 的 `SUM()` 回来是字符串，统一在这里收口成数字 */
+function logNumbers(
+  row: Record<string, string | number | undefined> | undefined,
+): DashboardSummary['todayLog'] {
+  return {
+    runs: Number(row?.runs ?? 0),
+    inserted: Number(row?.inserted ?? 0),
+    updated: Number(row?.updated ?? 0),
+    skipped: Number(row?.skipped ?? 0),
+    ignored: Number(row?.ignored ?? 0),
+    failed: Number(row?.failed ?? 0),
+  };
+}
+
 /** 补零用的空值，字段与 DashboardDay 保持一致 */
 const EMPTY_DAY = { inserted: 0, updated: 0, skipped: 0, ignored: 0, failed: 0 };
 
@@ -152,6 +181,18 @@ export class DashboardService {
       | 'hours'
     >
   > {
+    const [counts, todayLog, hours] = await Promise.all([
+      this.counts(),
+      this.todayTotals(),
+      this.hourBuckets(),
+    ]);
+    return { ...counts, todayLog, hours };
+  }
+
+  /** 四张卡要的规模数字（都是走索引的 COUNT） */
+  private async counts(): Promise<
+    Pick<DashboardSummary, 'vod' | 'play' | 'category' | 'source' | 'task'>
+  > {
     const [vodCounts] = await this.dataSource.query<Array<Record<string, string>>>(
       `SELECT COUNT(*) AS total,
               SUM(status = 1) AS enabled,
@@ -171,36 +212,6 @@ export class DashboardService {
     const [taskCount] = await this.dataSource.query<Array<Record<string, string>>>(
       'SELECT COUNT(*) AS total, SUM(is_enabled = 1) AS enabled FROM lcm_collect_task',
     );
-    // 「次数」算全部运行（全量采集也是一次运行），「数据量」只算增量采集——
-    // 与趋势图同一口径，否则手动跑一次全量，KPI 会跳到几万而曲线几乎没变化
-    const [todayLog] = await this.dataSource.query<Array<Record<string, string>>>(
-      `SELECT COUNT(*) AS runs,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN inserted END), 0) AS inserted,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN updated END), 0) AS updated,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN skipped END), 0) AS skipped,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN ignored END), 0) AS ignored,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN failed END), 0) AS failed
-         FROM lcm_collect_task_log
-        WHERE started_at >= CURDATE()`,
-      [FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE],
-    );
-    const hourRows = await this.dataSource.query<
-      Array<{ h: string; runs: string; inserted: string; updated: string; skipped: string; ignored: string; failed: string }>
-    >(
-      `SELECT HOUR(started_at) AS h,
-              COUNT(*) AS runs,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN inserted END), 0) AS inserted,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN updated END), 0) AS updated,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN skipped END), 0) AS skipped,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN ignored END), 0) AS ignored,
-              COALESCE(SUM(CASE WHEN range_type <> ? THEN failed END), 0) AS failed
-         FROM lcm_collect_task_log
-        WHERE started_at >= CURDATE()
-        GROUP BY h`,
-      [FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE],
-    );
-    const byHour = new Map(hourRows.map((row) => [Number(row.h), row]));
-
     return {
       vod: {
         total: Number(vodCounts?.total ?? 0),
@@ -214,28 +225,38 @@ export class DashboardService {
         total: Number(sourceCount?.total ?? 0),
         enabled: Number(sourceCount?.enabled ?? 0),
       },
-      task: { total: Number(taskCount?.total ?? 0), enabled: Number(taskCount?.enabled ?? 0) },
-      todayLog: {
-        runs: Number(todayLog?.runs ?? 0),
-        inserted: Number(todayLog?.inserted ?? 0),
-        updated: Number(todayLog?.updated ?? 0),
-        skipped: Number(todayLog?.skipped ?? 0),
-        ignored: Number(todayLog?.ignored ?? 0),
-        failed: Number(todayLog?.failed ?? 0),
+      task: {
+        total: Number(taskCount?.total ?? 0),
+        enabled: Number(taskCount?.enabled ?? 0),
       },
-      hours: Array.from({ length: 24 }, (_, hour) => {
-        const row = byHour.get(hour);
-        return {
-          hour,
-          runs: Number(row?.runs ?? 0),
-          inserted: Number(row?.inserted ?? 0),
-          updated: Number(row?.updated ?? 0),
-          skipped: Number(row?.skipped ?? 0),
-          ignored: Number(row?.ignored ?? 0),
-          failed: Number(row?.failed ?? 0),
-        };
-      }),
     };
+  }
+
+  /** 今日合计（口径见 LOG_SUMS） */
+  private async todayTotals(): Promise<DashboardSummary['todayLog']> {
+    const [row] = await this.dataSource.query<Array<Record<string, string>>>(
+      `SELECT ${LOG_SUMS}
+         FROM lcm_collect_task_log
+        WHERE started_at >= CURDATE()`,
+      LOG_PARAMS,
+    );
+    return logNumbers(row);
+  }
+
+  /** 今日按小时的运行分布，没有记录的时段补 0（前端按时段画满 24 根） */
+  private async hourBuckets(): Promise<DashboardHour[]> {
+    const rows = await this.dataSource.query<Array<Record<string, string>>>(
+      `SELECT HOUR(started_at) AS h, ${LOG_SUMS}
+         FROM lcm_collect_task_log
+        WHERE started_at >= CURDATE()
+        GROUP BY h`,
+      LOG_PARAMS,
+    );
+    const byHour = new Map(rows.map((row) => [Number(row.h), row]));
+    return Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      ...logNumbers(byHour.get(hour)),
+    }));
   }
 
   /** 按天聚合的增量采集量（只返回有记录的天，补零交给调用方） */
@@ -383,15 +404,5 @@ export class DashboardService {
   private async count(sql: string): Promise<number> {
     const [row] = await this.dataSource.query<Array<{ n: string }>>(sql);
     return Number(row?.n ?? 0);
-  }
-
-  private async sourceNameMap(ids: string[]): Promise<Map<string, string>> {
-    const unique = [...new Set(ids)].filter((id) => id !== '' && id !== '0');
-    if (unique.length === 0) return new Map();
-    const rows = await this.dataSource.query<Array<{ id: string; name: string }>>(
-      'SELECT id, name FROM lcm_collect_source WHERE id IN (?)',
-      [unique],
-    );
-    return new Map(rows.map((row) => [row.id, row.name]));
   }
 }
