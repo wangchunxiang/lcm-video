@@ -32,7 +32,7 @@ import {
  * 图标一律用 lucide（与前台同一套视觉语言）：不传 `stroke-width`，只传 `:size="16"`
  * （分组标题与叶子项同尺寸），颜色跟随 `currentColor`，由 el-menu 的文字色决定。
  */
-export const MENU_ICONS: Record<string, Component> = {
+export const MENU_ICONS = {
   '/dashboard': LayoutDashboard,
 
   '/collect': Download,
@@ -58,9 +58,10 @@ export const MENU_ICONS: Record<string, Component> = {
   '/setting': Settings,
   '/site': Monitor,
   '/account': User,
-};
+} satisfies Record<string, Component>;
 
 /** 没配图标的菜单项返回 undefined，模板里 `v-if` 之后整块不渲染，不留空位 */
 export function menuIcon(path: string): Component | undefined {
-  return MENU_ICONS[path];
+  // 字面量键不能在 string 上索引，这里按「路径 → 图标」的查表语义放宽一次
+  return (MENU_ICONS as Record<string, Component | undefined>)[path];
 }

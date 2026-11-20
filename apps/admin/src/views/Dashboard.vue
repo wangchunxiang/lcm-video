@@ -539,7 +539,7 @@ onMounted(() => {
             />
           </div>
           <!-- 线路多了在这条列表里滚，滚动条与「今日更新 / 今日入库」同款 -->
-          <div class="line-list feed-body">
+          <div class="line-list">
             <div v-for="row in lineRows" :key="row.name" class="line-item" :title="row.name">
               <span class="line-swatch" :style="{ background: row.color }" />
               <span class="line-name">{{ row.name }}</span>
@@ -556,7 +556,7 @@ onMounted(() => {
           <span>今日更新</span>
           <span class="card-sub">今日 {{ comma(data?.latestUpdates.total ?? 0) }} 部</span>
         </header>
-        <div class="card-body feed-body">
+        <div class="card-body">
           <div v-if="(data?.latestUpdates.items ?? []).length > 0" class="feed">
             <div v-for="item in data?.latestUpdates.items ?? []" :key="item.id" class="feed-item">
               <span class="feed-name" :title="item.name">{{ item.name }}</span>
@@ -574,7 +574,7 @@ onMounted(() => {
           <span>今日入库</span>
           <span class="card-sub">今日 {{ comma(data?.latestVods.total ?? 0) }} 部</span>
         </header>
-        <div class="card-body feed-body">
+        <div class="card-body">
           <div v-if="(data?.latestVods.items ?? []).length > 0" class="feed">
             <div v-for="item in data?.latestVods.items ?? []" :key="item.id" class="feed-item">
               <span class="feed-name" :title="item.name">{{ item.name }}</span>
@@ -759,38 +759,46 @@ onMounted(() => {
 }
 
 /* ── 饼图 ───────────────────────────────────────────── */
-/* ── 最新更新 / 最新入库 ───────────────────────────── */
+/* ── 可滚动区域的滚动条 ───────────────────────────── */
 /*
- * 滚动条对齐侧栏用的 el-scrollbar：6px 宽、圆角、平时透明、鼠标在卡片里才显形。
- * 这里用原生滚动条（两张列表的数据量不需要 el-scrollbar 的虚拟滚动），
- * `scrollbar-width/color` 给 Firefox，`::-webkit-scrollbar` 给 Chromium/Safari。
+ * 统一成侧栏 el-scrollbar 的观感：6px 宽、圆角、灰色、平时透明、鼠标进来才显形。
  * 宽度固定 6px 也顺带避免「滚动条出现→内容横向跳一下」。
+ * `scrollbar-width/color` 给 Firefox，`::-webkit-scrollbar` 给 Chromium/Safari。
  */
-.feed-body {
+.card-body,
+.line-list {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
-.feed-body:hover {
+.card-body:hover,
+.line-list:hover {
   scrollbar-color: var(--el-scrollbar-bg-color, rgba(144, 147, 153, 0.4)) transparent;
 }
-.feed-body::-webkit-scrollbar {
+.card-body::-webkit-scrollbar,
+.line-list::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.feed-body::-webkit-scrollbar-thumb {
+.card-body::-webkit-scrollbar-thumb,
+.line-list::-webkit-scrollbar-thumb {
   border-radius: 3px;
   background-color: transparent;
   transition: background-color 0.2s;
 }
-.feed-body:hover::-webkit-scrollbar-thumb {
+.card-body:hover::-webkit-scrollbar-thumb,
+.line-list:hover::-webkit-scrollbar-thumb {
   background-color: var(--el-scrollbar-bg-color, rgba(144, 147, 153, 0.4));
 }
-.feed-body::-webkit-scrollbar-thumb:hover {
+.card-body::-webkit-scrollbar-thumb:hover,
+.line-list::-webkit-scrollbar-thumb:hover {
   background-color: var(--el-scrollbar-hover-bg-color, rgba(144, 147, 153, 0.55));
 }
-.feed-body::-webkit-scrollbar-track {
+.card-body::-webkit-scrollbar-track,
+.line-list::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ── 最新更新 / 最新入库 ───────────────────────────── */
 .feed {
   display: flex;
   flex-direction: column;

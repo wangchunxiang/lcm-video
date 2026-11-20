@@ -40,6 +40,9 @@ interface Episode {
 interface PlayLine {
   id: string;
   sourceId: string;
+  /** 线路显示名（线路注册表的 name），可能为空 */
+  lineName: string;
+  /** 源站名（采集源的 name），手工线路为空 */
   sourceName: string;
   sourceFrom: string;
   sourceUpdatedAt: string | null;
@@ -226,7 +229,7 @@ async function saveLine(line: PlayLine, message = '线路已保存') {
 
 async function removeLine(line: PlayLine) {
   try {
-    await ElMessageBox.confirm(`确定删除线路「${line.sourceName || line.sourceFrom}」吗？`, '删除线路', {
+    await ElMessageBox.confirm(`确定删除线路「${lineTitle(line)}」吗？`, '删除线路', {
       type: 'warning',
     });
   } catch {
@@ -295,9 +298,9 @@ function applyPaste() {
   void saveLine(line);
 }
 
+/** 下拉里的线路标题：线路名 → 源站名 → 线路标识。 */
 function lineTitle(line: PlayLine): string {
-  if (line.sourceId === '0' || line.sourceId === '') return line.sourceFrom;
-  return `${line.sourceName || '源站'} · ${line.sourceFrom}`;
+  return line.lineName || line.sourceName || line.sourceFrom;
 }
 </script>
 
@@ -331,22 +334,15 @@ function lineTitle(line: PlayLine): string {
                 <div class="metric-row"><span>ID</span><b>{{ vodId }}</b></div>
                 <div class="metric-row"><span>线路</span><b>{{ lines.length }} 条</b></div>
                 <div class="metric-row"><span>剧集</span><b>{{ totalEpisodes }} 集</b></div>
+                <div class="metric-row">
+                  <span>入库</span>
+                  <b class="metric-time">{{ formatDateTime(form.createdAt) || '—' }}</b>
+                </div>
+                <div class="metric-row">
+                  <span>采集</span>
+                  <b class="metric-time">{{ formatDateTime(form.collectedAt) || '—' }}</b>
+                </div>
               </div>
-
-              <ul class="side-times">
-                <li>
-                  <el-tag size="small" type="info" effect="light">入库日期</el-tag>
-                </li>
-                <li class="dim">
-                  <el-tag size="small" type="info" effect="plain">{{ formatDateTime(form.createdAt) || '—' }}</el-tag>
-                </li>
-                <li>
-                  <el-tag size="small" type="success" effect="light">最后采集</el-tag>
-                </li>
-                <li class="dim">
-                  <el-tag size="small" type="success" effect="plain">{{ formatDateTime(form.collectedAt) || '—' }}</el-tag>
-                </li>
-              </ul>
             </div>
 
             <div class="base-main">
@@ -536,7 +532,8 @@ function lineTitle(line: PlayLine): string {
   align-items: flex-start;
 }
 .base-side {
-  width: 150px;
+  /* 220px：左栏要放得下 `2026-11-20 12:00:00` 这种完整时间，150px 时会被折成两行 */
+  width: 220px;
   flex: none;
   display: flex;
   flex-direction: column;
@@ -544,7 +541,7 @@ function lineTitle(line: PlayLine): string {
 }
 .poster {
   width: 100%;
-  height: 210px;
+  height: 300px;
   border: 1px solid var(--el-border-color-light);
   border-radius: 4px;
   background: var(--el-fill-color-light);
@@ -568,49 +565,19 @@ function lineTitle(line: PlayLine): string {
   border-top: 1px solid var(--el-border-color-lighter);
 }
 .metric-row b {
+  flex: none;
   font-weight: 400;
   color: var(--el-text-color-primary);
   font-variant-numeric: tabular-nums;
-}
-.side-times {
-  width: 100%;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--el-text-color-secondary);
-}
-.side-times li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-variant-numeric: tabular-nums;
-}
-.side-times li b {
-  font-weight: 400;
-  color: var(--el-text-color-primary);
-}
-.side-times :deep(.el-tag) {
-  width: 100%;
-  justify-content: center;
-}
-.side-times li.dim {
-  display: block;
-  color: var(--el-text-color-primary);
-  margin-bottom: 4px;
-}
-.poster-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-  cursor: default;
+  white-space: nowrap;
 }
 .base-main {
   flex: 1;
   min-width: 0;
+}
+/* el-input-number 默认把输入值居中，这里跟同表单的 el-input 对齐成左对齐 */
+.base-main :deep(.el-input-number .el-input__inner) {
+  text-align: left;
 }
 .line-toolbar {
   display: flex;
