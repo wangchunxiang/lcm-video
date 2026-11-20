@@ -53,7 +53,7 @@ onMounted(() => {
         :loading="eager ? 'eager' : 'lazy'"
         :fetchpriority="eager ? 'high' : 'auto'"
         decoding="async"
-        class="relative h-full w-full object-fill transition-[transform,opacity] duration-500 group-hover:scale-[1.14]"
+        class="relative h-full w-full object-fill transition-[scale,opacity] duration-500 group-hover:scale-[1.14]"
         :class="loaded ? 'opacity-100' : 'opacity-0'"
         @load="loaded = true"
         @error="onError"
