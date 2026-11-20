@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User } from '@element-plus/icons-vue';
 import { menus } from '../menu.ts';
+import { menuIcon } from './menuIcons.ts';
 
 import { auth, logout } from '../auth.ts';
 
@@ -30,14 +31,23 @@ async function onLogout() {
           <template v-for="item in menus" :key="item.path">
             <el-sub-menu v-if="item.children?.length" :index="item.path">
               <template #title>
-                <span>{{ item.title }}</span>
+                <el-icon class="menu-icon">
+                  <component :is="menuIcon(item.path)" v-if="menuIcon(item.path)" />
+                </el-icon>
+                <span class="menu-title">{{ item.title }}</span>
               </template>
               <el-menu-item v-for="child in item.children" :key="child.path" :index="child.path">
-                <span>{{ child.title }}</span>
+                <el-icon class="menu-icon">
+                  <component :is="menuIcon(child.path)" v-if="menuIcon(child.path)" />
+                </el-icon>
+                <span class="menu-title">{{ child.title }}</span>
               </el-menu-item>
             </el-sub-menu>
             <el-menu-item v-else :index="item.path">
-              <span>{{ item.title }}</span>
+              <el-icon class="menu-icon">
+                <component :is="menuIcon(item.path)" v-if="menuIcon(item.path)" />
+              </el-icon>
+              <span class="menu-title">{{ item.title }}</span>
             </el-menu-item>
           </template>
         </el-menu>
@@ -107,6 +117,21 @@ async function onLogout() {
 }
 .menu {
   border-right: none;
+}
+/* 菜单图标：lucide 16px，颜色由 el-menu 的文字色（currentColor）决定 */
+.menu-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex: none;
+  font-size: 16px;
+}
+.menu-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .header {
   height: var(--lcm-header-height);

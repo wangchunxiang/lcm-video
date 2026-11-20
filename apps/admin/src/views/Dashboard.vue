@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Film, Gauge, TrendingUp, TriangleAlert } from 'lucide-vue-next';
 import { api } from '../api/client.ts';
 import { formatShortTime } from '../utils/datetime.ts';
 import type { EChartsOption } from '../utils/echarts.ts';
@@ -414,7 +415,10 @@ onMounted(() => {
     <div class="stats">
       <section class="stat stat-film">
         <div class="stat-top">
-          <span class="stat-label">影片总数</span>
+          <span class="stat-label">
+            <el-icon class="stat-icon"><Film /></el-icon>
+            影片总数
+          </span>
           <span class="stat-value">{{ comma(data?.vod.total ?? 0) }}</span>
         </div>
         <div class="stat-bot">
@@ -427,7 +431,10 @@ onMounted(() => {
 
       <section class="stat stat-grow">
         <div class="stat-top">
-          <span class="stat-label">今日入库</span>
+          <span class="stat-label">
+            <el-icon class="stat-icon"><TrendingUp /></el-icon>
+            今日入库
+          </span>
           <span class="stat-value">{{ comma(data?.todayLog.inserted ?? 0) }}</span>
         </div>
         <div class="stat-bot">
@@ -449,7 +456,10 @@ onMounted(() => {
 
       <section class="stat stat-health">
         <div class="stat-top">
-          <span class="stat-label">今日采集成功率</span>
+          <span class="stat-label">
+            <el-icon class="stat-icon"><Gauge /></el-icon>
+            今日采集成功率
+          </span>
           <span class="stat-value" :class="{ 'stat-bad': successRate < 100 }">{{ successRate }}<i>%</i></span>
         </div>
         <div class="stat-bot">
@@ -465,7 +475,10 @@ onMounted(() => {
       <!-- 待处理：侧边条只是四张卡的区分色，不随内容变 -->
       <section class="stat stat-todo">
         <div class="stat-top">
-          <span class="stat-label">待处理</span>
+          <span class="stat-label">
+            <el-icon class="stat-icon"><TriangleAlert /></el-icon>
+            待处理
+          </span>
           <span
             class="stat-value"
             :class="{ 'stat-bad': pendingTotal > 0 }"
@@ -638,8 +651,28 @@ onMounted(() => {
   min-width: 0;
   overflow: hidden;
 }
+/* KPI 图标：16px，只做视觉锚点，颜色跟卡片色条一致（每个 .stat-* 各给一个） */
+.stat-icon {
+  flex: none;
+  margin-right: 6px;
+  font-size: 16px;
+}
+.stat-film .stat-icon {
+  color: var(--el-color-primary);
+}
+.stat-grow .stat-icon {
+  color: var(--el-color-success);
+}
+.stat-health .stat-icon {
+  color: var(--el-color-warning);
+}
+.stat-todo .stat-icon {
+  color: var(--el-color-danger);
+}
 .stat-label {
   flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
   font-size: 12.5px;
   color: var(--el-text-color-secondary);

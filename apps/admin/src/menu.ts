@@ -1,63 +1,60 @@
 export interface MenuItem {
   path: string;
   title: string;
-  icon?: string;
   children?: MenuItem[];
 }
 
 /**
  * 后台菜单。侧边栏按分组展示，但**路由是拍平的**：
  * 分组节点只作为 el-sub-menu 的 index（不是路由），叶子节点的 path 就是页面地址。
+ *
+ * 这里**不放图标**：图标按 path 集中登记在 `layout/menuIcons.ts`，
+ * 加菜单时记得两边各加一条，别在这一层写死图标名。
  */
 export const menus: MenuItem[] = [
-  { path: '/dashboard', title: '数据概览', icon: 'DataBoard' },
+  { path: '/dashboard', title: '数据概览' },
   {
     path: '/collect',
     title: '采集管理',
-    icon: 'Download',
     children: [
-      { path: '/sources', title: '采集源站', icon: 'Link' },
-      { path: '/source-rules', title: '替换规则', icon: 'Switch' },
-      { path: '/mappings', title: '分类映射', icon: 'Share' },
-      { path: '/merge-rules', title: '入库规则', icon: 'Operation' },
-      { path: '/tasks', title: '采集任务', icon: 'AlarmClock' },
-      { path: '/logs', title: '采集记录', icon: 'Tickets' },
+      { path: '/sources', title: '采集源站' },
+      { path: '/source-rules', title: '替换规则' },
+      { path: '/mappings', title: '分类映射' },
+      { path: '/merge-rules', title: '入库规则' },
+      { path: '/tasks', title: '采集任务' },
+      { path: '/logs', title: '采集记录' },
     ],
   },
   {
     path: '/content',
     title: '内容管理',
-    icon: 'Film',
     children: [
-      { path: '/vods', title: '影视管理', icon: 'VideoCamera' },
-      { path: '/categories', title: '分类管理', icon: 'CollectionTag' },
+      { path: '/vods', title: '影视管理' },
+      { path: '/categories', title: '分类管理' },
     ],
   },
   {
     path: '/playback',
     title: '播放管理',
-    icon: 'VideoPlay',
     children: [
-      { path: '/player-settings', title: '播放设置', icon: 'Setting' },
-      { path: '/play-lines', title: '线路设置', icon: 'Connection' },
+      { path: '/player-settings', title: '播放设置' },
+      { path: '/play-lines', title: '线路设置' },
     ],
   },
   {
     path: '/tools',
     title: '高级工具',
-    icon: 'SetUp',
     children: [
-      { path: '/merge', title: '重复影片', icon: 'CopyDocument' },
-      { path: '/cover-check', title: '图片检查', icon: 'Picture' },
+      { path: '/merge', title: '重复影片' },
+      { path: '/cover-check', title: '图片检查' },
     ],
   },
   {
     path: '/setting',
     title: '系统管理',
-    icon: 'Setting',
     children: [
-      { path: '/site', title: '站点设置', icon: 'Monitor' },
-      { path: '/account', title: '账号设置', icon: 'User' },
+      { path: '/site', title: '站点设置' },
+      { path: '/account', title: '账号设置' },
     ],
   },
 ];
