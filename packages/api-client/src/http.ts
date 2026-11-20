@@ -100,7 +100,6 @@ async function readEnvelope<T>(response: Response): Promise<Envelope<T> | null> 
 
 export function createHttpClient(options: HttpClientOptions): HttpClient {
   const { baseUrl, getToken, onUnauthorized, credentials = 'same-origin', timeoutMs = 30_000 } = options;
-  // pi-lens-ignore: ts-ssrf -- 浏览器端请求客户端：URL 来自配置的 baseUrl，不是服务端出网，SSRF 不成立
   const doFetch: typeof fetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
 
   function authHeaders(extra?: Record<string, string>): Record<string, string> {
