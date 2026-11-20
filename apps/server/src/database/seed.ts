@@ -12,18 +12,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 import { createDataSourceOptions } from '../config/typeorm.config';
-
-/** 去掉 `--` 注释行，按分号切出可执行语句。 */
-function parseStatements(sql: string): string[] {
-  return sql
-    .split(/\r?\n/)
-    .filter((line) => !line.trimStart().startsWith('--'))
-    .join('\n')
-    .split(';')
-    .map((statement) => statement.trim())
-    .filter((statement) => statement !== '');
-}
-
+import { parseStatements } from './seed-sql';
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
   const dir = join(__dirname, 'seeds');

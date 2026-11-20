@@ -44,7 +44,7 @@ docs/                  文档目录，入口见 docs/README.md（01-架构 / 02-
 ```bash
 npm install
 cp .env.example .env        # 填 DATABASE_URL、JWT_SECRET 等
-npm run db:seed             # 可选：导入初始分类 / 站点配置 / 管理员账号
+npm run db:seed             # 可选：手工导入种子；正常启动会自动补空表
 npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 ```
 
@@ -61,8 +61,10 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 持久化写 my.cnf 的 `default-time-zone='+08:00'`；否则 `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE`
 仍按服务器时区（常见是 UTC）写入，与应用写入的时间差 8 小时。
 
-首次建库后没有管理员账号：`npm run db:seed` 可导入 `apps/server/src/database/seeds/*.sql`，
-但这些种子的内容待校对，建议从已有库 `mysqldump` 出 `lcm_admin_user` / `lcm_category` / `lcm_setting` 三张表替换。
+空库首次启动会自动补初始数据：`lcm_category` / `lcm_setting` 为空就导入 seeds；
+`lcm_admin_user` 为空且 `.env` 配了 `ADMIN_PASSWORD` 就创建管理员。已有数据完全不动。
+关闭分类/配置自动导入设 `SEED_ON_START=false`。种子内容待校对，也可以从已有库
+`mysqldump` 出 `lcm_admin_user` / `lcm_category` / `lcm_setting` 三张表替换。
 
 从 v2 旧库搬数据用 `npm run db:import-legacy`：默认连同一实例的 `lcm_video` 库，
 跨实例时设 `LEGACY_DATABASE_URL`。脚本逐表按主键分批搬运，处理了改名
@@ -154,36 +156,40 @@ docker compose up -d --force-recreate app
 ```
 
 容器启动时会自动执行迁移建表，数据仍在已有数据库里，重建应用不会丢数据。
-空库没有管理员账号，先按下节初始化。
 
-### 首次初始化管理员
+### 空库首次初始化（自动）
 
-镜像运行阶段只带 `dist`，不含 `src/database/seeds/*.sql`，所以容器内不能直接 `npm run db:seed`。二选一：
+空库第一次启动时，服务端会在迁移之后自动补齐：
 
-**从已有库导入（推荐）**
+- `lcm_category` 为空 → 导入镜像内的初始分类（4 个一级 + 30 个二级）；
+- `lcm_setting` 为空 → 导入站点配置默认值；
+- `lcm_admin_user` 为空且 `.env` 配了 `ADMIN_PASSWORD` → 创建管理员。
+
+只需要在 NAS 的 `.env` 里加：
+
+```dotenv
+ADMIN_USERNAME=admin          # 可选，默认 admin
+ADMIN_PASSWORD=改成至少6位的密码
+ADMIN_NICKNAME=管理员          # 可选
+```
+
+然后 `docker compose up -d --force-recreate app`。日志里出现「已创建管理员 admin」即可登录；
+登录后建议把 `ADMIN_PASSWORD` 从 `.env` 删掉（账号已经落库，删掉不影响登录）。
+
+说明：
+
+- 只对**空表**生效：表里已有数据就跳过，升级/重建容器不会覆盖。
+- 不想自动导入分类/配置时，设 `SEED_ON_START=false`。
+- 没配 `ADMIN_PASSWORD` 时应用照常启动，只打 warn；之后补上再重启，只要表还是空的就会创建。
+- 已有旧库直接改 `DATABASE_URL` 指向它即可，不会重复导入。
+
+**从已有库整库导入**时先不要设 `ADMIN_PASSWORD`，等 mysqldump 导入完成后再启动/重建应用，
+避免自动建的管理员与旧数据主键冲突：
 
 ```bash
 mysqldump -h 旧地址 -u用户 -p --single-transaction lcm_video > lcm.sql
 # 数据库也是容器时（数据库装在宿主机就改用宿主机的 mysql/mariadb 命令）：
 docker exec -i <数据库容器名> mariadb -u<用户> -p'<密码>' lcm_video < lcm.sql
-```
-
-**新建一个管理员**：先生成 scrypt 哈希（Git Bash / NAS shell）
-
-```bash
-node -e "const c=require('node:crypto');const s=c.randomBytes(16).toString('hex');const h=c.scryptSync('改成你的密码',s,32,{N:16384,r:8,p:1}).toString('hex');console.log(['scrypt',16384,8,1,s,h].join('$'))"
-```
-
-把哈希写进 SQL 文件再导入（应用至少启动过一次、迁移建表之后）。
-哈希里的 `$` 不能经过 shell 展开，所以走文件而不是 `-e`：
-
-```bash
-cat > insert-admin.sql <<'SQL'
-INSERT INTO lcm_admin_user (id, username, password, nickname, is_enabled, password_version)
-VALUES (1, 'admin', '<上一步的哈希>', '管理员', 1, 0);
-SQL
-docker exec -i <数据库容器名> mariadb -u<用户> -p'<密码>' lcm_video < insert-admin.sql
-rm insert-admin.sql
 ```
 
 登录后立刻在后台改密码。

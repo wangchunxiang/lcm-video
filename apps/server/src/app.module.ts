@@ -12,6 +12,7 @@ import { configuration } from './config/configuration';
 import { validateEnv } from './config/validation.schema';
 import { createDataSourceOptions } from './config/typeorm.config';
 import { adoptExistingSchema } from './database/schema-bootstrap';
+import { SeedBootstrapService } from './database/seed-bootstrap.service';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -93,6 +94,8 @@ import { CollectModule } from './modules/collect/collect.module';
   providers: [
     // 全局登录守卫：除 @Public() 外所有接口都要带 token（决策 5.3）
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // 空库启动时补初始分类 / 站点配置 / 管理员（见 database/seed-bootstrap.ts）
+    SeedBootstrapService,
   ],
 })
 export class AppModule {}
