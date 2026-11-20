@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import { DataSource, In, Like, Not, Repository } from 'typeorm';
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { AdFeatureEntity } from '../ad-feature/ad-feature.entity';
 import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
@@ -12,6 +12,7 @@ import { PlayLineEntity } from '../play-line/play-line.entity';
 import { SourceRuleEntity } from '../source-rule/source-rule.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import { VodEntity } from '../vod/vod.entity';
+import { VodMergeIgnoreEntity } from '../vod-merge-ignore/vod-merge-ignore.entity';
 import { autoMatchCategory } from '@lcm/shared';
 import type { CategoryMatchInfo } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
@@ -52,6 +53,7 @@ export interface PurgeResult {
   vods: number;
   playLines: number;
   coverHosts: number;
+  mergeIgnores: number;
   cancelled: number;
 }
 
@@ -107,6 +109,7 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
       result.adFeatures > 0 ? `${result.adFeatures} 条广告特征` : '',
       result.playLines > 0 ? `${result.playLines} 条线路注册` : '',
       result.coverHosts > 0 ? `${result.coverHosts} 条域名体检记录` : '',
+      result.mergeIgnores > 0 ? `${result.mergeIgnores} 条重复影片忽略记录` : '',
     ].filter((item) => item !== '');
     return {
       success: true,
@@ -118,7 +121,8 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
    * 彻底删掉采集源及其全部痕迹。
    *
    * 全库没有外键，只能按顺序手工清，顺序不能错：日志明细 → 日志 → 任务 → 分类映射 /
-   * 替换规则 / 广告特征 → 播放地址 → 没线路的影片 → 线路注册 → 域名体检 → 源本身。
+   * 替换规则 / 广告特征 → 播放地址 → 没线路的影片 → 线路注册 → 重复影片忽略记录 →
+   * 域名体检 → 源本身。
    * 整段跑在一个事务里，中途失败全部回滚。
    */
   async purge(ids: string[]): Promise<PurgeResult> {
@@ -135,6 +139,7 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
       vods: 0,
       playLines: 0,
       coverHosts: 0,
+      mergeIgnores: 0,
       cancelled: 0,
     };
     if (targets.length === 0) return result;
@@ -185,6 +190,15 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
         }
         // 剩下的线路还活着，但已不属于任何源（防御：一条线路只归属一个源）
         await manager.update(PlayLineEntity, { sourceId: In(targets) }, { sourceId: null });
+      }
+
+      // 重复影片忽略名单：`same:<源站 id>-<source_vod_id>` 这类键里烙着源站 id，
+      // 源删掉后永远不会再匹配上任何分组（id 自增不复用），顺手清掉；
+      // `auto:` / `suspect:` 是片名哈希，与源无关，交叉采集到同一部片时仍要生效，保留。
+      for (const id of targets) {
+        result.mergeIgnores += await affected(
+          manager.delete(VodMergeIgnoreEntity, { mergeKey: Like(`same:${id}-%`) }),
+        );
       }
 
       // 域名体检是快照表：影片删掉后可能整页空掉，顺手清掉已经没有封面引用的域名

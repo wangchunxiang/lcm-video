@@ -26,7 +26,8 @@ interface DeleteResult {
  * 1）该源的映射、任务、日志（含明细）、替换规则、广告特征、播放地址全清；
  * 2）失去全部线路的影片一并删掉，还有别的源的影片要留着并保住它的线路；
  * 3）线路注册表只在彻底没人用时才删；
- * 4）域名体检表里已经没有影片引用的域名顺手清掉。
+ * 4）域名体检表里已经没有影片引用的域名顺手清掉；
+ * 5）重复影片忽略名单里属于该源的 `same:<源站 id>-*` 清掉，片名哈希类的保留。
  */
 describe('删除采集源 /api/admin/collect-source', () => {
   let app: INestApplication;
@@ -81,6 +82,8 @@ describe('删除采集源 /api/admin/collect-source', () => {
     return Number(rows[0]?.c ?? 0);
   };
 
+  const autoIgnoreKey = `auto:${'a'.repeat(32)}`;
+
   beforeAll(async () => {
     const context = await createTestApp();
     app = context.app;
@@ -132,6 +135,12 @@ describe('删除采集源 /api/admin/collect-source', () => {
     await addPlay(vodOnlyA, sourceA, 'e2ea');
     await addPlay(vodShared, sourceA, 'e2ea');
     await addPlay(vodShared, sourceB, 'e2eb');
+
+    // 忽略名单：一条属于 A 源（删源时该清），一条属于 B 源（不该动），一条是片名哈希（与源无关，也不该动）
+    await dataSource.query(
+      `INSERT INTO lcm_vod_merge_ignore (merge_key, kind) VALUES (?, 2), (?, 2), (?, 1)`,
+      [`same:${sourceA}-${vodOnlyA}`, `same:${sourceB}-${vodShared}`, autoIgnoreKey],
+    );
   });
 
   afterAll(async () => {
@@ -139,6 +148,10 @@ describe('删除采集源 /api/admin/collect-source', () => {
     await dataSource.query('DELETE FROM lcm_vod_play WHERE source_from IN (?, ?)', ['e2ea', 'e2eb']);
     await dataSource.query('DELETE FROM lcm_play_line WHERE source_from IN (?, ?)', ['e2ea', 'e2eb']);
     await dataSource.query('DELETE FROM lcm_vod WHERE id IN (?, ?)', [vodOnlyA, vodShared]);
+    await dataSource.query('DELETE FROM lcm_vod_merge_ignore WHERE merge_key LIKE ? OR merge_key = ?', [
+      `same:${sourceB}-%`,
+      autoIgnoreKey,
+    ]);
     await dataSource.query('DELETE FROM lcm_collect_source WHERE id = ?', [sourceB]);
     await app.close();
   });
@@ -151,6 +164,7 @@ describe('删除采集源 /api/admin/collect-source', () => {
     expect(body.code).toBe(0);
     expect(body.data.success).toBe(true);
     expect(body.data.message).toContain('播放地址');
+    expect(body.data.message).toContain('重复影片忽略记录');
 
     // 源本身与它的一切
     expect(await countOf('lcm_collect_source', 'id = ?', [sourceA])).toBe(0);
@@ -177,6 +191,11 @@ describe('删除采集源 /api/admin/collect-source', () => {
     expect(await countOf('lcm_play_line', 'source_from = ?', ['e2eb'])).toBe(1);
     // 活下来的线路不该还挂着已删源的 id
     expect(await countOf('lcm_play_line', 'source_id = ?', [sourceA])).toBe(0);
+
+    // 忽略名单：A 源的 same 键已清，B 源的 same 键与片名哈希键都还在
+    expect(await countOf('lcm_vod_merge_ignore', 'merge_key LIKE ?', [`same:${sourceA}-%`])).toBe(0);
+    expect(await countOf('lcm_vod_merge_ignore', 'merge_key = ?', [`same:${sourceB}-${vodShared}`])).toBe(1);
+    expect(await countOf('lcm_vod_merge_ignore', 'merge_key = ?', [autoIgnoreKey])).toBe(1);
   });
 
   it('删不存在的源返回失败，且不动任何数据', async () => {
