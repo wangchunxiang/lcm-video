@@ -7,6 +7,7 @@ import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { setPageCategoryId } from '../composables/usePageCategoryId';
 import { useScrollLock } from '../composables/useScrollLock';
+import { useEpisodeCells } from '../composables/useEpisodeCells';
 import VodGrid from '../components/VodGrid.vue';
 import Container from '../components/layout/Container.vue';
 import GridSkeleton from '../components/ui/GridSkeleton.vue';
@@ -85,6 +86,9 @@ try {
 }
 
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
+const epsGridRef = ref<HTMLDivElement | null>(null);
+/** 小屏下按集名宽度动态跨列（1–4 格），PC 上一律 1 格 */
+const { episodeCells } = useEpisodeCells(episodesShown, epsGridRef);
 
 function toggleEpOrder(): void {
   epDesc.value = !epDesc.value;
@@ -481,13 +485,18 @@ useSeo(() => ({
           class="max-h-[var(--ep-max-h)] overflow-y-auto transition-opacity"
           :class="epLoading ? 'pointer-events-none opacity-40' : ''"
         >
-          <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+          <div
+            ref="epsGridRef"
+            class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+          >
             <RouterLink
-              v-for="ep in episodesShown"
+              v-for="ep in episodeCells"
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
               class="h-[var(--ep-cell-h)] truncate rounded bg-surface-2 text-center text-caption leading-[var(--ep-cell-h)] text-ink-2 transition hover:bg-surface-3 hover:text-ink"
+              :class="ep.span > 1 ? 'px-2 text-left' : ''"
+              :style="ep.span > 1 ? { gridColumn: `span ${ep.span}` } : undefined"
             >
               {{ ep.name }}
             </RouterLink>

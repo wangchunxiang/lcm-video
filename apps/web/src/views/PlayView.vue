@@ -9,6 +9,7 @@ import { setPageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
+import { useEpisodeCells } from '../composables/useEpisodeCells';
 
 /** 自动连播：播完直接切下一集，不打断 */
 const route = useRoute();
@@ -20,6 +21,7 @@ const error = ref('');
 /** 换线路失败只提示，不影响正在播的内容 */
 const lineError = ref('');
 const epsRef = ref<HTMLDivElement | null>(null);
+const epsGridRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 
 /** 选集排序与详情页共用一份偏好：倒序 = 最新集在前 */
@@ -46,6 +48,8 @@ const vod = computed(() => play.value?.vod ?? null);
 const line = computed(() => play.value?.line ?? null);
 const episodes = computed(() => play.value?.episodes ?? []);
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
+
+const { episodeCells } = useEpisodeCells(episodesShown, epsGridRef);
 const current = computed(() => play.value?.current ?? 1);
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
@@ -407,19 +411,24 @@ useSeo(() => ({
         </p>
 
         <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
-          <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+          <div
+            ref="epsGridRef"
+            class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
+          >
             <button
-              v-for="ep in episodesShown"
+              v-for="ep in episodeCells"
               :key="ep.index"
               type="button"
               :title="ep.name"
               :data-active="ep.index === current ? '1' : undefined"
               class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded text-center text-caption leading-[var(--ep-cell-h)] transition"
-              :class="
+              :class="[
                 ep.index === current
                   ? 'bg-primary text-white'
-                  : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
-              "
+                  : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
+                ep.span > 1 ? 'px-2 text-left' : '',
+              ]"
+              :style="ep.span > 1 ? { gridColumn: `span ${ep.span}` } : undefined"
               @click="selectEp(ep.index)"
             >
               {{ ep.name }}
