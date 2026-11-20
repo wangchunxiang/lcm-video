@@ -14,5 +14,8 @@ uploads/
 # macOS
 .DS_Store
 
+# PC 构建后导出、传到 NAS 导入的镜像包
+lcm-video.tar
+
 # 本地 agent 运行目录（pi / 浏览器缓存等，不入库）
 .pi-web/

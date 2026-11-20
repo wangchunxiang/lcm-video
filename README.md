@@ -113,17 +113,89 @@ npm run dev                 # 同时起 server(3100) / admin(3200) / web(3300)
 单进程同时提供 API 与两个前端（决策 7.3）：构建产物存在时，`/admin/` 由 `apps/admin/dist` 托管、
 `/` 由 `apps/web/dist` 托管，history 路由回落到各自的 `index.html`；产物不存在则跳过（开发时各跑 vite dev server）。
 
-```bash
-# 方式一：Docker（两阶段构建，运行阶段只带 prune 后的依赖与 dist）
-docker build -t lcm-video .
-docker run -p 3100:3100 --env-file .env lcm-video
+### 方式一：PC 构建 → 飞牛 NAS 导入（推荐）
 
-# 方式二：PM2
+镜像在 PC 上构建，NAS 只负责跑容器；迭代时重复「导出 → 导入 → 重建应用」即可。
+仓库根的 `docker-compose.yml` 已包含应用与 MariaDB，NAS 上只需要这个文件和 `.env`。
+
+PC（仓库根目录，需 Docker Desktop / Docker Engine）：
+
+```bash
+npm run docker:export     # docker build -t lcm-video:latest . + docker save -o lcm-video.tar
+```
+
+Apple Silicon 等 ARM 机器要给 x86 NAS 构建时，显式指定平台：
+
+```bash
+docker build --platform linux/amd64 -t lcm-video:latest .
+docker save lcm-video:latest -o lcm-video.tar
+```
+
+NAS：
+
+1. fnOS「Docker → 镜像 → 导入」选择 `lcm-video.tar`。
+2. 新建部署目录（例：`/vol1/1000/docker/lcm-video`），放入仓库的 `docker-compose.yml`，
+   再把 `.env.example` 复制成同目录的 `.env`，填好 `JWT_SECRET`、`DB_PASSWORD`、`DB_ROOT_PASSWORD`。
+   应用容器的 `DATABASE_URL` 由 compose 用 `DB_*` 自动拼成，不用手写。
+3. fnOS「Docker → Compose → 新建项目」选该目录启动；或 SSH 进去
+   `cd /vol1/1000/docker/lcm-video && docker compose up -d`。
+4. 打开 `http://NAS局域网IP:3100/`，后台在 `/admin/`。
+
+迭代发版（PC 改完代码后）：
+
+```bash
+npm run docker:export
+# 把新的 lcm-video.tar 再导入一次，然后在 NAS 上重建应用容器：
+docker compose up -d --force-recreate app
+```
+
+容器启动时会自动执行迁移建表，`dbdata` 卷保存数据库数据，重建应用不会丢数据。
+空库没有管理员账号，先按下节初始化。
+
+### 首次初始化管理员
+
+镜像运行阶段只带 `dist`，不含 `src/database/seeds/*.sql`，所以容器内不能直接 `npm run db:seed`。二选一：
+
+**从已有库导入（推荐）**
+
+```bash
+mysqldump -h 旧地址 -u用户 -p --single-transaction lcm_video > lcm.sql
+docker compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" lcm_video' < lcm.sql
+```
+
+**新建一个管理员**：先生成 scrypt 哈希（Git Bash / NAS shell）
+
+```bash
+node -e "const c=require('node:crypto');const s=c.randomBytes(16).toString('hex');const h=c.scryptSync('改成你的密码',s,32,{N:16384,r:8,p:1}).toString('hex');console.log(['scrypt',16384,8,1,s,h].join('$'))"
+```
+
+把哈希写进 SQL 文件再导入（应用至少启动过一次、迁移建表之后）。
+哈希里的 `$` 不能经过 shell 展开，所以走文件而不是 `-e`：
+
+```bash
+cat > insert-admin.sql <<'SQL'
+INSERT INTO lcm_admin_user (id, username, password, nickname, is_enabled, password_version)
+VALUES (1, 'admin', '<上一步的哈希>', '管理员', 1, 0);
+SQL
+docker compose exec -T db sh -c 'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" lcm_video' < insert-admin.sql
+rm insert-admin.sql
+```
+
+登录后立刻在后台改密码。
+
+### 方式二：PM2
+
+```bash
 npm ci && npm run build
 pm2 start ecosystem.config.cjs
 ```
 
-数据库与 `.env` 都不进镜像；容器启动后自动执行迁移建表（见「快速开始」）。
+### 说明
+
+- 数据库与 `.env` 都不进镜像。
+- 只跑单副本：验证码、登录失败计数、定时采集都在进程内存里，多副本会出问题（见 `docker-compose.yml` 顶部注释）。
+- 时间列按北京时间存，MariaDB 必须设 `--default-time-zone=+08:00`（compose 已带）。
+- 用 NAS 上已有数据库时，删掉 compose 的 `db` 与 `depends_on`，把 `app.DATABASE_URL` 指向 NAS 局域网 IP。
 
 ## 当前状态
 

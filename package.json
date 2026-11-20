@@ -26,7 +26,10 @@
     "db:import-legacy": "npm run db:import-legacy -w apps/server --",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "docker:build": "docker build -t lcm-video:latest .",
+    "docker:save": "docker save lcm-video:latest -o lcm-video.tar",
+    "docker:export": "npm run docker:build && npm run docker:save"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
