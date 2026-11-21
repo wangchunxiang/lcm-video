@@ -113,7 +113,7 @@ watch(
 
 useSeo(() => ({
   title: wd.value ? `搜索：${wd.value} - ${site.config.siteName}` : `搜索 - ${site.config.siteName}`,
-  description: `在 ${site.config.siteName} 搜索影片`,
+  description: `在 ${site.config.siteName} 搜索片名`,
   noindex: true,
 }));
 </script>
@@ -133,7 +133,7 @@ useSeo(() => ({
         v-model="keyword"
         type="search"
         maxlength="50"
-        placeholder="输入片名，如：流浪地球"
+        placeholder="搜索片名"
         class="h-full min-w-0 flex-1 border-0 bg-transparent px-4 pr-1 text-input text-ink outline-none placeholder:text-ink-3 sm:text-body"
       />
       <button
@@ -165,7 +165,7 @@ useSeo(() => ({
       <p v-else-if="error" class="py-16 text-center text-body text-danger">{{ error }}</p>
       <template v-else-if="loaded">
         <VodGrid v-if="items.length" :items="items" :eager-count="8" />
-        <p v-else class="py-16 text-center text-body text-ink-3">没有找到「{{ wd }}」，换个关键词试试。</p>
+        <p v-else class="py-16 text-center text-body text-ink-3">没有找到「{{ wd }}」，换个片名试试。</p>
 
         <PaginationBar
           v-if="items.length && total > pageSize"
@@ -177,6 +177,6 @@ useSeo(() => ({
       </template>
     </template>
 
-    <p v-else class="py-16 text-center text-body text-ink-3">输入片名开始搜索。</p>
+    <p v-else class="py-16 text-center text-body text-ink-3">输入片名，开始搜索。</p>
   </div>
 </template>
