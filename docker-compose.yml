@@ -1,8 +1,9 @@
 # Docker 部署（飞牛 NAS / 任意 Docker 主机）。
 #
-# 应用镜像在 PC 上构建后导入，见 README「部署」：
-#   npm run docker:export   # 产出 lcm-video.tar
-# 然后在 fnOS「Docker → 镜像 → 导入」中选中它。
+# 应用镜像有两种来源，见 README「部署」：
+#   1. PC 构建后导入：npm run docker:export，再在 fnOS「Docker → 镜像 → 导入」
+#   2. GitHub Actions 构建并推送 Docker Hub：在 .env 里设置
+#      APP_IMAGE=docker.io/<用户名>/lcm-video:latest，然后 docker compose pull app
 #
 # 本文件不管数据库：NAS 上已有 MariaDB/MySQL，直接通过 .env 的 DATABASE_URL 连接。
 # 使用前把仓库根的 .env.example 复制成 .env，填好 DATABASE_URL 与 JWT_SECRET。
@@ -19,7 +20,7 @@
 
 services:
   app:
-    image: lcm-video:latest
+    image: ${APP_IMAGE:-lcm-video:latest}
     container_name: lcm-video
     restart: unless-stopped
     env_file: .env

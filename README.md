@@ -157,6 +157,34 @@ docker compose up -d --force-recreate app
 
 容器启动时会自动执行迁移建表，数据仍在已有数据库里，重建应用不会丢数据。
 
+### 方式二：GitHub Actions → Docker Hub（自动构建）
+
+适合频繁迭代：push 到 Gitee 后由仓库镜像同步到 GitHub，Actions 自动构建
+`linux/amd64` 镜像并推 Docker Hub，NAS 只负责拉取。工作流见
+`.github/workflows/docker.yml`。
+
+GitHub 仓库的 Secrets 配置：
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`（Read & Write）
+
+NAS 的 `.env` 增加：
+
+```bash
+APP_IMAGE=docker.io/你的用户名/lcm-video:latest
+```
+
+首次或更新时：
+
+```bash
+docker login -u 你的用户名   # 私有镜像才需要，Token 用 Read only
+docker compose pull app
+docker compose up -d app
+```
+
+公开镜像可以跳过 `docker login`。NAS 无法稳定访问 Docker Hub 时，把镜像改推到
+阿里云 ACR，只需替换工作流里的登录地址和 tag。
+
 ### 空库首次初始化（自动）
 
 空库第一次启动时，服务端会在迁移之后自动补齐：
