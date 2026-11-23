@@ -45,6 +45,8 @@ export interface VodRow {
   /** 「更多」跳转地址；没有对应聚合页的区块没有这个字段 */
   more?: string;
   items: VodCard[];
+  /** 区块总条数；items 被展示上限截断时用它显示真实数量（首页今日更新只带 16 条） */
+  total?: number;
 }
 
 export interface EpisodeItem {

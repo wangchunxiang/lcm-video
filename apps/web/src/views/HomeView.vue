@@ -38,6 +38,8 @@ interface Section {
 const loading = ref(true);
 const error = ref('');
 const today = ref<VodCardData[]>([]);
+/** 今日更新的当天总条数；首页只展示前 16 部，标题后的「N 部」用这个真实数量 */
+const todayTotal = ref(0);
 
 const sections = ref<Section[]>(
   CATEGORY_SECTIONS.map((section) => ({
@@ -55,7 +57,9 @@ async function loadToday(): Promise<void> {
   error.value = '';
   try {
     const home = await portal.home();
-    today.value = home.rows.flatMap((row) => row.items);
+    const row = home.rows[0];
+    today.value = row?.items ?? [];
+    todayTotal.value = row?.total ?? today.value.length;
   } catch (e) {
     error.value = (e as Error).message || '首页加载失败';
   } finally {
@@ -111,7 +115,7 @@ useSeo(() => ({
       <VodSection
         v-else-if="today.length"
         title="今日更新"
-        :sub="`${today.length} 部`"
+        :sub="`${todayTotal} 部`"
         :items="today"
         :eager-count="8"
       />

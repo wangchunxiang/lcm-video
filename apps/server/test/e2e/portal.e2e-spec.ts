@@ -47,7 +47,7 @@ describe('门户只读接口 /api/web', () => {
     const response = await request(app.getHttpServer()).get('/api/web/home');
     const body = response.body as Envelope<{
       categories: CategoryNode[];
-      rows: Array<{ title: string; more: string; items: VodCard[] }>;
+      rows: Array<{ title: string; more: string; items: VodCard[]; total?: number }>;
     }>;
 
     expect(body.code).toBe(0);
@@ -55,6 +55,10 @@ describe('门户只读接口 /api/web', () => {
     expect(body.data.rows.length).toBeGreaterThan(0);
     const items = body.data.rows.flatMap((row) => row.items);
     expect(items.some((item) => item.id === fixtures.vodId)).toBe(true);
+    // 卡片头显示的是当天总数，items 只是被 HOME_ROW 截断后的展示集合
+    for (const row of body.data.rows) {
+      expect(row.total).toBeGreaterThanOrEqual(row.items.length);
+    }
   });
 
   it('分类列表按别名取片', async () => {

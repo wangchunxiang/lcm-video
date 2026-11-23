@@ -86,6 +86,8 @@ export interface VodRow {
   /** 「更多」跳转地址；没有对应聚合页的区块不填 */
   more?: string;
   items: VodCard[];
+  /** 区块总条数；items 受展示上限截断时（首页今日更新只带 16 条）用它显示真实数量 */
+  total?: number;
 }
 
 /** 播放页的集：在共享 Episode 的基础上带 1 基序号。 */
@@ -211,16 +213,19 @@ export class PortalService {
 
   /** 首页：分类树 + 今日更新。 */
   async home(): Promise<{ categories: CategoryNode[]; rows: VodRow[] }> {
-    const [categories, today] = await Promise.all([
+    const where = 'v.status = 1 AND v.collected_at >= CURDATE()';
+    const [categories, today, todayTotal] = await Promise.all([
       this.categories(),
       this.queryCards({
-        where: 'v.status = 1 AND v.collected_at >= CURDATE()',
+        where,
         order: 'v.collected_at DESC, v.id DESC',
         take: HOME_ROW,
       }),
+      // 卡片头上的「N 部」要的是当天总数，不是被 HOME_ROW 截断后的 16
+      this.countByWhere(where, []),
     ]);
 
-    const rows: VodRow[] = [{ title: '今日更新', items: today }].filter(
+    const rows: VodRow[] = [{ title: '今日更新', total: todayTotal, items: today }].filter(
       (row) => row.items.length > 0,
     );
 
