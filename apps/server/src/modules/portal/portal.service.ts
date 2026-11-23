@@ -4,7 +4,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { compareId, countEpisodes, escapeLike, parsePlayUrl } from '@lcm/shared';
 import { SettingService } from '../setting/setting.service';
-import { cleanPlaylist } from '../ad-feature/skip';
+import { UpstreamPlaylistError, cleanPlaylist } from '../ad-feature/skip';
 import type { CleanResult } from '../ad-feature/skip';
 import { decodePlaylistToken, signPlaylistPath, verifyPlaylistPath } from './playlist-proxy';
 
@@ -127,10 +127,12 @@ const HOME_ROW = 16;
 
 /**
  * 播放列表代理最多等上游多久。源站慢的时候（西瓜资源的首页响应 0.4~19 秒都见过）
- * 与其把首屏卡住，不如先 302 回源让视频起来，再由后台预热把缓存填上。
- * 15 秒能覆盖绝大多数抖动；真撞上 19 秒那种，预热会在后台补上，下次播放必中。
+ * 宁可让播放器明确拿到一个 502、用户换线路，也不把它甩回源站自己跳（iOS 在那条路上
+ * 最容易偶发失败）。等不到就后台预热把缓存填上，下次播放直接命中。
+ * 10 秒是等与不等之间的折中：覆盖常见的源站抖动，又不会让首屏白等太久；
+ * 真撞上 19 秒那种，预热会在后台把缓存填上。
  */
-const PLAYLIST_BUDGET_MS = 15_000;
+const PLAYLIST_BUDGET_MS = 10_000;
 /** 后台预热的预算：只求最终能拿到，慢一点没关系 */
 const PLAYLIST_WARM_BUDGET_MS = 45_000;
 
@@ -522,7 +524,8 @@ export class PortalService {
 
   /**
    * 播放列表代理：解出被代理的地址并校验签名，只有 `/api/web/play` 签出的地址才放行，
-   * 否则就成了对外的开放代理（SSRF）。命中广告特征时返回改写后的文本，没命中返回 null。
+   * 否则就成了对外的开放代理（SSRF）。返回的正文一律由调用方直出：命中广告特征是删减版，
+   * 没命中是绝对化后的原文；只有拉取失败才回 `clean: null`，由控制器报 502。
    */
   async proxiedPlaylist(
     sourceId: string,
@@ -538,13 +541,19 @@ export class PortalService {
       throw new ForbiddenException('播放地址无效');
     }
     if (!isHlsPlaylist(url)) throw new BadRequestException('播放地址无效');
-    /* 返回校验通过的地址本身，控制器只往这个值上跳转，不再自己解 token */
+    /* 返回校验通过的地址本身，控制器只直出这个地址的正文，不再自己解 token */
     try {
       return { url, clean: await cleanPlaylist(this.dataSource, sourceId, url, PLAYLIST_BUDGET_MS) };
     } catch (error) {
-      // 去广告是增益功能：拉不到上游 m3u8 就 302 回源，绝不能让播放挂掉
+      /*
+       * 只把「上游自己的失败」当 502：DB 挂了、我们写错了这类错误必须原样抛出去（→ 500），
+       * 否则线上表现为「所有源站都在抽风」，真实原因只剩一行 warn。
+       */
+      if (!(error instanceof UpstreamPlaylistError)) throw error;
+      // 去广告是增益功能：拉不到上游 m3u8 就回 null 报 502，用户换线路重试；
+      // 不把播放器甩回源站——源站的跳转链正是 iOS 偶发失败的地方
       this.logger.warn(
-        `播放列表改写失败，回源播放（source ${sourceId}）：${error instanceof Error ? error.message : String(error)}`,
+        `播放列表拉取失败，返回 502（source ${sourceId}）：${error.message}`,
       );
       // 顺手用大预算在后台再拉一次：源站慢的时候这一部影片下次播放就能直接命中缓存
       this.warmPlaylist(sourceId, url);

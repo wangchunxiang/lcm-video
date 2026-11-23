@@ -67,7 +67,10 @@ export class PortalController {
 
   /**
    * 播放列表代理：`/api/web/play` 返回的 `playUrl` 指向这里。
-   * 命中该源已确认的广告特征时返回删掉广告分片的 m3u8，否则 302 回源地址。
+   * 一律由本站返回 m3u8 正文：命中该源已确认的广告特征时是删掉广告分片的版本，没命中就是
+   * 逐行绝对化后的原文。**不做 302**——Apple 原生播放器对 media 请求的重定向很脆弱，
+   * 源站往往自己还要再跳一次，多一跳就多一次偶发失败；把播放器甩回源站等于把唯一的
+   * 失败点交给它。上游拉不到正文时直接报 502，让播放器明确失败（用户换线路即可）。
    * 地址带签名（`playlist-proxy.ts`），不是本服务签出的一律 403。
    */
   @Get('playlist')
@@ -78,11 +81,13 @@ export class PortalController {
     @Query('sig') sig: string,
     @Res() res: Response,
   ): Promise<void> {
-    // 地址与签名都在 service 里校验过，这里只往校验通过的那个地址跳
-    const { url: sourceUrl, clean } = await this.portal.proxiedPlaylist(sourceId, token, sig);
+    // 地址与签名都在 service 里校验过，这里只直出校验通过的那个地址的正文
+    const { clean } = await this.portal.proxiedPlaylist(sourceId, token, sig);
     if (clean === null) {
-      // 没有命中广告：直接回源，不让播放器多缓一层本站返回
-      res.redirect(302, sourceUrl);
+      // 上游没拉到正文（超时/报错）：直接报错，不再把播放器甩回源站
+      res.setHeader('content-type', 'text/plain; charset=utf-8');
+      res.setHeader('cache-control', 'no-store');
+      res.status(502).send('播放列表拉取失败');
       return;
     }
     res.setHeader('content-type', 'application/vnd.apple.mpegurl; charset=utf-8');
