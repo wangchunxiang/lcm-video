@@ -54,49 +54,21 @@ function inferType(url: string): string {
   return PLAYLIST_PROXY.test(url) || /\.m3u8(?:[?#]|$)/i.test(url) ? 'm3u8' : '';
 }
 
-/**
- * 失败提示文案。
+/*
+ * 失败提示只有一句中性文案。
  *
- * HTTP 状态比 `MediaError.code` 精确得多：502 是我们自己的播放列表代理拉不到上游
- * （见 `apps/server/src/modules/portal/portal.controller.ts`），这时说「不支持在线播放」
- * 会被误会成源站/编码问题，其实只是线路暂时抽风，换个线路或稍等就能放。
+ * 曾经试过按 `MediaError.code` 和补探出来的 HTTP 状态码细分（「网络连接异常」
+ * 「线路暂时不可用」等），但 iOS 的原生内核会对着同一个拉不到的地址反复报错：
+ * 每报一次就先把中性文案写上、再被探测结果覆盖，文字在两句之间来回跳，
+ * 用户看到的就是画面在闪。细分带来的那点信息量不值一次闪屏，全删了。
  */
-function describeFailure(code: number, status?: number): string {
-  if (status !== undefined && status >= 500) return '线路暂时不可用，请稍后重试或换线路';
-  if (status !== undefined && status >= 400) return '线路地址已失效，请换线路';
-  if (code === 2) return '网络连接异常，请换线路重试';
-  if (code === 3) return '视频解码失败，请换线路';
-  return '该线路暂不支持在线播放，请换线路';
-}
-
-/**
- * 失败后补探一次代理地址的真实状态码。
- * iOS 原生内核的 `video.error` 只有 code，拿不到 HTTP 状态，只能自己再问一遍；
- * 只探本站代理地址（同源、命中服务端缓存，代价是一次几 KB 的请求）。
- * 必须带超时：源站抽风时这个地址本身就是慢的，等它等于让用户对着黑屏干等。
- */
-async function probeStatus(url: string): Promise<number | undefined> {
-  if (!PLAYLIST_PROXY.test(url)) return undefined;
-  try {
-    const res = await fetch(url, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
-    return res.status;
-  } catch {
-    return undefined;
-  }
-}
+const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
 
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const failedText = ref('');
-/** hls.js 报 fatal 时记下的 HTTP 状态，交给随后的 video:error 拼更准的提示 */
-let lastFatalStatus: number | undefined;
-/** 补探的等待上限：宁可给中性文案，也不让浮层因为探测而迟迟不出现 */
-const PROBE_TIMEOUT_MS = 3_000;
-/** 中性文案：探测没结果、或播放列表本身没问题时用它，不武断说「不支持」 */
-const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
+/** 已经报过失败的那个地址：同一地址的重复报错不再重复处理（防浮层闪烁） */
+let failedUrl = '';
 
 /** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
 const directSrc = computed(() => props.playSrc || props.src);
@@ -125,7 +97,7 @@ interface HlsPlayer {
     event: string,
     listener: (
       event: string,
-      data: { fatal?: boolean; type?: string; details?: string; response?: { code?: number } },
+      data: { fatal?: boolean; type?: string },
     ) => void,
   ): void;
 }
@@ -189,10 +161,10 @@ function isAppleMobile(): boolean {
  * ArtPlayer 的 m3u8 自定义内核。
  * 顺序是「hls.js 优先、原生兜底」，不能反过来：Chrome/Firefox 对 HLS 的 canPlayType
  * 会回 "maybe"，但真把 m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4），
- * 于是每个非 Safari 浏览器都会卡在「该线路暂不支持在线播放」。
+ * 于是每个非 Safari 浏览器都会卡在「不支持在线播放」。
  * iPhone/iPad 没有 MSE，hls.js 起不来，直接交给原生内核（也省掉 400KB 的下载）。
  */
-function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void {
+function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer): void {
   // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
   if (hls) {
     hls.destroy();
@@ -206,8 +178,7 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
   };
 
   const unsupported = (): void => {
-    failedText.value = '该线路暂不支持在线播放，请换线路';
-    player.notice.show = '该线路暂不支持在线播放';
+    failedText.value = NEUTRAL_FAILURE;
     emit('error');
   };
 
@@ -239,12 +210,6 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
         if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
           instance.recoverMediaError();
           return;
-        }
-        // 记下 HTTP 状态：退回原生后 video.error 只剩一个 code，状态码才能说清是哪种失败。
-        // 只记 manifest（含 level/音轨列表）层的错误：分片、密钥的 4xx/5xx 会把提示张冠李戴
-        const detail = data.details ?? '';
-        if (detail.startsWith('manifest') || detail.startsWith('levelLoad')) {
-          lastFatalStatus = data.response?.code;
         }
         instance.destroy();
         hls = null;
@@ -291,28 +256,22 @@ function saveProgress(): void {
 defineExpose({ saveProgress });
 
 /**
- * 播放失败：先把错误分类再提示。
- * `MediaError.code` 只有四种语义，光凭它分不清「源站挂了」和「格式不支持」；
- * hls.js 那边能拿到 HTTP 状态，原生内核则靠补探一次代理地址。
- * 文案必须同步出现：补探是「锦上添花」，不能让用户先对着黑屏等几秒。
+ * 播放失败：弹一句中性文案，再把事件交给父层。
  */
-async function handleVideoError(player: Artplayer, url: string): Promise<void> {
+function handleVideoError(player: Artplayer, url: string): void {
   const code = player.video.error?.code ?? 0;
   // code 1 = 主动中断（换集、切线路时的 abort），不是真的失败，不能弹提示
   if (code === 1) return;
+  /*
+   * 同一个地址只认第一次报错。原生内核（iOS 的 AVPlayer 尤其明显）会对着同一个
+   * 拉不到的地址反复派发 error：先报一次、内部重试再报一次……每次都重新弹一次浮层，
+   * 看起来就是画面在闪。已经报过就忽略，等真的放起来了（canplay）或换了地址才复位。
+   */
+  if (failedUrl === url) return;
+  failedUrl = url;
   leaveFullscreen(player);
-  const known = lastFatalStatus;
-  lastFatalStatus = undefined;
-  failedText.value = known === undefined ? NEUTRAL_FAILURE : describeFailure(code, known);
+  failedText.value = NEUTRAL_FAILURE;
   emit('error');
-  // 只有 code 4 才需要补探：code 2 本身就是网络、code 3 是解码，都能直接定性
-  if (known !== undefined || code !== 4) return;
-  const status = await probeStatus(url);
-  // 探测期间已经换了别的集，就别再改这一条的提示
-  if (status === undefined || status < 400 || directSrc.value !== url) return;
-  // 只有播放列表本身就报错才能定性；列表正常说明是分片/密钥那一段出的问题，
-  // 这时保持中性文案，不要武断说成「不支持在线播放」
-  failedText.value = describeFailure(code, status);
 }
 /**
  * 失败时先退出全屏，否则浮层根本露不出来：
@@ -328,7 +287,8 @@ function leaveFullscreen(player: Artplayer): void {
 
 function createPlayer(): void {
   failedText.value = '';
-  lastFatalStatus = undefined;
+  // 重试/换集重开播放器时复位：同一个地址第二次真的失败，还得能再报一次
+  failedUrl = '';
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 
@@ -367,8 +327,11 @@ function createPlayer(): void {
    * 避免它污染后面的错误文案。
    */
   player.on('video:canplay', () => {
+    // 内核已经报过错就别清：有的内核会先 fire canplay 再 fire error，
+    // 一清一显就是用户看到的闪烁；真正恢复会由下一次重新加载把 error 置空。
+    if (player.video.error) return;
     failedText.value = '';
-    lastFatalStatus = undefined;
+    failedUrl = '';
   });
   player.on('video:timeupdate', () => {
     saveResume(player);
@@ -413,7 +376,6 @@ watch(
     if (art && prev) {
       // 换集就地切换：同一个 ArtPlayer 实例换源，不销毁重建（避免黑一下）
       failedText.value = '';
-      lastFatalStatus = undefined;
       lastSaveAt = 0;
       endedSent = false;
       // 就地换源时 artplayer 用 `option.type` 判内核，换集地址可能变成代理地址（或反过来），
@@ -435,7 +397,13 @@ onBeforeUnmount(destroyPlayer);
 </script>
 
 <template>
-  <div class="player-box relative h-full w-full bg-black">
+  <!--
+    `isolate` 不是为了视觉，是把浮层的 `z-[130]` 锁在这个播放器内部：
+    它会盖住顶栏（`SiteHeader.vue:81` 是 `sticky top-0 z-50`）。
+    不隔离的话，页面滚到播放器贴住顶部时，那块不透明的失败浮层会画在导航上面。
+    隔离后 130 只在播放器这个层叠上下文里有意义，对页面其它元素等于 0。
+  -->
+  <div class="player-box relative isolate h-full w-full bg-black">
     <iframe
       v-if="iframeSrc"
       :src="iframeSrc"
@@ -451,6 +419,8 @@ onBeforeUnmount(destroyPlayer);
       `.art-info:100`、`.art-contextmenus:120`（打包在 artplayer.js 里的样式），
       而 `.art-video-player` 自身没建层叠上下文（`position:relative` + `z-index:auto`），
       所以不抬高层的活，遮罩会被控件盖住、按钮也点不到。Tailwind 没有 >50 的 z 刻度。
+      抬高只在这个播放器里有效（外层容器用 `isolate` 做了层叠隔离），不会反过来
+      压住顶部的 sticky 导航。
     -->
     <div
       v-if="failedText"
