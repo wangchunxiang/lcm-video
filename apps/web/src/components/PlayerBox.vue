@@ -67,8 +67,6 @@ const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const failedText = ref('');
-/** 已经报过失败的那个地址：同一地址的重复报错不再重复处理（防浮层闪烁） */
-let failedUrl = '';
 
 /** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
 const directSrc = computed(() => props.playSrc || props.src);
@@ -256,19 +254,25 @@ function saveProgress(): void {
 defineExpose({ saveProgress });
 
 /**
- * 播放失败：弹一句中性文案，再把事件交给父层。
+ * 同步失败浮层：判据是内核自己的状态，不是事件。
+ *
+ * 只有 `video.error` 有值、且 `readyState` 停在「没数据可放」那几档才算真播不了。
+ * 只看事件会被 iOS 残留的旧 code 骗（视频在放，屏幕上写着播放失败）；只看一次
+ * 又分不清「刚起播就崩」和「崩完自己恢复了」。两个条件一起用，进出一共两条路径，
+ * 既不需要记住「哪个地址报过错」，也不需要另找一个清除时机。
  */
-function handleVideoError(player: Artplayer, url: string): void {
-  const code = player.video.error?.code ?? 0;
+function syncFailure(player: Artplayer): void {
+  const { error, readyState } = player.video;
   // code 1 = 主动中断（换集、切线路时的 abort），不是真的失败，不能弹提示
-  if (code === 1) return;
-  /*
-   * 同一个地址只认第一次报错。原生内核（iOS 的 AVPlayer 尤其明显）会对着同一个
-   * 拉不到的地址反复派发 error：先报一次、内部重试再报一次……每次都重新弹一次浮层，
-   * 看起来就是画面在闪。已经报过就忽略，等真的放起来了（canplay）或换了地址才复位。
-   */
-  if (failedUrl === url) return;
-  failedUrl = url;
+  const broken =
+    error !== null && error.code !== 1 && readyState < HTMLMediaElement.HAVE_CURRENT_DATA;
+  if (!broken) {
+    // 有数据可放了就收浮层；只是残留的旧错误，压根没弹过，清一下也无害
+    if (readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) failedText.value = '';
+    return;
+  }
+  // 同一波错误只提示一次：内核会对同一个拉不到的地址反复报错，每次重弹就是闪屏
+  if (failedText.value !== '') return;
   leaveFullscreen(player);
   failedText.value = NEUTRAL_FAILURE;
   emit('error');
@@ -286,9 +290,8 @@ function leaveFullscreen(player: Artplayer): void {
 }
 
 function createPlayer(): void {
+  // 重试/换集时先把浮层收掉，别让旧提示盖在正在重新加载的画面上
   failedText.value = '';
-  // 重试/换集重开播放器时复位：同一个地址第二次真的失败，还得能再报一次
-  failedUrl = '';
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 
@@ -321,18 +324,6 @@ function createPlayer(): void {
   art = player;
 
   player.on('video:loadedmetadata', () => restoreResume(player));
-  /*
-   * 真的放起来了就把失败痕迹清掉：内核偶尔会先报一次错再自己恢复（换段失败重试、
-   * 分辨率切档），留个不透明浮层盖在上面等于把能放的视频锁死；顺便清掉那次的状态码，
-   * 避免它污染后面的错误文案。
-   */
-  player.on('video:canplay', () => {
-    // 内核已经报过错就别清：有的内核会先 fire canplay 再 fire error，
-    // 一清一显就是用户看到的闪烁；真正恢复会由下一次重新加载把 error 置空。
-    if (player.video.error) return;
-    failedText.value = '';
-    failedUrl = '';
-  });
   player.on('video:timeupdate', () => {
     saveResume(player);
     // 兜底：个别源站/内核到结尾时不派发 ended，这里按「离结尾不到 0.5 秒」判定一次
@@ -350,9 +341,9 @@ function createPlayer(): void {
     if (props.resume && props.resumeKey) localStorage.removeItem(resumeStorageKey());
     emit('ended');
   });
-  player.on('video:error', () => {
-    void handleVideoError(player, directSrc.value);
-  });
+  // 出错和恢复都走同一个判定：内核状态说了算（见 syncFailure）
+  player.on('video:error', () => syncFailure(player));
+  player.on('video:canplay', () => syncFailure(player));
 }
 /**
  * 重新加载当前这一集。

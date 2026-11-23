@@ -57,7 +57,8 @@ async function load(): Promise<void> {
   // 站点配置（每页条数）还没到位就别发：否则先用 24 发一次，配置到了再发一次
   if (!site.ready) return;
   controller?.abort();
-  controller = new AbortController();
+  const next = new AbortController();
+  controller = next;
   loading.value = true;
   error.value = '';
   try {
@@ -70,7 +71,7 @@ async function load(): Promise<void> {
         take: pageSize.value,
         skip: (page.value - 1) * pageSize.value,
       },
-      { signal: controller.signal },
+      { signal: next.signal },
     );
     data.value = result;
   } catch (e) {
@@ -78,7 +79,7 @@ async function load(): Promise<void> {
     data.value = null;
     error.value = (e as Error).message || '列表加载失败';
   } finally {
-    if (!controller.signal.aborted) loading.value = false;
+    if (controller === next) loading.value = false;
   }
 }
 

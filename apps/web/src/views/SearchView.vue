@@ -67,7 +67,8 @@ async function load(): Promise<void> {
   error.value = '';
   // 等站点配置到位再查：否则先用 24 条查一次，配置到了又查一次
   if (!site.ready) return;
-  controller = new AbortController();
+  const next = new AbortController();
+  controller = next;
   try {
     const result = await portal.search(
       {
@@ -77,7 +78,7 @@ async function load(): Promise<void> {
         take: pageSize.value,
         skip: (page.value - 1) * pageSize.value,
       },
-      { signal: controller.signal },
+      { signal: next.signal },
     );
     total.value = result.total;
     items.value = result.items;
@@ -88,7 +89,7 @@ async function load(): Promise<void> {
     total.value = 0;
     error.value = (e as Error).message || '搜索失败';
   } finally {
-    if (!controller.signal.aborted) loading.value = false;
+    if (controller === next) loading.value = false;
   }
 }
 
