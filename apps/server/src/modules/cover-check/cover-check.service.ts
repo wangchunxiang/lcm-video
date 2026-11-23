@@ -48,6 +48,7 @@ export class CoverCheckService extends AppCrudService<CoverCheckEntity> {
     const checkMap = new Map(checks.map((row) => [row.host, row]));
 
     const hosts: CoverHostVO[] = [];
+    const known = new Set(counted.map((row) => row.host));
     for (const row of counted) {
       const check = checkMap.get(row.host);
       hosts.push({
@@ -64,7 +65,7 @@ export class CoverCheckService extends AppCrudService<CoverCheckEntity> {
     }
     /* 表里有、但已经没有影片归属的域名也列出来，方便清理陈旧记录 */
     for (const check of checks) {
-      if (hosts.some((row) => row.host === check.host)) continue;
+      if (known.has(check.host)) continue;
       hosts.push({
         host: check.host,
         vodCount: 0,
@@ -129,20 +130,19 @@ export class CoverCheckService extends AppCrudService<CoverCheckEntity> {
     return { ...result, scanned: result.items.length };
   }
 
-  /** 只保留有影片归属的域名记录，清掉陈旧行。 */
+  /**
+   * 只保留有影片归属的域名记录，清掉陈旧行。
+   * 一条 `DELETE ... LEFT JOIN` 搞定：不再逐行 `SELECT COUNT(*)`（域名多了就是上千次往返），
+   * 也不再受 `take: ALL_LIMIT` 截断（原来超过 1000 行的陈旧记录永远清不掉）。
+   */
   async prune(): Promise<{ deleted: number }> {
-    const result = await this.repository.find({ take: ALL_LIMIT });
-    let deleted = 0;
-    for (const row of result) {
-      const rows = await this.dataSource.query<Array<{ total: number }>>(
-        'SELECT COUNT(*) AS total FROM lcm_vod WHERE cover_host = ?',
-        [row.host],
-      );
-      if (Number(rows[0]?.total ?? 0) > 0) continue;
-      await this.repository.delete({ id: row.id });
-      deleted += 1;
-    }
-    return { deleted };
+    const result = await this.dataSource.query<{ affectedRows: number }>(
+      `DELETE c FROM lcm_cover_check c
+         LEFT JOIN (SELECT DISTINCT cover_host AS host FROM lcm_vod WHERE cover_host <> '') v
+           ON v.host = c.host
+        WHERE v.host IS NULL`,
+    );
+    return { deleted: result.affectedRows };
   }
 
   /** 校验入参 host 不为空。 */

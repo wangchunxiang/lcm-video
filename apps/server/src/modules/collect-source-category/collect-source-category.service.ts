@@ -41,68 +41,102 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
       order: { sourceTypeName: 'ASC', id: 'ASC' },
       take: 1000,
     });
-    return { items, summary: this.summarize(items) };
+    return { items, summary: await this.summarizeOf([sourceId]) };
   }
 
   /** 批量映射到某个分类，或标记为忽略。 */
   async map(input: MapInput): Promise<{ updated: number; summary: MappingSummary }> {
     if (input.ids.length === 0) throw new BadRequestException('请选择要处理的行');
-    if (input.status === 2) {
-      await this.repository.update(
-        { id: In(input.ids) },
-        { status: 2, categoryId: '0', matchType: 2 },
-      );
-    } else if (input.status === 0) {
-      await this.repository.update(
-        { id: In(input.ids) },
-        { status: 0, categoryId: '0', matchType: 0 },
-      );
-    } else {
-      if (input.categoryId === undefined || input.categoryId === '' || input.categoryId === '0') {
-        throw new BadRequestException('请选择本站分类');
-      }
-      await this.repository.update(
-        { id: In(input.ids) },
-        { status: 1, categoryId: input.categoryId, matchType: 2 },
-      );
+    const toCategory = input.categoryId ?? '';
+    if (input.status !== 2 && input.status !== 0 && (toCategory === '' || toCategory === '0')) {
+      throw new BadRequestException('请选择本站分类');
     }
-    const rows = await this.repository.find({ where: { id: In(input.ids) } });
+    // 三种动作只是 patch 不同，走同一条 UPDATE，`affected` 就是真实改动的行数
+    const patch =
+      input.status === 2
+        ? { status: 2, categoryId: '0', matchType: 2 }
+        : input.status === 0
+          ? { status: 0, categoryId: '0', matchType: 0 }
+          : { status: 1, categoryId: toCategory, matchType: 2 };
+    const result = await this.repository.update({ id: In(input.ids) }, patch);
+
+    const rows = await this.repository.find({
+      where: { id: In(input.ids) },
+      select: { sourceId: true },
+    });
     const sourceIds = [...new Set(rows.map((row) => row.sourceId))];
-    const all: CollectSourceCategoryEntity[] = [];
-    for (const sourceId of sourceIds) {
-      all.push(...(await this.repository.find({ where: { sourceId }, take: 1000 })));
-    }
-    return { updated: rows.length, summary: this.summarize(all) };
+    return { updated: result.affected ?? 0, summary: await this.summarizeOf(sourceIds) };
   }
 
-  /** 对未映射的行按分类名/别名关键词自动匹配。 */
-  async match(sourceId: string): Promise<{ scanned: number; matched: number }> {
+  /** 一次自动匹配最多读多少行，避免把整个源的未映射行一次性读进内存。 */
+  private static readonly MATCH_BATCH = 1000;
+
+  /** 本站分类 + 别名，自动匹配用。 */
+  private async categoryMatchInfos(): Promise<CategoryMatchInfo[]> {
     const categories = await this.dataSource.query<
       Array<{ id: string; pid: string; name: string; matchNames: string }>
     >('SELECT id, pid, name, match_names AS matchNames FROM lcm_category');
-    const infos: CategoryMatchInfo[] = categories.map((row) => ({
+    return categories.map((row) => ({
       id: Number(row.id),
       pid: Number(row.pid),
       name: row.name,
       matchNames: row.matchNames === '' ? [] : row.matchNames.split(','),
     }));
+  }
 
-    const pending = await this.repository.find({
-      where: { sourceId, status: 0, categoryId: '0' },
-      take: 1000,
-    });
+  /**
+   * 对未映射的行按分类名/别名关键词自动匹配。
+   * 分批扫到「某一批一条都没匹配上」为止，不再像原来那样被 `take: 1000` 静默截断。
+   * 同一个源「点自动匹配」和「同步源站分类时顺手匹配」走的是这里，两边不会再漂。
+   */
+  async match(sourceId: string): Promise<{ scanned: number; matched: number }> {
+    const infos = await this.categoryMatchInfos();
+    let scanned = 0;
     let matched = 0;
-    for (const row of pending) {
-      const target = autoMatchCategory(row.sourceTypeName, infos);
-      if (target <= 0) continue;
-      await this.repository.update(row.id, {
-        status: 1,
-        categoryId: String(target),
-        matchType: 1,
+    for (;;) {
+      const pending = await this.repository.find({
+        where: { sourceId, status: 0, categoryId: '0' },
+        take: CollectSourceCategoryService.MATCH_BATCH,
       });
-      matched += 1;
+      if (pending.length === 0) return { scanned, matched };
+      scanned += pending.length;
+      let matchedInBatch = 0;
+      for (const row of pending) {
+        const target = autoMatchCategory(row.sourceTypeName, infos);
+        if (target <= 0) continue;
+        await this.repository.update(row.id, {
+          status: 1,
+          categoryId: String(target),
+          matchType: 1,
+        });
+        matched += 1;
+        matchedInBatch += 1;
+      }
+      // 这一批一条都没匹配上，说明剩下的也不会匹配，收工，否则会反复读同一批。
+      if (matchedInBatch === 0) return { scanned, matched };
     }
-    return { scanned: pending.length, matched };
+  }
+
+  /**
+   * 批量写入源站分类：一条多行 INSERT，已有的只刷新名称与父 id，保留既有映射状态。
+   * 采集 runner（`apps/server/src/modules/collect/runner.ts`）用的是 `INSERT IGNORE`，
+   * 这里要刷新名称所以带 `ON DUPLICATE KEY UPDATE`。
+   */
+  async upsertFromSource(
+    sourceId: string,
+    classes: Array<{ typeId: string; typeName: string; typePid: string }>,
+  ): Promise<void> {
+    if (classes.length === 0) return;
+    const placeholders = classes.map(() => '(?, ?, ?, ?, 0, 0, 0)').join(', ');
+    const values = classes.flatMap((item) => [sourceId, item.typeId, item.typeName, item.typePid]);
+    await this.dataSource.query(
+      `INSERT INTO lcm_collect_source_category
+         (source_id, source_type_id, source_type_name, source_type_pid, category_id, match_type, status)
+       VALUES ${placeholders}
+       ON DUPLICATE KEY UPDATE source_type_name = VALUES(source_type_name),
+                               source_type_pid = VALUES(source_type_pid)`,
+      values,
+    );
   }
 
   /** 把某个源站分类下的影片整体改到映射后的本站分类。 */
@@ -132,18 +166,31 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
       [row.categoryId],
     );
     await this.dataSource.query(
-      'UPDATE lcm_vod SET category_id = ?, category_pid = ?, updated_at = NOW() WHERE category_id = ?',
-      [row.categoryId, parent[0]?.pid ?? '0', input.fromCategoryId],
+      'UPDATE lcm_vod SET category_id = ?, category_pid = ?, updated_at = ? WHERE category_id = ?',
+      [row.categoryId, parent[0]?.pid ?? '0', new Date(), input.fromCategoryId],
     );
     return { affected, from: input.fromCategoryId, to: row.categoryId };
   }
 
-  private summarize(items: CollectSourceCategoryEntity[]): MappingSummary {
+  /**
+   * 按源站聚合汇总：一条 GROUP BY 数完，不受列表 `take` 截断影响。
+   * `status`：1 已映射 / 2 忽略 / 0 未处理。
+   */
+  private async summarizeOf(sourceIds: string[]): Promise<MappingSummary> {
+    if (sourceIds.length === 0) return { total: 0, mapped: 0, ignored: 0, unmapped: 0 };
+    const raw = await this.repository
+      .createQueryBuilder('m')
+      .select('COUNT(*)', 'total')
+      .addSelect('COALESCE(SUM(m.status = 1), 0)', 'mapped')
+      .addSelect('COALESCE(SUM(m.status = 2), 0)', 'ignored')
+      .addSelect('COALESCE(SUM(m.status = 0), 0)', 'unmapped')
+      .where('m.sourceId IN (:...sourceIds)', { sourceIds })
+      .getRawOne<Record<'total' | 'mapped' | 'ignored' | 'unmapped', string>>();
     return {
-      total: items.length,
-      mapped: items.filter((row) => row.status === 1).length,
-      ignored: items.filter((row) => row.status === 2).length,
-      unmapped: items.filter((row) => row.status === 0).length,
+      total: Number(raw?.total ?? 0),
+      mapped: Number(raw?.mapped ?? 0),
+      ignored: Number(raw?.ignored ?? 0),
+      unmapped: Number(raw?.unmapped ?? 0),
     };
   }
 }

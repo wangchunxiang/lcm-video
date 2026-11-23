@@ -1,5 +1,5 @@
 import type { CallHandler, ExecutionContext, NestInterceptor } from '@nestjs/common';
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Observable } from 'rxjs';
 import { map } from 'rxjs';
@@ -35,6 +35,13 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, ApiResponse<un
     if (raw === true) {
       return next.handle() as unknown as Observable<ApiResponse<unknown>>;
     }
+
+    // 决策 2.3：状态码一律 200，语义只在信封的 code 里。
+    // Nest 对 POST 默认回 201，这里压回 200；RAW 路由自己写头，不走这段。
+    context
+      .switchToHttp()
+      .getResponse<{ status(code: number): unknown }>()
+      .status(HttpStatus.OK);
     return next.handle().pipe(
       map((data) => ({ code: OK, msg: 'ok', data: serializeDates(data ?? null) })),
     );

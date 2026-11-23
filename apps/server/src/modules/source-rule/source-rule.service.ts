@@ -117,9 +117,9 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
         `UPDATE lcm_vod
             SET cover = CASE id ${coverCases} ELSE cover END,
                 cover_host = CASE id ${hostCases} ELSE cover_host END,
-                updated_at = NOW()
+                updated_at = ?
           WHERE id IN (?)`,
-        [...params, ids],
+        [...params, new Date(), ids],
       );
       affected += batch.length;
     }
@@ -156,9 +156,9 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
       await this.dataSource.query(
         `UPDATE lcm_vod_play
             SET play_url = CASE id ${cases} ELSE play_url END,
-                updated_at = NOW()
+                updated_at = ?
           WHERE id IN (?)`,
-        [...params, ids],
+        [...params, new Date(), ids],
       );
       affected += batch.length;
     }

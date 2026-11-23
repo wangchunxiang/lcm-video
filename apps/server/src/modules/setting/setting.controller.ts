@@ -2,7 +2,7 @@ import { Body, Post } from '@nestjs/common';
 import { AppCrud } from '../../common/crud/app-crud.decorator';
 import { SettingEntity } from './setting.entity';
 import { SettingService } from './setting.service';
-import { CreateSettingDTO, UpdateSettingDTO } from './dto/setting.dto';
+import { CreateSettingDTO, SaveSettingsDTO, UpdateSettingDTO } from './dto/setting.dto';
 
 /**
  * 站点配置：`@Crud()` 生成标准 REST，另外补两个便捷动作：
@@ -25,7 +25,7 @@ export class SettingController {
   }
 
   @Post('save-many')
-  async saveMany(@Body() dto: { entries: Array<{ key: string; value: string }> }): Promise<{ saved: number }> {
+  async saveMany(@Body() dto: SaveSettingsDTO): Promise<{ saved: number }> {
     const saved = await this.service.saveMany(dto.entries);
     return { saved };
   }

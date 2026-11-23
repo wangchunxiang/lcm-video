@@ -9,14 +9,20 @@ export type PickRange = 'all' | 'day' | 'week' | 'month';
 
 /**
  * 范围起点：从现在往前推（本日 = 最近 24 小时，本周 = 最近 7 天，本月 = 最近 1 个月），
- * 不是自然日/自然周。用 SQL 表达式算，不在 JS 里拼日期：库会话时区固定 +08:00，
- * `NOW()` 的语义就是本地时间。这些字符串是常量，没有用户输入拼接。
+ * 不是自然日/自然周。
+ *
+ * 用 JS 的 `Date` 传参，不写 SQL 的 `NOW()`：`NOW()` 取的是数据库服务器时钟（这台库是 UTC），
+ * 而 ORM 写进 `collected_at` 的是北京墙钟，两者差 8 小时 —— 拿 `NOW()` 当边界，
+ * 「最近 24 小时」实际是 32 小时，「最近 7 天」实际是 7 天 8 小时，窗口整体偏宽
+ *（同一时刻实测：`NOW()` 算出 141 部，`new Date()` 算出 99 部）。
  */
-const RANGE_SINCE = {
-  day: 'NOW() - INTERVAL 1 DAY',
-  week: 'NOW() - INTERVAL 7 DAY',
-  month: 'NOW() - INTERVAL 1 MONTH',
-} satisfies Record<Exclude<PickRange, 'all'>, string>;
+function rangeSince(range: Exclude<PickRange, 'all'>): Date {
+  const since = new Date();
+  if (range === 'day') since.setDate(since.getDate() - 1);
+  else if (range === 'week') since.setDate(since.getDate() - 7);
+  else since.setMonth(since.getMonth() - 1);
+  return since;
+}
 
 /** 一段候选广告的最短 / 最长时长（秒），超过 30 秒的不当作广告 */
 const MIN_AD_SECONDS = 6;
@@ -273,7 +279,7 @@ async function pickByVodRange(
   size: number,
   range: Exclude<PickRange, 'all'>,
 ): Promise<PickedPlay[]> {
-  const since = RANGE_SINCE[range];
+  const since = rangeSince(range);
   const picked: PickedPlay[] = [];
   const seen = new Set<string>();
 
@@ -283,7 +289,8 @@ async function pickByVodRange(
               COALESCE(CAST(MAX(id) AS CHAR), '0') AS high
          FROM lcm_vod
         WHERE status = 1
-          AND collected_at >= ${since}`,
+          AND collected_at >= ?`,
+      [since],
     );
     const low = Number(bounds?.low ?? 0);
     const high = Number(bounds?.high ?? 0);
@@ -294,11 +301,11 @@ async function pickByVodRange(
       `SELECT id, name
          FROM lcm_vod
         WHERE status = 1
-          AND collected_at >= ${since}
+          AND collected_at >= ?
           AND id >= ?
         ORDER BY id ASC
         LIMIT 200`,
-      [String(start)],
+      [since, String(start)],
     );
     const fresh = vods.filter((row) => !seen.has(row.id));
     if (!fresh.length) continue;

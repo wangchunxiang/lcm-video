@@ -1,6 +1,7 @@
 -- lcm_setting 初始数据
 -- 取自现有 lcm_video 库的 lcm_setting 表，共 15 行（已去掉 site_theme、site_logo、site_favicon、upload_max_mb）
--- value 为 TEXT，布尔开关以 '1' / '0' 存储；类型校验与默认值由 packages/shared/src/settings.ts 的 SETTINGS 元数据负责。
+-- value 为 TEXT，布尔开关以 '1' / '0' 存储；默认值以 packages/shared/src/settings.ts 的 SETTINGS 为唯一来源，
+-- 本文件的每一行由 apps/server/src/database/settings-seed.test.ts 逐键比对，改一边不改另一边会红。
 INSERT INTO lcm_setting (`name`, `value`) VALUES
   ('site_name', '蓝草莓影视'),
   ('site_subtitle', '高清影视在线观看'),

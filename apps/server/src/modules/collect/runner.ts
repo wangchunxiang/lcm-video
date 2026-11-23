@@ -47,7 +47,6 @@ interface RunContext {
   resumeCount: number;
 }
 
-const AUTO_DELAY_MS = 5_000;
 const PAGE_FAIL_LIMIT = 3;
 const FAIL_SAMPLE_LIMIT = 100;
 const RANGE_HOURS: Record<number, number | undefined> = { 1: 24, 2: 24 * 7, 3: 24 * 30, 4: undefined };
@@ -281,7 +280,7 @@ export class CollectRunner {
       { status: 4, finishedAt: new Date(), message: `已取消，完成 ${pageText}` },
     );
     const affected = result.affected ?? 0;
-    if (affected > 0) await this.syncTaskStatus(logId, 4, formatSummary(log));
+    if (affected > 0) await this.syncTaskStatus(log.taskId, 4, formatSummary(log));
     return affected > 0;
   }
 
@@ -569,9 +568,6 @@ export class CollectRunner {
     } else {
       await this.finish(context, 2, `完成 ${page} 页`);
     }
-
-    // 两次任务之间留出间隔，避免整点多个任务同时打同一个源站
-    if (context.trigger === 'auto') await sleep(AUTO_DELAY_MS);
   }
 
   private async finish(context: RunContext, status: number, message: string): Promise<void> {
@@ -591,18 +587,20 @@ export class CollectRunner {
         resumeCount: context.resumeCount,
       },
     );
-    await this.syncTaskStatus(logId, status, taskMessage);
+    await this.syncTaskStatus(context.taskId, status, taskMessage);
     this.logger.log(
       `采集结束 log=${logId} status=${status}：${text}；任务摘要：${taskMessage}`,
     );
   }
 
-  /** 记录收尾时同步任务表；任务表只存计数摘要，运行说明留在记录表 */
-  private async syncTaskStatus(logId: string, status: number, taskMessage: string): Promise<void> {
-    const log = await this.logRepository.findOne({ where: { id: logId }, select: { taskId: true } });
-    if (log === null || log.taskId === NO_TASK) return;
+  /**
+   * 记录收尾时同步任务表；任务表只存计数摘要，运行说明留在记录表。
+   * 直接收 taskId：两个调用点都手握着它，不必为拿它再查一次日志（日志还可能已被保留期清理删掉）。
+   */
+  private async syncTaskStatus(taskId: string, status: number, taskMessage: string): Promise<void> {
+    if (taskId === NO_TASK) return;
     await this.taskRepository.update(
-      { id: log.taskId },
+      { id: taskId },
       { lastRunStatus: status, lastRunAt: new Date(), lastRunMsg: taskMessage.slice(0, 255) },
     );
   }

@@ -11,6 +11,7 @@ import { AppCrudService } from '../../common/crud/app-crud.service';
 import { hashPassword, verifyPassword } from '../../common/security/password';
 import { verifyCaptcha } from '../../common/security/captcha';
 import { isLocked, recordFailure, resetFailures } from '../../common/security/login-lock';
+import { currentUserId } from '../../common/context/request-context';
 import { signToken } from '../../common/security/jwt';
 import { SettingService } from '../setting/setting.service';
 import { AdminUserEntity } from './admin-user.entity';
@@ -132,14 +133,17 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     });
   }
 
-  /** 修改：传了密码就重置（版本 +1）并踢掉旧登录；不能禁用自己。 */
+  /** 修改：传了密码就重置（版本 +1）并踢掉旧登录；不能把最后一个启用的账号禁用掉。 */
   override async update(
     criteria: string | FindOptionsWhere<AdminUserEntity>,
     data: Partial<AdminUserEntity>,
   ): Promise<AdminUserEntity> {
     const dto = data as unknown as UpdateAdminUserDTO;
+    // `currentUserId()` 由 RequestContextInterceptor 在守卫之后挂好；定时任务等
+    // 不在请求链路里的调用读到 undefined，此时只剩「最后一个启用账号」这条不变量兜底。
     if (typeof criteria === 'string' && dto.isEnabled === 0) {
-      throw new BadRequestException('不能禁用自己的账号');
+      if (criteria === currentUserId()) throw new BadRequestException('不能禁用自己的账号');
+      await this.assertNotLastEnabled(criteria);
     }
 
     const patch: Partial<AdminUserEntity> = {};
@@ -159,12 +163,10 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     softDelete?: boolean,
   ): Promise<{ success: boolean; message: string }> {
     if (typeof criteria === 'string') {
-      const left = await this.repository.count({ where: { isEnabled: 1 } });
-      const target = await this.repository.findOne({ where: { id: criteria } });
-      if (target !== null && target.isEnabled === 1 && left <= 1) {
-        throw new BadRequestException('至少要保留一个启用状态的账号');
-      }
+      if (criteria === currentUserId()) throw new BadRequestException('不能删除自己的账号');
+      await this.assertNotLastEnabled(criteria);
     }
+
     return super.delete(criteria, softDelete);
   }
 
@@ -189,6 +191,19 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
       passwordVersion: user.passwordVersion + 1,
     });
     return { success: true };
+  }
+
+  /**
+   * 禁用/删除前确认库里还剩下别的启用账号。
+   *
+   * 账号只有一张表、没有找回入口，最后一个启用账号被禁或被删就等于后台永久锁死，
+   * 所以 `update`（禁用）与 `delete` 共守这一条不变量。
+   */
+  private async assertNotLastEnabled(id: string): Promise<void> {
+    const target = await this.repository.findOne({ where: { id } });
+    if (target === null || target.isEnabled !== 1) return;
+    const enabled = await this.repository.count({ where: { isEnabled: 1 } });
+    if (enabled <= 1) throw new BadRequestException('至少要保留一个启用状态的账号');
   }
 
   private async currentVersion(criteria: string | FindOptionsWhere<AdminUserEntity>): Promise<number> {

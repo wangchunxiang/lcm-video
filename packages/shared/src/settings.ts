@@ -59,7 +59,7 @@ export const SETTINGS: SettingField[] = [
     group: 'playback',
     label: '自动播放',
     type: 'switch',
-    default: '0',
+    default: '1',
     hint: '进入播放页自动开始',
   },
   {
@@ -86,7 +86,7 @@ export const SETTINGS: SettingField[] = [
     group: 'playback',
     label: '截图按钮',
     type: 'switch',
-    default: '1',
+    default: '0',
     hint: '一键保存当前画面',
   },
   {
@@ -104,7 +104,7 @@ export const SETTINGS: SettingField[] = [
     group: 'playback',
     label: '网页全屏',
     type: 'switch',
-    default: '0',
+    default: '1',
     hint: '撑满窗口，不隐藏标签栏',
   },
   {
@@ -113,7 +113,7 @@ export const SETTINGS: SettingField[] = [
     group: 'playback',
     label: '设置面板',
     type: 'switch',
-    default: '1',
+    default: '0',
     hint: '齿轮按钮，展开下面三项',
   },
   {
@@ -124,3 +124,17 @@ export const SETTINGS: SettingField[] = [
     default: '7',
   },
 ];
+
+/**
+ * 配置键的默认值。**默认值只这一份**：新库的种子数据（`seeds/lcm_setting.sql`）、
+ * 服务端「库里缺这一行」时的回退（`portal.service.ts` 的 `siteConfig`）、后台表单初值
+ * 都从这里取；`apps/server/src/database/settings-seed.test.ts` 守着三者不漂移。
+ */
+export function settingDefault(key: string): string | undefined {
+  return SETTINGS.find((field) => field.key === key)?.default;
+}
+
+/** 布尔开关的默认值，判定与 `SettingService.flag` 一致：`'1'` 为真，其余为假。 */
+export function settingDefaultFlag(key: string): boolean {
+  return settingDefault(key) === '1';
+}

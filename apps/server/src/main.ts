@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppValidationPipe } from './common/pipes/validation.pipe';
 
@@ -90,19 +91,15 @@ async function bootstrap(): Promise<void> {
   }
 
   // 决策 2.3：HTTP 状态码一律 200，语义放在信封的 code 里。
-  // Nest 对 POST 默认回 201，这里统一压回 200。
-  app.use((request: Request, response: Response, next: NextFunction) => {
-    void request;
-    const sendJson = response.json.bind(response);
-    response.json = (body?: unknown) => {
-      response.status(200);
-      return sendJson(body);
-    };
-    next();
-  });
-
+  // 成功响应由 ResponseInterceptor 统一设 200（Nest 对 POST 默认 201），
+  // 失败响应由 AllExceptionsFilter 自己设 200，不在这里改 Express 的 response.json。
   app.useGlobalPipes(new AppValidationPipe());
-  app.useGlobalInterceptors(new ResponseInterceptor<unknown>(app.get(Reflector)));
+  // 顺序有意义：RequestContextInterceptor 必须先跑，后面的拦截器与 controller
+  // 都依赖它挂进去的登录人（`currentUserId()`）。
+  app.useGlobalInterceptors(
+    new RequestContextInterceptor(),
+    new ResponseInterceptor<unknown>(app.get(Reflector)),
+  );
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
   // 端口来自校验过的配置快照（config/configuration.ts），不再直接摸 process.env

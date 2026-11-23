@@ -13,8 +13,7 @@ import { SourceRuleEntity } from '../source-rule/source-rule.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import { VodEntity } from '../vod/vod.entity';
 import { VodMergeIgnoreEntity } from '../vod-merge-ignore/vod-merge-ignore.entity';
-import { autoMatchCategory } from '@lcm/shared';
-import type { CategoryMatchInfo } from '@lcm/shared';
+import { CollectSourceCategoryService } from '../collect-source-category/collect-source-category.service';
 import { AppCrudService } from '../../common/crud/app-crud.service';
 import { fetchClassList } from '../collect/classes';
 import { CollectRunner } from '../collect/runner';
@@ -64,6 +63,7 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
     @InjectRepository(CollectSourceEntity) repository: Repository<CollectSourceEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly runner: CollectRunner,
+    private readonly sourceCategories: CollectSourceCategoryService,
   ) {
     super(repository);
   }
@@ -294,44 +294,9 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
       throw new BadRequestException(`获取分类失败：${msg}`);
     }
 
-    for (const item of classes) {
-      await this.dataSource.query(
-        `INSERT INTO lcm_collect_source_category
-           (source_id, source_type_id, source_type_name, source_type_pid, category_id, match_type, status)
-         VALUES (?, ?, ?, ?, 0, 0, 0)
-         ON DUPLICATE KEY UPDATE source_type_name = VALUES(source_type_name),
-                                 source_type_pid = VALUES(source_type_pid)`,
-        [id, item.typeId, item.typeName, item.typePid],
-      );
-    }
-
-    const categories = await this.dataSource.query<
-      Array<{ id: string; pid: string; name: string; matchNames: string }>
-    >('SELECT id, pid, name, match_names AS matchNames FROM lcm_category');
-    const infos: CategoryMatchInfo[] = categories.map((row) => ({
-      id: Number(row.id),
-      pid: Number(row.pid),
-      name: row.name,
-      matchNames: row.matchNames === '' ? [] : row.matchNames.split(','),
-    }));
-
-    const pending = await this.dataSource.query<Array<{ id: string; name: string }>>(
-      'SELECT id, source_type_name AS name FROM lcm_collect_source_category WHERE source_id = ? AND status = 0 AND category_id = 0',
-      [id],
-    );
-
-    let matched = 0;
-    for (const row of pending) {
-      const target = autoMatchCategory(row.name, infos);
-      if (target <= 0) continue;
-      await this.dataSource.query(
-        `UPDATE lcm_collect_source_category
-            SET category_id = ?, status = 1, match_type = 1, updated_at = NOW()
-          WHERE id = ?`,
-        [String(target), row.id],
-      );
-      matched += 1;
-    }
+    // 一条多行 INSERT + 统一走分类服务的自动匹配，跟后台「自动匹配」按钮同一套逻辑
+    await this.sourceCategories.upsertFromSource(id, classes);
+    const { matched } = await this.sourceCategories.match(id);
 
     const counts = await this.dataSource.query<Array<{ total: number; unmapped: number }>>(
       `SELECT COUNT(*) AS total, COALESCE(SUM(status = 0), 0) AS unmapped

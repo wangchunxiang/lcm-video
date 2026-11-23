@@ -4,6 +4,7 @@ import { CollectClient } from '../collect/client';
 import { parseVodPage } from '../collect/parser';
 import type { SourceRuntime } from '../collect/types';
 import { checkHost, probeImage } from './probe';
+import { CoverCheckEntity } from './cover-check.entity';
 
 export type ScanResult = Awaited<ReturnType<typeof checkHost>> & { vodCount: number };
 
@@ -11,29 +12,21 @@ export type ScanResult = Awaited<ReturnType<typeof checkHost>> & { vodCount: num
 export async function scanHost(dataSource: DataSource, host: string, vodCount: number): Promise<ScanResult> {
   const result = await checkHost(dataSource, host);
   const message = result.message.slice(0, 255);
-  // upsert：host 上有唯一索引 uk_host。
-  // 不用 ON DUPLICATE KEY UPDATE col = VALUES(col)（MySQL 8.0.20 起已废弃），
-  // 改成再传一遍同名参数，5.7 / 8.x 都能跑。
-  await dataSource.query(
-    `INSERT INTO lcm_cover_check
-       (host, vod_count, status, sample_ok, sample_fail, message, checked_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
-     ON DUPLICATE KEY UPDATE
-       vod_count = ?, status = ?, sample_ok = ?, sample_fail = ?, message = ?,
-       checked_at = NOW(), updated_at = NOW()`,
-    [
+  // 时间列交给 ORM 写：裸 SQL 的 NOW() 取的是数据库服务器时钟，和 ORM 写的列差 8 小时。
+  // 用 upsert 而不是手写 ON DUPLICATE KEY UPDATE：`host` 上有唯一索引 uk_host，
+  // 值只需写一份，不会再出现「11 个占位符、5 个值传两遍」那种错位就编不出来的写法。
+  await dataSource.getRepository(CoverCheckEntity).upsert(
+    {
       host,
       vodCount,
-      result.status,
-      result.okCount,
-      result.failCount,
+      status: result.status,
+      sampleOk: result.okCount,
+      sampleFail: result.failCount,
       message,
-      vodCount,
-      result.status,
-      result.okCount,
-      result.failCount,
-      message,
-    ],
+      checkedAt: new Date(),
+      updatedAt: new Date(),
+    },
+    ['host'],
   );
   return { ...result, vodCount };
 }
@@ -46,15 +39,16 @@ export async function clearHostCovers(dataSource: DataSource, host: string): Pro
   );
   const before = Number(count?.total ?? 0);
   // cover 清空时 cover_host 必须一起清空：它是 cover 的冗余列，留着会继续被体检扫到
+  const now = new Date();
   await dataSource.query(
-    "UPDATE lcm_vod SET cover = '', cover_host = '', updated_at = NOW() WHERE cover_host = ?",
-    [host],
+    "UPDATE lcm_vod SET cover = '', cover_host = '', updated_at = ? WHERE cover_host = ?",
+    [now, host],
   );
   await dataSource.query(
     `UPDATE lcm_cover_check
-        SET status = 1, message = ?, checked_at = NOW(), updated_at = NOW()
+        SET status = 1, message = ?, checked_at = ?, updated_at = ?
       WHERE host = ?`,
-    ['已清空，前台使用占位图', host],
+    ['已清空，前台使用占位图', now, now, host],
   );
   return before;
 }
@@ -99,8 +93,8 @@ export async function repairHostCovers(
     const found = await resolveCover(dataSource, target.id, target.name, sources, clientFor);
     if (found) {
       await dataSource.query(
-        'UPDATE lcm_vod SET cover = ?, cover_host = ?, updated_at = NOW() WHERE id = ?',
-        [found.url, hostOf(found.url), target.id],
+        'UPDATE lcm_vod SET cover = ?, cover_host = ?, updated_at = ? WHERE id = ?',
+        [found.url, hostOf(found.url), new Date(), target.id],
       );
       fixed += 1;
       items.push({ vodId: target.id, name: target.name, from: target.cover, to: found.url, ok: true, reason: found.reason });
@@ -117,8 +111,9 @@ export async function repairHostCovers(
   const remaining = Number(rest?.total ?? 0);
   // 修完且没有剩余，把域名状态改成正常
   if (remaining === 0) {
-    await dataSource.query('UPDATE lcm_cover_check SET status = 1, message = ?, updated_at = NOW() WHERE host = ?', [
+    await dataSource.query('UPDATE lcm_cover_check SET status = 1, message = ?, updated_at = ? WHERE host = ?', [
       '已全部替换',
+      new Date(),
       host,
     ]);
   }

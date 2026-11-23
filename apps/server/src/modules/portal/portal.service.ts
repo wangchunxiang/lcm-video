@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { compareId, countEpisodes, escapeLike, parsePlayUrl } from '@lcm/shared';
+import { compareId, countEpisodes, escapeLike, parsePlayUrl, settingDefaultFlag } from '@lcm/shared';
 import { SettingService } from '../setting/setting.service';
 import { UpstreamPlaylistError, cleanPlaylist } from '../ad-feature/skip';
 import type { CleanResult } from '../ad-feature/skip';
@@ -194,13 +194,13 @@ export class PortalService {
       this.setting.get('site_disclaimer', ''),
       this.setting.get('site_stats_code', ''),
       this.setting.number('list_page_size', 24),
-      this.setting.flag('player_autoplay', false),
-      this.setting.flag('player_autonext', true),
-      this.setting.flag('player_resume', true),
-      this.setting.flag('player_screenshot', true),
-      this.setting.flag('player_fullscreen', true),
-      this.setting.flag('player_webfullscreen', false),
-      this.setting.flag('player_setting', true),
+      this.setting.flag('player_autoplay', settingDefaultFlag('player_autoplay')),
+      this.setting.flag('player_autonext', settingDefaultFlag('player_autonext')),
+      this.setting.flag('player_resume', settingDefaultFlag('player_resume')),
+      this.setting.flag('player_screenshot', settingDefaultFlag('player_screenshot')),
+      this.setting.flag('player_fullscreen', settingDefaultFlag('player_fullscreen')),
+      this.setting.flag('player_webfullscreen', settingDefaultFlag('player_webfullscreen')),
+      this.setting.flag('player_setting', settingDefaultFlag('player_setting')),
     ]);
 
     return {

@@ -425,8 +425,8 @@ export class VodMergeService {
       if (latest !== '') {
         // 原生 UPDATE 不会触发 @UpdateDateColumn，时间戳要自己补
         await manager.query(
-          'UPDATE lcm_vod SET collected_at = GREATEST(collected_at, ?), updated_at = NOW() WHERE id = ?',
-          [latest, keep.id],
+          'UPDATE lcm_vod SET collected_at = GREATEST(collected_at, ?), updated_at = ? WHERE id = ?',
+          [latest, new Date(), keep.id],
         );
       }
       await manager.query('DELETE FROM lcm_vod WHERE id IN (?)', [others]);
@@ -775,11 +775,12 @@ export class VodMergeService {
       await this.dataSource.query('DELETE FROM lcm_vod_merge_ignore WHERE merge_key = ?', [mergeKey]);
       return { ignored: false };
     }
+    const now = new Date();
     await this.dataSource.query(
       `INSERT INTO lcm_vod_merge_ignore (merge_key, kind, created_at, updated_at)
-        VALUES (?, ?, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE kind = ?, updated_at = NOW()`,
-      [mergeKey, kind, kind],
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE kind = ?, updated_at = ?`,
+      [mergeKey, kind, now, now, kind, now],
     );
     return { ignored: true };
   }

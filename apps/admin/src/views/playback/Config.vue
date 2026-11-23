@@ -13,6 +13,7 @@ import {
 import { ElMessage } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import { settingDefault } from '@lcm/shared';
 
 interface Row {
   key: string;
@@ -41,15 +42,10 @@ const ROWS = [...BEHAVIOR, ...CONTROLS, ...PANEL];
 const KEYS = ROWS.map((row) => row.key);
 const PANEL_KEYS = PANEL.map((row) => row.key);
 
-const form = reactive<Record<string, string>>({
-  player_autoplay: '0',
-  player_autonext: '1',
-  player_resume: '1',
-  player_screenshot: '1',
-  player_fullscreen: '1',
-  player_webfullscreen: '0',
-  player_setting: '1',
-});
+/** 表单初值取 shared 的默认值：后台、前台回退、新库种子共用同一份，不再各记一套 */
+const form = reactive<Record<string, string>>(
+  Object.fromEntries(ROWS.map((row) => [row.key, settingDefault(row.key) ?? ''])),
+);
 
 interface SourceItem {
   id: string;

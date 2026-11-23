@@ -69,11 +69,15 @@ export class SettingService extends AppCrudService<SettingEntity> {
     return row;
   }
 
-  /** 批量写入，一个事务，写完清缓存。 */
+  /**
+   * 批量写入：一条 `INSERT ... ON DUPLICATE KEY UPDATE`（`uk_name` 是 name 列的唯一索引），
+   * 要么全成要么全不成，写完清缓存。
+   * `updated_at` 由 MySQL 的 `ON UPDATE CURRENT_TIMESTAMP(6)` 维护，不依赖 ORM。
+   */
   async saveMany(entries: Array<{ key: string; value: string }>): Promise<number> {
-    for (const entry of entries) {
-      await this.save(entry.key, entry.value);
-    }
+    if (entries.length === 0) return 0;
+
+    await this.repository.manager.upsert(SettingEntity, entries, ['key']);
     this.cache = null;
     return entries.length;
   }
