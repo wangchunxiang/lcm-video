@@ -26,16 +26,22 @@ COPY apps ./apps
 
 RUN npm run build
 
-# 运行阶段用不到构建工具，剪掉 devDependencies（@lcm/* 是 workspace 依赖，会保留）
-RUN npm prune --omit=dev
+RUN npm prune --omit=dev && rm -f apps/server/dist/.tsbuildinfo
 
 # ---- 运行阶段：只带运行时依赖与构建产物 ----
-FROM node:24-bookworm-slim AS runtime
+FROM node:24-alpine AS runtime
 
 WORKDIR /app
 
 ENV NODE_ENV=production \
     TZ=Asia/Shanghai
+
+# Alpine 不带时区库，不装 tzdata 的话 TZ=Asia/Shanghai 不生效
+RUN apk add --no-cache tzdata
+
+# 运行阶段用不到包管理器，删掉减少体积
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/lib/node_modules/corepack /usr/local/bin/corepack
 
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
