@@ -9,21 +9,19 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
-  "dependencies": {
+  "devDependencies": {
     "@lcm/api-client": "*",
     "@lcm/shared": "*",
     "@tailwindcss/vite": "^4.3.5",
+    "@vitejs/plugin-vue": "^5.2.3",
     "artplayer": "^5.4.0",
     "hls.js": "^1.7.3",
     "lucide-vue-next": "^1.0.0",
     "qrcode-generator": "^2.0.4",
     "tailwindcss": "^4.3.5",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.3",
     "vite": "^6.2.5",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
   }
 }
