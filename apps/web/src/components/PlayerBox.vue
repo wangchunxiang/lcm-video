@@ -54,9 +54,49 @@ function inferType(url: string): string {
   return PLAYLIST_PROXY.test(url) || /\.m3u8(?:[?#]|$)/i.test(url) ? 'm3u8' : '';
 }
 
+/**
+ * 失败提示文案。
+ *
+ * HTTP 状态比 `MediaError.code` 精确得多：502 是我们自己的播放列表代理拉不到上游
+ * （见 `apps/server/src/modules/portal/portal.controller.ts`），这时说「不支持在线播放」
+ * 会被误会成源站/编码问题，其实只是线路暂时抽风，换个线路或稍等就能放。
+ */
+function describeFailure(code: number, status?: number): string {
+  if (status !== undefined && status >= 500) return '线路暂时不可用，请稍后重试或换线路';
+  if (status !== undefined && status >= 400) return '线路地址已失效，请换线路';
+  if (code === 2) return '网络连接异常，请换线路重试';
+  if (code === 3) return '视频解码失败，请换线路';
+  return '该线路暂不支持在线播放，请换线路';
+}
+
+/**
+ * 失败后补探一次代理地址的真实状态码。
+ * iOS 原生内核的 `video.error` 只有 code，拿不到 HTTP 状态，只能自己再问一遍；
+ * 只探本站代理地址（同源、命中服务端缓存，代价是一次几 KB 的请求）。
+ * 必须带超时：源站抽风时这个地址本身就是慢的，等它等于让用户对着黑屏干等。
+ */
+async function probeStatus(url: string): Promise<number | undefined> {
+  if (!PLAYLIST_PROXY.test(url)) return undefined;
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    return res.status;
+  } catch {
+    return undefined;
+  }
+}
+
 
 const containerRef = ref<HTMLDivElement | null>(null);
-const failed = ref(false);
+const failedText = ref('');
+/** hls.js 报 fatal 时记下的 HTTP 状态，交给随后的 video:error 拼更准的提示 */
+let lastFatalStatus: number | undefined;
+/** 补探的等待上限：宁可给中性文案，也不让浮层因为探测而迟迟不出现 */
+const PROBE_TIMEOUT_MS = 3_000;
+/** 中性文案：探测没结果、或播放列表本身没问题时用它，不武断说「不支持」 */
+const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
 
 /** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
 const directSrc = computed(() => props.playSrc || props.src);
@@ -81,7 +121,13 @@ interface HlsPlayer {
   attachMedia(media: HTMLVideoElement): void;
   recoverMediaError(): void;
   destroy(): void;
-  on(event: string, listener: (event: string, data: { fatal?: boolean; type?: string }) => void): void;
+  on(
+    event: string,
+    listener: (
+      event: string,
+      data: { fatal?: boolean; type?: string; details?: string; response?: { code?: number } },
+    ) => void,
+  ): void;
 }
 
 interface HlsConstructor {
@@ -160,7 +206,7 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
   };
 
   const unsupported = (): void => {
-    failed.value = true;
+    failedText.value = '该线路暂不支持在线播放，请换线路';
     player.notice.show = '该线路暂不支持在线播放';
     emit('error');
   };
@@ -193,6 +239,12 @@ function playM3u8(video: HTMLVideoElement, url: string, player: Artplayer): void
         if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
           instance.recoverMediaError();
           return;
+        }
+        // 记下 HTTP 状态：退回原生后 video.error 只剩一个 code，状态码才能说清是哪种失败。
+        // 只记 manifest（含 level/音轨列表）层的错误：分片、密钥的 4xx/5xx 会把提示张冠李戴
+        const detail = data.details ?? '';
+        if (detail.startsWith('manifest') || detail.startsWith('levelLoad')) {
+          lastFatalStatus = data.response?.code;
         }
         instance.destroy();
         hls = null;
@@ -238,8 +290,45 @@ function saveProgress(): void {
 
 defineExpose({ saveProgress });
 
+/**
+ * 播放失败：先把错误分类再提示。
+ * `MediaError.code` 只有四种语义，光凭它分不清「源站挂了」和「格式不支持」；
+ * hls.js 那边能拿到 HTTP 状态，原生内核则靠补探一次代理地址。
+ * 文案必须同步出现：补探是「锦上添花」，不能让用户先对着黑屏等几秒。
+ */
+async function handleVideoError(player: Artplayer, url: string): Promise<void> {
+  const code = player.video.error?.code ?? 0;
+  // code 1 = 主动中断（换集、切线路时的 abort），不是真的失败，不能弹提示
+  if (code === 1) return;
+  leaveFullscreen(player);
+  const known = lastFatalStatus;
+  lastFatalStatus = undefined;
+  failedText.value = known === undefined ? NEUTRAL_FAILURE : describeFailure(code, known);
+  emit('error');
+  // 只有 code 4 才需要补探：code 2 本身就是网络、code 3 是解码，都能直接定性
+  if (known !== undefined || code !== 4) return;
+  const status = await probeStatus(url);
+  // 探测期间已经换了别的集，就别再改这一条的提示
+  if (status === undefined || status < 400 || directSrc.value !== url) return;
+  // 只有播放列表本身就报错才能定性；列表正常说明是分片/密钥那一段出的问题，
+  // 这时保持中性文案，不要武断说成「不支持在线播放」
+  failedText.value = describeFailure(code, status);
+}
+/**
+ * 失败时先退出全屏，否则浮层根本露不出来：
+ * - 网页全屏时 Artplayer 会把容器改成 `position:fixed; inset:0; z-index:9999`，
+ *   浮层的 `z-[130]` 压不过它；
+ * - 原生全屏时浏览器只渲染全屏元素那一棵子树，浮层不在里面，等于看不见也点不到。
+ * 两处失败都不该把用户锁在一个看不见提示的全屏画面里，所以一并退出。
+ */
+function leaveFullscreen(player: Artplayer): void {
+  if (player.fullscreen) player.fullscreen = false;
+  if (player.fullscreenWeb) player.fullscreenWeb = false;
+}
+
 function createPlayer(): void {
-  failed.value = false;
+  failedText.value = '';
+  lastFatalStatus = undefined;
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 
@@ -272,6 +361,15 @@ function createPlayer(): void {
   art = player;
 
   player.on('video:loadedmetadata', () => restoreResume(player));
+  /*
+   * 真的放起来了就把失败痕迹清掉：内核偶尔会先报一次错再自己恢复（换段失败重试、
+   * 分辨率切档），留个不透明浮层盖在上面等于把能放的视频锁死；顺便清掉那次的状态码，
+   * 避免它污染后面的错误文案。
+   */
+  player.on('video:canplay', () => {
+    failedText.value = '';
+    lastFatalStatus = undefined;
+  });
   player.on('video:timeupdate', () => {
     saveResume(player);
     // 兜底：个别源站/内核到结尾时不派发 ended，这里按「离结尾不到 0.5 秒」判定一次
@@ -290,9 +388,16 @@ function createPlayer(): void {
     emit('ended');
   });
   player.on('video:error', () => {
-    failed.value = true;
-    emit('error');
+    void handleVideoError(player, directSrc.value);
   });
+}
+/**
+ * 重新加载当前这一集。
+ * 必须有：PlayView 的同集点击是 no-op（`applyEp` 遇到 `index === current` 直接 return），
+ * 失败浮层又是不透明全屏盖层，没有这个按钮用户就只能换集才能继续看。
+ */
+function retry(): void {
+  createPlayer();
 }
 
 watch(
@@ -307,7 +412,8 @@ watch(
     }
     if (art && prev) {
       // 换集就地切换：同一个 ArtPlayer 实例换源，不销毁重建（避免黑一下）
-      failed.value = false;
+      failedText.value = '';
+      lastFatalStatus = undefined;
       lastSaveAt = 0;
       endedSent = false;
       // 就地换源时 artplayer 用 `option.type` 判内核，换集地址可能变成代理地址（或反过来），
@@ -339,11 +445,27 @@ onBeforeUnmount(destroyPlayer);
       referrerpolicy="no-referrer"
     ></iframe>
     <div v-else ref="containerRef" class="h-full w-full"></div>
+    <!--
+      `z-[130]` 是裸数值，理由是浮层必须盖住 Artplayer 自己的层：它内部的控件层是
+      `.art-bottom:60`、`.art-loading:70`、`.art-notice:80`、`.art-settings:90`、
+      `.art-info:100`、`.art-contextmenus:120`（打包在 artplayer.js 里的样式），
+      而 `.art-video-player` 自身没建层叠上下文（`position:relative` + `z-index:auto`），
+      所以不抬高层的活，遮罩会被控件盖住、按钮也点不到。Tailwind 没有 >50 的 z 刻度。
+    -->
     <div
-      v-if="failed"
-      class="absolute inset-0 grid place-items-center bg-[#0f172a] text-[13px] text-[#c9d1de]"
+      v-if="failedText"
+      class="absolute inset-0 z-[130] grid place-items-center overflow-y-auto bg-surface px-4 py-2 text-center text-small text-ink-2"
     >
-      该线路暂不支持在线播放
+      <div class="grid gap-3">
+        <span>{{ failedText }}</span>
+        <button
+          type="button"
+          class="mx-auto inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-primary-line hover:text-ink active:border-primary-line active:text-ink"
+          @click="retry"
+        >
+          重新加载
+        </button>
+      </div>
     </div>
   </div>
 </template>
