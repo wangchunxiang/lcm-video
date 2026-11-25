@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { isAbortError, portal, type VodCard } from '../api/portal';
 import { site } from '../site';
+import { useKeywordDraft } from '../composables/useKeywordDraft';
 import { useSeo } from '../composables/useSeo';
 import VodGrid from '../components/VodGrid.vue';
 import GridSkeleton from '../components/ui/GridSkeleton.vue';
@@ -19,7 +20,7 @@ const year = computed(() => (typeof route.query.year === 'string' ? route.query.
 const sort = computed(() => (route.query.sort === 'new' ? 'new' : 'time'));
 const pageSize = computed(() => site.config.listPageSize || 24);
 
-const keyword = ref(wd.value);
+const { keyword, submit } = useKeywordDraft();
 const items = ref<VodCard[]>([]);
 const total = ref(0);
 const loading = ref(false);
@@ -42,12 +43,6 @@ function setQuery(patch: Record<string, string | undefined>, keepPage = false): 
   });
   if (!keepPage) delete query.page;
   void router.push({ name: 'search', query });
-}
-
-function submit(): void {
-  const value = keyword.value.trim();
-  if (!value) return;
-  void router.push({ name: 'search', query: { wd: value } });
 }
 
 /** 在飞请求：搜索是最容易连点的入口，上一个没回来就断掉 */
@@ -95,9 +90,6 @@ async function load(): Promise<void> {
 
 onBeforeUnmount(() => controller?.abort());
 
-watch(wd, (value) => {
-  keyword.value = value;
-});
 watch([wd, page, year, sort, pageSize, () => site.ready], load, { immediate: true });
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)));

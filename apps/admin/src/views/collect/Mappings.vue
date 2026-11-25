@@ -57,7 +57,9 @@ type StatusFilter = 'all' | '1' | '0' | '2';
 const statusFilter = ref<StatusFilter>('all');
 const selected = ref<SourceCategoryRow[]>([]);
 
-/** 记录每行上一次的映射分类，重刷已入库影片时用它定位「旧分类」。 */
+/** 记录每行上一次的映射分类，重刷已入库影片时用它定位「旧分类」。
+ * 内容全部来自 `map` 接口的返回（服务端改之前读到的值），界面不自己猜。
+ */
 const lastCategoryIds = ref<Record<string, string>>({});
 
 const filteredRows = computed(() => {
@@ -107,11 +109,6 @@ const treeRows = computed<TreeRow[]>(() => {
 
 function toggleFilter(value: StatusFilter) {
   statusFilter.value = statusFilter.value === value ? 'all' : value;
-}
-
-/** 更新映射前记下旧分类，供「重刷」使用。 */
-function rememberCategory(row: SourceCategoryRow) {
-  if (row.categoryId) lastCategoryIds.value[row.id] = row.categoryId;
 }
 
 async function loadSources() {
@@ -188,9 +185,12 @@ async function autoMatch() {
 async function applyRow(row: SourceCategoryRow, categoryId: string) {
   const target = categoryId ?? '';
   try {
-    rememberCategory(row);
     const body = target ? { ids: [row.id], categoryId: target } : { ids: [row.id], status: 0 };
-    await api.post<{ updated: number }>('/collect-source-category/map', body);
+    const data = await api.post<{ updated: number; previous?: Record<string, string> }>(
+      '/collect-source-category/map',
+      body,
+    );
+    Object.assign(lastCategoryIds.value, data.previous ?? {});
     ElMessage.success(target ? '已映射' : '已取消映射');
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '映射失败');

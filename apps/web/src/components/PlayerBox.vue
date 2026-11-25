@@ -448,4 +448,13 @@ onBeforeUnmount(destroyPlayer);
   width: 100%;
   height: 100%;
 }
+
+/*
+ * artplayer 自己的样式是 `.art-video { object-fit: fill }`，视频会被拉伸成容器的 16:9。
+ * 片源比例不一定都是 16:9（示例：1920x802 约 2.39:1），fill 下画面被竖向拉高 35%，人物变形。
+ * 改成 contain：保留原比例，多出来的地方用容器底色（黑）补。
+ */
+.player-box :deep(.art-video) {
+  object-fit: contain;
+}
 </style>

@@ -1,8 +1,8 @@
 ﻿<script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, nextTick, ref } from 'vue';
 import { House, Search } from 'lucide-vue-next';
 import { site } from '../site';
+import { useKeywordDraft } from '../composables/useKeywordDraft';
 import { CATEGORY_ICONS } from './layout/categoryIcons';
 import Container from './layout/Container.vue';
 
@@ -14,21 +14,8 @@ import Container from './layout/Container.vue';
  * 小屏（<sm）分类导航整体下沉到 MobileTabBar，顶栏只留 logo + 站名 + 搜索；
  * ≥sm 才出现顶栏里的分类导航，和桌面是同一行。
  */
-const router = useRouter();
-const route = useRoute();
-const keyword = ref('');
-
-/**
- * 顶栏输入框与搜索结果页共用同一个关键词：
- * 搜索页（有 wd）在桌面端不重复画输入框，用户直接在顶栏改词回车即可。
- */
-watch(
-  () => route.query.wd,
-  (value) => {
-    keyword.value = typeof value === 'string' ? value : '';
-  },
-  { immediate: true },
-);
+/** 顶栏输入框与搜索结果页共用同一个关键词（搜索页在桌面端不重复画输入框，用户直接在顶栏改词回车） */
+const { keyword, submit } = useKeywordDraft();
 
 /** 顶部导航只放一级分类（与首页的区块一一对应），子分类留给列表页筛选 */
 const navCategories = computed(() => site.categories.slice(0, 6));
@@ -39,12 +26,6 @@ const NAV =
 
 /** 分类图标：小屏 14px、桌面 16px，够用又不占地方 */
 const NAV_ICON = 'h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4';
-
-function submit(): void {
-  const wd = keyword.value.trim();
-  if (!wd) return;
-  void router.push({ name: 'search', query: { wd } });
-}
 
 /**
  * 小屏搜索：点图标不跳页，就地展开一个输入框，旁边留「取消」。
@@ -65,12 +46,11 @@ function closeSearch(): void {
 }
 
 function submitMobile(): void {
-  const wd = keyword.value.trim();
-  if (!wd) {
+  if (keyword.value.trim() === '') {
     closeSearch();
     return;
   }
-  void router.push({ name: 'search', query: { wd } });
+  submit();
   closeSearch();
 }
 </script>

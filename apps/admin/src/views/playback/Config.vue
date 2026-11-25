@@ -262,20 +262,21 @@ async function removeFeature(row: AdFeature) {
   }
 }
 
-/** 换源后之前的抽取与分析结果都作废，并拉该源已有特征 */
-watch(adsSourceId, () => {
+/** 换源或换范围都要作废：样片、候选、日志都是上一个条件下留下的 */
+function resetExtracted(): void {
   sampleVods.value = [];
   candidates.value = [];
   logs.value = [];
+}
+
+/** 换源后之前的抽取与分析结果都作废，并拉该源已有特征 */
+watch(adsSourceId, () => {
+  resetExtracted();
   void loadFeatures();
 });
 
-/** 换选片范围同样让已抽的样片作废（否则列表和范围对不上） */
-watch(adsRange, () => {
-  sampleVods.value = [];
-  candidates.value = [];
-  logs.value = [];
-});
+/** 换选片范围同样让已抽的样片作废（否则列表和范围对不上）；特征不随范围变，不用重拉 */
+watch(adsRange, resetExtracted);
 
 async function loadFeatures() {
   if (!adsSourceId.value) return;

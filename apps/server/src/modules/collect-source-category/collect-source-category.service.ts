@@ -48,8 +48,15 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
     return { items, summary: await this.summarizeOf([sourceId]) };
   }
 
-  /** 批量映射到某个分类，或标记为忽略。 */
-  async map(input: MapInput): Promise<{ updated: number; summary: MappingSummary }> {
+  /** 批量映射到某个分类，或标记为忽略。
+   *
+   * 除了改动行数还回 `previous`：这些行改之前的本站分类。界面上的「按新映射重刷」要用户填
+   * 「影片当前所在分类」，那个值只有服务端知道（映射一改就被覆盖了），所以顺手带回，
+   * 不让前端自己另存一份影子状态。
+   */
+  async map(
+    input: MapInput,
+  ): Promise<{ updated: number; summary: MappingSummary; previous: Record<string, string> }> {
     if (input.ids.length === 0) throw new BadRequestException('请选择要处理的行');
     const toCategory = input.categoryId ?? '';
     if (input.status !== 2 && input.status !== 0 && (toCategory === '' || toCategory === '0')) {
@@ -62,14 +69,19 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
         : input.status === 0
           ? { status: 0, categoryId: '0', matchType: 0 }
           : { status: 1, categoryId: toCategory, matchType: 2 };
+    // 改之前先取一遍：既要算涉及的源（给汇总），又要记住改之前的分类（给「重刷」）
+    const before = await this.repository.find({
+      where: { id: In(input.ids) },
+      select: { id: true, sourceId: true, categoryId: true },
+    });
     const result = await this.repository.update({ id: In(input.ids) }, patch);
 
-    const rows = await this.repository.find({
-      where: { id: In(input.ids) },
-      select: { sourceId: true },
-    });
-    const sourceIds = [...new Set(rows.map((row) => row.sourceId))];
-    return { updated: result.affected ?? 0, summary: await this.summarizeOf(sourceIds) };
+    const sourceIds = [...new Set(before.map((row) => row.sourceId))];
+    const previous: Record<string, string> = {};
+    for (const row of before) {
+      if (row.categoryId !== '' && row.categoryId !== patch.categoryId) previous[row.id] = row.categoryId;
+    }
+    return { updated: result.affected ?? 0, summary: await this.summarizeOf(sourceIds), previous };
   }
 
   /** 一次自动匹配最多读多少行，避免把整个源的未映射行一次性读进内存。 */
