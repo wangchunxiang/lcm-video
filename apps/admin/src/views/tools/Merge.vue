@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElInfiniteScroll, ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
 import { formatDateTime, formatShortTime } from '../../utils/datetime.ts';
 
@@ -121,6 +121,11 @@ const filtered = computed(() => {
 });
 
 const visibleGroups = computed(() => filtered.value.slice(0, visibleCount.value));
+const allShown = computed(() => visibleCount.value >= filtered.value.length);
+
+// 局部注册 Element Plus 的滚动指令：本项目没有 app.use(ElementPlus)，
+// 组件由 unplugin-vue-components 自动引入，指令不在它的职责里。
+const vInfiniteScroll = ElInfiniteScroll;
 
 const groupId = (group: LightGroup): string => `${group.kind}:${group.key}`;
 
@@ -284,10 +289,8 @@ function pick(group: LightGroup): void {
 }
 
 /** 滚到接近底部时再放一批，组多的时候不用点分页 */
-function onScroll(event: Event): void {
-  const el = event.target as HTMLElement;
-  if (el.scrollTop + el.clientHeight < el.scrollHeight - 40) return;
-  if (visibleCount.value >= filtered.value.length) return;
+function loadMore(): void {
+  if (allShown.value) return;
   visibleCount.value += PAGE;
 }
 
@@ -496,7 +499,12 @@ onMounted(() => {
               </el-button>
             </span>
           </div>
-          <div class="list-body" @scroll.passive="onScroll">
+          <div
+            v-infinite-scroll="loadMore"
+            :infinite-scroll-disabled="allShown"
+            :infinite-scroll-distance="40"
+            class="list-body"
+          >
             <div
               v-for="group in visibleGroups"
               :key="groupId(group)"

@@ -28,15 +28,15 @@
         <!-- 没有可清理的记录时不显示，避免点了才知道是空的 -->
         <span v-if="staleCount > 0" class="stale-hint">
           另有 {{ staleCount }} 个域名已无影片引用
-          <el-button link type="primary" :loading="pruning" @click="pruneHosts">清理</el-button>
+          <el-button link type="primary" :loading="pageBusy === 'prune'" @click="pruneHosts">清理</el-button>
         </span>
         <!-- 检查：主按钮就是「待检」（日常唯一会用到的），全部重检藏在右侧下拉里 -->
         <el-button-group class="scan-group">
-          <el-button type="primary" :loading="scanning" @click="scanAll('pending')">
+          <el-button type="primary" :loading="pageBusy === 'scan'" @click="scanAll('pending')">
             检查待检（{{ pendingCount }}）
           </el-button>
-          <el-dropdown trigger="click" :disabled="scanning" @command="onScanCommand">
-            <el-button type="primary" :icon="ArrowDown" :disabled="scanning" />
+          <el-dropdown trigger="click" :disabled="pageBusy === 'scan'" @command="onScanCommand">
+            <el-button type="primary" :icon="ArrowDown" :disabled="pageBusy === 'scan'" />
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="pending">
@@ -56,7 +56,7 @@
           type="danger"
           plain
           :disabled="selectedHosts.length === 0"
-          :loading="batchRunning"
+          :loading="pageBusy === 'batch'"
           @click="repairSelected"
         >
           批量修复{{ selectedHosts.length ? `（${selectedHosts.length}）` : '' }}
@@ -100,13 +100,13 @@
           </el-table-column>
           <el-table-column label="操作" width="240" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" :loading="checking === row.host" @click="checkOne(row)">检查</el-button>
+              <el-button link type="primary" :loading="rowBusyOf(row, 'check')" @click="checkOne(row)">检查</el-button>
               <el-button link type="primary" @click="openVods(row)">影片</el-button>
               <el-button
                 link
                 type="primary"
                 :disabled="(row.status !== 2 && row.status !== 3) || row.vodCount === 0"
-                :loading="repairing === row.host"
+                :loading="rowBusyOf(row, 'repair')"
                 @click="repair(row)"
               >
                 修复
@@ -114,8 +114,8 @@
               <el-button
                 link
                 type="info"
-                :disabled="row.vodCount === 0 || webfix === row.host"
-                :loading="webfix === row.host"
+                :disabled="row.vodCount === 0 || rowBusyOf(row, 'webfix')"
+                :loading="rowBusyOf(row, 'webfix')"
                 @click="clearCovers(row)"
               >
                 清空
@@ -175,12 +175,21 @@ interface CoverVod {
 
 const rows = ref<HostRow[]>([]);
 const loading = ref(false);
-const scanning = ref(false);
-const pruning = ref(false);
-const checking = ref('');
-const repairing = ref('');
-const webfix = ref('');
-const batchRunning = ref(false);
+/** 页面级互斥操作：同一时刻只允许一个（扫描/清理/批量修复） */
+const pageBusy = ref<'' | 'scan' | 'prune' | 'batch'>('');
+type RowAction = 'check' | 'repair' | 'webfix';
+/** 行内操作占用，键是 `操作:域名`：同一域名同一操作转圈，不同域名仍然可以并发 */
+const rowBusy = ref(new Set<string>());
+
+function rowBusyOf(row: HostRow, action: RowAction): boolean {
+  return rowBusy.value.has(`${action}:${row.host}`);
+}
+
+function setRowBusy(row: HostRow, action: RowAction, busy: boolean): void {
+  const key = `${action}:${row.host}`;
+  if (busy) rowBusy.value.add(key);
+  else rowBusy.value.delete(key);
+}
 const selectedHosts = ref<string[]>([]);
 const filters = ref({ host: '', status: '' });
 const applied = ref({ host: '', status: '' });
@@ -275,7 +284,7 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
     ElNotification.info({ title: '没有需要检查的域名', message: '所有域名上次检查都正常' });
     return;
   }
-  scanning.value = true;
+  pageBusy.value = 'scan';
   try {
     // v3 只有单域名扫描接口，这里按 SCAN_PARALLEL 个并发把目标域名跑一遍
     let cursor = 0;
@@ -292,7 +301,7 @@ async function scanAll(mode: 'pending' | 'all'): Promise<void> {
     const tail = mode === 'pending' && skipped > 0 ? `，跳过 ${skipped} 个上次正常的域名` : '';
     ElNotification.success({ title: '检查完成', message: `共检查 ${targets.length} 个域名${tail}` });
   } finally {
-    scanning.value = false;
+    pageBusy.value = '';
   }
 }
 
@@ -312,23 +321,23 @@ async function pruneHosts(): Promise<void> {
     () => false,
   );
   if (!ok) return;
-  pruning.value = true;
+  pageBusy.value = 'prune';
   try {
     const result = await api.longPost<{ deleted: number }>('/cover-check/prune', {});
     await load();
     ElNotification.success({ title: '已清理', message: `删掉 ${result.deleted} 条记录` });
   } finally {
-    pruning.value = false;
+    pageBusy.value = '';
   }
 }
 
 async function checkOne(row: HostRow): Promise<void> {
-  checking.value = row.host;
+  setRowBusy(row, 'check', true);
   try {
     await api.longPost('/cover-check/scan', { host: row.host });
     await load();
   } finally {
-    checking.value = '';
+    setRowBusy(row, 'check', false);
   }
 }
 
@@ -412,7 +421,7 @@ async function repairSelected(): Promise<void> {
     return;
   }
 
-  batchRunning.value = true;
+  pageBusy.value = 'batch';
   const loading = ElLoading.service({ lock: true, text: `正在修复 1/${targets.length}…`, background: 'rgba(0, 0, 0, 0.6)' });
   let fixed = 0;
   let failed = 0;
@@ -438,7 +447,7 @@ async function repairSelected(): Promise<void> {
     });
   } finally {
     loading.close();
-    batchRunning.value = false;
+    pageBusy.value = '';
     selectedHosts.value = [];
     void load();
   }
@@ -459,7 +468,7 @@ async function repair(row: HostRow): Promise<void> {
     return;
   }
 
-  repairing.value = row.host;
+  setRowBusy(row, 'repair', true);
   try {
     const { fixed, failed } = await runRepair(row.host);
     ElNotification({
@@ -471,7 +480,7 @@ async function repair(row: HostRow): Promise<void> {
     // 换过封面的影片会落到别的域名下，行数据得重算；放到后台做，别挡提示
     void load();
   } finally {
-    repairing.value = '';
+    setRowBusy(row, 'repair', false);
   }
 }
 
@@ -489,13 +498,13 @@ async function clearCovers(row: HostRow): Promise<void> {
   } catch {
     return;
   }
-  webfix.value = row.host;
+  setRowBusy(row, 'webfix', true);
   try {
     await api.post('/cover-check/clear', { host: row.host });
     ElNotification.success({ title: '已清空', message: `共 ${row.vodCount} 部影片改用占位图` });
     void load();
   } finally {
-    webfix.value = '';
+    setRowBusy(row, 'webfix', false);
   }
 }
 
