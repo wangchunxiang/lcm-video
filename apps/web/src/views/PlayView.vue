@@ -9,7 +9,6 @@ import { pageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
-import { useEpisodeLayout } from '../composables/useEpisodeLayout';
 
 /** 自动连播：播完直接切下一集，不打断 */
 const route = useRoute();
@@ -21,7 +20,6 @@ const error = ref('');
 /** 换线路失败只提示，不影响正在播的内容 */
 const lineError = ref('');
 const epsRef = ref<HTMLDivElement | null>(null);
-const epsGridRef = ref<HTMLDivElement | null>(null);
 const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 
 /** 选集排序与详情页共用一份偏好：倒序 = 最新集在前 */
@@ -47,8 +45,6 @@ const line = computed(() => play.value?.line ?? null);
 const episodes = computed(() => play.value?.episodes ?? []);
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
 
-/** 小屏下若有一格放不下的集名，整块改用 flex-wrap 自然宽度；PC 上恒为 grid */
-const { layout } = useEpisodeLayout(episodesShown, epsGridRef);
 const current = computed(() => play.value?.current ?? 1);
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
@@ -396,26 +392,19 @@ useSeo(() => ({
         </p>
 
         <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
-          <div
-            ref="epsGridRef"
-            :class="
-              layout === 'flow'
-                ? 'flex flex-wrap gap-[var(--ep-gap)]'
-                : 'grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10'
-            "
-          >
+          <div class="flex flex-wrap gap-[var(--ep-gap)] sm:grid sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <button
               v-for="ep in episodesShown"
               :key="ep.index"
               type="button"
               :title="ep.name"
               :data-active="ep.index === current ? '1' : undefined"
-              class="h-[var(--ep-cell-h)] cursor-pointer truncate rounded text-center text-caption leading-[var(--ep-cell-h)] transition"
+              class="h-[var(--ep-cell-h)] max-w-full cursor-pointer truncate rounded text-center text-caption leading-[var(--ep-cell-h)] transition"
               :class="[
                 ep.index === current
                   ? 'bg-primary text-white'
                   : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
-                layout === 'flow' ? 'max-w-full px-3' : '',
+                'min-w-[calc((100%-3*var(--ep-gap))/4)] px-3 sm:min-w-0 sm:px-0',
               ]"
               @click="selectEp(ep.index)"
             >
