@@ -8,9 +8,7 @@
     "start": "node --env-file=../../.env dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "db:migrate": "node --env-file-if-exists=../../.env --import tsx src/database/migrate.ts",
-    "db:seed": "node --env-file-if-exists=../../.env --import tsx src/database/seed.ts",
-    "db:reset": "node --env-file-if-exists=../../.env --import tsx src/database/reset.ts",
-    "db:import-legacy": "node --env-file-if-exists=../../.env --import tsx src/database/import-legacy.ts"
+    "db:seed": "node --env-file-if-exists=../../.env --import tsx src/database/seed.ts"
   },
   "dependencies": {
     "@ackplus/nest-crud": "^2.5.2",
