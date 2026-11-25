@@ -25,19 +25,18 @@ export function setToken(token: string | null): void {
   }
 }
 
-/** token 失效时跳登录页；`redirect` 带上当前地址，登录后跳回来。 */
-export function redirectToLogin(): void {
-  // 构建时 BASE_URL 是 /admin/，开发时是 /
-  const base = import.meta.env.BASE_URL;
-  const current = `${window.location.pathname}${window.location.search}`;
-  if (window.location.pathname === `${base}login`) return;
-  window.location.assign(`${base}login?redirect=${encodeURIComponent(current)}`);
+/**
+ * token 失效时的处理。这里不认识 router（`api/client.ts` 也不该认识），只提供一个注入点，
+ * 由 `main.ts` 启动时注册成 router 跳转：跳登录页的 URL 只由 router 一种方式生成，
+ * 不会出现「手工拼了 BASE_URL 的地址」和「router 生成的不带 base 的地址」两套格式。
+ */
+let onUnauthorized: () => void = () => undefined;
+
+export function setUnauthorizedHandler(handler: () => void): void {
+  onUnauthorized = handler;
 }
 
-/** 把带 base 前缀的地址转成 vue-router 的路径（/admin/vods → /vods）。 */
-export function stripBase(path: string): string {
-  const base = import.meta.env.BASE_URL;
-  if (base === '/') return path;
-  const prefix = base.replace(/\/$/, '');
-  return path.startsWith(prefix) ? path.slice(prefix.length) || '/' : path;
+/** 接口层拿到 401 时调用：转给上面注册的那支处理函数。 */
+export function unauthorized(): void {
+  onUnauthorized();
 }

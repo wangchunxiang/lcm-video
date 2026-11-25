@@ -1,5 +1,5 @@
 import { createHttpClient } from '@lcm/api-client';
-import { getToken, redirectToLogin } from '../session.ts';
+import { getToken, unauthorized } from '../session.ts';
 
 /**
  * 后台接口客户端。统一信封解包、错误码、查询串拼接都在 `@lcm/api-client` 里，
@@ -9,7 +9,7 @@ const http = createHttpClient({
   // 默认同源 /api/admin；部署到别处时用 .env 的 VITE_API_BASE 覆盖
   baseUrl: import.meta.env.VITE_API_BASE || '/api/admin',
   getToken,
-  onUnauthorized: redirectToLogin,
+  onUnauthorized: unauthorized,
 });
 
 export { ApiError } from '@lcm/api-client';

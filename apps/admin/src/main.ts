@@ -8,8 +8,17 @@ import 'element-plus/dist/index.css';
 import './styles/global.css';
 import App from './App.vue';
 import router from './router/index.ts';
+import { setUnauthorizedHandler } from './session.ts';
 
 const app = createApp(App);
+
+// token 失效交给 router 跳登录：`redirect` 参数与路由守卫里的 `to.fullPath` 同一种格式，
+// 登录页拿到的永远是 router 能直接用的路径，不需要再剥 BASE_URL。
+setUnauthorizedHandler(() => {
+  const current = router.currentRoute.value.fullPath;
+  if (current.startsWith('/login')) return;
+  void router.replace({ path: '/login', query: { redirect: current } });
+});
 
 app.use(router);
 app.mount('#app');
