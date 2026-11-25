@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeCron, isValidCron, matchCron, nextRunAt, parseCron } from './cron.ts';
+import { describeCron, isValidCron, matchCron, nextRunAt } from './cron.ts';
 
 const at = (iso: string): Date => new Date(iso);
 
@@ -10,19 +10,9 @@ describe('isValidCron', () => {
   });
 
   it('越界与段数不足报错', () => {
-    expect(isValidCron('61 * * * *')).toContain('分钟');
-    expect(isValidCron('0 8 * *')).not.toBeNull();
-  });
-});
-
-describe('parseCron', () => {
-  it('解析区间与步长', () => {
-    const parsed = parseCron('*/15 9-17 * * 1-5');
-    expect(typeof parsed).not.toBe('string');
-    if (typeof parsed === 'string') return;
-    expect([...parsed.minute]).toEqual([0, 15, 30, 45]);
-    expect(parsed.hour.size).toBe(9);
-    expect(parsed.weekRestricted).toBe(true);
+    expect(isValidCron('61 * * * *')).toContain('不合法');
+    expect(isValidCron('0 8 * *')).toContain('不合法');
+    expect(isValidCron('')).toContain('请填写');
   });
 });
 

@@ -1,18 +1,11 @@
 /**
  * 5 段式 cron：分 时 日 月 周。
+ * 校验、匹配、推算下次时间都交给 `cron` 包（服务端已通过 @nestjs/schedule 依赖它），
+ * 本文件只保留「给界面看的中文描述」。
  * 时间按调用方所在时区解释——服务端进程时区固定 Asia/Shanghai，浏览器同样是 Asia/Shanghai。
  */
 
-import type { CronParts } from './types/cron.ts';
-
-const FIELD_LIMITS: Array<[string, number, number]> = [
-  ['分钟', 0, 59],
-  ['小时', 0, 23],
-  ['日', 1, 31],
-  ['月', 1, 12],
-  // 周允许写 0–7：cron 里 7 也是周日，下面 parseCron 会把它并到 0
-  ['周', 0, 7],
-];
+import { CronTime } from 'cron';
 
 export const WEEK_LABELS: Array<{ value: number; label: string }> = [
   { value: 1, label: '周一' },
@@ -24,165 +17,113 @@ export const WEEK_LABELS: Array<{ value: number; label: string }> = [
   { value: 0, label: '周日' },
 ];
 
-function expandField(field: string, min: number, max: number): Set<number> | string {
-  const result = new Set<number>();
-  for (const part of field.split(',')) {
-    const piece = part.trim();
-    if (!piece) return '存在空的字段项';
-
-    const [rangePart = '', stepPart] = piece.split('/');
-    let step = 1;
-    if (stepPart !== undefined) {
-      step = Number(stepPart);
-      if (!Number.isInteger(step) || step <= 0) return `步长不合法：${piece}`;
-    }
-
-    let from: number;
-    let to: number;
-    if (rangePart === '*') {
-      from = min;
-      to = max;
-    } else if (rangePart.includes('-')) {
-      const [a, b] = rangePart.split('-');
-      from = Number(a);
-      to = Number(b);
-      if (!Number.isInteger(from) || !Number.isInteger(to)) return `范围不合法：${piece}`;
-    } else {
-      const value = Number(rangePart);
-      if (!Number.isInteger(value)) return `数值不合法：${piece}`;
-      from = value;
-      to = stepPart !== undefined ? max : value;
-    }
-
-    if (from < min || to > max || from > to) return `超出范围 ${min}-${max}：${piece}`;
-    for (let v = from; v <= to; v += step) result.add(v);
-  }
-  if (result.size === 0) return '字段为空';
-  return result;
-}
-
-export function parseCron(expr: string): CronParts | string {
-  const fields = expr.trim().split(/\s+/);
-  if (fields.length !== 5) return 'cron 需要 5 段：分 时 日 月 周';
-
-  const sets: Set<number>[] = [];
-  for (let i = 0; i < 5; i++) {
-    const [label, min, max] = FIELD_LIMITS[i]!;
-    const expanded = expandField(fields[i]!, min, max);
-    if (typeof expanded === 'string') return `${label}段：${expanded}`;
-    sets.push(expanded);
-  }
-
-  const week = sets[4]!;
-  if (week.has(7)) {
-    week.delete(7);
-    week.add(0);
-  }
-
-  return {
-    minute: sets[0]!,
-    hour: sets[1]!,
-    day: sets[2]!,
-    month: sets[3]!,
-    week,
-    dayRestricted: fields[2] !== '*',
-    weekRestricted: fields[4] !== '*',
-  };
-}
-
-export function isValidCron(expr: string): string | null {
-  const parsed = parseCron(expr);
-  return typeof parsed === 'string' ? parsed : null;
-}
-
-function dayMatches(parsed: CronParts, date: Date): boolean {
-  if (!parsed.month.has(date.getMonth() + 1)) return false;
-  const dayHit = parsed.day.has(date.getDate());
-  const weekHit = parsed.week.has(date.getDay());
-  // 日与周同时受限时，任一命中即触发（与 Vixie cron 一致）
-  if (parsed.dayRestricted && parsed.weekRestricted) return dayHit || weekHit;
-  if (parsed.dayRestricted) return dayHit;
-  if (parsed.weekRestricted) return weekHit;
-  return true;
-}
-
-export function matchCron(expr: string, date: Date): boolean {
-  const parsed = parseCron(expr);
-  if (typeof parsed === 'string') return false;
-  if (!parsed.minute.has(date.getMinutes())) return false;
-  if (!parsed.hour.has(date.getHours())) return false;
-  return dayMatches(parsed, date);
-}
-
-/**
- * 下一次触发时间；表达式非法或 4 年内都不会触发时返回 null。
- * from 之后的第一分钟开始找，不含 from 本身所在的那一分钟。
- */
-export function nextRunAt(expr: string, from: Date = new Date()): Date | null {
-  const parsed = parseCron(expr);
-  if (typeof parsed === 'string') return null;
-
-  const hours = [...parsed.hour].sort((a, b) => a - b);
-  const minutes = [...parsed.minute].sort((a, b) => a - b);
-
-  const start = new Date(from.getTime());
-  start.setSeconds(0, 0);
-  start.setMinutes(start.getMinutes() + 1);
-
-  const firstDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  for (let offset = 0; offset <= 366 * 4; offset++) {
-    const day = new Date(firstDay.getFullYear(), firstDay.getMonth(), firstDay.getDate() + offset);
-    if (!dayMatches(parsed, day)) continue;
-
-    for (const hour of hours) {
-      for (const minute of minutes) {
-        const candidate = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute);
-        if (candidate.getTime() >= start.getTime()) return candidate;
-      }
-    }
-  }
-  return null;
-}
+const MINUTE_MS = 60_000;
 
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
+/**
+ * 校验表达式：合法返回 null，否则返回一句中文提示（附带库给的英文细节，比「格式错误」好定位）。
+ * 空串单独给提示，因为库对空串的报错是 `Invalid characters, got value: `。
+ */
+export function isValidCron(expr: string): string | null {
+  const text = expr.trim();
+  if (text === '') return '请填写 cron 表达式';
+  const result = CronTime.validateCronExpression(text);
+  if (result.valid) return null;
+  return `表达式不合法（${result.error?.message ?? '无法解析'}）`;
+}
+
+/**
+ * 判断某一分钟是否会触发。
+ * 做法：把这一分钟的起点往前挪 1 秒当作起点，问库「下一次是什么时候」，
+ * 若正好等于这一分钟起点，说明本分钟命中。日与周同时受限时按 Vixie cron 的「任一命中」处理（库内 `_wcOrAll`）。
+ */
+export function matchCron(expr: string, date: Date): boolean {
+  const text = expr.trim();
+  if (isValidCron(text) !== null) return false;
+  const minuteStart = new Date(Math.floor(date.getTime() / MINUTE_MS) * MINUTE_MS);
+  try {
+    const next = new CronTime(text).getNextDateFrom(new Date(minuteStart.getTime() - 1_000));
+    return next.toMillis() === minuteStart.getTime();
+  } catch {
+    return false;
+  }
+}
+
+/** 下一次触发时间；表达式非法或永远不会触发时返回 null。 */
+export function nextRunAt(expr: string, from: Date = new Date()): Date | null {
+  const text = expr.trim();
+  if (isValidCron(text) !== null) return null;
+  try {
+    return new CronTime(text).getNextDateFrom(from).toJSDate();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 把一段 cron 字段展开成取值集合。
+ * 只用于拼描述文案（表达式已由 `cron` 包校验过），不参与任何调度判断。
+ */
+function expandField(field: string, min: number, max: number): Set<number> {
+  const result = new Set<number>();
+  for (const piece of field.split(',')) {
+    const [rangePart = '', stepPart] = piece.split('/');
+    const step = stepPart === undefined ? 1 : Math.max(1, Number(stepPart) || 1);
+    let from = min;
+    let to = max;
+    if (rangePart !== '*') {
+      const [start = '', end] = rangePart.split('-');
+      from = Number(start);
+      to = end === undefined ? (stepPart === undefined ? from : max) : Number(end);
+    }
+    for (let value = from; value <= to; value += step) result.add(value);
+  }
+  return result;
+}
+
 /** 人类可读的描述，识别不了的表达式原样返回。 */
 export function describeCron(expr: string): string {
-  const stepMinute = /^\*\/(\d+) \* \* \* \*$/.exec(expr.trim());
+  const text = expr.trim();
+  if (isValidCron(text) !== null) return expr;
+
+  const stepMinute = /^\*\/(\d+) \* \* \* \*$/.exec(text);
   if (stepMinute) return `每 ${stepMinute[1]} 分钟`;
-  const stepHour = /^0 \*\/(\d+) \* \* \*$/.exec(expr.trim());
+  const stepHour = /^0 \*\/(\d+) \* \* \*$/.exec(text);
   if (stepHour) return `每 ${stepHour[1]} 小时`;
 
-  const parsed = parseCron(expr);
-  if (typeof parsed === 'string') return expr;
+  const [minuteField = '', hourField = '', dayField = '', monthField = '', weekField = ''] = text.split(/\s+/);
+  const minutes = [...expandField(minuteField, 0, 59)].sort((a, b) => a - b);
+  const hours = [...expandField(hourField, 0, 23)].sort((a, b) => a - b);
+  const week = expandField(weekField, 0, 7);
+  // cron 里 7 也是周日
+  if (week.has(7)) {
+    week.delete(7);
+    week.add(0);
+  }
 
-  const hours = [...parsed.hour].sort((a, b) => a - b);
-  const minutes = [...parsed.minute].sort((a, b) => a - b);
   const fullHour = hours.length === 24;
   const fullMinute = minutes.length === 60;
-
   if (fullHour && fullMinute) return '每分钟';
   if (fullHour) {
     const minuteText = minutes.length === 1 ? `第 ${minutes[0]} 分` : `第 ${minutes.join('、')} 分`;
     return `每小时${minuteText}`;
   }
-  if (minutes.length !== 1 || hours.length > 1) {
-    return expr;
-  }
+  if (minutes.length !== 1 || hours.length > 1) return expr;
 
-  const time = `${pad(hours[0]!)}:${pad(minutes[0]!)}`;
-  if (parsed.weekRestricted && !parsed.dayRestricted) {
-    const days = WEEK_LABELS.filter((item) => parsed.week.has(item.value)).map((item) => item.label);
-    return `每${days.join('、')} ${time}`;
+  const time = `${pad(hours[0] ?? 0)}:${pad(minutes[0] ?? 0)}`;
+  const dayRestricted = dayField !== '*';
+  const weekRestricted = weekField !== '*';
+  if (weekRestricted && !dayRestricted) {
+    const labels = WEEK_LABELS.filter((item) => week.has(item.value)).map((item) => item.label);
+    return `每${labels.join('、')} ${time}`;
   }
-  if (parsed.dayRestricted && !parsed.weekRestricted) {
-    const days = [...parsed.day].sort((a, b) => a - b);
-    if (parsed.month.size < 12) {
-      const months = [...parsed.month].sort((a, b) => a - b);
-      return `每年 ${months.join('、')} 月的 ${days.join('、')} 号 ${time}`;
-    }
+  if (dayRestricted && !weekRestricted) {
+    const days = [...expandField(dayField, 1, 31)].sort((a, b) => a - b);
+    const months = [...expandField(monthField, 1, 12)].sort((a, b) => a - b);
+    if (months.length < 12) return `每年 ${months.join('、')} 月的 ${days.join('、')} 号 ${time}`;
     return `每月 ${days.join('、')} 号 ${time}`;
   }
   return `每天 ${time}`;
