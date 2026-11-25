@@ -5,7 +5,7 @@ import qrcode from 'qrcode-generator';
 import { isAbortError, portal, type EpisodeItem, type VodDetail } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
-import { setPageCategoryId } from '../composables/usePageCategoryId';
+import { pageCategoryId } from '../composables/usePageCategoryId';
 import { useScrollLock } from '../composables/useScrollLock';
 import { useEpisodeLayout } from '../composables/useEpisodeLayout';
 import VodGrid from '../components/VodGrid.vue';
@@ -288,7 +288,7 @@ async function load(): Promise<void> {
     const result = await portal.detail(id.value, { signal: controller.signal });
     data.value = result;
     // 小屏底栏靠它高亮所属的一级分类（URL 里只有影片 id）
-    setPageCategoryId(result.vod.categoryId);
+    pageCategoryId.value = result.vod.categoryId;
   } catch (e) {
     if (isAbortError(e)) return;
     error.value = (e as Error).message || '影片加载失败';

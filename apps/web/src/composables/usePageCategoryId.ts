@@ -6,7 +6,3 @@ import { ref } from 'vue';
  * 路由切走时值不再被使用（底栏只在 detail / play 上读它），不需要额外清理。
  */
 export const pageCategoryId = ref('');
-
-export function setPageCategoryId(id: string): void {
-  pageCategoryId.value = id ?? '';
-}

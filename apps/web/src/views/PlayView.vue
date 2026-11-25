@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { isAbortError, portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
-import { setPageCategoryId } from '../composables/usePageCategoryId';
+import { pageCategoryId } from '../composables/usePageCategoryId';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
@@ -118,7 +118,7 @@ async function load(): Promise<void> {
     // 集数越界由服务端 clamp 并放在 result.current 里，这里不再多发一次请求
     play.value = result;
     // 小屏底栏靠它高亮所属的一级分类（播放页 URL 里只有影片 id）
-    setPageCategoryId(result.vod.categoryId);
+    pageCategoryId.value = result.vod.categoryId;
 
     const canonicalLine = result.line.id;
     const canonicalEp = String(result.current);

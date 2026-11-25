@@ -114,6 +114,8 @@ let loadToken = 0;
 let lastSaveAt = 0;
 /** 当前这一集是否已经发过 ended：timeupdate 兜底与原生 ended 只取一次 */
 let endedSent = false;
+/** 已经为哪个地址做过「原生失败 → hls.js」的降级：每集只降一次，避免两条路互扔 */
+let appleHlsRetryFor = '';
 
 function resumeStorageKey(): string {
   return props.resumeKey ? RESUME_PREFIX + props.resumeKey : '';
@@ -160,9 +162,10 @@ function isAppleMobile(): boolean {
  * 顺序是「hls.js 优先、原生兜底」，不能反过来：Chrome/Firefox 对 HLS 的 canPlayType
  * 会回 "maybe"，但真把 m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4），
  * 于是每个非 Safari 浏览器都会卡在「不支持在线播放」。
- * iPhone/iPad 没有 MSE，hls.js 起不来，直接交给原生内核（也省掉 400KB 的下载）。
+ * iPhone/iPad 优先交给原生内核，失败再降级到 hls.js（走 ManagedMediaSource，iOS 17.1+）
+ * —— 没有 MSE 的老系统上 hls.js 会自己失败，那条路只在原生已证实放不了时才走，不会比原来差。
  */
-function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer): void {
+function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forceHls = false): void {
   // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
   if (hls) {
     hls.destroy();
@@ -180,7 +183,7 @@ function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer): voi
     emit('error');
   };
 
-  if (isAppleMobile()) {
+  if (isAppleMobile() && !forceHls) {
     playNatively();
     return;
   }
@@ -273,6 +276,13 @@ function syncFailure(player: Artplayer): void {
   }
   // 同一波错误只提示一次：内核会对同一个拉不到的地址反复报错，每次重弹就是闪屏
   if (failedText.value !== '') return;
+  // iOS 还有一条没试过的路：hls.js + ManagedMediaSource（iOS 17.1+）。
+  // 每集只降级一次，两条路都失败才认栽，否则会在原生/hls 之间来回弹。
+  if (isAppleMobile() && hls === null && appleHlsRetryFor !== directSrc.value) {
+    appleHlsRetryFor = directSrc.value;
+    playM3u8(player.video, directSrc.value, player, true);
+    return;
+  }
   leaveFullscreen(player);
   failedText.value = NEUTRAL_FAILURE;
   emit('error');
@@ -292,6 +302,8 @@ function leaveFullscreen(player: Artplayer): void {
 function createPlayer(): void {
   // 重试/换集时先把浮层收掉，别让旧提示盖在正在重新加载的画面上
   failedText.value = '';
+  // 新一轮播放，iOS 的 hls.js 降级额度也重置
+  appleHlsRetryFor = '';
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 

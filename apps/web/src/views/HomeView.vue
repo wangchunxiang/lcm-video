@@ -71,24 +71,14 @@ async function loadToday(): Promise<void> {
 async function loadSections(): Promise<void> {
   await Promise.all(
     CATEGORY_SECTIONS.map(async (section, index) => {
+      // 两块分支只差 items/total，标题与 ready 写一份
+      const base = { alias: section.alias, title: section.title, ready: true };
       try {
         // 不传 sort：默认按 collected_at（有索引）；sort=new 走无索引的 created_at，12 万行要 10 秒以上
         const page = await portal.list(section.alias, { take: SECTION_SIZE });
-        sections.value[index] = {
-          alias: section.alias,
-          title: section.title,
-          items: page.items,
-          total: page.total,
-          ready: true,
-        };
+        sections.value[index] = { ...base, items: page.items, total: page.total };
       } catch {
-        sections.value[index] = {
-          alias: section.alias,
-          title: section.title,
-          items: [],
-          total: 0,
-          ready: true,
-        };
+        sections.value[index] = { ...base, items: [], total: 0 };
       }
     }),
   );
