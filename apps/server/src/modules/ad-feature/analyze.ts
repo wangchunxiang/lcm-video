@@ -77,12 +77,8 @@ export interface FoundFeature {
   sample: Array<{ vod_id: string; vod_name: string; start: number; start_sec: number; url: string }>;
 }
 
+/** 把播放列表里的相对地址解成绝对地址（`new URL` 已覆盖 `//host/x`、`/x`、`x/y` 三种） */
 function resolveUrl(base: string, ref: string): string {
-  if (/^https?:\/\//i.test(ref)) return ref;
-  if (ref.startsWith('/')) {
-    const u = new URL(base);
-    return `${u.origin}${ref}`;
-  }
   return new URL(ref, base).toString();
 }
 

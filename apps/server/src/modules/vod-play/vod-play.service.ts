@@ -144,13 +144,24 @@ export class VodPlayService extends AppCrudService<VodPlayEntity> {
   }
 
   private async assertNotLastLine(rows: VodPlayEntity[]): Promise<void> {
-    const byVod = new Map<string, number>();
-    for (const row of rows) {
-      const total =
-        byVod.get(row.vodId) ?? (await this.repository.count({ where: { vodId: row.vodId } }));
-      const removing = rows.filter((item) => item.vodId === row.vodId).length;
-      byVod.set(row.vodId, total);
-      if (total - removing <= 0) {
+    if (rows.length === 0) return;
+
+    // 要删的行按 vod 归一次类，再一条 GROUP BY 拿到这些影片各有多少线路（原来是每行一次 count）
+    const removing = new Map<string, number>();
+    for (const row of rows) removing.set(row.vodId, (removing.get(row.vodId) ?? 0) + 1);
+
+    const totals = await this.repository
+      .createQueryBuilder('p')
+      .select('p.vodId', 'vodId')
+      .addSelect('COUNT(*)', 'total')
+      .where('p.vodId IN (:...vodIds)', { vodIds: [...removing.keys()] })
+      .groupBy('p.vodId')
+      .getRawMany<{ vodId: string; total: string }>();
+
+    for (const row of totals) {
+      const total = Number(row.total);
+      const count = removing.get(String(row.vodId)) ?? 0;
+      if (total - count <= 0) {
         throw new BadRequestException('会删掉某部影片的最后一条线路，请确认后再删除（force=true）');
       }
     }
