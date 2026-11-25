@@ -16,12 +16,10 @@ withDefaults(
     /** 「更多」跳转地址，可选 */
     more?: string;
     items: VodCardData[];
-    /** 最多展示多少部，默认 16（= 8 列 × 2 行） */
-    limit?: number;
     /** 前 N 张 eager 加载，首屏以外的区块保持默认 0（全 lazy） */
     eagerCount?: number;
   }>(),
-  { limit: 16, eagerCount: 0 },
+  { eagerCount: 0 },
 );
 </script>
 
@@ -40,6 +38,6 @@ withDefaults(
       </RouterLink>
     </div>
 
-    <VodGrid :items="items.slice(0, limit)" :eager-count="eagerCount" />
+    <VodGrid :items="items" :eager-count="eagerCount" />
   </section>
 </template>

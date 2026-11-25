@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { portal, type VodPlay } from '../api/portal';
+import { isAbortError, portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { setPageCategoryId } from '../composables/usePageCategoryId';
@@ -41,8 +41,6 @@ function toggleEpOrder(): void {
     /* 存不了也不影响本次会话 */
   }
 }
-
-let requestSeq = 0;
 
 const vod = computed(() => play.value?.vod ?? null);
 const line = computed(() => play.value?.line ?? null);
@@ -91,12 +89,7 @@ const subtitle = computed(() => {
 let loadController: AbortController | null = null;
 let lineController: AbortController | null = null;
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException ? error.name === 'AbortError' : (error as Error)?.name === 'AbortError';
-}
-
 async function load(): Promise<void> {
-  const seq = ++requestSeq;
   lineController?.abort();
   loadController?.abort();
   const controller = new AbortController();
@@ -112,7 +105,6 @@ async function load(): Promise<void> {
   try {
     // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
     let result = await portal.play(vodId, { line: 0, ep: epParam }, { signal });
-    if (seq !== requestSeq) return;
 
     let lineIndex = 0;
     if (lineParam) {
@@ -121,7 +113,6 @@ async function load(): Promise<void> {
     }
     if (lineIndex !== 0) {
       result = await portal.play(vodId, { line: lineIndex, ep: epParam }, { signal });
-      if (seq !== requestSeq) return;
     }
 
     // 集数越界由服务端 clamp 并放在 result.current 里，这里不再多发一次请求
@@ -135,13 +126,12 @@ async function load(): Promise<void> {
       await router.replace({ name: 'play', params: { id: vodId, lineId: canonicalLine, ep: canonicalEp } });
     }
   } catch (e) {
-    if (isAbortError(e)) return;
-    if (seq === requestSeq) {
-      play.value = null;
-      error.value = (e as Error).message || '播放页加载失败';
-    }
+    if (isAbortError(e) || loadController !== controller) return;
+    play.value = null;
+    error.value = (e as Error).message || '播放页加载失败';
   } finally {
-    if (seq === requestSeq) loading.value = false;
+    // 已经被新请求接管时不要去关骨架屏：那时新的那次已经把它打开了
+    if (loadController === controller) loading.value = false;
   }
 }
 
@@ -149,16 +139,13 @@ async function load(): Promise<void> {
  * 换到另一条线路：要取一次新线路的集数列表，但播放器不重建。
  * 返回是否切换成功（失败时由调用方决定是否整页重载）。
  */
-let lineSeq = 0;
-
 async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
   const p = play.value;
   if (!p) return false;
   const lineIndex = p.lines.findIndex((item) => item.id === lineId);
   if (lineIndex < 0) return false;
 
-  // 连点线路时只认最后一次：先发后到的响应直接丢掉，否则画面与地址栏会错位
-  const seq = ++lineSeq;
+  // 连点线路时只认最后一次：上一个请求在这里被断掉，它的 catch 拿到 AbortError 直接退出
   lineController?.abort();
   const controller = new AbortController();
   lineController = controller;
@@ -167,11 +154,11 @@ async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
   lineError.value = '';
   try {
     const next = await portal.play(String(p.vod.id), { line: lineIndex, ep }, { signal: controller.signal });
-    if (seq !== lineSeq) return false;
+    if (lineController !== controller) return false;
     play.value = next;
     return true;
   } catch (e) {
-    if (isAbortError(e) || seq !== lineSeq) return false;
+    if (isAbortError(e) || lineController !== controller) return false;
     // 只影响线路区域，不把整页播放器顶掉
     lineError.value = (e as Error).message || '切换线路失败';
     return false;

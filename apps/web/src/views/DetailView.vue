@@ -59,6 +59,8 @@ const lines = computed(() => data.value?.lines ?? []);
 /**
  * 当前选中的线路只存在页面里（不进 URL）：地址栏保持 `/detail/:id`，
  * 点线路 tab 不产生导航，刷新或从别处回来默认第一条线路。
+ * 兜底只在下面的 computed 里做一次：`selectedLineId` 指向的线路不存在（刚换片、
+ * 那条线路被下掉）时自然回到第一条，不需要再用 watch 去重置它。
  */
 const selectedLineId = ref('');
 
@@ -66,15 +68,6 @@ const selectedLine = computed(() => {
   if (!lines.value.length) return null;
   return lines.value.find((line) => line.id === selectedLineId.value) ?? lines.value[0];
 });
-
-/** 详情数据就绪（或换片）后默认选第一条线路 */
-watch(
-  lines,
-  (list) => {
-    selectedLineId.value = list[0]?.id ?? '';
-  },
-  { immediate: true },
-);
 
 /** 选集排序：倒序 = 最新集在前，偏好存 localStorage（长番追更常用） */
 const EP_ORDER_KEY = 'lcm:ep-order';
