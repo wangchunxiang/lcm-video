@@ -13,12 +13,15 @@ import { SettingEntity } from '../setting/setting.entity';
 import { SourceRuleEntity } from '../source-rule/source-rule.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
 import { VodEntity } from '../vod/vod.entity';
+import { CollectSourceCategoryModule } from '../collect-source-category/collect-source-category.module';
 import { CollectRunner } from './runner';
 import { CollectScheduler } from './scheduler';
 
 /** 采集引擎：任务调度、逐页执行、写库 */
 @Module({
   imports: [
+    // 源站分类的写入只留 `CollectSourceCategoryService` 一份实现，runner 直接用它
+    CollectSourceCategoryModule,
     TypeOrmModule.forFeature([
       CollectTaskEntity,
       CollectTaskLogEntity,

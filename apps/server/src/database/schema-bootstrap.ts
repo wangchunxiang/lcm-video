@@ -9,7 +9,7 @@ const HISTORY_TABLE_DDL =
  *
  * 早期用 `db:init` 直接按实体建表，库里没有 `migrations` 表；换成启动自动迁移后，
  * baseline 会再 CREATE TABLE 一次并撞表导致起不来。这里把现有迁移一次性标记为已执行，
- * 让老库能直接启动；要拿到字段注释需要重建库（`npm run db:reset` 或手工 DROP）。
+ * 让老库能直接启动；要拿到字段注释只能手工 `DROP DATABASE` 后重启服务（迁移会自动重建）。
  *
  * 只判断 `lcm_vod` 是否存在：能建到这一步说明表结构是早期脚本按实体建的。
  *

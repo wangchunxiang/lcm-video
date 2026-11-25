@@ -1,4 +1,4 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /**
@@ -6,8 +6,6 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
  * `lcm_vod_play.source_from` 与它按字符串关联，未注册的线路照样显示。
  */
 @Entity('lcm_play_line', { comment: '全站线路注册表：改名、排序、停用' })
-@Index('uk_source_from', ['sourceFrom'], { unique: true })
-@Index('idx_sort', ['sort'])
 export class PlayLineEntity extends AppBaseEntity {
   @Column({
     name: 'source_from',

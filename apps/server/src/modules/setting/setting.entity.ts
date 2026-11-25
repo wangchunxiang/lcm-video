@@ -1,9 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 站点配置 KV。类型校验与默认值由 `packages/shared` 的 schema 负责。 */
 @Entity('lcm_setting', { comment: '站点配置 KV' })
-@Index('uk_name', ['key'], { unique: true })
 export class SettingEntity extends AppBaseEntity {
   @Column({
     name: 'name',

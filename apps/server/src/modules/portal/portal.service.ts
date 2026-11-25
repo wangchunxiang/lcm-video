@@ -80,6 +80,24 @@ export interface PlayLine {
   parseUrl: string;
 }
 
+/**
+ * 线路行：`playUrl` 是源站的原始剧集串（里面全是直链地址），只在服务端内部流转，
+ * 不能出现在任何响应里——对外一律走 `toPublicLine` 的白名单投影。
+ */
+type PlayLineRow = PlayLine & { playUrl: string };
+
+/** 把内部线路行收窄成对外形状：只保留 `PlayLine` 声明的 6 个字段。 */
+function toPublicLine(line: PlayLineRow): PlayLine {
+  return {
+    id: line.id,
+    sourceId: line.sourceId,
+    sourceFrom: line.sourceFrom,
+    name: line.name,
+    episodes: line.episodes,
+    parseUrl: line.parseUrl,
+  };
+}
+
 /** 一行卡片（首页分区）。 */
 export interface VodRow {
   title: string;
@@ -424,7 +442,7 @@ export class PortalService {
     });
 
     const { status: _status, ...rest } = vod;
-    return { vod: rest, lines, related };
+    return { vod: rest, lines: lines.map(toPublicLine), related };
   }
 
   /** 播放页：取某线路的集列表。 */
@@ -461,11 +479,7 @@ export class PortalService {
     const line = lines[wanted] ?? lines[0];
     if (line === undefined) throw new NotFoundException('线路不存在');
 
-    const playRows = await this.dataSource.query<Array<{ playUrl: string }>>(
-      'SELECT play_url AS playUrl FROM lcm_vod_play WHERE vod_id = ? AND source_from = ? AND COALESCE(source_id, 0) = ? LIMIT 1',
-      [vodId, line.sourceFrom, line.sourceId === '' ? 0 : line.sourceId],
-    );
-    const parsed = playRows[0] === undefined ? [] : parsePlayUrl(playRows[0].playUrl);
+    const parsed = parsePlayUrl(line.playUrl);
     if (parsed.length === 0) throw new NotFoundException('这条线路没有可播放的集');
 
     /*
@@ -505,8 +519,8 @@ export class PortalService {
         remarks: vod.remarks,
         categoryId: vod.categoryId,
       },
-      lines,
-      line,
+      lines: lines.map(toPublicLine),
+      line: toPublicLine(line),
       episodes,
       current,
     };
@@ -624,7 +638,7 @@ export class PortalService {
   }
 
   /** 影片可用线路：线路设置里的启用项在前，未登记的照旧显示。 */
-  private async linesOf(vodId: string): Promise<PlayLine[]> {
+  private async linesOf(vodId: string): Promise<PlayLineRow[]> {
     const rows = await this.dataSource.query<
       Array<{
         sourceId: string | null;
@@ -664,6 +678,7 @@ export class PortalService {
               : row.sourceFrom,
         episodes: countEpisodes(row.playUrl),
         parseUrl: row.parseUrl ?? '',
+        playUrl: row.playUrl,
       }))
       .filter((row) => row.episodes > 0);
   }

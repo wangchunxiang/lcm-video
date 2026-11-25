@@ -34,7 +34,7 @@ export class PlayLineService extends AppCrudService<PlayLineEntity> {
     return super.update(criteria, data);
   }
 
-  /** 拖拽排序：按传入顺序重排为 10、20、30…，一次事务写完。 */
+  /** 拖拽排序：按传入顺序重排为 10、20、30…，一条 SQL 写完。 */
   async sort(ids: string[]): Promise<{ updated: number }> {
     if (ids.length === 0) throw new BadRequestException('没有要排序的线路');
     const rows = await this.repository.find({
@@ -43,11 +43,18 @@ export class PlayLineService extends AppCrudService<PlayLineEntity> {
     });
     if (rows.length !== ids.length) throw new BadRequestException('有线路已被删除，请刷新后重试');
 
-    await this.dataSource.transaction(async (manager) => {
-      for (const [index, id] of ids.entries()) {
-        await manager.update(PlayLineEntity, { id }, { sort: (index + 1) * 10 });
-      }
-    });
+    // 一条 CASE 写完：11 条线路是 1 次往返，而不是 1 个事务里 11 次 UPDATE。
+    // 单条 UPDATE 本身原子，不需要事务包裹；`updated_at` 显式传值，不依赖 `ON UPDATE`。
+    const cases = ids.map(() => 'WHEN ? THEN ?').join(' ');
+    const params: Array<string | number> = [];
+    for (const [index, id] of ids.entries()) params.push(id, (index + 1) * 10);
+    await this.repository.query(
+      `UPDATE lcm_play_line
+          SET sort = CASE id ${cases} ELSE sort END,
+              updated_at = ?
+        WHERE id IN (?)`,
+      [...params, new Date(), ids],
+    );
     return { updated: ids.length };
   }
 

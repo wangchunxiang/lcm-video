@@ -8,22 +8,34 @@ import {
   MinLength,
 } from 'class-validator';
 
+/**
+ * 账号/密码/昵称的长度限制：这里的装饰器和启动建号（`database/seed-bootstrap.ts`）共用这一组，
+ * 改策略只改这一处。报错文案里的数字仍写在文案里，调数字时记得一起改。
+ */
+export const ADMIN_USER_LIMITS = {
+  usernameMin: 3,
+  usernameMax: 50,
+  passwordMin: 6,
+  passwordMax: 50,
+  nicknameMax: 50,
+} as const;
+
 /** 新建账号。 */
 export class CreateAdminUserDTO {
   @IsString({ message: '账号必须是字符串' })
-  @MinLength(3, { message: '账号至少 3 个字符' })
-  @MaxLength(50, { message: '账号最长 50 个字符' })
+  @MinLength(ADMIN_USER_LIMITS.usernameMin, { message: '账号至少 3 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.usernameMax, { message: '账号最长 50 个字符' })
   @Matches(/^[a-zA-Z0-9_-]+$/, { message: '账号只能包含字母、数字、下划线和减号' })
   username!: string;
 
   @IsString({ message: '密码必须是字符串' })
-  @MinLength(6, { message: '密码至少 6 个字符' })
-  @MaxLength(50, { message: '密码最长 50 个字符' })
+  @MinLength(ADMIN_USER_LIMITS.passwordMin, { message: '密码至少 6 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.passwordMax, { message: '密码最长 50 个字符' })
   password!: string;
 
   @IsOptional()
   @IsString({ message: '昵称必须是字符串' })
-  @MaxLength(50, { message: '昵称最长 50 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.nicknameMax, { message: '昵称最长 50 个字符' })
   nickname?: string;
 
   @IsOptional()
@@ -36,13 +48,13 @@ export class CreateAdminUserDTO {
 export class UpdateAdminUserDTO {
   @IsOptional()
   @IsString({ message: '昵称必须是字符串' })
-  @MaxLength(50, { message: '昵称最长 50 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.nicknameMax, { message: '昵称最长 50 个字符' })
   nickname?: string;
 
   @IsOptional()
   @IsString({ message: '密码必须是字符串' })
-  @MinLength(6, { message: '密码至少 6 个字符' })
-  @MaxLength(50, { message: '密码最长 50 个字符' })
+  @MinLength(ADMIN_USER_LIMITS.passwordMin, { message: '密码至少 6 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.passwordMax, { message: '密码最长 50 个字符' })
   password?: string;
 
   @IsOptional()
@@ -55,12 +67,12 @@ export class UpdateAdminUserDTO {
 export class LoginDTO {
   @IsString({ message: '账号必须是字符串' })
   @MinLength(1, { message: '请输入账号' })
-  @MaxLength(50, { message: '账号最长 50 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.usernameMax, { message: '账号最长 50 个字符' })
   username!: string;
 
   @IsString({ message: '密码必须是字符串' })
   @MinLength(1, { message: '请输入密码' })
-  @MaxLength(50, { message: '密码最长 50 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.passwordMax, { message: '密码最长 50 个字符' })
   password!: string;
 
   /**
@@ -82,8 +94,8 @@ export class ChangePasswordDTO {
   oldPassword!: string;
 
   @IsString({ message: '新密码必须是字符串' })
-  @MinLength(6, { message: '新密码至少 6 个字符' })
-  @MaxLength(50, { message: '新密码最长 50 个字符' })
+  @MinLength(ADMIN_USER_LIMITS.passwordMin, { message: '新密码至少 6 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.passwordMax, { message: '新密码最长 50 个字符' })
   newPassword!: string;
 }
 
@@ -91,7 +103,7 @@ export class ChangePasswordDTO {
 export class UpdateProfileDTO {
   @IsString({ message: '昵称必须是字符串' })
   @MinLength(1, { message: '昵称不能为空' })
-  @MaxLength(50, { message: '昵称最长 50 个字符' })
+  @MaxLength(ADMIN_USER_LIMITS.nicknameMax, { message: '昵称最长 50 个字符' })
   nickname!: string;
 }
 

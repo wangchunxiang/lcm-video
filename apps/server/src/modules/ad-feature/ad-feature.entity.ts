@@ -1,10 +1,8 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 广告特征库：按分片时长指纹识别片头/片中/片尾广告。 */
 @Entity('lcm_ad_feature', { comment: '广告特征库：按分片时长指纹识别片头/片中/片尾广告' })
-@Unique('uk_source_durations', ['sourceId', 'durations'])
-@Index('idx_source', ['sourceId'])
 export class AdFeatureEntity extends AppBaseEntity {
   @Column({
     name: 'source_id',

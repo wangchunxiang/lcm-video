@@ -1,3 +1,4 @@
+import { hostOf } from '@lcm/shared';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -145,10 +146,22 @@ export class CoverCheckService extends AppCrudService<CoverCheckEntity> {
     return { deleted: result.affectedRows };
   }
 
-  /** 校验入参 host 不为空。 */
+  /**
+   * 归一管理端提交的域名：可能是 `www.a.com`、`www.a.com:7788`，也可能是完整地址。
+   * 统一成 `hostOf()` 的口径（小写、去端口）后，下游一律拿它比对 `lcm_vod.cover_host`，
+   * 所以整个模块只有「一处」需要处理人肉输入，比对逻辑不必再各自容错。
+   */
   requireHost(host: string): string {
     const value = host.trim();
     if (value === '') throw new BadRequestException('域名不能为空');
-    return value;
+    const source =
+      /^[a-z][a-z0-9+.-]*:\/\//iu.test(value) || value.startsWith('//') ? value : `https://${value}`;
+    const target = hostOf(source);
+    // `https:///upload/x.jpg` 这种多一个斜杠的写法，Node 会把 `upload` 当成主机名，
+    // 所以除了「解析失败」，还要挡掉「看着不像域名」的结果（真实图床一律带点）。
+    if (target === '' || !(target === 'localhost' || target.includes('.'))) {
+      throw new BadRequestException('域名无法识别');
+    }
+    return target;
   }
 }

@@ -1,10 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 采集任务。 */
 @Entity('lcm_collect_task', { comment: '采集任务' })
-@Index('idx_source', ['sourceId'])
-@Index('idx_enabled', ['isEnabled'])
 export class CollectTaskEntity extends AppBaseEntity {
   @Column({
     type: 'varchar',

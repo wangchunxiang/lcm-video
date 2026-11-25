@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import type { FindOptionsWhere } from 'typeorm';
-import { looseHash, nameHash } from '@lcm/shared';
+import { hostOf, looseHash, nameHash } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
 import { CategoryEntity } from '../category/category.entity';
 import { VodPlayEntity } from '../vod-play/vod-play.entity';
@@ -23,16 +23,6 @@ export interface VodRow extends VodEntity {
   parentName: string;
   plays: number;
   episodes: number;
-}
-
-/** 从封面地址取域名，写进 `cover_host`（业务列，图片检查按它统计）。 */
-export function coverHostOf(cover: string): string {
-  if (cover === '') return '';
-  try {
-    return new URL(cover).hostname.toLowerCase();
-  } catch {
-    return '';
-  }
 }
 
 /** 影片表：标准 REST + 批量改分类/上下架。 */
@@ -66,7 +56,7 @@ export class VodService extends AppCrudService<VodEntity> {
       nameHashLoose: looseHash(name),
       subName: dto.subName ?? '',
       cover: dto.cover ?? '',
-      coverHost: coverHostOf(dto.cover ?? ''),
+      coverHost: hostOf(dto.cover ?? ''),
       actor: dto.actor ?? '',
       director: dto.director ?? '',
       writer: dto.writer ?? '',
@@ -109,7 +99,7 @@ export class VodService extends AppCrudService<VodEntity> {
     }
     if (dto.cover !== undefined) {
       patch.cover = dto.cover;
-      patch.coverHost = coverHostOf(dto.cover);
+      patch.coverHost = hostOf(dto.cover);
     }
     if (dto.subName !== undefined) patch.subName = dto.subName;
     if (dto.actor !== undefined) patch.actor = dto.actor;

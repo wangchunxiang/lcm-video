@@ -16,15 +16,16 @@ import { loadBrokenCoverHosts, loadMergeConfig } from './merge';
 import { describeError, processPage } from './writer';
 import { emptyCounters } from './types';
 import type { CategoryInfo, Counters, FailItem, MappingInfo } from './types';
+import { CollectSourceCategoryService } from '../collect-source-category/collect-source-category.service';
 
 export type RunTrigger = 'auto' | 'manual' | 'resume';
 
+/** 一次正在跑的采集：只需要「怎么打断它」「几点开始」「什么时候结束」。
+ * `logId` 是 `running` 这个 Map 的键，`taskId`/`trigger` 以 `RunContext` 为唯一来源。
+ */
 interface RunHandle {
-  logId: string;
-  taskId: string;
   controller: AbortController;
   startedAt: number;
-  trigger: RunTrigger;
   finished: Promise<void>;
 }
 
@@ -101,6 +102,7 @@ export class CollectRunner {
     private readonly mergeRuleRepository: Repository<MergeRuleEntity>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly sourceCategories: CollectSourceCategoryService,
   ) {}
 
   /** 进程启动时调用：把上一轮遗留的「运行中」改判失败，否则任务永远显示在跑 */
@@ -386,11 +388,8 @@ export class CollectRunner {
 
     const controller = new AbortController();
     const handle: RunHandle = {
-      logId,
-      taskId: input.taskId,
       controller,
       startedAt: Date.now(),
-      trigger: input.trigger,
       finished: Promise.resolve(),
     };
     running.set(logId, handle);
@@ -467,7 +466,7 @@ export class CollectRunner {
     // 需要拉分类清单才能自动补录源站分类；映射只有一级分类时也走这里
     try {
       const classes = parseClassList(await client.request({ ac: 'list' }));
-      if (classes.length > 0) await this.upsertSourceCategories(context.sourceId, classes);
+      if (classes.length > 0) await this.sourceCategories.upsertFromSource(context.sourceId, classes);
     } catch (error) {
       // 分类清单失败不影响采集，映射表里已有的照样能用
       this.logger.warn(`拉取源站分类失败 log=${logId}：${describeError(error)}`);
@@ -521,7 +520,7 @@ export class CollectRunner {
           const unknownTypes = data.list.filter((item) => item.typeId && !seenSourceTypes.has(item.typeId));
           for (const item of unknownTypes) seenSourceTypes.add(item.typeId);
           if (unknownTypes.length > 0) {
-            await this.upsertSourceCategories(
+            await this.sourceCategories.upsertFromSource(
               context.sourceId,
               unknownTypes.map((item) => ({
                 typeId: item.typeId,
@@ -686,31 +685,6 @@ export class CollectRunner {
             .filter((part) => part !== ''),
         },
       ]),
-    );
-  }
-
-  private async upsertSourceCategories(
-    sourceId: string,
-    classes: Array<{ typeId: string; typeName: string; typePid: string }>,
-  ): Promise<void> {
-    const valid = classes.filter((item) => item.typeId !== '');
-    if (valid.length === 0) return;
-    // 等价于 createMany({ skipDuplicates: true })：唯一键 uk_source_type 冲突时静默跳过
-    const values = valid.flatMap((item) => [
-      sourceId,
-      item.typeId,
-      item.typeName.slice(0, 100),
-      item.typePid,
-      NO_TASK,
-      0,
-      0,
-    ]);
-    const placeholders = valid.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
-    await this.dataSource.query(
-      `INSERT IGNORE INTO lcm_collect_source_category
-         (source_id, source_type_id, source_type_name, source_type_pid, category_id, match_type, status)
-       VALUES ${placeholders}`,
-      values,
     );
   }
 }

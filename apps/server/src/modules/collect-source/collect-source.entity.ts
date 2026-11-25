@@ -1,9 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 采集源站，只支持 json 接口。 */
 @Entity('lcm_collect_source', { comment: '采集源站，只支持 json 接口' })
-@Index('idx_enabled', ['isEnabled'])
 export class CollectSourceEntity extends AppBaseEntity {
   @Column({
     type: 'varchar',

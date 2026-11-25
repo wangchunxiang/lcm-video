@@ -130,13 +130,17 @@ export class VodPlayService extends AppCrudService<VodPlayEntity> {
     const lineNames = new Map(lineRows.map((row) => [row.sourceFrom, row.name]));
     const sourceNames = new Map(sourceRows.map((row) => [String(row.id), row.name]));
 
-    return rows.map((row) => ({
-      ...row,
-      lineName: lineNames.get(row.sourceFrom) ?? '',
-      sourceName: row.sourceId === null ? '' : (sourceNames.get(row.sourceId) ?? ''),
-      episodes: parsePlayUrl(row.playUrl),
-      episodeCount: countEpisodes(row.playUrl),
-    }));
+    return rows.map((row) => {
+      // 只解析一次：`episodeCount` 取解析结果的长度，别让「集数」有第二个算法
+      const episodes = parsePlayUrl(row.playUrl);
+      return {
+        ...row,
+        lineName: lineNames.get(row.sourceFrom) ?? '',
+        sourceName: row.sourceId === null ? '' : (sourceNames.get(row.sourceId) ?? ''),
+        episodes,
+        episodeCount: episodes.length,
+      };
+    });
   }
 
   private async assertNotLastLine(rows: VodPlayEntity[]): Promise<void> {

@@ -1,10 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 图片域名体检：域名级，每域名抽查 2 张。 */
 @Entity('lcm_cover_check', { comment: '图片域名体检：域名级，每域名抽查 2 张' })
-@Index('uk_host', ['host'], { unique: true })
-@Index('idx_status', ['status'])
 export class CoverCheckEntity extends AppBaseEntity {
   @Column({
     type: 'varchar',

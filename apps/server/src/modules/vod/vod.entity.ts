@@ -1,25 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 影片主表。 */
 @Entity('lcm_vod', { comment: '影片主表' })
-@Index('idx_category_status', ['categoryId', 'status'])
-@Index('idx_pid_status', ['categoryPid', 'status'])
-@Index('idx_category_status_year', ['categoryId', 'status', 'year'])
-@Index('idx_pid_status_year', ['categoryPid', 'status', 'year'])
-@Index('idx_name_hash', ['nameHash'])
-@Index('idx_name_hash_loose', ['nameHashLoose'])
-@Index('idx_status_collected', ['status', 'collectedAt'])
-@Index('idx_cover_host', ['coverHost'])
-@Index('idx_search', ['status', 'name', 'year', 'collectedAt', 'createdAt'])
-// 重复影片页的覆盖索引：按 name_hash 分组后只读窄列，避免回表读 238MB 的宽表
-@Index('idx_merge_preview', ['nameHash', 'name', 'year', 'status', 'collectedAt'])
-// 疑似重复：按 name_hash_loose 分组时顺带数出组内有几种严格键
-@Index('idx_merge_loose', ['nameHashLoose', 'nameHash'])
-// 列表「最新入库」按 created_at 排序，没有这条索引时 12 万行要 filesort（7.4 秒）
-@Index('idx_status_created', ['status', 'createdAt', 'id'])
-// 年份筛选的 DISTINCT year，避免每次列表都扫全部上架行
-@Index('idx_status_year', ['status', 'year'])
 export class VodEntity extends AppBaseEntity {
   @Column({
     name: 'category_id',

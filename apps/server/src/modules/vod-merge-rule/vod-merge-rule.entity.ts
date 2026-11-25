@@ -1,4 +1,4 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /**
@@ -11,7 +11,6 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
  * `rule_key = 'mode'` 是整表开关（merge / off），其余键与 `lcm_vod` 字段同名。
  */
 @Entity('lcm_vod_merge_rule', { comment: '影片入库合并规则：每个字段一行' })
-@Index('uk_rule_key', ['ruleKey'], { unique: true })
 export class MergeRuleEntity extends AppBaseEntity {
   @Column({
     name: 'rule_key',

@@ -4,6 +4,8 @@ import type { LoggerService } from '@nestjs/common';
 import type { DataSource, EntityTarget, ObjectLiteral } from 'typeorm';
 import { hashPassword } from '../common/security/password';
 import { AdminUserEntity } from '../modules/admin-user/admin-user.entity';
+/** 账号长度限制只在 DTO 里写一份：种子脚本与接口用同一组值，不会各改一处 */
+import { ADMIN_USER_LIMITS } from '../modules/admin-user/dto/admin-user.dto';
 import { CategoryEntity } from '../modules/category/category.entity';
 import { SettingEntity } from '../modules/setting/setting.entity';
 import { parseStatements } from './seed-sql';
@@ -21,13 +23,6 @@ import { parseStatements } from './seed-sql';
 
 const CATEGORY_SEED = 'lcm_category.sql';
 const SETTING_SEED = 'lcm_setting.sql';
-
-/** 与 `CreateAdminUserDTO` 保持一致，避免绕过接口造出非法账号。 */
-const USERNAME_MIN = 3;
-const USERNAME_MAX = 50;
-const PASSWORD_MIN = 6;
-const PASSWORD_MAX = 50;
-const NICKNAME_MAX = 50;
 
 function envFlag(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
@@ -78,22 +73,26 @@ async function ensureAdmin(dataSource: DataSource, logger: LoggerService): Promi
   }
 
   if (
-    username.length < USERNAME_MIN ||
-    username.length > USERNAME_MAX ||
+    username.length < ADMIN_USER_LIMITS.usernameMin ||
+    username.length > ADMIN_USER_LIMITS.usernameMax ||
     !/^[a-zA-Z0-9_-]+$/.test(username)
   ) {
-    logger.error(`ADMIN_USERNAME 不合法（${USERNAME_MIN}~${USERNAME_MAX} 位字母、数字、下划线、减号），未创建管理员`);
+    logger.error(
+      `ADMIN_USERNAME 不合法（${ADMIN_USER_LIMITS.usernameMin}~${ADMIN_USER_LIMITS.usernameMax} 位字母、数字、下划线、减号），未创建管理员`,
+    );
     return;
   }
-  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
-    logger.error(`ADMIN_PASSWORD 长度必须是 ${PASSWORD_MIN}~${PASSWORD_MAX}，未创建管理员`);
+  if (password.length < ADMIN_USER_LIMITS.passwordMin || password.length > ADMIN_USER_LIMITS.passwordMax) {
+    logger.error(
+      `ADMIN_PASSWORD 长度必须是 ${ADMIN_USER_LIMITS.passwordMin}~${ADMIN_USER_LIMITS.passwordMax}，未创建管理员`,
+    );
     return;
   }
 
   await repository.insert({
     username,
     password: hashPassword(password),
-    nickname: nickname.slice(0, NICKNAME_MAX),
+    nickname: nickname.slice(0, ADMIN_USER_LIMITS.nicknameMax),
     isEnabled: 1,
     passwordVersion: 0,
   });

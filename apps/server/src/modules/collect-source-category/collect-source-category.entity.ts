@@ -1,4 +1,4 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /**
@@ -8,9 +8,6 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
  * （已映射 ⇔ 有目标分类）。TypeORM 表达不了，写在 baseline 迁移里。
  */
 @Entity('lcm_collect_source_category', { comment: '源站分类映射' })
-@Unique('uk_source_type', ['sourceId', 'sourceTypeId'])
-@Index('idx_category', ['categoryId'])
-@Index('idx_source_status', ['sourceId', 'status'])
 export class CollectSourceCategoryEntity extends AppBaseEntity {
   @Column({
     name: 'source_id',

@@ -1,8 +1,6 @@
-import { hostOf } from '@lcm/shared';
+import { FETCH_UA, hostOf } from '@lcm/shared';
 import type { DataSource } from 'typeorm';
 
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36';
 /** 体检图片时带的 Referer：与浏览器从本站加载图片的行为一致，否则防盗链会误判失效 */
 const PAGE_REFERER = 'https://www.lcm-video.com/';
 
@@ -44,7 +42,7 @@ async function request(
   try {
     const response = await fetch(url, {
       method,
-      headers: { 'user-agent': UA, accept: 'image/*,*/*;q=0.8', referer: PAGE_REFERER, ...extra },
+      headers: { 'user-agent': FETCH_UA, accept: 'image/*,*/*;q=0.8', referer: PAGE_REFERER, ...extra },
       signal: AbortSignal.timeout(timeoutMs),
       redirect: 'follow',
     });
@@ -62,11 +60,6 @@ async function request(
   }
 }
 
-/** 域名统一口径：小写、去端口（与 `hostOf()` 对 cover 的结果对齐） */
-function normalizeHost(host: string): string {
-  return host.trim().toLowerCase().replace(/:\d+$/, '');
-}
-
 /** 检查单个域名：抽 2 张，张与张之间不等待（图床没有「短时间内连续请求」的限制） */
 export async function checkHost(dataSource: DataSource, host: string): Promise<CheckResult> {
   const rows = await dataSource.query<Array<{ cover: string }>>(
@@ -74,12 +67,10 @@ export async function checkHost(dataSource: DataSource, host: string): Promise<C
     [host, SAMPLE_COUNT],
   );
   const covers = rows.map((row) => row.cover).filter((cover) => cover !== '');
-  // cover_host 是写入时从 cover 派生的冗余列，历史数据里两边会漂移：旧库导入的
-  // cover_host 带端口（www.imgzy360.com:7788），而 hostOf() 会把端口去掉。
-  // 所以比对前先统一口径；万一全都对不上（脏数据），仍以 cover_host 选出来的行为准，
-  // 否则整个域名会被误报成「库里没有该域名的图片」。
-  const target = normalizeHost(host);
-  const matched = covers.filter((cover) => normalizeHost(hostOf(cover)) === target);
+  // 入参 `host` 已由 `CoverCheckService.requireHost()` 归一（小写、去端口、补全 `//`），
+  // 这里直接按 `hostOf()` 的口径比对即可；万一有脏数据全都对不上，仍以 cover_host
+  // 选出来的行为准，否则整个域名会被误报成「库里没有该域名的图片」。
+  const matched = covers.filter((cover) => hostOf(cover) === host);
   const urls = matched.length > 0 ? matched : covers;
   if (urls.length === 0) {
     // 体检表会留着「已经没有影片归属」的历史域名（图床换掉、封面被清空后就是这样），

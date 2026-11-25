@@ -32,14 +32,18 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
     super(repository);
   }
 
-  /** 某个采集源下的全部映射 + 汇总。 */
+  /** 某个采集源下的全部映射 + 汇总。
+   *
+   * 不分页也不加 `take`：用它的界面（`Mappings.vue`）是全量渲染 + 客户端筛选，
+   * 只给前 N 条会让「共 X 条」和列表对不上、多出来的那些行搜不到也改不了。
+   * 真要分页，就连筛选一起搬到服务端，再改前端。
+   */
   async bySource(
     sourceId: string,
   ): Promise<{ items: CollectSourceCategoryEntity[]; summary: MappingSummary }> {
     const items = await this.repository.find({
       where: { sourceId },
       order: { sourceTypeName: 'ASC', id: 'ASC' },
-      take: 1000,
     });
     return { items, summary: await this.summarizeOf([sourceId]) };
   }
@@ -119,22 +123,33 @@ export class CollectSourceCategoryService extends AppCrudService<CollectSourceCa
 
   /**
    * 批量写入源站分类：一条多行 INSERT，已有的只刷新名称与父 id，保留既有映射状态。
-   * 采集 runner（`apps/server/src/modules/collect/runner.ts`）用的是 `INSERT IGNORE`，
-   * 这里要刷新名称所以带 `ON DUPLICATE KEY UPDATE`。
+   * 采集 runner（`apps/server/src/modules/collect/runner.ts`）与后台「获取分类」都走这里，
+   * 免得两个入口对新旧名字的判断不一致。
    */
   async upsertFromSource(
     sourceId: string,
     classes: Array<{ typeId: string; typeName: string; typePid: string }>,
   ): Promise<void> {
-    if (classes.length === 0) return;
-    const placeholders = classes.map(() => '(?, ?, ?, ?, 0, 0, 0)').join(', ');
-    const values = classes.flatMap((item) => [sourceId, item.typeId, item.typeName, item.typePid]);
+    // 空标识进库会变成一行永远匹配不上的脏数据，统一在入口挡掉
+    const valid = classes.filter((item) => item.typeId !== '');
+    if (valid.length === 0) return;
+    const placeholders = valid.map(() => '(?, ?, ?, ?, 0, 0, 0)').join(', ');
+    const values = valid.flatMap((item) => [
+      sourceId,
+      item.typeId,
+      // source_type_name 是 varchar(100)，长名字截断入库而不是让整批失败
+      item.typeName.slice(0, 100),
+      item.typePid,
+    ]);
     await this.dataSource.query(
       `INSERT INTO lcm_collect_source_category
          (source_id, source_type_id, source_type_name, source_type_pid, category_id, match_type, status)
        VALUES ${placeholders}
-       ON DUPLICATE KEY UPDATE source_type_name = VALUES(source_type_name),
-                               source_type_pid = VALUES(source_type_pid)`,
+       ON DUPLICATE KEY UPDATE
+         source_type_name = IF(source_type_name <=> VALUES(source_type_name),
+                               source_type_name, VALUES(source_type_name)),
+         source_type_pid = IF(source_type_pid <=> VALUES(source_type_pid),
+                              source_type_pid, VALUES(source_type_pid))`,
       values,
     );
   }

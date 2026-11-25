@@ -1,9 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 重复影片忽略名单：用户在「重复影片」页点「不是重复」后记进来。 */
 @Entity('lcm_vod_merge_ignore', { comment: '重复影片忽略名单' })
-@Index('uk_merge_key', ['mergeKey'], { unique: true })
 export class VodMergeIgnoreEntity extends AppBaseEntity {
   @Column({
     name: 'merge_key',

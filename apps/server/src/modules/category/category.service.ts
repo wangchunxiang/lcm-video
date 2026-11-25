@@ -49,13 +49,20 @@ export class CategoryService extends AppCrudService<CategoryEntity> {
     const dto = data as unknown as UpdateCategoryDTO;
     const patch: Partial<CategoryEntity> = {};
 
+    // 同一个分类在本次请求里只查一次：别名查重和「不能挂到自己下面」都要它
+    let current: CategoryEntity | null = null;
+    const requireCurrent = async (): Promise<CategoryEntity> => {
+      if (current === null) current = await this.findOneOrFail(criteria);
+      return current;
+    };
+
     if (dto.alias !== undefined) {
-      const current = await this.findOneOrFail(criteria);
-      if (dto.alias !== current.alias) await this.assertAliasFree(dto.alias);
+      const target = await requireCurrent();
+      if (dto.alias !== target.alias) await this.assertAliasFree(dto.alias);
       patch.alias = dto.alias;
     }
     if (dto.pid !== undefined) {
-      const target = await this.findOneOrFail(criteria);
+      const target = await requireCurrent();
       if (dto.pid === target.id) throw new BadRequestException('不能把分类挂到自己下面');
       if (dto.pid !== '0') {
         await this.assertIsTopCategory(dto.pid);

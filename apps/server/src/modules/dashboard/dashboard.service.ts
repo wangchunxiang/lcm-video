@@ -193,25 +193,29 @@ export class DashboardService {
   private async counts(): Promise<
     Pick<DashboardSummary, 'vod' | 'play' | 'category' | 'source' | 'task'>
   > {
-    const [vodCounts] = await this.dataSource.query<Array<Record<string, string>>>(
-      `SELECT COUNT(*) AS total,
-              SUM(status = 1) AS enabled,
-              SUM(status = 0) AS disabled,
-              SUM(created_at >= CURDATE()) AS today
-         FROM lcm_vod`,
-    );
-    const [playCount] = await this.dataSource.query<Array<{ total: string }>>(
-      'SELECT COUNT(*) AS total FROM lcm_vod_play',
-    );
-    const [categoryCount] = await this.dataSource.query<Array<{ total: string }>>(
-      'SELECT COUNT(*) AS total FROM lcm_category',
-    );
-    const [sourceCount] = await this.dataSource.query<Array<Record<string, string>>>(
-      'SELECT COUNT(*) AS total, SUM(is_enabled = 1) AS enabled FROM lcm_collect_source',
-    );
-    const [taskCount] = await this.dataSource.query<Array<Record<string, string>>>(
-      'SELECT COUNT(*) AS total, SUM(is_enabled = 1) AS enabled FROM lcm_collect_task',
-    );
+    // 5 条互相独立的 COUNT：一次全发出去，别一条等一条（库在 NAS 上，每条都是跨网络的往返）
+    const [vodRows, playRows, categoryRows, sourceRows, taskRows] = await Promise.all([
+      this.dataSource.query<Array<Record<string, string>>>(
+        `SELECT COUNT(*) AS total,
+                SUM(status = 1) AS enabled,
+                SUM(status = 0) AS disabled,
+                SUM(created_at >= CURDATE()) AS today
+           FROM lcm_vod`,
+      ),
+      this.dataSource.query<Array<{ total: string }>>('SELECT COUNT(*) AS total FROM lcm_vod_play'),
+      this.dataSource.query<Array<{ total: string }>>('SELECT COUNT(*) AS total FROM lcm_category'),
+      this.dataSource.query<Array<Record<string, string>>>(
+        'SELECT COUNT(*) AS total, SUM(is_enabled = 1) AS enabled FROM lcm_collect_source',
+      ),
+      this.dataSource.query<Array<Record<string, string>>>(
+        'SELECT COUNT(*) AS total, SUM(is_enabled = 1) AS enabled FROM lcm_collect_task',
+      ),
+    ]);
+    const [vodCounts] = vodRows;
+    const [playCount] = playRows;
+    const [categoryCount] = categoryRows;
+    const [sourceCount] = sourceRows;
+    const [taskCount] = taskRows;
     return {
       vod: {
         total: Number(vodCounts?.total ?? 0),

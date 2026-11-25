@@ -1,9 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 后台账号。当前单账号全权限模型，无角色列。 */
 @Entity('lcm_admin_user', { comment: '后台账号' })
-@Index('uk_username', ['username'], { unique: true })
 export class AdminUserEntity extends AppBaseEntity {
   @Column({
     type: 'varchar',

@@ -1,4 +1,4 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /**
@@ -10,7 +10,6 @@ import { AppBaseEntity } from '../../common/crud/app-base.entity';
  * 详见 `SourceRuleService.assertNoOverlap`。
  */
 @Entity('lcm_source_rule', { comment: '采集源的地址替换规则，按 sort 升序依次套用' })
-@Index('idx_source_kind', ['sourceId', 'kind'])
 export class SourceRuleEntity extends AppBaseEntity {
   @Column({
     name: 'source_id',

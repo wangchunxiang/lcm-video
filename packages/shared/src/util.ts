@@ -70,11 +70,3 @@ export async function fetchText(url: string, timeoutMs = 15000): Promise<string>
     }
   }
 }
-
-/**
- * 把数据序列化成可以安全内嵌进 <script> 的 JSON：
- * 剧集/片名里出现 `</script>` 时，未转义的 `<` 会提前闭合标签。
- */
-export function escapeJson(value: unknown): string {
-  return JSON.stringify(value).split('<').join(String.fromCharCode(92) + 'u003c');
-}

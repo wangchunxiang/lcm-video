@@ -1,11 +1,8 @@
-import { Column, Entity, Index, Unique } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 影片的播放线路数据。一行 = 某影片在某条线路上的全部集数。 */
 @Entity('lcm_vod_play', { comment: '影片的播放线路数据，一行 = 某影片在某线路上的全部集数' })
-@Unique('uk_vod_source_from', ['vodId', 'sourceId', 'sourceFrom'])
-@Index('idx_source', ['sourceId'])
-@Index('idx_source_vod_vod', ['sourceId', 'sourceVodId', 'vodId'])
 export class VodPlayEntity extends AppBaseEntity {
   @Column({
     name: 'vod_id',

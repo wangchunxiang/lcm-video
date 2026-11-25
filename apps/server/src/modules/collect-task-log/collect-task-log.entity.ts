@@ -1,11 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 采集任务的执行记录。 */
 @Entity('lcm_collect_task_log', { comment: '采集任务的执行记录' })
-@Index('idx_task_started', ['taskId', 'startedAt'])
-@Index('idx_started', ['startedAt'])
-@Index('idx_source_started', ['sourceId', 'startedAt'])
 export class CollectTaskLogEntity extends AppBaseEntity {
   @Column({
     name: 'task_id',

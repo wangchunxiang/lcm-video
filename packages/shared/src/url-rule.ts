@@ -17,11 +17,6 @@ function withoutScheme(value: string): string {
   return value.replace(SCHEME, '');
 }
 
-/** 单条原地址的去协议形式，供服务端做 LIKE 预筛；多条用 `urlRuleNeedles`。 */
-export function urlRuleNeedle(fromUrl: string): string {
-  return withoutScheme(fromUrl.trim());
-}
-
 /**
  * 一条规则里可以写多个原地址，分隔符：换行（后台输入框按行填）、中英文逗号、分号。
  * 顺手去掉空行与重复项，保留用户输入顺序（用于展示与回填）。
@@ -39,14 +34,9 @@ export function splitUrlPatterns(fromUrl: string): string[] {
   return result;
 }
 
-/** 多条原地址的去协议串，供服务端做 LIKE 预筛（`a OR b OR …`）。 */
+/** 多条原地址的去协议串，供服务端做 LIKE 预筛（`a OR b OR …`）。`splitUrlPatterns` 已按去协议形式去重去空，这里只需要映射。 */
 export function urlRuleNeedles(fromUrl: string): string[] {
-  const result: string[] = [];
-  for (const pattern of splitUrlPatterns(fromUrl)) {
-    const needle = withoutScheme(pattern);
-    if (needle !== '' && !result.includes(needle)) result.push(needle);
-  }
-  return result;
+  return splitUrlPatterns(fromUrl).map(withoutScheme);
 }
 
 /** 实际参与替换的原地址：按长度降序，长的先套，避免父子域名互相抢 */

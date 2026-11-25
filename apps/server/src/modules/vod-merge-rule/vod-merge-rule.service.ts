@@ -51,11 +51,12 @@ export class VodMergeRuleService {
 
   async get(): Promise<MergeRuleView> {
     const config = await loadMergeConfig(this.ruleRepository, this.settingRepository);
-    const rows = await this.ruleRepository.find({ select: { updatedAt: true } });
-    const updatedAt =
-      rows.length === 0
-        ? null
-        : new Date(Math.max(...rows.map((row) => row.updatedAt.getTime()))).toISOString();
+    // 规则表的「最后修改」只取一次聚合，不再把整张表再读一遍（`loadMergeConfig` 只取了键值两列）
+    const [stamp] = await this.ruleRepository.query<Array<{ value: Date | string | null }>>(
+      'SELECT MAX(updated_at) AS value FROM lcm_vod_merge_rule',
+    );
+    const raw = stamp?.value ?? null;
+    const updatedAt = raw === null ? null : new Date(raw).toISOString();
 
     return {
       mode: config.mode,

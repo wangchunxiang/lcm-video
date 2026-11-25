@@ -149,11 +149,21 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     const patch: Partial<AdminUserEntity> = {};
     if (dto.nickname !== undefined) patch.nickname = dto.nickname;
     if (dto.isEnabled !== undefined) patch.isEnabled = dto.isEnabled;
-    if (dto.password !== undefined) {
-      patch.password = hashPassword(dto.password);
-      patch.passwordVersion = (await this.currentVersion(criteria)) + 1;
+    if (Object.keys(patch).length === 0 && dto.password === undefined) {
+      throw new BadRequestException('没有要修改的内容');
     }
-    if (Object.keys(patch).length === 0) throw new BadRequestException('没有要修改的内容');
+
+    // 密码单独一条原子语句：版本号由库自己 `+ 1`，不再「先查再加一」（见 replacePassword）。
+    if (dto.password !== undefined) {
+      await this.replacePassword(await this.idOf(criteria), dto.password);
+    }
+    if (Object.keys(patch).length === 0) {
+      const row = await this.repository.findOne({
+        where: typeof criteria === 'string' ? { id: criteria } : criteria,
+      });
+      if (row === null) throw new BadRequestException('账号不存在');
+      return row;
+    }
     return super.update(criteria, patch);
   }
 
@@ -186,10 +196,7 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     if (dto.oldPassword === dto.newPassword) {
       throw new BadRequestException('新密码不能与原密码相同');
     }
-    await this.repository.update(id, {
-      password: hashPassword(dto.newPassword),
-      passwordVersion: user.passwordVersion + 1,
-    });
+    await this.replacePassword(id, dto.newPassword);
     return { success: true };
   }
 
@@ -206,11 +213,27 @@ export class AdminUserService extends AppCrudService<AdminUserEntity> {
     if (enabled <= 1) throw new BadRequestException('至少要保留一个启用状态的账号');
   }
 
-  private async currentVersion(criteria: string | FindOptionsWhere<AdminUserEntity>): Promise<number> {
-    const user = await this.repository.findOne({
-      where: typeof criteria === 'string' ? { id: criteria } : criteria,
-    });
-    if (user === null) throw new BadRequestException('账号不存在');
-    return user.passwordVersion;
+  /**
+   * 改密码：一条 UPDATE 同时写密码与新版本号。
+   *
+   * 版本号必须由数据库自增（`password_version + 1`），不能「先查再加一」：两个请求并发时
+   * 会各自读到同一个旧值、都写回 `n + 1`，密码变了两次而只失效了一次 token。
+   * 顺带省掉一次按 id 的 SELECT（库在 NAS 上，每次往返约 8ms）。
+   * `updated_at` 显式传值，不依赖列的 `ON UPDATE`。
+   */
+  private async replacePassword(id: string, password: string): Promise<void> {
+    const header = await this.repository.query<{ affectedRows: number }>(
+      'UPDATE lcm_admin_user SET password = ?, password_version = password_version + 1, updated_at = ? WHERE id = ?',
+      [hashPassword(password), new Date(), id],
+    );
+    if (header.affectedRows === 0) throw new BadRequestException('账号不存在');
+  }
+
+  /** 把主键或条件对象统一成 id；条件对象形式只在 CRUD 的自定义入口出现。 */
+  private async idOf(criteria: string | FindOptionsWhere<AdminUserEntity>): Promise<string> {
+    if (typeof criteria === 'string') return criteria;
+    const row = await this.repository.findOne({ where: criteria, select: { id: true } });
+    if (row === null) throw new BadRequestException('账号不存在');
+    return row.id;
   }
 }

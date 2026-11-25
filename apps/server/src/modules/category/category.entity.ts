@@ -1,10 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 分类，固定两级：`pid = 0` 是一级分类，二级分类的 `pid` 指向一级分类。 */
 @Entity('lcm_category', { comment: '分类，固定两层：pid = 0 是一级分类' })
-@Index('uk_alias', ['alias'], { unique: true })
-@Index('idx_pid_sort', ['pid', 'sort'])
 export class CategoryEntity extends AppBaseEntity {
   @Column({
     type: 'bigint',

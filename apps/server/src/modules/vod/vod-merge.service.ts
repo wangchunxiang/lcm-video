@@ -577,6 +577,8 @@ export class VodMergeService {
   /** 取一组重复影片的详情 */
   private async loadGroupDetail(kind: VodMergeKind, key: string): Promise<MergeGroup | null> {
     let ids: string[] = [];
+    /** 宽松键分支为了做判定已经查过成员，赢下比较时直接复用，不再查第二遍 */
+    let members: MergeMember[] | null = null;
     if (kind === 'same') {
       // 源站影片 id 本身可能带减号，只按第一个减号切
       const splitAt = key.indexOf('-');
@@ -616,12 +618,13 @@ export class VodMergeService {
             actorOverlap(looseMembers) >= ACTOR_MATCH_MIN
           ) {
             ids = looseIds;
+            members = looseMembers;
           }
         }
       }
     }
 
-    const members = await this.loadMembersByIds(ids);
+    if (members === null) members = await this.loadMembersByIds(ids);
     if (members.length < 2) return null;
 
     return {

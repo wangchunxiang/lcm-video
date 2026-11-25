@@ -1,9 +1,8 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity } from 'typeorm';
 import { AppBaseEntity } from '../../common/crud/app-base.entity';
 
 /** 采集记录明细，一页一行。 */
 @Entity('lcm_collect_task_log_detail', { comment: '采集记录明细，一页一行' })
-@Index('idx_log_page', ['logId', 'page'])
 export class CollectTaskLogDetailEntity extends AppBaseEntity {
   @Column({
     name: 'log_id',
