@@ -314,29 +314,32 @@ useSeo(() => ({
           <span class="min-w-0 truncate text-small text-ink-3">{{ subtitle }}</span>
         </div>
 
-        <div class="ml-auto flex flex-none items-center gap-2">
-          <button
-            type="button"
-            class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
-            :disabled="!prevEp"
-            @click="selectEp(prevEp)"
-          >
-            <ChevronLeft :size="16" class="shrink-0" />
-            上一集
-          </button>
-          <button
-            type="button"
-            class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
-            :disabled="!nextEp"
-            @click="selectEp(nextEp)"
-          >
-            下一集
-            <ChevronRight :size="16" class="shrink-0" />
-          </button>
+        <!-- 小屏：这一行整行给它，上一集/下一集贴行首、自动连播贴行尾 -->
+        <div class="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:flex-none">
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
+              :disabled="!prevEp"
+              @click="selectEp(prevEp)"
+            >
+              <ChevronLeft :size="16" class="shrink-0" />
+              上一集
+            </button>
+            <button
+              type="button"
+              class="flex h-8 cursor-pointer items-center gap-1 rounded-md px-2 text-small text-ink-2 transition hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:bg-transparent disabled:text-line"
+              :disabled="!nextEp"
+              @click="selectEp(nextEp)"
+            >
+              下一集
+              <ChevronRight :size="16" class="shrink-0" />
+            </button>
+          </div>
 
           <label
             v-if="episodes.length > 1"
-            class="ml-2 flex cursor-pointer items-center gap-2 text-small text-ink-2"
+            class="ml-auto flex cursor-pointer items-center gap-2 text-small text-ink-2 sm:ml-2"
           >
             自动连播
             <button
