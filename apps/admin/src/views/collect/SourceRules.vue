@@ -41,6 +41,7 @@ const {
   search: syncSearch,
   reset: resetQuery,
   onPageChange: setPage,
+  stepBackIfEmpty,
 } = useTableQuery({ source_id: '', kind: '', status: '', keyword: '' }, { pageSize: 20 });
 
 
@@ -109,10 +110,7 @@ async function load(): Promise<void> {
     items.value = data.items;
     total.value = data.total;
     // 删掉最后一页的最后一条后回退一页，避免停在空页
-    if (items.value.length === 0 && total.value > 0 && page.value > 1) {
-      page.value -= 1;
-      await load();
-    }
+    if (stepBackIfEmpty(items.value)) await load();
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '加载失败');
   } finally {

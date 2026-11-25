@@ -104,12 +104,10 @@ const confirmed = ref<AdFeature[]>([]);
 const candidates = ref<Candidate[]>([]);
 const analyzing = ref(false);
 const logVisible = ref(false);
-const confirmedFeatures = computed(() => confirmed.value);
 const confirmedKeys = computed(() => new Set(confirmed.value.map((item) => item.durations)));
 function isSaved(row: Candidate): boolean {
   return confirmedKeys.value.has(row.durations);
 }
-const candidateFeatures = computed(() => candidates.value);
 const picking = ref(false);
 const logRef = ref<HTMLElement | null>(null);
 const featureVisible = ref(false);
@@ -554,9 +552,9 @@ onMounted(() => {
 
           <div class="ads-sub">
             候选广告特征
-            <span v-if="candidateFeatures.length" class="ads-count">{{ candidateFeatures.length }}</span>
+            <span v-if="candidates.length" class="ads-count">{{ candidates.length }}</span>
           </div>
-          <el-table :data="candidateFeatures" size="small" border height="188">
+          <el-table :data="candidates" size="small" border height="188">
             <el-table-column label="类型" width="76" align="center">
               <template #default="{ row }">
                 <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>
@@ -589,10 +587,10 @@ onMounted(() => {
 
           <div class="ads-sub">
             已设置的广告特征
-            <span v-if="confirmedFeatures.length" class="ads-count">{{ confirmedFeatures.length }}</span>
+            <span v-if="confirmed.length" class="ads-count">{{ confirmed.length }}</span>
           </div>
           <div ref="confirmedWrapRef" class="confirmed-wrap">
-          <el-table :data="confirmedFeatures" size="small" border :height="confirmedHeight">
+          <el-table :data="confirmed" size="small" border :height="confirmedHeight">
             <el-table-column label="类型" width="76" align="center">
               <template #default="{ row }">
                 <el-tag size="small" :type="row.kind === 3 ? 'warning' : 'primary'">{{ kindText(row.kind) }}</el-tag>

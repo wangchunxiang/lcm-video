@@ -54,6 +54,7 @@ const {
   search: syncSearch,
   reset: resetQuery,
   onPageChange: setPage,
+  stepBackIfEmpty,
 } = useTableQuery({ keyword: '', source_id: '', status: '' }, { pageSize: 20 });
 
 const rangeOptions = [
@@ -105,10 +106,7 @@ async function load(silent = false) {
     );
     items.value = decorate(data.items);
     total.value = data.total;
-    if (items.value.length === 0 && page.value > 1) {
-      page.value -= 1;
-      await load(silent);
-    }
+    if (stepBackIfEmpty(items.value)) await load(silent);
   } catch (error) {
     if (!silent) ElMessage.error(error instanceof Error ? error.message : '加载任务失败');
   } finally {
@@ -378,7 +376,8 @@ onMounted(async () => {
   await loadSources();
   await load();
   timer = setInterval(() => {
-    if (!dialogVisible.value) void load(true);
+    // 只在「有任务在跑」且没开着弹窗时刷新：没在跑的时候 5 秒一次纯属白耗
+    if (!dialogVisible.value && items.value.some(isRunning)) void load(true);
   }, 5000);
 });
 

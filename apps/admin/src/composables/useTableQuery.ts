@@ -18,6 +18,11 @@ export interface TableQuery<T extends Record<string, QueryValue>> {
   onPageChange: (next: number) => void;
   /** 表格行号：跨页连续 */
   rowIndex: (index: number) => number;
+  /**
+   * 当前页查空了（删掉最后一页的最后一条、或数据被别人删了）就退一页。
+   * 返回 true 表示页码已改，调用方应该重新 load。
+   */
+  stepBackIfEmpty: (rows: unknown[]) => boolean;
 }
 
 /** 列表页筛选值允许的类型（与 URL query 一一对应） */
@@ -126,5 +131,12 @@ export function useTableQuery<T extends Record<string, QueryValue>>(
     return (page.value - 1) * pageSize.value + index + 1;
   }
 
-  return { filters, page, pageSize, search, reset, onPageChange, rowIndex };
+  function stepBackIfEmpty(rows: unknown[]): boolean {
+    if (rows.length > 0 || page.value <= 1) return false;
+    page.value -= 1;
+    writeUrl();
+    return true;
+  }
+
+  return { filters, page, pageSize, search, reset, onPageChange, rowIndex, stepBackIfEmpty };
 }

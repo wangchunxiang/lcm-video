@@ -63,6 +63,7 @@ const {
   reset: resetQuery,
   onPageChange: setPage,
   rowIndex,
+  stepBackIfEmpty,
 } = useTableQuery({ status: '', source_id: '' }, { pageSize: 20 });
 const sources = ref<SourceRow[]>([]);
 
@@ -134,10 +135,7 @@ async function load(silent = false) {
     );
     items.value = decorate(data.items);
     total.value = data.total;
-    if (items.value.length === 0 && page.value > 1) {
-      page.value -= 1;
-      await load(silent);
-    }
+    if (stepBackIfEmpty(items.value)) await load(silent);
   } catch (error) {
     if (!silent) ElMessage.error(error instanceof Error ? error.message : '加载采集记录失败');
   } finally {
