@@ -404,7 +404,7 @@ useSeo(() => ({
                 ep.index === current
                   ? 'bg-primary text-white'
                   : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
-                'min-w-[calc((100%-3*var(--ep-gap))/4)] px-3 sm:min-w-0 sm:px-0',
+                'min-w-[calc((100%-3*var(--ep-gap))/4)] px-1 sm:min-w-0 sm:px-0',
               ]"
               @click="selectEp(ep.index)"
             >

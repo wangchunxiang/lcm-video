@@ -482,7 +482,7 @@ useSeo(() => ({
               :key="ep.index"
               :to="`/play/${vod.id}/${selectedLine?.id}/${ep.index}`"
               :title="ep.name"
-              class="min-w-[calc((100%-3*var(--ep-gap))/4)] max-w-full truncate rounded bg-surface-2 px-3 text-center text-caption leading-[var(--ep-cell-h)] text-ink-2 transition hover:bg-surface-3 hover:text-ink sm:min-w-0 sm:px-0 h-[var(--ep-cell-h)]"
+              class="min-w-[calc((100%-3*var(--ep-gap))/4)] max-w-full truncate rounded bg-surface-2 px-1 text-center text-caption leading-[var(--ep-cell-h)] text-ink-2 transition hover:bg-surface-3 hover:text-ink sm:min-w-0 sm:px-0 h-[var(--ep-cell-h)]"
             >
               {{ ep.name }}
             </RouterLink>
