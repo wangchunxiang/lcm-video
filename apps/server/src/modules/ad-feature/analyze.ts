@@ -1,5 +1,6 @@
 import { episodeLabel, fetchText, parsePlayUrl } from '@lcm/shared';
 import type { DataSource } from 'typeorm';
+import { TOLERANCE } from './skip';
 
 /** 一次分析抽多少个作品 */
 export const SAMPLE_SIZE = 10;
@@ -145,6 +146,11 @@ export function listCandidates(segments: Segment[], boundaries: number[]): Candi
       const total = durs.reduce((sum, n) => sum + n, 0);
       if (total < MIN_AD_SECONDS || total > MAX_AD_SECONDS) continue;
       const kind: 1 | 2 | 3 = start === 0 ? 1 : end === segments.length ? 3 : 2;
+      /* 片中（kind 2）的「单分片」候选不入库：一个分片的时长（例如 6.67 秒 = 2 × 3.33）
+       * 在正片里到处都是——`vip.dytt-see.com` 那批片子 700 多个分片里就有好几个，
+       * 凭它删片段等于删正片。片头/片尾的单分片保留：它锚在播放列表两端，位置本身
+       * 就是证据（`mixed.m3u8` 的片尾广告常常就是一个 18 秒分片）。 */
+      if (kind === 2 && durs.length < 2) continue;
       out.push({ durs, totalMs: Math.round(total * 1000), kind, startIndex: start });
     }
   }
@@ -153,6 +159,44 @@ export function listCandidates(segments: Segment[], boundaries: number[]): Candi
 
 export function signatureOf(durs: number[]): string {
   return durs.map((n) => n.toFixed(2)).join(',');
+}
+
+/**
+ * 这段时长序列在该集里出现了几次（滑窗口径与容差跟播放端 `markAds` 一致）。
+ *
+ * 广告在正片里插一次；正片自身的切片形状（比如 `[4.00,4.00,4.00,4.00,4.00]`）在一集里
+ * 会反复出现。同签名一集命中两次以上，说明它是正片的常见形状，不是广告。
+ */
+export function countSignatureHits(segments: Segment[], durs: number[]): number {
+  let count = 0;
+  for (let start = 0; start + durs.length <= segments.length; start += 1) {
+    let matched = true;
+    for (let offset = 0; offset < durs.length; offset += 1) {
+      const seg = segments[start + offset];
+      if (Math.abs((seg?.dur ?? 0) - (durs[offset] ?? 0)) > TOLERANCE) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) count += 1;
+  }
+  return count;
+}
+
+/** `shorter` 是否作为连续一段出现在 `longer` 里（用来丢掉同一段广告的截断版本） */
+export function isRunInside(longer: number[], shorter: number[]): boolean {
+  if (shorter.length === 0 || shorter.length >= longer.length) return false;
+  for (let start = 0; start + shorter.length <= longer.length; start += 1) {
+    let matched = true;
+    for (let offset = 0; offset < shorter.length; offset += 1) {
+      if (Math.abs((longer[start + offset] ?? 0) - (shorter[offset] ?? 0)) > TOLERANCE) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) return true;
+  }
+  return false;
 }
 
 /**
@@ -372,8 +416,15 @@ export async function analyzeSource(
     try {
       const text = await fetchPlaylist(sample.url);
       const { segments, boundaries } = parsePlaylist(text);
-      const candidates = listCandidates(segments, boundaries);
-      log(`${sample.name}：${segments.length} 段 / ${candidates.length} 个候选`);
+      /* 一集里出现两次以上的签名不收：那是正片的切片形状，不是插播广告 */
+      const listed = listCandidates(segments, boundaries);
+      const candidates = listed.filter(
+        (candidate) => countSignatureHits(segments, candidate.durs) === 1,
+      );
+      log(
+        `${sample.name}：${segments.length} 段 / ${candidates.length} 个候选` +
+          `（剔除集内重复 ${listed.length - candidates.length} 个）`,
+      );
       return { sample, segments, candidates, error: '' };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -440,8 +491,20 @@ export async function analyzeSource(
       })),
     });
   }
-  found.sort((a, b) => b.hitVods - a.hitVods || b.totalMs - a.totalMs);
-  const top = found.slice(0, 50);
+  /* 同一段广告会产出好几条特征（起于同一处的 1 组 / 2 组 / 3 组窗口是它的不同截断），
+   * 播放端只要命中就是删，留着只会让「命中条数」虚高。先按长度从长到短过一遍，
+   * 已经被更长特征整段包含的短特征丢掉。 */
+  const ordered = [...found].sort((a, b) => b.totalMs - a.totalMs);
+  const kept: FoundFeature[] = [];
+  for (const feature of ordered) {
+    const durs = feature.durations.split(',').map(Number);
+    const covered = kept.some((other) =>
+      isRunInside(other.durations.split(',').map(Number), durs),
+    );
+    if (!covered) kept.push(feature);
+  }
+  kept.sort((a, b) => b.hitVods - a.hitVods || b.totalMs - a.totalMs);
+  const top = kept.slice(0, 50);
 
   log(`命中 ${top.length} 条候选（至少出现在 ${MIN_HITS}/${parsed} 部作品中），等待人工确认`);
   return { features: top, sampled: samples.length };

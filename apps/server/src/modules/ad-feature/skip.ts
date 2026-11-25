@@ -4,7 +4,7 @@ import { FETCH_UA } from '@lcm/shared';
 import type { DataSource } from 'typeorm';
 
 /** 时长比对容差（秒），源站同一支广告的分片时长是固定的，3% 以内视为一致 */
-const TOLERANCE = 0.03;
+export const TOLERANCE = 0.03;
 
 interface Segment {
   dur: number;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { listCandidates, parsePlaylist, signatureOf } from './analyze';
+import {
+  countSignatureHits,
+  isRunInside,
+  listCandidates,
+  parsePlaylist,
+  signatureOf,
+} from './analyze';
 
 /** 造一个 4 段的播放列表：片头 1 段(12s) + 正片 2 段 + 片尾 1 段(18s) */
 const PLAYLIST = [
@@ -75,5 +81,67 @@ describe('signatureOf', () => {
   it('两位小数、逗号分隔，作为唯一指纹', () => {
     expect(signatureOf([12, 6.5, 18])).toBe('12.00,6.50,18.00');
     expect(signatureOf([12, 6])).not.toBe(signatureOf([6, 12]));
+  });
+});
+
+/** 造分片数组，只需要时长 */
+const segs = (durs: number[]) => durs.map((dur, index) => ({ dur, uri: `s${index}.ts` }));
+
+describe('countSignatureHits', () => {
+  it('按播放端同样的滑窗口径计数', () => {
+    const fiveFours = [4, 4, 4, 4, 4];
+    // 10 个 4 秒分片里，5 连窗有 6 个位置
+    expect(countSignatureHits(segs([...fiveFours, ...fiveFours]), fiveFours)).toBe(6);
+    // 中间插一个异值就只剩 2 个
+    expect(countSignatureHits(segs([...fiveFours, 1, ...fiveFours]), fiveFours)).toBe(2);
+  });
+
+  it('广告形状在一集里只该命中一次', () => {
+    const ad = [6.667, 2.133, 3.233, 5.433];
+    expect(countSignatureHits(segs([...ad, 4, 4, 4]), ad)).toBe(1);
+    // 只取前两段当特征也只能命中一次（滑动窗口按整段序列比）
+    expect(countSignatureHits(segs([...ad, 4, 4, 4]), [6.667, 2.133])).toBe(1);
+  });
+});
+
+describe('isRunInside', () => {
+  it('短特征被长特征整段包含时返回 true', () => {
+    expect(isRunInside([6.67, 2.13, 3.23, 5.43], [2.13, 3.23, 5.43])).toBe(true);
+    expect(isRunInside([6.67, 2.13, 3.23, 5.43], [6.67, 2.13])).toBe(true);
+    expect(isRunInside([5.57, 2.93, 5.7, 3.33, 1.53], [5.7, 3.33])).toBe(true);
+  });
+
+  it('长度不小于对方、或只是部分重叠时返回 false', () => {
+    expect(isRunInside([6.67, 2.13], [6.67, 2.13])).toBe(false);
+    expect(isRunInside([6.67, 2.13], [6.67, 2.13, 3.23])).toBe(false);
+    expect(isRunInside([6.67, 2.13, 3.23], [6.67, 3.23])).toBe(false);
+  });
+});
+
+describe('listCandidates 的片中单分片过滤', () => {
+  it('片中的孤立单分片不产生候选，片头片尾的保留', () => {
+    const { segments, boundaries } = parsePlaylist(
+      [
+        '#EXTM3U',
+        '#EXTINF:6.000,',
+        'a.ts',
+        '#EXT-X-DISCONTINUITY',
+        '#EXTINF:6.667,',
+        'b.ts',
+        '#EXT-X-DISCONTINUITY',
+        '#EXTINF:6.000,',
+        'c.ts',
+        '#EXTINF:6.000,',
+        'd.ts',
+        '#EXT-X-ENDLIST',
+        '',
+      ].join('\n'),
+    );
+    const candidates = listCandidates(segments, boundaries);
+    // 中间那个 6.667 秒分片单独成组，但不允许作为片中候选
+    expect(candidates.some((c) => c.kind === 2 && c.durs.length === 1)).toBe(false);
+    // 片头第一个分片（kind 1）与片尾整组（kind 3）仍可以入选
+    expect(candidates.some((c) => c.kind === 1 && c.startIndex === 0)).toBe(true);
+    expect(candidates.some((c) => c.kind === 3)).toBe(true);
   });
 });
