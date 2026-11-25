@@ -30,6 +30,9 @@ export default defineConfig({
   // 时整屏白一下）。列全之后首次点任何菜单都不会再触发重新预打包。
   optimizeDeps: {
     include: [
+      // 只有播放设置页（Config.vue）从包根引 settingDefault；漏了它，第一次点「播放设置」
+      // 才会发现这个依赖，于是当场重新预打包 + 整页刷新（点菜单直接白屏）。
+      '@lcm/shared',
       '@lcm/shared/cron',
       'hls.js',
       '@element-plus/icons-vue',

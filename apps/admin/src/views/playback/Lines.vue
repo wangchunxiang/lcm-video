@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 import { buildListQuery } from '@lcm/api-client';
 
 interface LineItem {
@@ -71,6 +72,10 @@ function changePageSize(size: number) {
   pager.page_size = size;
   pager.page = 1;
   void load();
+}
+
+function onSelectionChange(rows: LineItem[]): void {
+  selection.value = rows;
 }
 
 async function patch(row: LineItem, body: Record<string, unknown>) {
@@ -213,23 +218,6 @@ async function saveSortOrder() {
 
 onMounted(load);
 
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
-
-onMounted(() => {
-  if (!wrapRef.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-  });
-  resizeObserver.observe(wrapRef.value);
-  tableHeight.value = wrapRef.value.clientHeight;
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-});
 </script>
 
 <template>
@@ -258,16 +246,19 @@ onBeforeUnmount(() => {
         <el-button type="warning" :disabled="selection.length === 0" @click="batch('disable')">批量停用</el-button>
         <el-button @click="openSort">调整排序</el-button>
       </div>
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="items"
-          :height="tableHeight"
-          row-key="id"
-          border
-          stripe
-          @selection-change="(rows: LineItem[]) => (selection = rows)"
-        >
+      <ProTable
+        :data="items"
+        :total="total"
+        :page="pager.page"
+        :page-size="pager.page_size"
+        :loading="loading"
+        row-key="id"
+        border
+        stripe
+        @update:page="changePage"
+        @update:page-size="changePageSize"
+        @selection-change="(rows) => onSelectionChange(rows as LineItem[])"
+      >
           <el-table-column type="selection" width="46" />
           <el-table-column prop="sourceFrom" label="线路标识" min-width="180">
             <template #default="{ row }">
@@ -305,18 +296,7 @@ onBeforeUnmount(() => {
               />
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-      <el-pagination
-        class="pager"
-        :current-page="pager.page"
-        :page-size="pager.page_size"
-        :page-sizes="[20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next"
-        @current-change="changePage"
-        @size-change="changePageSize"
-      />
+      </ProTable>
     </el-card>
 
     <el-dialog v-model="editVisible" title="编辑线路" width="480px">
@@ -385,10 +365,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
 }
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
 .search-bar {
   display: flex;
   align-items: center;
@@ -400,10 +376,6 @@ onBeforeUnmount(() => {
 }
 .muted {
   color: var(--el-text-color-secondary);
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 .code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

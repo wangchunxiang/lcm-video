@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 
 interface SourceRow {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -325,23 +326,6 @@ onMounted(async () => {
   await loadCategories();
   await load();
 });
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
-
-onMounted(() => {
-  if (!wrapRef.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-  });
-  resizeObserver.observe(wrapRef.value);
-  tableHeight.value = wrapRef.value.clientHeight;
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-});
 
 </script>
 
@@ -379,18 +363,17 @@ onBeforeUnmount(() => {
   </el-card>
 
   <el-card shadow="never" class="fill-card">
-    <div ref="wrapRef" class="table-wrap">
-    <el-table
-      :height="tableHeight"
-      v-loading="loading"
+    <ProTable
       :data="treeRows"
+      :loading="loading"
+      :show-pager="false"
       row-key="id"
-      @selection-change="(rows: SourceCategoryRow[]) => (selected = rows)"
       default-expand-all
       :tree-props="{ children: 'children' }"
       border
       stripe
       empty-text="该采集源还没有源站分类，请先点击「获取分类」"
+      @selection-change="(rows) => (selected = rows as SourceCategoryRow[])"
     >
       <el-table-column type="selection" width="46" />
       <el-table-column prop="sourceTypeName" label="源站分类" min-width="260" show-overflow-tooltip />
@@ -435,8 +418,7 @@ onBeforeUnmount(() => {
           <el-button v-if="row.status === 1" link type="danger" @click="remapVods(row)">重刷</el-button>
         </template>
       </el-table-column>
-    </el-table>
-    </div>
+    </ProTable>
   </el-card>
   </div>
 </template>
@@ -466,13 +448,8 @@ onBeforeUnmount(() => {
 .toolbar,
 .summary,
 .batch,
-.batch-bar,
-.pager {
+.batch-bar {
   flex: none;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
 }
 .toolbar {
   display: flex;

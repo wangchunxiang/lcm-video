@@ -176,10 +176,10 @@ async function recollect(row: VodRow, sourceId: string) {
   }
 }
 
-async function onRecollectCommand(command: string) {
-  const [vodId, sourceId] = command.split(':');
-  const row = items.value.find((item) => item.id === vodId);
-  if (row && sourceId && sourceId !== '0') await recollect(row, sourceId);
+async function onRecollectCommand(command: { vodId: string; sourceId: string }) {
+  if (command.sourceId === '0') return;
+  const row = items.value.find((item) => item.id === command.vodId);
+  if (row) await recollect(row, command.sourceId);
 }
 
 async function toggleStatus(row: VodRow) {
@@ -367,7 +367,7 @@ onMounted(() => {
                     <el-dropdown-item
                       v-for="src in vodSources[row.id]"
                       :key="src.id"
-                      :command="`${row.id}:${src.id}`"
+                      :command="{ vodId: row.id, sourceId: src.id }"
                     >
                       {{ src.name }}
                     </el-dropdown-item>

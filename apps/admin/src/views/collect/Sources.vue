@@ -41,10 +41,25 @@ const {
 const loading = ref(false);
 const testing = ref('');
 const dialogVisible = ref(false);
-const dialogTitle = ref('新增源站');
 const editingId = ref('');
 
-const form = reactive({
+/** 标题由 `editingId` 现算，不再另存一个 ref 手动赋两次 */
+const dialogTitle = computed(() => (editingId.value === '' ? '新增源站' : '编辑源站'));
+
+interface SourceForm {
+  name: string;
+  api_url: string;
+  api_params: string;
+  parse_url: string;
+  is_enabled: number;
+  pagesize: number;
+  interval_sec: number;
+  timeout: number;
+  retry_times: number;
+}
+
+/** 表单初值只写一份：`reactive` 的初始值和「新增」时的重置都从这里取，不再各抄一遍 */
+const DEFAULTS: SourceForm = {
   name: '',
   api_url: '',
   api_params: '',
@@ -54,7 +69,9 @@ const form = reactive({
   interval_sec: 3,
   timeout: 30,
   retry_times: 2,
-});
+};
+
+const form = reactive<SourceForm>({ ...DEFAULTS });
 
 const FORBIDDEN_PARAMS = ['ac', 'pg', 'pagesize', 'at', 'h'];
 
@@ -104,21 +121,12 @@ function reset() {
 }
 
 function resetForm() {
-  form.name = '';
-  form.api_url = '';
-  form.api_params = '';
-  form.parse_url = '';
-  form.is_enabled = 1;
-  form.pagesize = 100;
-  form.interval_sec = 3;
-  form.timeout = 30;
-  form.retry_times = 2;
+  Object.assign(form, DEFAULTS);
   editingId.value = '';
 }
 
 function openCreate() {
   resetForm();
-  dialogTitle.value = '新增源站';
   dialogVisible.value = true;
 }
 
@@ -134,7 +142,6 @@ function openEdit(row: SourceRow) {
   form.interval_sec = row.intervalSec;
   form.timeout = row.timeout;
   form.retry_times = row.retryTimes;
-  dialogTitle.value = '编辑源站';
   dialogVisible.value = true;
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { buildListQuery, likeValue } from '@lcm/api-client';
 import { api, ApiError } from '../../api/client.ts';
@@ -45,19 +45,26 @@ const {
 
 
 const dialogVisible = ref(false);
-const dialogTitle = ref('新增规则');
 const editingId = ref('');
+
+/** 标题由 `editingId` 现算，不再另存一个 ref 手动赋两次 */
+const dialogTitle = computed(() => (editingId.value === '' ? '新增规则' : '编辑规则'));
 const saving = ref(false);
 const applying = ref('');
 
-const form = reactive({
-  source_id: '',
-  kind: 1,
-  from_url: '',
-  to_url: '',
-  sort: 0,
-  is_enabled: 1,
-});
+interface RuleForm {
+  source_id: string;
+  kind: number;
+  from_url: string;
+  to_url: string;
+  sort: number;
+  is_enabled: number;
+}
+
+/** 表单初值只写一份：`reactive` 的初始值和「新增」时的重置都从这里取 */
+const DEFAULTS: RuleForm = { source_id: '', kind: 1, from_url: '', to_url: '', sort: 0, is_enabled: 1 };
+
+const form = reactive<RuleForm>({ ...DEFAULTS });
 
 const kindText = (kind: number): string => (kind === 2 ? '图片地址' : '播放地址');
 
@@ -147,19 +154,18 @@ watch(pageSize, () => {
 });
 
 function openCreate(): void {
-  dialogTitle.value = '新增规则';
-  editingId.value = '';
+  resetForm();
   form.source_id = sources.value[0]?.id ?? '';
-  form.kind = 1;
-  form.from_url = '';
-  form.to_url = '';
-  form.sort = 0;
-  form.is_enabled = 1;
   dialogVisible.value = true;
 }
 
+/** 清空成初值，再填上依赖接口数据的那几项（`source_id` 默认选第一个源站） */
+function resetForm(): void {
+  Object.assign(form, DEFAULTS);
+  editingId.value = '';
+}
+
 function openEdit(row: RuleRow): void {
-  dialogTitle.value = '编辑规则';
   editingId.value = row.id;
   form.source_id = row.sourceId;
   form.kind = row.kind;

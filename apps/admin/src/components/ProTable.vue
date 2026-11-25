@@ -10,9 +10,10 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 interface Props {
   /** 当前页数据 */
   data: readonly unknown[];
-  total: number;
-  page: number;
-  pageSize: number;
+  /** 总条数，只在显示翻页时才需要：`show-pager="false"` 的页面一次取全量，不用传 */
+  total?: number;
+  page?: number;
+  pageSize?: number;
   loading?: boolean;
   emptyText?: string;
   pageSizes?: number[];
@@ -21,6 +22,9 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  total: 0,
+  page: 1,
+  pageSize: 20,
   loading: false,
   emptyText: '暂无数据',
   pageSizes: () => [20, 50, 100],

@@ -64,18 +64,19 @@
         <span class="toolbar-tip">
           {{ selectedHosts.length ? `已选 ${selectedHosts.length} 个域名` : '勾选域名后可批量修复' }}
         </span>
-        <span class="toolbar-count">已显示 {{ visibleRows.length }} / {{ filtered.length }} 个域名</span>
+        <span class="toolbar-count">共 {{ filtered.length }} 个域名</span>
       </div>
 
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          v-loading="loading"
-          :data="visibleRows"
-          border
-          stripe
-          :height="tableHeight"
-          @selection-change="onSelectionChange"
-        >
+      <ProTable
+        ref="tableRef"
+        :data="filtered"
+        :loading="loading"
+        :show-pager="false"
+        border
+        stripe
+        empty-text="没有图片域名"
+        @selection-change="(rows) => onSelectionChange(rows as HostRow[])"
+      >
           <el-table-column type="selection" width="44" :selectable="canSelect" />
           <el-table-column prop="host" label="域名" min-width="200" show-overflow-tooltip />
           <el-table-column prop="vodCount" label="影片数" width="90" align="center" />
@@ -121,9 +122,7 @@
               </el-button>
             </template>
           </el-table-column>
-          <template #empty>没有图片域名</template>
-        </el-table>
-      </div>
+      </ProTable>
     </el-card>
 
     <el-drawer v-model="drawerVisible" :title="`${currentHost} 的影片`" size="60%">
@@ -150,11 +149,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ElLoading, ElMessage, ElMessageBox, ElNotification } from 'element-plus';
 import { ArrowDown } from '@element-plus/icons-vue';
 import { api } from '../../api/client';
 import { formatDateTime } from '../../utils/datetime';
+import ProTable from '../../components/ProTable.vue';
 
 interface HostRow {
   host: string;
@@ -184,14 +184,8 @@ const batchRunning = ref(false);
 const selectedHosts = ref<string[]>([]);
 const filters = ref({ host: '', status: '' });
 const applied = ref({ host: '', status: '' });
-const PAGE = 20;
-const visibleCount = ref(PAGE);
 const summary = ref({ hosts: 0, ok: 0, bad: 0, unverified: 0, unchecked: 0 });
-
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let observer: ResizeObserver | null = null;
-
+const tableRef = ref<{ clearSelection: () => void } | null>(null);
 const drawerVisible = ref(false);
 const currentHost = ref('');
 const vods = ref<CoverVod[]>([]);
@@ -217,8 +211,6 @@ const filtered = computed(() =>
   }),
 );
 
-const visibleRows = computed(() => filtered.value.slice(0, visibleCount.value));
-
 /**
  * 查询：先重新取一次域名列表，再应用筛选条件。
  * 原来「刷新」是唯一重新拉数据的入口，和「查询」并存会让人以为查询也刷新了数据，
@@ -227,7 +219,6 @@ const visibleRows = computed(() => filtered.value.slice(0, visibleCount.value));
 async function search(): Promise<void> {
   await load();
   applied.value = { ...filters.value };
-  visibleCount.value = PAGE;
 }
 
 function reset(): void {
@@ -235,23 +226,11 @@ function reset(): void {
   void search();
 }
 
-/** el-table 自带固定高度，滚动条在内部的 .el-scrollbar__wrap 上 */
-let scroller: HTMLElement | null = null;
-
-function onScroll(): void {
-  if (!scroller) return;
-  if (scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 40) return;
-  if (visibleCount.value >= filtered.value.length) return;
-  visibleCount.value += PAGE;
-}
-
-function bindScroll(): void {
-  const el = wrapRef.value?.querySelector<HTMLElement>('.el-scrollbar__wrap') ?? null;
-  if (!el || el === scroller) return;
-  scroller?.removeEventListener('scroll', onScroll);
-  scroller = el;
-  scroller.addEventListener('scroll', onScroll, { passive: true });
-}
+/**
+ * 域名数量来自 `lcm_vod.cover_host` 的分组，量级只有个位数，表格一次渲染全量。
+ * 不再做客户端「滚到底加载更多」：那套要抓 Element Plus 内部的 `.el-scrollbar__wrap`，
+ * 组件升级改了类名就会静默失效（永远只显示前 20 条，且不报错）。
+ */
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -259,7 +238,6 @@ async function load(): Promise<void> {
     const data = await api.longPost<{ hosts: HostRow[]; summary: typeof summary.value }>('/cover-check/hosts');
     rows.value = data.hosts;
     summary.value = data.summary;
-    measure();
   } finally {
     loading.value = false;
   }
@@ -521,18 +499,6 @@ async function clearCovers(row: HostRow): Promise<void> {
   }
 }
 
-function measure(): void {
-  if (wrapRef.value) tableHeight.value = Math.max(160, wrapRef.value.clientHeight);
-}
-
-function observe(): void {
-  if (!wrapRef.value) return;
-  observer = new ResizeObserver(() => measure());
-  observer.observe(wrapRef.value);
-  measure();
-  nextTick(() => bindScroll());
-}
-
 function observeDrawer(): void {
   drawerObserver?.disconnect();
   if (!drawerWrapRef.value) return;
@@ -543,21 +509,11 @@ function observeDrawer(): void {
   drawerTableHeight.value = Math.max(160, drawerWrapRef.value.clientHeight - 44);
 }
 
-watch(filtered, () => {
-  nextTick(() => {
-    measure();
-    bindScroll();
-  });
-});
-
 onMounted(() => {
   void load();
-  observe();
 });
 
 onBeforeUnmount(() => {
-  scroller?.removeEventListener('scroll', onScroll);
-  observer?.disconnect();
   drawerObserver?.disconnect();
 });
 </script>
@@ -653,10 +609,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-}
 
 .muted {
   color: var(--el-text-color-placeholder);

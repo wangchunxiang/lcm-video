@@ -4,9 +4,10 @@
  * 给出（服务端从 `collect/merge.ts` 的 `MERGE_FIELDS` 生成），页面只负责取值与保存。
  * 布局与其它列表页一致：查询卡片 + 表格卡片 + 分页。
  */
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 import { useTableQuery } from '../../composables/useTableQuery.ts';
 
 interface RuleOption {
@@ -33,9 +34,6 @@ const saving = ref(false);
 const mode = ref<'merge' | 'off'>('merge');
 const serverMode = ref<'merge' | 'off'>('merge');
 const items = ref<RuleItem[]>([]);
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
 /** 页面上的取值 */
 const values = reactive<Record<string, string>>({});
 /** 服务端当前值，用来判断「有没有未保存的改动」 */
@@ -175,18 +173,6 @@ async function save(): Promise<void> {
 
 onMounted(() => {
   void load();
-  if (wrapRef.value) {
-    resizeObserver = new ResizeObserver(() => {
-      tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-    });
-    resizeObserver.observe(wrapRef.value);
-    tableHeight.value = wrapRef.value.clientHeight;
-  }
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
 });
 </script>
 
@@ -221,8 +207,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div ref="wrapRef" class="table-wrap">
-        <el-table v-loading="loading" :data="rows" row-key="key" border stripe :height="tableHeight">
+      <ProTable
+        :data="rows"
+        :total="total"
+        :page="page"
+        :page-size="pageSize"
+        :loading="loading"
+        row-key="key"
+        border
+        stripe
+        @update:page="(value: number) => (page = value)"
+        @update:page-size="(size: number) => (pageSize = size)"
+      >
           <el-table-column prop="label" label="字段" width="120" />
           <el-table-column label="键名" width="150">
             <template #default="{ row }">
@@ -257,19 +253,7 @@ onBeforeUnmount(() => {
               </el-button>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-
-      <el-pagination
-        class="pager"
-        layout="total, sizes, prev, pager, next"
-        :total="total"
-        :page-sizes="[20, 50, 100]"
-        :page-size="pageSize"
-        :current-page="page"
-        @current-change="(value: number) => (page = value)"
-        @size-change="(size: number) => (pageSize = size)"
-      />
+      </ProTable>
     </el-card>
   </div>
 </template>
@@ -295,10 +279,6 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
 }
 .search-bar {
   display: flex;
@@ -339,9 +319,5 @@ onBeforeUnmount(() => {
   font-family: var(--el-font-family-mono, monospace);
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-.pager {
-  margin-top: 12px;
-  justify-content: flex-end;
 }
 </style>

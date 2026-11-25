@@ -98,31 +98,40 @@ const weekGain = computed(() =>
   (data.value?.trend ?? []).slice(-7).reduce((sum, day) => sum + day.inserted, 0),
 );
 
-/** 今日入库比昨天多/少多少，昨天为 0 时只说绝对值 */
-const insertedDelta = computed<string | null>(() => {
+/** 今日入库与昨天的比较：长句、短标签、涨跌颜色三处都从这一份算 */
+interface InsertedDelta {
+  today: number;
+  yesterday: number;
+  /** 昨天为 0 时无法算百分比，用 null */
+  percent: number | null;
+}
+
+const insertedDeltaData = computed<InsertedDelta>(() => {
   const trend = data.value?.trend ?? [];
   const today = data.value?.todayLog.inserted ?? 0;
   const yesterday = trend[trend.length - 2]?.inserted ?? 0;
-  if (yesterday === 0) return today === 0 ? '昨天也没有新片' : `昨天 0 部，今天 ${comma(today)} 部`;
-  const percent = Math.round(((today - yesterday) / yesterday) * 100);
+  return { today, yesterday, percent: yesterday === 0 ? null : Math.round(((today - yesterday) / yesterday) * 100) };
+});
+
+/** 今日入库比昨天多/少多少，昨天为 0 时只说绝对值 */
+const insertedDelta = computed<string | null>(() => {
+  const { today, yesterday, percent } = insertedDeltaData.value;
+  if (percent === null) return today === 0 ? '昨天也没有新片' : `昨天 0 部，今天 ${comma(today)} 部`;
   if (percent === 0) return `与昨天持平（${comma(yesterday)} 部）`;
   return `${percent > 0 ? '比昨天多' : '比昨天少'} ${Math.abs(percent)}%（昨天 ${comma(yesterday)} 部）`;
 });
 
 /** 今日入库的短同比，放卡片右下角（长句在 tooltip 里） */
 const insertedDeltaShort = computed(() => {
-  const trend = data.value?.trend ?? [];
-  const today = data.value?.todayLog.inserted ?? 0;
-  const yesterday = trend[trend.length - 2]?.inserted ?? 0;
-  if (yesterday === 0) return today === 0 ? '昨天也 0' : '昨天 0';
-  const percent = Math.round(((today - yesterday) / yesterday) * 100);
+  const { today, percent } = insertedDeltaData.value;
+  if (percent === null) return today === 0 ? '昨天也 0' : '昨天 0';
   if (percent === 0) return '与昨天持平';
   return `${percent > 0 ? '↑' : '↓'} ${Math.abs(percent)}%`;
 });
 
 const insertedDeltaUp = computed(() => {
-  const trend = data.value?.trend ?? [];
-  return (data.value?.todayLog.inserted ?? 0) >= (trend[trend.length - 2]?.inserted ?? 0);
+  const { today, yesterday } = insertedDeltaData.value;
+  return today >= yesterday;
 });
 
 /* ── 采集维度与图表选项 ─────────────────────────── */

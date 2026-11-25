@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { api } from '../../api/client.ts';
+import ProTable from '../../components/ProTable.vue';
 
 interface CategoryNode {
   /** BIGINT 主键，服务端按字符串返回 */
@@ -19,17 +20,24 @@ const items = ref<CategoryNode[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const dialogVisible = ref(false);
-const dialogTitle = ref('新增分类');
 const editingId = ref('');
 
-const form = reactive({
-  pid: '0',
-  name: '',
-  alias: '',
-  matchNames: '',
-  sort: 0,
-  isShow: 1,
-});
+/** 标题由 `editingId` 现算，不再另存一个 ref 手动赋两次 */
+const dialogTitle = computed(() => (editingId.value === '' ? '新增分类' : '编辑分类'));
+
+interface CategoryForm {
+  pid: string;
+  name: string;
+  alias: string;
+  matchNames: string;
+  sort: number;
+  isShow: number;
+}
+
+/** 表单初值只写一份：`reactive` 的初始值和「新增」时的重置都从这里取 */
+const DEFAULTS: CategoryForm = { pid: '0', name: '', alias: '', matchNames: '', sort: 0, isShow: 1 };
+
+const form = reactive<CategoryForm>({ ...DEFAULTS });
 
 const filters = reactive({ keyword: '', isShow: '' });
 
@@ -77,19 +85,13 @@ function reset() {
 }
 
 function resetForm() {
-  form.pid = '0';
-  form.name = '';
-  form.alias = '';
-  form.matchNames = '';
-  form.sort = 0;
-  form.isShow = 1;
+  Object.assign(form, DEFAULTS);
   editingId.value = '';
 }
 
 function openCreate(pid: string) {
   resetForm();
   form.pid = pid;
-  dialogTitle.value = '新增分类';
   dialogVisible.value = true;
 }
 
@@ -102,7 +104,6 @@ function openEdit(row: CategoryNode) {
   form.matchNames = row.matchNames;
   form.sort = row.sort;
   form.isShow = row.isShow;
-  dialogTitle.value = '编辑分类';
   dialogVisible.value = true;
 }
 
@@ -173,24 +174,6 @@ async function remove(row: CategoryNode) {
 }
 
 onMounted(load);
-
-const wrapRef = ref<HTMLElement | null>(null);
-const tableHeight = ref(400);
-let resizeObserver: ResizeObserver | null = null;
-
-onMounted(() => {
-  if (!wrapRef.value) return;
-  resizeObserver = new ResizeObserver(() => {
-    tableHeight.value = wrapRef.value?.clientHeight ?? 400;
-  });
-  resizeObserver.observe(wrapRef.value);
-  tableHeight.value = wrapRef.value.clientHeight;
-});
-
-onBeforeUnmount(() => {
-  resizeObserver?.disconnect();
-  resizeObserver = null;
-});
 </script>
 
 <template>
@@ -215,16 +198,15 @@ onBeforeUnmount(() => {
     </el-card>
 
     <el-card shadow="never" class="table-card">
-      <div ref="wrapRef" class="table-wrap">
-        <el-table
-          :height="tableHeight"
-          v-loading="loading"
-          :data="visible"
-          row-key="id"
-          default-expand-all
-          :tree-props="{ children: 'children' }"
-          border
-        >
+      <ProTable
+        :data="visible"
+        :loading="loading"
+        :show-pager="false"
+        row-key="id"
+        default-expand-all
+        :tree-props="{ children: 'children' }"
+        border
+      >
           <el-table-column prop="name" label="分类名称" min-width="180" />
           <el-table-column prop="alias" label="URL 别名" min-width="140" />
           <el-table-column label="匹配名" min-width="200">
@@ -244,8 +226,7 @@ onBeforeUnmount(() => {
               <el-button link type="danger" @click="remove(row)">删除</el-button>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
+      </ProTable>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px">
@@ -303,10 +284,6 @@ onBeforeUnmount(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.table-wrap {
-  flex: 1;
-  min-height: 0;
 }
 .search-bar {
   display: flex;

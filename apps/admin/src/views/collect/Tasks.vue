@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { TableInstance } from 'element-plus';
-import { computed } from 'vue';
 import { describeCron, isValidCron, nextRunAt, WEEK_LABELS } from '@lcm/shared/cron';
 import { buildListQuery } from '@lcm/api-client';
 import { api } from '../../api/client.ts';
@@ -25,8 +24,6 @@ interface TaskRow {
   lastRunAt: string | null;
   lastRunStatus: number;
   lastRunMsg: string;
-  /** 派生：lastRunStatus === 1 视为运行中 */
-  runningLogId: string | null;
   /** 派生：按 cron 现算下一次执行时间 */
   nextRunAt: string | null;
 }
@@ -41,8 +38,10 @@ const sources = ref<SourceRow[]>([]);
 const loading = ref(false);
 const total = ref(0);
 const dialogVisible = ref(false);
-const dialogTitle = ref('新增采集任务');
 const editingId = ref('');
+
+/** 标题由 `editingId` 现算，不再另存一个 ref 手动赋两次 */
+const dialogTitle = computed(() => (editingId.value === '' ? '新增采集任务' : '编辑采集任务'));
 const tableRef = ref<TableInstance>();
 const selection = ref<TaskRow[]>([]);
 let timer: ReturnType<typeof setInterval> | undefined;
@@ -64,13 +63,18 @@ const rangeOptions = [
   { value: 4, label: '全部影片' },
 ];
 
-const form = reactive({
-  name: '',
-  source_id: '',
-  range_type: 1,
-  cron: '',
-  is_enabled: 1,
-});
+interface TaskForm {
+  name: string;
+  source_id: string;
+  range_type: number;
+  cron: string;
+  is_enabled: number;
+}
+
+/** 表单初值只写一份：`reactive` 的初始值和「新增」时的重置都从这里取 */
+const DEFAULTS: TaskForm = { name: '', source_id: '', range_type: 1, cron: '', is_enabled: 1 };
+
+const form = reactive<TaskForm>({ ...DEFAULTS });
 
 function decorate(rows: TaskRow[]): TaskRow[] {
   const nameById = new Map(sources.value.map((item) => [item.id, item.name]));
@@ -78,7 +82,6 @@ function decorate(rows: TaskRow[]): TaskRow[] {
   return rows.map((row) => ({
     ...row,
     sourceName: nameById.get(row.sourceId) ?? null,
-    runningLogId: row.lastRunStatus === 1 ? row.id : null,
     nextRunAt: row.cron && isValidCron(row.cron) === null ? (nextRunAt(row.cron, now)?.toISOString() ?? null) : null,
   }));
 }
@@ -142,17 +145,14 @@ function onSelectionChange(rows: TaskRow[]) {
 }
 
 function resetForm() {
-  form.name = '';
+  Object.assign(form, DEFAULTS);
+  // 采集源是接口数据，默认选第一个，这项没法写进 DEFAULTS
   form.source_id = sources.value[0]?.id ?? '';
-  form.range_type = 1;
-  form.cron = '';
-  form.is_enabled = 1;
   editingId.value = '';
 }
 
 function openCreate() {
   resetForm();
-  dialogTitle.value = '新增采集任务';
   dialogVisible.value = true;
 }
 
@@ -164,7 +164,6 @@ function openEdit(row: TaskRow) {
   form.range_type = row.rangeType;
   form.cron = row.cron;
   form.is_enabled = row.isEnabled;
-  dialogTitle.value = '编辑采集任务';
   dialogVisible.value = true;
 }
 
@@ -305,9 +304,14 @@ function rangeLabel(value: number): string {
   return rangeOptions.find((item) => item.value === value)?.label ?? String(value);
 }
 
+/** 上次日志还在跑：列表里所有「运行中」的表达都从这里来 */
+function isRunning(row: TaskRow): boolean {
+  return row.lastRunStatus === 1;
+}
+
 /** v3 任务状态：0 未运行 / 1 运行中 / 2 成功 / 3 失败 / 4 已取消 */
-function runStatus(row: TaskRow): { text: string; type: 'success' | 'danger' | 'info' | 'warning' } {
-  if (row.lastRunStatus === 1) return { text: '运行中', type: 'warning' };
+function runStatus(row: TaskRow): { text: string; type: 'primary' | 'success' | 'danger' | 'info' } {
+  if (isRunning(row)) return { text: '运行中', type: 'primary' };
   if (row.lastRunStatus === 2) return { text: '成功', type: 'success' };
   if (row.lastRunStatus === 3) return { text: '失败', type: 'danger' };
   if (row.lastRunStatus === 4) return { text: '已取消', type: 'info' };
@@ -446,19 +450,12 @@ onUnmounted(() => {
               <el-switch :model-value="row.isEnabled === 1" @change="toggleStatus(row)" />
             </template>
           </el-table-column>
-          <el-table-column label="执行状态" width="96" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.runningLogId" type="primary" size="small" effect="light">运行中</el-tag>
-              <span v-else class="muted">空闲</span>
-            </template>
-          </el-table-column>
           <el-table-column label="上次执行" width="150" align="center" class-name="time-cell">
             <template #default="{ row }">{{ formatDateTime(row.lastRunAt) || '—' }}</template>
           </el-table-column>
           <el-table-column label="结果" width="78" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.lastRunStatus === 1" type="primary" size="small" effect="light">运行中</el-tag>
-              <el-tag v-else size="small" :type="runStatus(row).type">{{ runStatus(row).text }}</el-tag>
+              <el-tag size="small" :type="runStatus(row).type" effect="light">{{ runStatus(row).text }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="说明" width="84" align="center">
@@ -477,7 +474,7 @@ onUnmounted(() => {
           </el-table-column>
           <el-table-column label="操作" width="152" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="row.lastRunStatus !== 1" link type="primary" class="op-btn" @click="run(row)">执行</el-button>
+              <el-button v-if="!isRunning(row)" link type="primary" class="op-btn" @click="run(row)">执行</el-button>
               <el-button v-else link type="warning" class="op-btn" @click="cancel(row)">取消</el-button>
               <el-button link type="primary" class="op-btn" @click="openEdit(row)">编辑</el-button>
               <el-button link type="danger" class="op-btn" @click="remove(row)">删除</el-button>
