@@ -1,8 +1,8 @@
 import { In } from 'typeorm';
 import type { DataSource } from 'typeorm';
 import {
-  applyCoverRules,
   applyPlayUrlRules,
+  applyUrlRules,
   countEpisodes,
   hostOf,
   htmlToSummary,
@@ -259,7 +259,7 @@ export async function processPage(dataSource: DataSource, input: PageInput): Pro
           let vodId = matchedId;
           let insertedNow = false;
 
-          const cover = applyCoverRules(normalizeCover(item.cover), coverRules);
+          const cover = applyUrlRules(normalizeCover(item.cover), coverRules);
           const content: MergeableVod = {
             name,
             nameHash: hash,

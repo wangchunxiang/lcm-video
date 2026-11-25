@@ -21,7 +21,10 @@ export abstract class AppCrudService<T extends AppBaseEntity> extends CrudServic
 
   /**
    * 删除/批量删除的成功文案统一成中文。
-   * `@Crud()` 的 `messages` 配置只作用于路由层，直接在 service 上调用时拿不到，所以在这里兜底。
+   *
+   * 库里的 `delete()` 返回的文案来自 `CrudService.msg()`，它只读全局
+   * `CrudConfigService.config.messages`（本仓库没注册 `NestCrudModule.forRoot()`，也没有
+   * 按控制器生效的通道），所以拿不到中文。要改只能在这里兜底。
    */
   override async delete(
     criteria: string | FindOptionsWhere<T>,

@@ -593,33 +593,29 @@ export class VodMergeService {
     } else {
       const [hash = '', yearText] = key.split('~');
       const year = Number(yearText);
-      const column = kind === 'auto' ? 'name_hash' : 'name_hash_loose';
       const yearFilter = year > 0 ? ' AND year = ?' : '';
-      const params: Array<string | number> = [hash];
+      const params: Array<string | number> = [hash, hash, hash];
       if (year > 0) params.push(year);
-      const rows = await this.dataSource.query<Array<{ id: string }>>(
-        `SELECT id FROM lcm_vod WHERE ${column} = ?${yearFilter}`,
+      // 一条查询同时取回严格键和宽松键的命中，`strict` 标记这一行是否命中了严格键。
+      // `auto` 拿严格组当基线（缺演员时也能判），`manual` 只用宽松组。
+      const rows = await this.dataSource.query<Array<{ id: string; strict: number }>>(
+        `SELECT id, (name_hash = ?) AS strict FROM lcm_vod
+          WHERE (name_hash = ? OR name_hash_loose = ?)${yearFilter}`,
         params,
       );
-      ids = rows.map((row) => String(row.id));
-      // 可合并组也可能来自宽松键（演员判定升级的那批），严格键查不到时退回宽松键；
+      const strictIds = rows.filter((row) => Number(row.strict) === 1).map((row) => String(row.id));
+      const looseIds = rows.map((row) => String(row.id));
+      ids = kind === 'auto' ? strictIds : looseIds;
       // 同键情况下严格组往往是宽松组的子集（只差标点），成员更多且演员过关时用宽松组
-      if (kind === 'auto') {
-        const looseRows = await this.dataSource.query<Array<{ id: string }>>(
-          `SELECT id FROM lcm_vod WHERE name_hash_loose = ?${yearFilter}`,
-          params,
-        );
-        const looseIds = looseRows.map((row) => String(row.id));
-        if (looseIds.length > ids.length) {
-          const looseMembers = await this.loadMembersByIds(looseIds);
-          if (
-            looseMembers.length > ids.length &&
-            yearCompatible(looseMembers) &&
-            actorOverlap(looseMembers) >= ACTOR_MATCH_MIN
-          ) {
-            ids = looseIds;
-            members = looseMembers;
-          }
+      if (kind === 'auto' && looseIds.length > ids.length) {
+        const looseMembers = await this.loadMembersByIds(looseIds);
+        if (
+          looseMembers.length > ids.length &&
+          yearCompatible(looseMembers) &&
+          actorOverlap(looseMembers) >= ACTOR_MATCH_MIN
+        ) {
+          ids = looseIds;
+          members = looseMembers;
         }
       }
     }

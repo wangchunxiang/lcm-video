@@ -33,17 +33,15 @@ export async function scanHost(dataSource: DataSource, host: string, vodCount: n
 
 /** 把这些影片的封面清空，前台退回占位图 */
 export async function clearHostCovers(dataSource: DataSource, host: string): Promise<number> {
-  const [count] = await dataSource.query<Array<{ total: number }>>(
-    'SELECT COUNT(*) AS total FROM lcm_vod WHERE cover_host = ?',
-    [host],
-  );
-  const before = Number(count?.total ?? 0);
   // cover 清空时 cover_host 必须一起清空：它是 cover 的冗余列，留着会继续被体检扫到
   const now = new Date();
-  await dataSource.query(
+  // 命中行数直接取 UPDATE 的结果：驱动开了 `CLIENT_FOUND_ROWS`，`affectedRows` 就是命中的行数，
+  // 不必为了报个数字先 COUNT 一趟
+  const header = await dataSource.query<{ affectedRows: number }>(
     "UPDATE lcm_vod SET cover = '', cover_host = '', updated_at = ? WHERE cover_host = ?",
     [now, host],
   );
+  const before = Number(header?.affectedRows ?? 0);
   await dataSource.query(
     `UPDATE lcm_cover_check
         SET status = 1, message = ?, checked_at = ?, updated_at = ?

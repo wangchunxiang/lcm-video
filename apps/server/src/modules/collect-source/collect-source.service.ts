@@ -240,17 +240,6 @@ export class CollectSourceService extends AppCrudService<CollectSourceEntity> {
     };
   }
 
-  /** id → 源站名，供其他模块拼 `sourceName`。 */
-  async nameMap(ids: string[]): Promise<Map<string, string>> {
-    const unique = [...new Set(ids.filter((id) => id !== ''))];
-    if (unique.length === 0) return new Map();
-    const rows = await this.dataSource.query<Array<{ id: string; name: string }>>(
-      'SELECT id, name FROM lcm_collect_source WHERE id IN (?)',
-      [unique],
-    );
-    return new Map(rows.map((row) => [row.id, row.name]));
-  }
-
   /** 只拉一次分类列表，不落库；探测失败不算接口失败。 */
   async test(id: string): Promise<CollectSourceTestResult> {
     const runtime = await this.loadRuntime(id);

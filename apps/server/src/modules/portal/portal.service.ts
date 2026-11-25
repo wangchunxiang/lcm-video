@@ -304,13 +304,9 @@ export class PortalService {
 
     const clauses: string[] = ['v.status = 1'];
     const params: unknown[] = [];
-    const sub =
-      input.typeAlias !== undefined && input.typeAlias !== ''
-        ? (types.find((row) => row.alias === input.typeAlias) ?? null)
-        : null;
-    if (input.typeAlias !== undefined && input.typeAlias !== '' && sub === null) {
-      throw new BadRequestException('子分类不存在');
-    }
+    const typeAlias = input.typeAlias ?? '';
+    const sub = typeAlias === '' ? null : (types.find((row) => row.alias === typeAlias) ?? null);
+    if (typeAlias !== '' && sub === null) throw new BadRequestException('子分类不存在');
     // 一级分类且没选子分类时，范围是「分类本身 + 其下所有子分类」
     const topLevel = category.pid === '0' && sub === null;
     if (sub !== null) {
@@ -476,7 +472,8 @@ export class PortalService {
     if (lines.length === 0) throw new NotFoundException('这部影片还没有可播放的线路');
 
     const wanted = toInt(lineIndex, 0, 0, lines.length - 1);
-    const line = lines[wanted] ?? lines[0];
+    // 上面已经保证至少一条，`wanted` 又被夹到 [0, length-1]，这里只需要让 TS 收窄类型
+    const line = lines[wanted];
     if (line === undefined) throw new NotFoundException('线路不存在');
 
     const parsed = parsePlayUrl(line.playUrl);

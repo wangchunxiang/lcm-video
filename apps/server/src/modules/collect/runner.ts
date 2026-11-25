@@ -323,10 +323,6 @@ export class CollectRunner {
     return logs.length;
   }
 
-  isRunning(logId: string): boolean {
-    return running.has(logId);
-  }
-
   private async findRunningLog(sourceId: string): Promise<string | null> {
     const log = await this.logRepository.findOne({
       where: { sourceId, status: 1 },
@@ -633,29 +629,18 @@ export class CollectRunner {
     message: string,
   ): Promise<void> {
     const samples = fails.slice(0, FAIL_SAMPLE_LIMIT);
-    const existing = await this.detailRepository.findOne({
-      where: { logId: context.logId, page },
-      select: { id: true },
-    });
-    if (existing !== null) {
-      await this.detailRepository.update(
-        { id: existing.id },
-        {
-          ...this.counterPatch(counters),
-          message: message.slice(0, 500),
-          ...(samples.length > 0 ? { failDetail: samples } : {}),
-        },
-      );
-      return;
-    }
-    await this.detailRepository.save(
-      this.detailRepository.create({
+    // `uk_log_page (log_id, page)` 让「有则改、无则插」变成一条语句，不用先 findOne 再分支。
+    // `updated_at` 显式传：upsert 不经过 `@UpdateDateColumn`，也别指望 `ON UPDATE CURRENT_TIMESTAMP`。
+    await this.detailRepository.upsert(
+      {
         logId: context.logId,
         page,
         ...this.counterPatch(counters),
         ...(samples.length > 0 ? { failDetail: samples } : {}),
         message: message.slice(0, 500),
-      }),
+        updatedAt: new Date(),
+      },
+      ['logId', 'page'],
     );
   }
 

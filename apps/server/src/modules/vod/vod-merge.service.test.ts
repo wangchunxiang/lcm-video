@@ -49,11 +49,13 @@ function fakeDataSource(input: { strictIds: string[]; looseIds: string[] }) {
   const state = { memberQueries: 0, memberQueriesFor: [] as string[][] };
 
   const query = async (sql: string, params: unknown[]): Promise<unknown> => {
-    if (sql.includes('FROM lcm_vod WHERE name_hash = ?')) {
-      return input.strictIds.map((id) => ({ id }));
-    }
-    if (sql.includes('FROM lcm_vod WHERE name_hash_loose = ?')) {
-      return input.looseIds.map((id) => ({ id }));
+    // 严格键与宽松键合成一条查询，`strict` 标记是否命中严格键
+    if (sql.includes('name_hash = ? OR name_hash_loose = ?')) {
+      const strictIds = new Set(input.strictIds);
+      return [
+        ...input.strictIds.map((id) => ({ id, strict: 1 })),
+        ...input.looseIds.filter((id) => !strictIds.has(id)).map((id) => ({ id, strict: 0 })),
+      ];
     }
     if (sql.includes('LEFT JOIN lcm_category')) {
       const ids = (params[0] ?? []) as string[];

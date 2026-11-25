@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { applyCoverRules, applyPlayUrlRules, hostOf, splitUrlPatterns, urlRuleNeedles } from '@lcm/shared';
+import { applyPlayUrlRules, applyUrlRules, hostOf, splitUrlPatterns, urlRuleNeedles } from '@lcm/shared';
 import { AppCrudService } from '../../common/crud/app-crud.service';
 import { SourceRuleEntity } from './source-rule.entity';
 import type { CreateSourceRuleDTO, UpdateSourceRuleDTO } from './dto/source-rule.dto';
@@ -98,7 +98,7 @@ export class SourceRuleService extends AppCrudService<SourceRuleEntity> {
     );
     const changes: Array<{ id: string; cover: string; coverHost: string }> = [];
     for (const row of rows) {
-      const cover = applyCoverRules(row.cover, [rule]);
+      const cover = applyUrlRules(row.cover, [rule]);
       if (cover !== row.cover) changes.push({ id: row.id, cover, coverHost: hostOf(cover) });
     }
     if (!confirm) return { needConfirm: true, total: changes.length, affected: 0 };

@@ -28,11 +28,8 @@ export function signPlaylistPath(secret: string, sourceId: string, url: string):
 
 /** 把 base64url 还原成原始地址；非法输入返回空串 */
 export function decodePlaylistToken(token: string): string {
-  try {
-    return Buffer.from(token, 'base64url').toString('utf8');
-  } catch {
-    return '';
-  }
+  // `base64url` 解码遇到非法字符只会丢字符，不会抛错，所以不需要 try/catch
+  return Buffer.from(token, 'base64url').toString('utf8');
 }
 
 /** 校验签名是否由本服务生成；长度不等时直接返回 false，避免 timingSafeEqual 抛错 */

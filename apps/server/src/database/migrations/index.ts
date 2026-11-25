@@ -9,6 +9,7 @@ import { SourceRuleMultiFrom1794400007000 } from './1794400007000-source-rule-mu
 import { NormalizeCoverHost1794400008000 } from './1794400008000-normalize-cover-host';
 import { PlayLineSource1794400009000 } from './1794400009000-play-line-source';
 import { VodUpdatedAtIndex1794400010000 } from './1794400010000-vod-updated-at-index';
+import { LogDetailUniquePage1794400011000 } from './1794400011000-log-detail-unique-page';
 
 /**
  * 迁移清单：显式注册，理由同 `../entities.ts`（glob 在 e2e 里会 require 到 `.ts`）。
@@ -26,4 +27,5 @@ export const MIGRATIONS = [
   NormalizeCoverHost1794400008000,
   PlayLineSource1794400009000,
   VodUpdatedAtIndex1794400010000,
+  LogDetailUniquePage1794400011000,
 ];
