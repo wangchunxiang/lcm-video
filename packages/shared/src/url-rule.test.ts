@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCoverRules, applyPlayUrlRules, applyUrlRule, applyUrlRules, splitUrlPatterns, urlRuleNeedles } from './url-rule.ts';
+import { applyPlayUrlRules, applyUrlRule, applyUrlRules, splitUrlPatterns, urlRuleNeedles } from './url-rule.ts';
 import type { UrlRule } from './types/url-rule.ts';
 
 const rule = (fromUrl: string, toUrl: string, extra: Partial<UrlRule> = {}): UrlRule => ({
@@ -123,7 +123,7 @@ describe('播放串替换', () => {
 
 describe('封面替换', () => {
   it('整条地址做前缀替换', () => {
-    expect(applyCoverRules('http://img.a.com/p.jpg', [rule('http://img.a.com', 'https://img.b.com')])).toBe(
+    expect(applyUrlRules('http://img.a.com/p.jpg', [rule('http://img.a.com', 'https://img.b.com')])).toBe(
       'https://img.b.com/p.jpg',
     );
   });

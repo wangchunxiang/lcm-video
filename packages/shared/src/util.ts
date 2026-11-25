@@ -7,9 +7,8 @@ export function hostOf(url: string, fallback = ''): string {
   const text = String(url ?? '').trim();
   if (!text) return fallback;
   try {
-    return new URL(text.startsWith('//') ? `https:${text}` : text)
-      .host.toLowerCase()
-      .replace(/:\d+$/, '');
+    // `hostname` 已经是小写且不含端口，不用再手工 toLowerCase + 剥端口
+    return new URL(text.startsWith('//') ? `https:${text}` : text).hostname;
   } catch {
     return fallback;
   }

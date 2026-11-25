@@ -110,8 +110,3 @@ export function applyPlayUrlRules(playUrl: string, rules: UrlRule[]): string {
     })
     .join('#');
 }
-
-/** 封面地址替换：整条 URL 做前缀替换 */
-export function applyCoverRules(cover: string, rules: UrlRule[]): string {
-  return applyUrlRules(cover, rules);
-}

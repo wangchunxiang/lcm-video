@@ -10,7 +10,8 @@ const FIELD_LIMITS: Array<[string, number, number]> = [
   ['小时', 0, 23],
   ['日', 1, 31],
   ['月', 1, 12],
-  ['周', 0, 6],
+  // 周允许写 0–7：cron 里 7 也是周日，下面 parseCron 会把它并到 0
+  ['周', 0, 7],
 ];
 
 export const WEEK_LABELS: Array<{ value: number; label: string }> = [
