@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import type { CollectRange } from './dto/collect-series.dto';
 
 /** 一天的采集量。前四项就是一次采集的四种去向（新增/更新/跳过/忽略），failed 是异常。 */
 export interface DashboardDay {
@@ -24,6 +25,32 @@ interface DashboardHour {
   failed: number;
 }
 
+/** 采集量曲线的粒度：本日按小时，本周/本月按天 */
+export type CollectUnit = 'hour' | 'day';
+
+/** 采集量曲线的一格。字段名与 KPI 卡一致，前端画图直接按 key 取。 */
+export interface CollectBucket {
+  /** 横轴标签：按小时是 `08:00`，按天是 `11-24` */
+  key: string;
+  runs: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  ignored: number;
+  failed: number;
+  /** 末尾那个格子是「还在进行中」的小时/天，前端可以画得淡一点 */
+  partial: boolean;
+}
+
+/** 采集量曲线。长度固定：本日 24 格，本周/本月到今天为止，缺的补 0。 */
+export interface CollectSeries {
+  range: CollectRange;
+  unit: CollectUnit;
+  buckets: CollectBucket[];
+  /** 整个区间的合计，卡片头显示「N 次运行 · 新增 X」 */
+  totals: DashboardSummary['todayLog'];
+}
+
 /** 首页概览：一次返回所有区块需要的数据。 */
 export interface DashboardSummary {
   vod: { total: number; enabled: number; disabled: number; today: number };
@@ -41,8 +68,6 @@ export interface DashboardSummary {
   };
   /** 近 7 天趋势（8 个点：今天往前推 7 天 + 今天），补零，长度固定 8，最后一项是今天 */
   trend: DashboardDay[];
-  /** 今日 0–23 点，长度固定 24 */
-  hours: DashboardHour[];
   /** 一级分类影片数，按数量降序；前端只取前几个画饼图，长尾并「其他」 */
   categories: Array<{ name: string; count: number }>;
   /** 线路分布：播放地址数降序，最多 4 条 + 总线路数 */
@@ -100,10 +125,13 @@ const LOG_SUMS = `COUNT(*) AS runs,
 /** `LOG_SUMS` 的占位符参数 */
 const LOG_PARAMS = [FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE];
 
-/** 一行聚合结果：mysql2 的 `SUM()` 回来是字符串，统一在这里收口成数字 */
-function logNumbers(
-  row: Record<string, string | number | undefined> | undefined,
-): DashboardSummary['todayLog'] {
+type LogNumbers = Record<'runs' | 'inserted' | 'updated' | 'skipped' | 'ignored' | 'failed', string | number>;
+/**
+ * 一行聚合结果：mysql2 的 `SUM()` 回来是字符串，统一在这里收口成数字。
+ * 入参只声明用得到的那几个字段（不写索引签名），这样已经算成 `number` 的 `DashboardHour`
+ * 也能直接传进来，不必先摊平成 Record。
+ */
+function logNumbers(row: Partial<LogNumbers> | undefined): DashboardSummary['todayLog'] {
   return {
     runs: Number(row?.runs ?? 0),
     inserted: Number(row?.inserted ?? 0),
@@ -112,6 +140,27 @@ function logNumbers(
     ignored: Number(row?.ignored ?? 0),
     failed: Number(row?.failed ?? 0),
   };
+}
+
+/** 曲线合计：卡片头的「N 次运行 · 新增 X」用它，前端不必再 reduce 一遍 */
+function sumBuckets(buckets: CollectBucket[]): DashboardSummary['todayLog'] {
+  const total: DashboardSummary['todayLog'] = {
+    runs: 0,
+    inserted: 0,
+    updated: 0,
+    skipped: 0,
+    ignored: 0,
+    failed: 0,
+  };
+  for (const bucket of buckets) {
+    total.runs += bucket.runs;
+    total.inserted += bucket.inserted;
+    total.updated += bucket.updated;
+    total.skipped += bucket.skipped;
+    total.ignored += bucket.ignored;
+    total.failed += bucket.failed;
+  }
+  return total;
 }
 
 /** 补零用的空值，字段与 DashboardDay 保持一致 */
@@ -132,6 +181,19 @@ function recentDayKeys(count: number): string[] {
     keys.push(dayKey(date));
   }
   return keys;
+}
+
+/**
+ * 本周一 00:00。周一算一周第一天（`getDay()` 里周日是 0，要往前推 6 天）。
+ * 不能用「今天减 7 天」——那是滚动窗口，与自然周不是一回事。
+ */
+function startOfWeek(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+}
+
+/** 区间的第一天：本周一是它，本月则是 1 号 */
+function rangeStart(range: Exclude<CollectRange, 'day'>, now: Date): Date {
+  return range === 'week' ? startOfWeek(now) : new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
 @Injectable()
@@ -168,25 +230,16 @@ export class DashboardService {
     };
   }
 
-  /** 顶部 KPI 条 + 今日合计 + 今日 24 小时分布 */
+  /**
+   * 顶部 KPI 条 + 今日合计。
+   * 小时分布不在这里算：首页的曲线现在分了本日/本周/本月，由 `collectSeries()`
+   * 自己按范围取数，免得每次刷首页都白算 24 个桶。
+   */
   private async header(): Promise<
-    Pick<
-      DashboardSummary,
-      | 'vod'
-      | 'play'
-      | 'category'
-      | 'source'
-      | 'task'
-      | 'todayLog'
-      | 'hours'
-    >
+    Pick<DashboardSummary, 'vod' | 'play' | 'category' | 'source' | 'task' | 'todayLog'>
   > {
-    const [counts, todayLog, hours] = await Promise.all([
-      this.counts(),
-      this.todayTotals(),
-      this.hourBuckets(),
-    ]);
-    return { ...counts, todayLog, hours };
+    const [counts, todayLog] = await Promise.all([this.counts(), this.todayTotals()]);
+    return { ...counts, todayLog };
   }
 
   /** 四张卡要的规模数字（都是走索引的 COUNT） */
@@ -261,6 +314,56 @@ export class DashboardService {
       hour,
       ...logNumbers(byHour.get(hour)),
     }));
+  }
+
+  /**
+   * 采集量曲线（卡片头「采集量」后面的下拉：本日 / 本周 / 本月）。
+   *
+   * 口径与「今日采集」KPI 完全一致：`runs` 是全部运行（全量也算一次运行），其余四项只算
+   * 增量采集（`LOG_SUMS` 里把 `range_type = 4` 的全量排除，否则全量那一跑会把曲线顶成尖峰）。
+   * 桶的个数固定、缺的补 0：前端按索引取点，少一格就错位。
+   */
+  async collectSeries(range: CollectRange = 'day'): Promise<CollectSeries> {
+    if (range === 'day') {
+      const hours = await this.hourBuckets();
+      const current = new Date().getHours();
+      const buckets: CollectBucket[] = hours.map((item) => ({
+        key: `${String(item.hour).padStart(2, '0')}:00`,
+        ...logNumbers(item),
+        partial: item.hour === current,
+      }));
+      return { range, unit: 'hour', buckets, totals: sumBuckets(buckets) };
+    }
+
+    const now = new Date();
+    const start = rangeStart(range, now);
+    const today = dayKey(now);
+    const rows = await this.dataSource.query<Array<Record<string, string>>>(
+      `SELECT DATE_FORMAT(started_at, '%Y-%m-%d') AS date, ${LOG_SUMS}
+         FROM lcm_collect_task_log
+        WHERE started_at >= ?
+        GROUP BY date
+        ORDER BY date`,
+      // 占位符顺序跟 SQL 文本一致：`LOG_SUMS` 的 5 个在 SELECT 里，`started_at >= ?` 在最后
+      [...LOG_PARAMS, dayKey(start)],
+    );
+    const byDate = new Map(rows.map((row) => [String(row.date), row]));
+
+    const buckets: CollectBucket[] = [];
+    for (let offset = 0; ; offset++) {
+      const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset);
+      const key = dayKey(date);
+      // 未来不画：本月到今天就停，不把后面几天补成 0（否则曲线尾巴永远贴着底）
+      if (key > today) break;
+      buckets.push({
+        // 只留月-日：本日才带小时，按天的图每格都是 `11-24` 这种，轴宽够用
+        key: key.slice(5),
+        ...logNumbers(byDate.get(key)),
+        partial: key === today,
+      });
+    }
+
+    return { range, unit: 'day', buckets, totals: sumBuckets(buckets) };
   }
 
   /** 按天聚合的增量采集量（只返回有记录的天，补零交给调用方） */
