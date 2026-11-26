@@ -34,6 +34,8 @@ interface CollectBucket {
   failed: number;
   /** 末尾那格是还在进行中的小时/天 */
   partial: boolean;
+  /** 还没到的小时/天：整格是 0，但它是「未到」不是「没采」 */
+  future: boolean;
 }
 
 interface CollectSeries {
@@ -312,8 +314,10 @@ const seriesOption = computed<EChartsOption | null>(() => {
         const rows = params as Array<{ dataIndex?: number }>;
         const bucket = buckets[rows[0]?.dataIndex ?? 0];
         const runs = bucket?.runs ?? 0;
-        // 末尾那格还在跑，标一句免得好不容易攒的柱子被看成「降了」
-        return tooltipRows(params, `${runs} 次运行${bucket?.partial ? ' · 进行中' : ''}`);
+        // 末尾那格还在跑，标一句免得好不容易攒的柱子被看成「降了」；
+        // 后面那几格还没到，也说明白，不然一片 0 像是采集停了
+        const state = bucket?.partial ? ' · 进行中' : bucket?.future ? ' · 未到' : '';
+        return tooltipRows(params, `${runs} 次运行${state}`);
       },
     },
     xAxis: {
