@@ -23,7 +23,41 @@ const DEFAULT_CONFIG: SiteConfig = {
     webfullscreen: false,
     setting: true,
   },
+  coverHosts: [],
 };
+
+/**
+ * 把服务端下发的封面域名提前握手。
+ *
+ * 时机是这个方案的全部：必须早于卡片渲染。SPA 里等 JSON 到了再插 `<link>` 已经晚了——
+ * `<link>` 和 `<img>` 在同一帧发出，握手来不及完成。这里能赶在图片之前，是因为 `/config`
+ * 比首页/列表数据早一个往返，而图片要等数据到了才渲染。
+ *
+ * 只加 `preconnect` 与 `dns-prefetch`，**不加 `crossorigin`**：普通 `<img>` 走 no-cors 模式，
+ * 带 crossorigin 会预热到另一个连接池，等于白预（而且会多一次握手）。
+ */
+const hintedHosts = new Set<string>();
+
+export function applyCoverHints(hosts: readonly string[] | undefined): void {
+  if (!Array.isArray(hosts)) return;
+  for (const raw of hosts) {
+    const host = String(raw ?? '').trim().toLowerCase();
+    // 同源不用预热（本站接口的连接本来就会建）；`/` 与空白一律跳过
+    if (!host || host.includes('/') || hintedHosts.has(host)) continue;
+    if (host === window.location.hostname) continue;
+    hintedHosts.add(host);
+    insertLink('preconnect', `https://${host}`);
+    // 旧浏览器不认 preconnect，dns-prefetch 至少把 DNS 省下来（两条一起写不会冲突）
+    insertLink('dns-prefetch', `https://${host}`);
+  }
+}
+
+function insertLink(rel: string, href: string): void {
+  const link = document.createElement('link');
+  link.rel = rel;
+  link.href = href;
+  document.head.appendChild(link);
+}
 
 export const site = reactive({
   config: { ...DEFAULT_CONFIG, player: { ...DEFAULT_CONFIG.player } } as SiteConfig,
@@ -59,6 +93,8 @@ export async function loadSite(): Promise<void> {
   if (categories.status === 'fulfilled' && Array.isArray(categories.value)) {
     site.categories = categories.value;
   }
+  site.ready = true;
+  applyCoverHints(site.config.coverHosts);
   site.ready = true;
 }
 

@@ -123,6 +123,8 @@ export interface SiteConfig {
     webfullscreen: boolean;
     setting: boolean;
   };
+  /** 首屏建议 preconnect 的封面域名（不含协议）；旧版服务端不返回时按空数组处理 */
+  coverHosts?: string[];
 }
 
 /** 请求被主动中断（切页、重新筛选）不是错误，catch 里直接忽略即可。 */
