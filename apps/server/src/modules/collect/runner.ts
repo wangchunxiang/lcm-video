@@ -4,6 +4,7 @@ import { DataSource, In, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/category.entity';
 import { CollectSourceCategoryEntity } from '../collect-source-category/collect-source-category.entity';
 import { CollectSourceEntity } from '../collect-source/collect-source.entity';
+import { recordLatency } from '../../common/metrics/latency';
 import { CollectTaskLogDetailEntity } from '../collect-task-log-detail/collect-task-log-detail.entity';
 import { CollectTaskLogEntity } from '../collect-task-log/collect-task-log.entity';
 import { CollectTaskEntity } from '../collect-task/collect-task.entity';
@@ -525,16 +526,28 @@ export class CollectRunner {
               })),
             );
           }
-          const result = await processPage(this.dataSource, {
-            sourceId: context.sourceId,
-            items: data.list,
-            mapping,
-            categories,
-            merge,
-            brokenCoverHosts,
-          });
-          counters = result.counters;
-          fails = result.fails;
+          /*
+           * 写库单独打点：采集的耗时要么花在拉页（上游打点看得到），要么花在写库。
+           * 没有这个数就只能拿「自己本机连远程库」的耗时去推生产（同机部署下 RTT
+           * 差两个数量级），很容易把批量 INSERT 的优先级估得过高。
+           */
+          const writeStartedAt = performance.now();
+          try {
+            const result = await processPage(this.dataSource, {
+              sourceId: context.sourceId,
+              items: data.list,
+              mapping,
+              categories,
+              merge,
+              brokenCoverHosts,
+            });
+            counters = result.counters;
+            fails = result.fails;
+            recordLatency('collect write page', performance.now() - writeStartedAt, { ok: true });
+          } catch (error) {
+            recordLatency('collect write page', performance.now() - writeStartedAt, { ok: false });
+            throw error;
+          }
         }
       } catch (error) {
         detailMessage = `写库失败：${describeError(error)}`;

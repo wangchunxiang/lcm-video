@@ -10,6 +10,8 @@ export interface AppConfig {
   databaseUrl: string;
   jwtSecret: string;
   slowQueryMs?: number;
+  /** 分钟级耗时巡检告警阈值（ms）：p95 达到它才打日志，0 关闭整个巡检 */
+  latencyLogMs: number;
 }
 
 /**
@@ -20,12 +22,15 @@ export interface AppConfig {
  */
 export function loadConfiguration(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const slowQueryMs = Number(env.SLOW_QUERY_MS ?? '');
+  // 生产日志是给人看的：默认只在慢或出错时说话，不刷屏
+  const latencyLogMs = Number(env.LATENCY_LOG_MS ?? '500');
   return {
     nodeEnv: (env.NODE_ENV ?? 'development') as AppConfig['nodeEnv'],
     port: Number(env.PORT ?? 3100),
     databaseUrl: env.DATABASE_URL ?? '',
     jwtSecret: env.JWT_SECRET ?? '',
     slowQueryMs: Number.isFinite(slowQueryMs) && slowQueryMs > 0 ? slowQueryMs : undefined,
+    latencyLogMs: Number.isFinite(latencyLogMs) && latencyLogMs >= 0 ? latencyLogMs : 500,
   };
 }
 

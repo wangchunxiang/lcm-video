@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -63,7 +63,17 @@ import { CollectModule } from './modules/collect/collect.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
-        const options = createDataSourceOptions(config.getOrThrow<string>('app.databaseUrl'));
+        const slowQueryMs = config.get<number>('app.slowQueryMs');
+        const options = createDataSourceOptions(
+          config.getOrThrow<string>('app.databaseUrl'),
+          // 没配 SLOW_QUERY_MS 就不挂 logger，零额外开销
+          slowQueryMs === undefined
+            ? undefined
+            : {
+                slowQueryMs,
+                log: (message) => new Logger('SlowQuery').warn(message),
+              },
+        );
         // 老库（有表、没有 migrations 记录）先登记为已迁移，避免 baseline 重复建表。
         await adoptExistingSchema(options);
         return options;

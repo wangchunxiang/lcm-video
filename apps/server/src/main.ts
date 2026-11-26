@@ -4,6 +4,7 @@ import { extname, join, sep } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { setFetchObserver } from '@lcm/shared';
 import compression from 'compression';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
@@ -11,6 +12,8 @@ import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
+import { RequestLatencyInterceptor } from './common/interceptors/request-latency.interceptor';
+import { recordLatency, startLatencyLog } from './common/metrics/latency';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AppValidationPipe } from './common/pipes/validation.pipe';
 
@@ -50,6 +53,16 @@ function spaFallback(prefix: string, dist: string): (request: Request, response:
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  // 上游拉取打点：key 用域名，能直接看出是哪个源站慢。只记耗时与正文字节数，不记内容。
+  setFetchObserver((info) =>
+    recordLatency(`upstream ${info.host}`, info.ms, { ok: info.ok, bytes: info.bytes }),
+  );
+  // 分钟级耗时巡检：只有「出过错」或「p95 超过阈值（默认 500ms）」才打一行，健康流量一行不打。
+  // `LATENCY_LOG_MS=0` 彻底关掉；定时器已 unref，不拖住进程退出。
+  const latencyLogMs = app.get(ConfigService).get<number>('app.latencyLogMs') ?? 0;
+  if (latencyLogMs > 0) {
+    startLatencyLog((message) => app.get(Logger).log(message), { slowMs: latencyLogMs });
+  }
 
   // 列表接口返回的 JSON 体积不小（封面地址、简介），压缩能省 3~4 倍带宽。
   app.use(compression());
@@ -94,9 +107,11 @@ async function bootstrap(): Promise<void> {
   // 成功响应由 ResponseInterceptor 统一设 200（Nest 对 POST 默认 201），
   // 失败响应由 AllExceptionsFilter 自己设 200，不在这里改 Express 的 response.json。
   app.useGlobalPipes(new AppValidationPipe());
-  // 顺序有意义：RequestContextInterceptor 必须先跑，后面的拦截器与 controller
-  // 都依赖它挂进去的登录人（`currentUserId()`）。
+  // 顺序有意义：RequestLatencyInterceptor 最先跑，把后面的拦截器与控制器都算进耗时；
+  // RequestContextInterceptor 紧随其后——后面的拦截器与 controller 都依赖它
+  // 挂进去的登录人（`currentUserId()`）。
   app.useGlobalInterceptors(
+    new RequestLatencyInterceptor(),
     new RequestContextInterceptor(),
     new ResponseInterceptor<unknown>(app.get(Reflector)),
   );

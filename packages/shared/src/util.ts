@@ -42,16 +42,48 @@ export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
+/** 上游拉取的观测数据：由服务端注入回调落进指标，shared 自己不做任何统计 */
+export interface FetchObservation {
+  url: string;
+  host: string;
+  /** 单次请求的耗时（含读完正文），不含重试等待；重试会各记一条 */
+  ms: number;
+  ok: boolean;
+  /** 正文字符数，用来估算上游占用带宽 */
+  bytes: number;
+}
+
+export type FetchObserver = (info: FetchObservation) => void;
+
+let observer: FetchObserver | null = null;
+
+/**
+ * 注入上游打点回调（服务端在 `main.ts` 里挂上）。
+ * 不默认打点：这个包也被前端引用，指标只能存在于服务端进程里。
+ */
+export function setFetchObserver(next: FetchObserver | null): void {
+  observer = next;
+}
+
 /** 拉一次文本，失败抛错（错误信息带上域名，便于定位是哪个站点的问题） */
 export async function fetchTextOnce(url: string, timeoutMs = 15000): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'user-agent': FETCH_UA, accept: '*/*' },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}（${hostOf(url)}）`);
-  const text = await res.text();
-  if (!text.trim()) throw new Error(`响应为空（${hostOf(url)}）`);
-  return text;
+  const startedAt = performance.now();
+  let ok = false;
+  let bytes = 0;
+  try {
+    const res = await fetch(url, {
+      headers: { 'user-agent': FETCH_UA, accept: '*/*' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}（${hostOf(url)}）`);
+    const text = await res.text();
+    if (!text.trim()) throw new Error(`响应为空（${hostOf(url)}）`);
+    ok = true;
+    bytes = text.length;
+    return text;
+  } finally {
+    observer?.({ url, host: hostOf(url), ms: performance.now() - startedAt, ok, bytes });
+  }
 }
 
 /** 拉文本并重试一次：源站偶发 403 / 超时很常见 */

@@ -1,4 +1,4 @@
-import type { DataSourceOptions } from 'typeorm';
+import type { DataSourceOptions, Logger as TypeOrmLogger } from 'typeorm';
 import { ENTITIES } from '../database/entities';
 import { MIGRATIONS } from '../database/migrations/index';
 
@@ -35,7 +35,34 @@ export function parseDatabaseUrl(url: string): {
  * - 不设 `supportBigNumbers/bigNumberStrings`：TypeORM 的 mysql 驱动默认就是 true/true，
  *   BIGINT 列因此以字符串返回（见 `AppBaseEntity` 的说明）。
  */
-export function createDataSourceOptions(url: string): DataSourceOptions {
+/**
+ * 只报慢查询的 TypeORM logger：其它级别全部静默。
+ * 不用 `logging: ['query']`：它会把每一条 SQL 都打出来，日志被淹没。
+ */
+function slowQueryLogger(options: SlowQueryOptions): TypeOrmLogger {
+  return {
+    logQuery() {},
+    logQueryError() {},
+    logQuerySlow(time: number, query: string) {
+      // SQL 里的换行与缩进压平，一行日志能直接 grep 到
+      options.log(`[slow-query] ${time}ms ${query.replace(/\s+/g, ' ').trim()}`);
+    },
+    logSchemaBuild() {},
+    logMigration() {},
+    log() {},
+  };
+}
+
+export interface SlowQueryOptions {
+  /** 超过这个耗时（ms）的 SQL 打一条 [slow-query] 日志 */
+  slowQueryMs: number;
+  log: (message: string) => void;
+}
+
+export function createDataSourceOptions(
+  url: string,
+  slowQuery?: SlowQueryOptions,
+): DataSourceOptions {
   return {
     type: 'mysql',
     ...parseDatabaseUrl(url),
@@ -44,6 +71,10 @@ export function createDataSourceOptions(url: string): DataSourceOptions {
     synchronize: false,
     migrationsRun: true,
     logging: false,
+    // 只在配了 SLOW_QUERY_MS 时才挂 logger：默认不产生任何额外开销
+    ...(slowQuery === undefined
+      ? {}
+      : { logger: slowQueryLogger(slowQuery), maxQueryExecutionTime: slowQuery.slowQueryMs }),
     // 实体与迁移都是显式清单：glob 在 e2e（vitest + swc）下会 require 到 .ts，Node 解析不了装饰器
     entities: ENTITIES,
     migrations: MIGRATIONS,
