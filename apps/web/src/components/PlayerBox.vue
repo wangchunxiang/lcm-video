@@ -67,6 +67,8 @@ const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
 
 const containerRef = ref<HTMLDivElement | null>(null);
 const failedText = ref('');
+/** 排障信息：只有 URL 带 `?debug=1` 时才有值（见 describeFailure） */
+const debugInfo = ref('');
 
 /** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
 const directSrc = computed(() => props.playSrc || props.src);
@@ -180,6 +182,7 @@ function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forc
 
   const unsupported = (): void => {
     failedText.value = NEUTRAL_FAILURE;
+    debugInfo.value = 'unsupported: 内核不支持 HLS 也没有 MSE';
     emit('error');
   };
 
@@ -285,7 +288,27 @@ function syncFailure(player: Artplayer): void {
   }
   leaveFullscreen(player);
   failedText.value = NEUTRAL_FAILURE;
+  debugInfo.value = describeFailure(player);
   emit('error');
+}
+
+/**
+ * 排障用的错误描述：只在 URL 带 `?debug=1` 时展示在失败浮层上。
+ * 手机上没有 devtools，iOS 上又没有「拷贝控制台」这种入口，只能把关键状态直接画出来：
+ * 内核报的 code、缓冲状态、真正被请求的地址、以及内核到底认不认 HLS 类型。
+ */
+function describeFailure(player: Artplayer): string {
+  if (!/\bdebug=1\b/.test(location.search)) return '';
+  const video = player.video;
+  const mime = NATIVE_HLS_TYPES.map((type) => `${type.slice(-12)}=${video.canPlayType(type) || '-'}`);
+  const parts = [
+    `code=${video.error?.code ?? '-'} msg=${video.error?.message ?? '-'}`,
+    `readyState=${video.readyState} networkState=${video.networkState}`,
+    `ua=${isAppleMobile() ? 'apple' : 'other'} hls=${hls ? 'yes' : 'no'}`,
+    `src=${video.currentSrc || video.src}`,
+    mime.join(' '),
+  ];
+  return parts.join(' | ');
 }
 /**
  * 失败时先退出全屏，否则浮层根本露不出来：
@@ -302,6 +325,7 @@ function leaveFullscreen(player: Artplayer): void {
 function createPlayer(): void {
   // 重试/换集时先把浮层收掉，别让旧提示盖在正在重新加载的画面上
   failedText.value = '';
+  debugInfo.value = '';
   // 新一轮播放，iOS 的 hls.js 降级额度也重置
   appleHlsRetryFor = '';
   const container = containerRef.value;
@@ -431,6 +455,7 @@ onBeforeUnmount(destroyPlayer);
     >
       <div class="grid gap-3">
         <span>{{ failedText }}</span>
+        <span v-if="debugInfo" class="break-all font-mono text-xs opacity-70">{{ debugInfo }}</span>
         <button
           type="button"
           class="mx-auto inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-primary-line hover:text-ink active:border-primary-line active:text-ink"
