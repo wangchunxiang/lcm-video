@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Film, Gauge, TrendingUp, TriangleAlert } from 'lucide-vue-next';
 import { api } from '../api/client.ts';
@@ -20,14 +20,27 @@ interface DayPoint {
   failed: number;
 }
 
-interface HourPoint {
-  hour: number;
+/** 采集量曲线的范围：自然周期（本日 00:00 起 / 本周一 00:00 起 / 本月 1 号起） */
+type CollectRange = 'day' | 'week' | 'month';
+
+/** 曲线的一格：按小时（本日）或按天（本周/本月），字段名与 KPI 卡一致 */
+interface CollectBucket {
+  key: string;
   runs: number;
   inserted: number;
   updated: number;
   skipped: number;
   ignored: number;
   failed: number;
+  /** 末尾那格是还在进行中的小时/天 */
+  partial: boolean;
+}
+
+interface CollectSeries {
+  range: CollectRange;
+  unit: 'hour' | 'day';
+  buckets: CollectBucket[];
+  totals: DashboardData['todayLog'];
 }
 
 interface DashboardData {
@@ -45,7 +58,6 @@ interface DashboardData {
     failed: number;
   };
   trend: DayPoint[];
-  hours: HourPoint[];
   categories: Array<{ name: string; count: number }>;
   lines: { total: number; items: Array<{ name: string; count: number }> };
   pending: { coverCheck: number; mergeGroups: number; orphanVods: number; failedLogs: number };
@@ -200,8 +212,8 @@ function tooltipRows(params: unknown, footer?: string): string {
 /* ── 两张图共用的折线构造 ────────────────────── */
 
 /**
- * 五条折线（只有新增带面积）。两张图都画同一个东西，只是横轴不同：
- * 今日采集用 24 个小时，趋势用 8 天，所以只把「取数据」这件事交给调用方。
+ * 横轴由调用方决定：采集量是本日 24 个小时或本周本月的一天一格，趋势是 8 天，
+ * 所以这里只把「取数据」这件事交给调用方，不关心横轴到底是什么。
  */
 function dimensionLines<T>(
   rows: T[],
@@ -242,11 +254,47 @@ function dimensionLines<T>(
   return series as NonNullable<EChartsOption['series']>;
 }
 
-/* ── 今日采集（按小时） ──────────────────────── */
+/* ── 采集量（本日 / 本周 / 本月） ────────────────── */
 
-const todayOption = computed<EChartsOption | null>(() => {
-  const hours = data.value?.hours ?? [];
-  if (hours.length === 0) return null;
+/**
+ * 三个范围都是**自然周期**：本日 = 今天 00:00 起，本周 = 本周一 00:00 起，本月 = 1 号起。
+ * 不是「最近 24 小时 / 近 7 天 / 近 30 天」那种滚动窗口——滚动窗口的起点跟着此刻走，
+ * 同一根柱子跨天会往前挪一格，看完一周也很难说清「本周到底采了多少」。
+ */
+const RANGE_OPTIONS: ReadonlyArray<{ value: CollectRange; label: string; empty: string }> = [
+  { value: 'day', label: '本日', empty: '今天还没有采集' },
+  { value: 'week', label: '本周', empty: '本周还没有采集' },
+  { value: 'month', label: '本月', empty: '本月还没有采集' },
+];
+
+const range = ref<CollectRange>('day');
+const series = ref<CollectSeries | null>(null);
+/** 只让这张卡转圈：其余七块的数字不受切范围影响，不能跟着闪 */
+const seriesLoading = ref(false);
+/** 连点下拉时掐掉上一个请求，避免旧范围的结果后到、盖掉新范围 */
+let seriesAbort: AbortController | null = null;
+
+const rangeEmpty = computed(
+  () => RANGE_OPTIONS.find((item) => item.value === range.value)?.empty ?? '还没有采集',
+);
+
+const seriesSummary = computed(() => {
+  const totals = series.value?.totals;
+  if (!totals) return '';
+  return `${comma(totals.runs)} 次运行 · 新增 ${comma(totals.inserted)}`;
+});
+
+/**
+ * 刻度抽稀：本日 24 格每 3 小时一个，本周 7 格全画，本月 30 格左右每 4~5 天一个。
+ * 固定 interval 不行——7 格还给间隔 2 就只剩两个刻度了。
+ */
+function tickInterval(count: number): number {
+  return count <= 8 ? 0 : Math.ceil(count / 8) - 1;
+}
+
+const seriesOption = computed<EChartsOption | null>(() => {
+  const buckets = series.value?.buckets ?? [];
+  if (buckets.length === 0) return null;
 
   return {
     grid: GRID,
@@ -262,21 +310,22 @@ const todayOption = computed<EChartsOption | null>(() => {
       extraCssText: 'border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.08);',
       formatter: (params: unknown): string => {
         const rows = params as Array<{ dataIndex?: number }>;
-        const runs = hours[rows[0]?.dataIndex ?? 0]?.runs ?? 0;
-        return tooltipRows(params, `${runs} 次运行`);
+        const bucket = buckets[rows[0]?.dataIndex ?? 0];
+        const runs = bucket?.runs ?? 0;
+        // 末尾那格还在跑，标一句免得好不容易攒的柱子被看成「降了」
+        return tooltipRows(params, `${runs} 次运行${bucket?.partial ? ' · 进行中' : ''}`);
       },
     },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: hours.map((item) => `${String(item.hour).padStart(2, '0')}:00`),
+      data: buckets.map((item) => item.key),
       axisLine: { lineStyle: { color: '#ebeef5' } },
       axisTick: { show: false },
-      // 24 个刻度写满会糊成一片，每 3 小时一个
-      axisLabel: { ...AXIS_LABEL, interval: 2 },
+      axisLabel: { ...AXIS_LABEL, interval: tickInterval(buckets.length) },
     },
     yAxis: VALUE_AXIS,
-    series: dimensionLines(hours, (item, key) => item[key]),
+    series: dimensionLines(buckets, (item, key) => item[key]),
   };
 });
 
@@ -408,8 +457,40 @@ async function load(): Promise<void> {
   }
 }
 
+/**
+ * 切范围只刷「采集量」这一张卡：其余七块的数字与范围无关，跟着重算既慢又闪。
+ * 连点时掐掉上一个请求——晚到的旧范围结果不能盖掉新范围。
+ */
+async function loadSeries(): Promise<void> {
+  seriesAbort?.abort();
+  const controller = new AbortController();
+  seriesAbort = controller;
+  seriesLoading.value = true;
+
+  try {
+    const next = await api.get<CollectSeries>(
+      '/dashboard/collect-series',
+      { range: range.value },
+      controller.signal,
+    );
+    if (!controller.signal.aborted) series.value = next;
+  } catch (error) {
+    // 自己取消的不算错，别弹「请求失败」
+    if (controller.signal.aborted) return;
+    ElMessage.error((error as Error).message);
+  } finally {
+    if (seriesAbort === controller) {
+      seriesLoading.value = false;
+      seriesAbort = null;
+    }
+  }
+}
+
+watch(range, () => void loadSeries());
+
 onMounted(() => {
   void load();
+  void loadSeries();
   // 静态资源空闲时就把图表 chunk 取回来：首屏不等它，但用户滚到那里时通常已经就绪
   const prefetch = (): void => {
     void import('../utils/echarts.ts');
@@ -520,15 +601,25 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- ③ 第一行右：今日采集（按小时），横跨两列 -->
+      <!-- ③ 第一行右：采集量（本日按小时 / 本周本月按天），横跨两列 -->
       <section class="card card-wide">
         <header class="card-head">
-          <span>今日采集</span>
-          <span class="card-sub">{{ data?.todayLog.runs ?? 0 }} 次运行</span>
+          <span>采集量</span>
+          <div class="card-tools">
+            <span v-if="seriesSummary" class="card-sub">{{ seriesSummary }}</span>
+            <el-select v-model="range" class="range-select" size="small">
+              <el-option
+                v-for="item in RANGE_OPTIONS"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </div>
         </header>
-        <div class="card-body chart-body">
-          <VChart v-if="todayOption" class="chart" :option="todayOption" autoresize />
-          <el-empty v-else description="今天还没有采集" :image-size="56" />
+        <div v-loading="seriesLoading" class="card-body chart-body">
+          <VChart v-if="seriesOption" class="chart" :option="seriesOption" autoresize />
+          <el-empty v-else :description="rangeEmpty" :image-size="56" />
         </div>
       </section>
 
@@ -872,6 +963,16 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 400;
   color: var(--el-text-color-secondary);
+}
+/* 卡片头右侧：一行小字 + 下拉，两者都窄，挨着放比拉到两端更好读 */
+.card-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 三个选项都是两字，「本日」也不会被截断 */
+.range-select {
+  width: 88px;
 }
 .card-body {
   flex: 1;
