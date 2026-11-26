@@ -50,20 +50,34 @@ describe('DashboardService.collectSeries', () => {
     expect(series.buckets[0]?.key).toBe('00:00');
     expect(series.buckets[23]?.key).toBe('23:00');
     // 没有记录的时段补 0，不能少格（前端按索引取点）
-    expect(series.buckets[0]).toMatchObject({ runs: 0, inserted: 0, partial: false });
+    expect(series.buckets[0]).toMatchObject({ runs: 0, inserted: 0, partial: false, future: false });
     expect(series.buckets[9]).toMatchObject({ runs: 2, inserted: 7, partial: false });
-    expect(series.buckets[10]).toMatchObject({ runs: 1, inserted: 3, partial: true });
+    expect(series.buckets[10]).toMatchObject({ runs: 1, inserted: 3, partial: true, future: false });
+    // 11~23 点还没到：填 0，但标成 future，tooltip 里显示「未到」
+    expect(series.buckets[11]).toMatchObject({ runs: 0, future: true });
+    expect(series.buckets[23]).toMatchObject({ key: '23:00', future: true });
     expect(series.totals).toMatchObject({ runs: 3, inserted: 10 });
   });
 
-  it('本周从本周一开始，到今天就停，不把后几天补成 0', async () => {
+  it('本周铺满周一到周日，今天那格算进行中，未来几天是 0', async () => {
     const { dataSource, calls } = fakeDataSource([], [{ date: '2026-11-25', runs: '4', inserted: '9', updated: '1', skipped: '2', ignored: '0', failed: '0' }]);
     const series = await new DashboardService(dataSource).collectSeries('week');
 
     expect(series.unit).toBe('day');
-    expect(series.buckets.map((item) => item.key)).toEqual(['11-23', '11-24', '11-25', '11-26']);
-    expect(series.buckets[2]).toMatchObject({ runs: 4, inserted: 9 });
-    expect(series.buckets.at(-1)).toMatchObject({ key: '11-26', partial: true });
+    // 和本日那 24 格一样铺满整个周期，而不是画到今天为止
+    expect(series.buckets.map((item) => item.key)).toEqual([
+      '11-23',
+      '11-24',
+      '11-25',
+      '11-26',
+      '11-27',
+      '11-28',
+      '11-29',
+    ]);
+    expect(series.buckets[2]).toMatchObject({ runs: 4, inserted: 9, partial: false });
+    expect(series.buckets[3]).toMatchObject({ key: '11-26', runs: 0, partial: true, future: false });
+    expect(series.buckets[4]).toMatchObject({ key: '11-27', runs: 0, future: true });
+    expect(series.buckets.at(-1)).toMatchObject({ key: '11-29', runs: 0, partial: false, future: true });
 
     // 查询起点也是本周一，不是「今天减 7 天」
     const call = calls[0];
@@ -72,25 +86,29 @@ describe('DashboardService.collectSeries', () => {
     expect(call?.params.slice(0, 5)).toEqual([FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE, FULL_RANGE]);
   });
 
-  it('本月从 1 号开始，缺的天补 0', async () => {
+  it('本月铺到月底（11 月 30 天），缺的天补 0', async () => {
     const { dataSource } = fakeDataSource([], [{ date: '2026-11-18', runs: '1', inserted: '101', updated: '0', skipped: '0', ignored: '0', failed: '0' }]);
     const series = await new DashboardService(dataSource).collectSeries('month');
 
-    expect(series.buckets).toHaveLength(26);
+    expect(series.buckets).toHaveLength(30);
     expect(series.buckets[0]?.key).toBe('11-01');
-    expect(series.buckets.at(-1)?.key).toBe('11-26');
+    expect(series.buckets.at(-1)?.key).toBe('11-30');
     expect(series.buckets[17]).toMatchObject({ key: '11-18', runs: 1, inserted: 101 });
     expect(series.buckets[0]).toMatchObject({ runs: 0, inserted: 0, partial: false });
+    expect(series.buckets[25]).toMatchObject({ key: '11-26', partial: true });
+    expect(series.buckets[26]).toMatchObject({ key: '11-27', runs: 0, partial: false, future: true });
     expect(series.totals).toMatchObject({ runs: 1, inserted: 101 });
   });
 
-  it('本月 1 号当天只有一格', async () => {
+  it('本月 1 号也铺满整月', async () => {
     vi.setSystemTime(new Date('2026-12-01T08:00:00'));
     const { dataSource } = fakeDataSource([], []);
     const series = await new DashboardService(dataSource).collectSeries('month');
 
-    expect(series.buckets.map((item) => item.key)).toEqual(['12-01']);
-    expect(series.buckets[0]?.partial).toBe(true);
+    // 12 月 31 天，1 号是进行中，后面 30 天是 0
+    expect(series.buckets).toHaveLength(31);
+    expect(series.buckets[0]).toMatchObject({ key: '12-01', partial: true });
+    expect(series.buckets.at(-1)).toMatchObject({ key: '12-31', runs: 0, partial: false, future: true });
   });
 
   it('周日仍属于当周：本周一不是「今天」而是六天前', async () => {

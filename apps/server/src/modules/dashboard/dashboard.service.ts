@@ -40,9 +40,11 @@ export interface CollectBucket {
   failed: number;
   /** 末尾那个格子是「还在进行中」的小时/天，前端可以画得淡一点 */
   partial: boolean;
+  /** 还没到的小时/天：整格是 0，但它是「未到」不是「没采」 */
+  future: boolean;
 }
 
-/** 采集量曲线。长度固定：本日 24 格，本周/本月到今天为止，缺的补 0。 */
+/** 采集量曲线。长度固定：本日 24 格，本周 7 格，本月到月底；缺的补 0。 */
 export interface CollectSeries {
   range: CollectRange;
   unit: CollectUnit;
@@ -331,6 +333,7 @@ export class DashboardService {
         key: `${String(item.hour).padStart(2, '0')}:00`,
         ...logNumbers(item),
         partial: item.hour === current,
+        future: item.hour > current,
       }));
       return { range, unit: 'hour', buckets, totals: sumBuckets(buckets) };
     }
@@ -338,6 +341,12 @@ export class DashboardService {
     const now = new Date();
     const start = rangeStart(range, now);
     const today = dayKey(now);
+    // 一格一天，铺满整个周期：本周固定 7 格（周一到周日）、本月铺到月底。
+    // 未来那几天先画成 0，与本日那 24 格一个道理（19 点的图上也画着 20~23 点），
+    // 否则「本周」周日那天只剩一根柱子，横轴每天都变长，看不出这是「一周」。
+    const count =
+      range === 'week' ? 7 : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
     const rows = await this.dataSource.query<Array<Record<string, string>>>(
       `SELECT DATE_FORMAT(started_at, '%Y-%m-%d') AS date, ${LOG_SUMS}
          FROM lcm_collect_task_log
@@ -350,23 +359,21 @@ export class DashboardService {
     const byDate = new Map(rows.map((row) => [String(row.date), row]));
 
     const buckets: CollectBucket[] = [];
-    for (let offset = 0; ; offset++) {
+    for (let offset = 0; offset < count; offset++) {
       const date = new Date(start.getFullYear(), start.getMonth(), start.getDate() + offset);
       const key = dayKey(date);
-      // 未来不画：本月到今天就停，不把后面几天补成 0（否则曲线尾巴永远贴着底）
-      if (key > today) break;
       buckets.push({
         // 只留月-日：本日才带小时，按天的图每格都是 `11-24` 这种，轴宽够用
         key: key.slice(5),
         ...logNumbers(byDate.get(key)),
         partial: key === today,
+        future: key > today,
       });
     }
 
     return { range, unit: 'day', buckets, totals: sumBuckets(buckets) };
   }
 
-  /** 按天聚合的增量采集量（只返回有记录的天，补零交给调用方） */
   private async daySeries(since: string): Promise<DashboardDay[]> {
     const rows = await this.dataSource.query<
       Array<{
