@@ -91,8 +91,19 @@ export class PortalController {
       return;
     }
     res.setHeader('content-type', 'application/vnd.apple.mpegurl; charset=utf-8');
+    /*
+     * 一律 no-store：播放列表是「当下这次播放」的东西（签名地址、广告特征都可能变），
+     * 交给客户端缓存只会引入难查的「同一部片有的人能播有的人不能」。想省的那一跳在服务端做
+     * 就够了（见 proxiedPlaylist 的 SWR 缓存）。
+     */
     res.setHeader('cache-control', 'no-store');
-    res.send(clean.text);
+    /*
+     * 用 res.end 而不是 res.send：`send` 会算弱 ETag 并做新鲜度判定，客户端带 If-None-Match
+     * 回来就回 304，而 304 没有正文。播放器拿到空 manifest 未必会回退到本地副本，最坏是
+     * 直接判失败；这里显式给 Content-Length 再直出字节，不可能出现 304。
+     */
+    res.setHeader('content-length', Buffer.byteLength(clean.text));
+    res.end(clean.text);
   }
 
   /** 搜索。 */

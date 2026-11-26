@@ -98,8 +98,6 @@ function markAds(durations: number[], patterns: number[][]): boolean[] {
   }
   return isAd;
 }
-
-const CACHE_TTL = 60_000;
 /**
  * 默认的整段预算（不是单次超时）。源站的 m3u8 前面挂了 Cloudflare 跳转，
  * 实测同一个地址 0.4s ~ 19s 都有（西瓜资源），单次超时给多少都会被撞上；
@@ -108,6 +106,23 @@ const CACHE_TTL = 60_000;
  * - 预热用大预算把 master / 变体都塞进缓存，下一次播放直接毫秒级命中。
  */
 const FETCH_TIMEOUT_MS = 20_000;
+
+/**
+ * 软 TTL：这个时间之内直接命中，不发任何上游请求。
+ * 源站同一集的播放列表在几分钟内不会变，60 秒是“够短不至于拿到旧地址、够长能覆盖连看”的值。
+ */
+const CACHE_TTL = 60_000;
+/**
+ * 硬 TTL（stale-while-revalidate 的上限）：超过软 TTL 但没过硬 TTL 的条目仍然直接返回，
+ * 同时在后台刷新。用户不必为一份已经能播的播放列表再等一次源站。
+ * 之所以还要上限：源站换 CDN 路径后，旧正文里的分片可能已经 404，真切得有个期限。
+ */
+const CACHE_STALE_TTL = 10 * 60_000;
+/**
+ * 缓存条目上限。超过就按插入顺序淘汰最旧的一条。
+ * 以前是 `cache.clear()`：全清会让下一批请求全部穿透，高峰期直接形成尖刺。
+ */
+const CACHE_MAX = 200;
 const cache = new Map<string, { at: number; text: string }>();
 /** 同一个地址的并发拉取只发一次；预热与播放请求撞上时共用同一个 promise */
 const inFlight = new Map<string, Promise<string>>();
@@ -253,20 +268,33 @@ async function fetchUpstream(url: string, timeoutMs: number): Promise<string> {
   return requestText(url, timeoutMs);
 }
 
-async function fetchCached(url: string, timeoutMs: number): Promise<string> {
-  const hit = cache.get(url);
-  if (hit && Date.now() - hit.at < CACHE_TTL) return hit.text;
+/** 写缓存并按插入顺序淘汰：Map 的迭代顺序就是写入顺序，最前面的最旧 */
+function remember(url: string, text: string): void {
+  cache.delete(url);
+  cache.set(url, { at: Date.now(), text });
+  while (cache.size > CACHE_MAX) {
+    const oldest = cache.keys().next();
+    if (oldest.done === true) break;
+    cache.delete(oldest.value);
+  }
+}
 
-  /*
-   * 同一个地址的拉取只发一次（在途去重）：预热与播放请求撞上时共用同一个 promise，
-   * 各自只按自己的预算等待，谁也不会把源站拉两遍。
-   */
+/** 命中时也为它续一位：常用条目不该因为"写得早"被淘汰 */
+function promote(url: string, entry: { at: number; text: string }): void {
+  cache.delete(url);
+  cache.set(url, entry);
+}
+
+/**
+ * 拉一次并回填缓存；同一个地址的并发拉取只发一次（在途去重）。
+ * 预热与播放请求撞上时共用同一个 promise，各自只按自己的预算等待，不会把源站拉两遍。
+ */
+function load(url: string): Promise<string> {
   let task = inFlight.get(url);
   if (task === undefined) {
     task = fetchUpstream(url, FETCH_TIMEOUT_MS)
       .then((text) => {
-        if (cache.size > 200) cache.clear();
-        cache.set(url, { at: Date.now(), text });
+        remember(url, text);
         return text;
       })
       .finally(() => {
@@ -274,7 +302,32 @@ async function fetchCached(url: string, timeoutMs: number): Promise<string> {
       });
     inFlight.set(url, task);
   }
-  return withTimeout(task, timeoutMs);
+  return task;
+}
+
+/**
+ * 带缓存的拉取：新鲜的直接给，过期的先给旧的再后台刷新，真没有才等上游。
+ *
+ * 为什么 stale 也要给：用户点开播放页时，一份 3 分钟前的播放列表完全能看，
+ * 而等源站可能要十几秒——这正是开头「起播慢」的主因。后台刷新失败不影响本次播放，
+ * 旧正文继续用到硬 TTL 为止。
+ */
+async function fetchCached(url: string, timeoutMs: number): Promise<string> {
+  const hit = cache.get(url);
+  if (hit !== undefined) {
+    const age = Date.now() - hit.at;
+    if (age < CACHE_TTL) {
+      promote(url, hit);
+      return hit.text;
+    }
+    if (age < CACHE_STALE_TTL) {
+      promote(url, hit);
+      // 已有一个在途请求就不重复发；刷新失败只当没刷到，不向调用方报错
+      if (!inFlight.has(url)) void load(url).catch(() => undefined);
+      return hit.text;
+    }
+  }
+  return withTimeout(load(url), timeoutMs);
 }
 
 
