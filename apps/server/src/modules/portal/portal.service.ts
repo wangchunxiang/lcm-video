@@ -121,7 +121,7 @@ export interface EpisodeItem {
   playUrl: string;
 }
 
-/** 前台公开配置：站点信息 + 播放器开关。 */
+/** 前台公开配置：站点信息 + 播放器开关 + 首屏封面域名。 */
 export interface SiteConfig {
   siteName: string;
   siteSubtitle: string;
@@ -137,6 +137,8 @@ export interface SiteConfig {
     webfullscreen: boolean;
     setting: boolean;
   };
+  /** 首屏建议 preconnect 的封面域名（不含协议）；空数组表示不要预热 */
+  coverHosts: string[];
 }
 
 const PAGE_LIMIT = 100;
@@ -177,12 +179,32 @@ export class PortalService {
   /** 年份选项缓存：全站同一份，列表页每次请求都会要，60 秒内不重复查库。 */
   private yearsCache: { at: number; years: number[] } | null = null;
 
-  /** 一级分类总数缓存：key = `分类id:年份`，翻页/切排序时不必重复计数。 */
+  /** 计数缓存：key = `分类id:年份`（一级分类）或 `w|where|参数`（普通条件），翻页/切排序时不必重复计数。 */
   private readonly countCache = new Map<string, { at: number; total: number }>();
 
   private static readonly YEARS_TTL_MS = 60_000;
 
   private static readonly COUNT_TTL_MS = 60_000;
+
+  /** 计数缓存的条目上限：超出就整体清空，避免年份×分类的组合无限增长 */
+  private static readonly COUNT_CACHE_MAX = 1_000;
+
+  /** 封面域名预热列表：全站一份，1 小时内不重算（域名分布变化很慢）。 */
+  private coverHintCache: { at: number; hosts: string[] } | null = null;
+
+  private static readonly COVER_HINT_TTL_MS = 3_600_000;
+
+  /**
+   * 首屏预热几个封面域名。浏览器全局 speculative connection 预算约 6 条，
+   * 必须给本站自己的接口留一半；超出的 preconnect 会互相挤掉，白耗握手。
+   */
+  private static readonly COVER_HINT_LIMIT = 3;
+
+  /** 累计覆盖到 70% 就停：再往后加域名，首屏命中率的提升抵不过多一条连接 */
+  private static readonly COVER_HINT_COVERAGE = 0.7;
+
+  /** 第一名占比低于 10% 说明封面域名已经长尾化，预热没有意义，直接不下发 */
+  private static readonly COVER_HINT_MIN_SHARE = 0.1;
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -191,7 +213,71 @@ export class PortalService {
     private readonly configService: ConfigService,
   ) {}
 
-  /** 前台公开配置：站点信息 + 播放器开关。后台配置项不在这里暴露。 */
+  /**
+   * 首屏要预热的封面域名。
+   *
+   * 为什么不落盘也不代理：封面图总量是几十 GB 级，存一遍的代价远大于省下的握手；
+   * 这里只下发域名，由浏览器提前做 DNS/TCP/TLS，图片本身仍然直连源站。
+   *
+   * 口径（详见 `docs/` 的性能一节）：
+   * - 按引用行数排序（这里唯一的曝光代理指标；没有真实曝光埋点）；
+   * - 累计覆盖率到 70% 或满 3 条即停；
+   * - 第一名占比 < 10% 时返回空数组——域名一长尾化，preconnect 就是负收益；
+   * - 有 http 封面的域名整条跳过：混合内容会被浏览器拦掉，预热也白预；
+   * - 排除 `lcm_cover_check` 判死（status = 2）的域名。
+   *
+   * 这个查询失败不能影响 `/config`：返回空数组，前端自然不加标签。
+   */
+  async coverHosts(): Promise<string[]> {
+    const now = Date.now();
+    const cached = this.coverHintCache;
+    if (cached !== null && now - cached.at < PortalService.COVER_HINT_TTL_MS) {
+      return cached.hosts;
+    }
+
+    let hosts: string[] = [];
+    try {
+      /*
+       * WITH ROLLUP 多回来的那一行（host 为 null）就是总数，省掉一次 COUNT(*)——
+       * 全表 63k 行时这一趟是十几毫秒，而 /config 是每次打开页面都要走的。
+       */
+      const rows = await this.dataSource.query<
+        Array<{ host: string | null; total: number | string; secure: number | string }>
+      >(
+        `SELECT v.cover_host AS host, COUNT(*) AS total, SUM(v.cover LIKE 'https://%') AS secure
+           FROM lcm_vod v
+          WHERE v.status = 1 AND v.cover <> '' AND v.cover_host <> ''
+            AND v.cover_host NOT IN (SELECT c.host FROM lcm_cover_check c WHERE c.status = 2)
+          GROUP BY v.cover_host WITH ROLLUP`,
+      );
+      const all = Number(rows.find((row) => row.host === null)?.total ?? 0);
+      const ranked = rows
+        .filter((row): row is { host: string; total: number | string; secure: number | string } => row.host !== null)
+        .map((row) => ({ host: row.host, total: Number(row.total), secure: Number(row.secure) }))
+        .sort((left, right) => right.total - left.total);
+
+      const top = ranked[0];
+      if (all > 0 && top !== undefined && top.total / all >= PortalService.COVER_HINT_MIN_SHARE) {
+        let covered = 0;
+        for (const row of ranked) {
+          if (hosts.length >= PortalService.COVER_HINT_LIMIT) break;
+          /* 有 http 封面说明这个域名无法整条预热，跳过（不中断：后面的域名可能全是 https） */
+          if (row.secure < row.total) continue;
+          hosts.push(row.host);
+          covered += row.total;
+          if (covered / all >= PortalService.COVER_HINT_COVERAGE) break;
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`封面域名统计失败：${(error as Error).message}`);
+      hosts = [];
+    }
+
+    this.coverHintCache = { at: now, hosts };
+    return hosts;
+  }
+
+  /** 前台公开配置：站点信息 + 播放器开关 + 首屏封面域名。后台配置项不在这里暴露。 */
   async config(): Promise<SiteConfig> {
     const [
       siteName,
@@ -206,6 +292,7 @@ export class PortalService {
       fullscreen,
       webfullscreen,
       setting,
+      coverHosts,
     ] = await Promise.all([
       this.setting.get('site_name', '蓝草莓影视'),
       this.setting.get('site_subtitle', '高清影视在线观看'),
@@ -219,6 +306,7 @@ export class PortalService {
       this.setting.flag('player_fullscreen', settingDefaultFlag('player_fullscreen')),
       this.setting.flag('player_webfullscreen', settingDefaultFlag('player_webfullscreen')),
       this.setting.flag('player_setting', settingDefaultFlag('player_setting')),
+      this.coverHosts(),
     ]);
 
     return {
@@ -228,6 +316,7 @@ export class PortalService {
       siteStatsCode,
       listPageSize: Math.min(60, Math.max(12, listPageSize)),
       player: { autoplay, autonext, resume, screenshot, fullscreen, webfullscreen, setting },
+      coverHosts,
     };
   }
 
@@ -242,7 +331,8 @@ export class PortalService {
         take: HOME_ROW,
       }),
       // 卡片头上的「N 部」要的是当天总数，不是被 HOME_ROW 截断后的 16
-      this.countByWhere(where, []),
+      // 今天的数字不缓存：采集完却看不到新值，用户会当成 bug
+      this.countByWhere(where, [], 0),
     ]);
 
     const rows: VodRow[] = [{ title: '今日更新', total: todayTotal, items: today }].filter(
@@ -288,18 +378,40 @@ export class PortalService {
     const take = toInt(input.take, 24, 1, PAGE_LIMIT);
     const skip = toInt(input.skip, 0, 0, 1_000_000);
 
+    /*
+     * 分类与它的「同级分类」一次查回来。列表页顶部要渲染两样东西（当前分类 + 同级 tab），
+     * 以前是两条串行 SQL，等于白白多一个往返（每条 5~14ms，翻页/切筛选都要付一次）。
+     *
+     * `s.pid = IF(c.pid = '0', c.id, c.pid)`：一级分类取它自己的子分类，二级分类取它的兄弟。
+     * alias 由 `category.service.ts` 的 `assertAliasFree` 保证全局唯一，所以不会有笛卡尔式的歧义；
+     * 没有同级时 LEFT JOIN 还是返回一行（s.* 为 null），「分类不存在」则零行。
+     */
+    const head = await this.dataSource.query<
+      Array<{
+        id: string;
+        pid: string;
+        name: string;
+        alias: string;
+        sid: string | null;
+        sname: string | null;
+        salias: string | null;
+      }>
+    >(
+      `SELECT c.id, c.pid, c.name, c.alias, s.id AS sid, s.name AS sname, s.alias AS salias
+         FROM lcm_category c
+         LEFT JOIN lcm_category s ON s.pid = IF(c.pid = '0', c.id, c.pid)
+        WHERE c.alias = ?
+        ORDER BY s.sort ASC, s.id ASC`,
+      [input.alias],
+    );
+    const current = head[0];
     // 只认真实分类：没有「全部」聚合页，未知别名一律 404
-    const category = (
-      await this.dataSource.query<Array<{ id: string; name: string; alias: string; pid: string }>>(
-        'SELECT id, pid, name, alias FROM lcm_category WHERE alias = ? LIMIT 1',
-        [input.alias],
-      )
-    )[0] ?? null;
-    if (category === null) throw new NotFoundException('分类不存在');
-
-    const types = await this.dataSource.query<Array<{ id: string; name: string; alias: string }>>(
-      'SELECT id, name, alias FROM lcm_category WHERE pid = ? ORDER BY sort ASC, id ASC',
-      [category.pid === '0' ? category.id : category.pid],
+    if (current === undefined) throw new NotFoundException('分类不存在');
+    const category = { id: current.id, pid: current.pid, name: current.name, alias: current.alias };
+    const types = head.flatMap((row) =>
+      row.sid === null || row.salias === null
+        ? []
+        : [{ id: row.sid, name: row.sname ?? '', alias: row.salias }],
     );
 
     const clauses: string[] = ['v.status = 1'];
@@ -348,13 +460,35 @@ export class PortalService {
     };
   }
 
-  /** 普通计数：条件都带索引前缀，直接 COUNT 即可。 */
-  private async countByWhere(where: string, params: unknown[]): Promise<number> {
+  /**
+   * 普通计数：条件都带索引前缀，直接 COUNT 即可。
+   *
+   * 结果缓存 60 秒（`ttlMs = 0` 可关）：列表页翻页、切排序、点子分类都会把同一个条件
+   * 再问一遍，而采集入库晚一分钟被看到无所谓。首页的「今日更新 N 部」**不缓存**
+   * （传 0）——刚采集完却看不到新数字，用户会当成 bug。
+   */
+  private async countByWhere(
+    where: string,
+    params: unknown[],
+    ttlMs: number = PortalService.COUNT_TTL_MS,
+  ): Promise<number> {
+    const key = ttlMs > 0 ? `w|${where}|${JSON.stringify(params)}` : '';
+    const now = Date.now();
+    if (key !== '') {
+      const hit = this.countCache.get(key);
+      if (hit !== undefined && now - hit.at < ttlMs) return hit.total;
+    }
     const rows = await this.dataSource.query<Array<{ total: number }>>(
       `SELECT COUNT(*) AS total FROM lcm_vod v WHERE ${where}`,
       params,
     );
-    return Number(rows[0]?.total ?? 0);
+    const total = Number(rows[0]?.total ?? 0);
+    if (key !== '') {
+      // 年份 × 分类的组合有上限，但也不该无限长；超了就整体丢掉，重建比淘汰更简单
+      if (this.countCache.size >= PortalService.COUNT_CACHE_MAX) this.countCache.clear();
+      this.countCache.set(key, { at: now, total });
+    }
+    return total;
   }
 
   /**
@@ -429,13 +563,19 @@ export class PortalService {
     const vod = rows[0];
     if (vod === undefined || vod.status !== 1) throw new NotFoundException('影片不存在');
 
-    const lines = await this.linesOf(id);
-    const related = await this.queryCards({
-      where: 'v.status = 1 AND v.category_id = ? AND v.id <> ?',
-      order: 'v.collected_at DESC, v.id DESC',
-      take: 8,
-      params: [vod.categoryId, id],
-    });
+    /*
+     * 线路与推荐彼此不依赖，并行发出去：串行时详情页要多等一个往返（推荐那条还是
+     * 带排序的卡片查询，最贵）。两者失败语义一致，`Promise.all` 不需要额外处理。
+     */
+    const [lines, related] = await Promise.all([
+      this.linesOf(id),
+      this.queryCards({
+        where: 'v.status = 1 AND v.category_id = ? AND v.id <> ?',
+        order: 'v.collected_at DESC, v.id DESC',
+        take: 8,
+        params: [vod.categoryId, id],
+      }),
+    ]);
 
     const { status: _status, ...rest } = vod;
     return { vod: rest, lines: lines.map(toPublicLine), related };
@@ -503,10 +643,13 @@ export class PortalService {
     /*
      * 播放页一打开就在后台预热当前集：播放器要再过一会儿才请求 m3u8，
      * 预热先发出去，等它真的要的时候多半已经命中（或至少在途共用同一次拉取）。
-     * 只预热当前集，不给整部剧集的每一集都发请求。
+     * 预热当前集，再顺带预热下一集：连看是常态，用户点「下一集」时上游多半已经命中。
+     * 只多一条后台请求，且播放列表本身只有几 KB，代价远小于再等一次源站。
      */
     const warmTarget = episodes[current - 1];
     if (proxied && warmTarget !== undefined) this.warmPlaylist(line.sourceId, warmTarget.url);
+    const nextTarget = episodes[current];
+    if (proxied && nextTarget !== undefined) this.warmPlaylist(line.sourceId, nextTarget.url);
 
     return {
       vod: {
