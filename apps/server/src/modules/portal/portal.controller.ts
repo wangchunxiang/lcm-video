@@ -49,11 +49,15 @@ export class PortalController {
     return this.portal.detail(id);
   }
 
-  /** 播放页：`line` 是线路序号，`ep` 是集序号（从 1 开始）。 */
+  /**
+   * 播放页：`line` 是线路序号、`lineId` 是线路 id（优先），`ep` 是集序号（从 1 开始）。
+   * 前端拿到的是线路 id，直接传 lineId 可以省掉「先取线路列表再按序号二次请求」。
+   */
   @Get('play/:id')
   play(
     @Param('id') id: string,
     @Query('line') line?: string,
+    @Query('lineId') lineId?: string,
     @Query('ep') ep?: string,
   ): Promise<{
     vod: { id: string; name: string; cover: string; remarks: string };
@@ -62,7 +66,7 @@ export class PortalController {
     episodes: EpisodeItem[];
     current: number;
   }> {
-    return this.portal.play(id, line, ep);
+    return this.portal.play(id, line, ep, lineId);
   }
 
   /**

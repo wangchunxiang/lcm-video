@@ -146,7 +146,7 @@ export const portal = {
     http.get<VodListPage>(`/list/${encodeURIComponent(alias)}`, params, options.signal),
   detail: (id: string, options: CallOptions = {}) =>
     http.get<VodDetail>(`/detail/${id}`, undefined, options.signal),
-  play: (id: string, params: { line?: number; ep?: number } = {}, options: CallOptions = {}) =>
+  play: (id: string, params: { line?: number; lineId?: string; ep?: number } = {}, options: CallOptions = {}) =>
     http.get<VodPlay>(`/play/${id}`, params, options.signal),
   search: (params: SearchParams, options: CallOptions = {}) =>
     http.get<{ items: VodCard[]; total: number }>('/search', params, options.signal),

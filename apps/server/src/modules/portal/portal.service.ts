@@ -586,6 +586,7 @@ export class PortalService {
     vodId: string,
     lineIndex: string | undefined,
     ep: string | undefined,
+    lineId?: string,
   ): Promise<{
     vod: { id: string; name: string; cover: string; remarks: string; categoryId: string };
     lines: PlayLine[];
@@ -611,8 +612,10 @@ export class PortalService {
     const lines = await this.linesOf(vodId);
     if (lines.length === 0) throw new NotFoundException('这部影片还没有可播放的线路');
 
-    const wanted = toInt(lineIndex, 0, 0, lines.length - 1);
-    // 上面已经保证至少一条，`wanted` 又被夹到 [0, length-1]，这里只需要让 TS 收窄类型
+    // 前端更常拿到的是线路 id：有就按 id 找，找不到回落到第一条（与以前按序号越界的行为一致）
+    const found = lineId ? lines.findIndex((item) => item.id === lineId) : -1;
+    const wanted = found >= 0 ? found : toInt(lineIndex, 0, 0, lines.length - 1);
+    // 上面已经保证至少一条，`wanted` 又被夹到 [0, length-1] 或命中 findIndex，这里只需要让 TS 收窄类型
     const line = lines[wanted];
     if (line === undefined) throw new NotFoundException('线路不存在');
 
