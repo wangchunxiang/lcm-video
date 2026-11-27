@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Artplayer from 'artplayer';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { readPref, removePref, writePref } from '../composables/usePref';
 
 const props = withDefaults(
   defineProps<{
@@ -64,7 +65,6 @@ function inferType(url: string): string {
  */
 const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
 
-
 const containerRef = ref<HTMLDivElement | null>(null);
 const failedText = ref('');
 /** 排障信息：只有 URL 带 `?debug=1` 时才有值（见 describeFailure） */
@@ -116,8 +116,14 @@ let loadToken = 0;
 let lastSaveAt = 0;
 /** 当前这一集是否已经发过 ended：timeupdate 兜底与原生 ended 只取一次 */
 let endedSent = false;
-/** 已经为哪个地址做过「原生失败 → hls.js」的降级：每集只降一次，避免两条路互扔 */
-let appleHlsRetryFor = '';
+/**
+ * 这一集选定的内核，`null` 表示还没决策。
+ * iOS 先给原生一次机会，失败后固定走 hls.js 不再回头 —— Artplayer 的断线重连会把同一个
+ * 地址重新送进来，靠「决策 + 地址」两个字段就能认出「别重新决策、别拆实例」。
+ */
+type Engine = 'native' | 'hls';
+let engine: Engine | null = null;
+let engineUrl = '';
 
 function resumeStorageKey(): string {
   return props.resumeKey ? RESUME_PREFIX + props.resumeKey : '';
@@ -136,13 +142,6 @@ function destroyPlayer(): void {
 }
 
 /**
- * ArtPlayer 的 m3u8 自定义内核。
- * iOS/Safari 原生支持 m3u8，直接交给内核可避免带 Origin 的跨域请求（部分源站 WAF 会拦）；
- * 其余浏览器用 hls.js，致命错误时回退到原生内核再试一次。
- *
- * hls.js 压缩后约 400KB，只有真正需要时才动态加载，不拖慢首屏（播放器外壳先出来）。
- */
-/**
  * 原生 HLS 能不能放。
  * 只问 `application/vnd.apple.mpegurl` 不够：iOS 17.1 之后部分内核（含 iOS 上的第三方壳）
  * 对它返回空串，只认 `application/x-mpegURL`，于是会被误判成「不支持」。三个都问一遍。
@@ -160,14 +159,25 @@ function isAppleMobile(): boolean {
 }
 
 /**
- * ArtPlayer 的 m3u8 自定义内核。
- * 顺序是「hls.js 优先、原生兜底」，不能反过来：Chrome/Firefox 对 HLS 的 canPlayType
- * 会回 "maybe"，但真把 m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4），
- * 于是每个非 Safari 浏览器都会卡在「不支持在线播放」。
- * iPhone/iPad 优先交给原生内核，失败再降级到 hls.js（走 ManagedMediaSource，iOS 17.1+）
- * —— 没有 MSE 的老系统上 hls.js 会自己失败，那条路只在原生已证实放不了时才走，不会比原来差。
+ * ArtPlayer 的 m3u8 自定义内核：非 iOS 一律 hls.js，iOS 先原生、失败降级一次 hls.js。
+ *
+ * 不能反过来「hls.js 优先」：Chrome/Firefox 对 HLS 的 canPlayType 会回 "maybe"，真把
+ * m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4）。而 iPhone/iPad
+ * 上 hls.js 只能走 ManagedMediaSource（iOS 17.1+ 的实验特性），原生内核才是稳的那条路。
+ *
+ * 内核按「每一集」记在 engine 里：同一地址的重连通知只复述决定，不会重新决策；
+ * 只有换集/换线路（engineUrl 变化）才重新来过。
+ *
+ * hls.js 压缩后约 400KB，只有真正需要时才动态加载，不拖慢首屏（播放器外壳先出来）。
  */
-function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forceHls = false): void {
+function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer): void {
+  if (engineUrl !== url) {
+    engine = null;
+    engineUrl = url;
+  }
+  // 重连只是重复通知：hls 已经接管并且实例还在，别拆掉正在播放的流
+  if (engine === 'hls' && hls) return;
+
   // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
   if (hls) {
     hls.destroy();
@@ -176,20 +186,18 @@ function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forc
   // 换集/卸载会让上一次的动态加载作废，用令牌判断回调是否还有效
   const token = ++loadToken;
 
-  const playNatively = (): void => {
+  // 本集第一次进来才决策，结果对后续重连一直生效
+  engine ??= isAppleMobile() ? 'native' : 'hls';
+  if (engine === 'native') {
     video.src = url;
-  };
+    return;
+  }
 
   const unsupported = (): void => {
     failedText.value = NEUTRAL_FAILURE;
     debugInfo.value = 'unsupported: 内核不支持 HLS 也没有 MSE';
     emit('error');
   };
-
-  if (isAppleMobile() && !forceHls) {
-    playNatively();
-    return;
-  }
 
   void import('hls.js')
     .then((module) => {
@@ -198,7 +206,7 @@ function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forc
       if (!Hls.isSupported()) {
         // 没有 MSE 但内核自己认 HLS（macOS Safari 之外的少量环境）时退回原生
         if (NATIVE_HLS_TYPES.some((type) => video.canPlayType(type) !== '')) {
-          playNatively();
+          video.src = url;
           return;
         }
         unsupported();
@@ -228,33 +236,33 @@ function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer, forc
 
 function restoreResume(player: Artplayer): void {
   if (!props.resume || !props.resumeKey) return;
-  const saved = Number(localStorage.getItem(resumeStorageKey()) ?? 0);
+  const saved = Number(readPref(resumeStorageKey()) ?? 0);
   const duration = player.duration;
   if (saved > 5 && Number.isFinite(duration) && saved < duration - 10) {
     player.currentTime = saved;
   }
 }
 
-function saveResume(player: Artplayer): void {
-  if (!props.resume || !props.resumeKey) return;
+/**
+ * 把当前进度写进 localStorage：默认 5 秒节流，`force` 用于换集/换线路前立刻落盘，
+ * 保证「看了一半切走再切回来」能接上。
+ */
+function saveProgress(force = false): void {
+  if (!art || !props.resume || !props.resumeKey) return;
   const now = Date.now();
-  if (now - lastSaveAt < 5000) return;
+  if (!force && now - lastSaveAt < 5000) return;
   lastSaveAt = now;
-  if (player.currentTime > 5) {
-    localStorage.setItem(resumeStorageKey(), String(Math.floor(player.currentTime)));
+  if (art.currentTime > 5) {
+    writePref(resumeStorageKey(), String(Math.floor(art.currentTime)));
   }
 }
 
-/**
- * 立刻把当前进度写进 localStorage（不受 5 秒节流限制）。
- * 换集前由父组件调用，保证「看了一半切走再切回来」能接上。
- */
-function saveProgress(): void {
-  if (!art || !props.resume || !props.resumeKey) return;
-  lastSaveAt = Date.now();
-  if (art.currentTime > 5) {
-    localStorage.setItem(resumeStorageKey(), String(Math.floor(art.currentTime)));
-  }
+/** 这一集播完：清掉续播点并通知父组件（两个 ended 入口共用） */
+function finish(): void {
+  if (endedSent) return;
+  endedSent = true;
+  if (props.resume && props.resumeKey) removePref(resumeStorageKey());
+  emit('ended');
 }
 
 defineExpose({ saveProgress });
@@ -280,10 +288,10 @@ function syncFailure(player: Artplayer): void {
   // 同一波错误只提示一次：内核会对同一个拉不到的地址反复报错，每次重弹就是闪屏
   if (failedText.value !== '') return;
   // iOS 还有一条没试过的路：hls.js + ManagedMediaSource（iOS 17.1+）。
-  // 每集只降级一次，两条路都失败才认栽，否则会在原生/hls 之间来回弹。
-  if (isAppleMobile() && hls === null && appleHlsRetryFor !== directSrc.value) {
-    appleHlsRetryFor = directSrc.value;
-    playM3u8(player.video, directSrc.value, player, true);
+  // 只在「本集选了原生」时降一次；已经走 hls 的地址不再回头，否则两条路会互相拆台。
+  if (engine === 'native' && isAppleMobile() && hls === null) {
+    engine = 'hls';
+    playM3u8(player.video, directSrc.value, player);
     return;
   }
   leaveFullscreen(player);
@@ -326,8 +334,9 @@ function createPlayer(): void {
   // 重试/换集时先把浮层收掉，别让旧提示盖在正在重新加载的画面上
   failedText.value = '';
   debugInfo.value = '';
-  // 新一轮播放，iOS 的 hls.js 降级额度也重置
-  appleHlsRetryFor = '';
+  // 新一轮播放，内核决策也重置
+  engine = null;
+  engineUrl = '';
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 
@@ -361,22 +370,13 @@ function createPlayer(): void {
 
   player.on('video:loadedmetadata', () => restoreResume(player));
   player.on('video:timeupdate', () => {
-    saveResume(player);
+    saveProgress();
     // 兜底：个别源站/内核到结尾时不派发 ended，这里按「离结尾不到 0.5 秒」判定一次
-    if (endedSent) return;
     const video = player.video;
     if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-    if (video.duration - video.currentTime >= 0.5) return;
-    endedSent = true;
-    if (props.resume && props.resumeKey) localStorage.removeItem(resumeStorageKey());
-    emit('ended');
+    if (video.duration - video.currentTime < 0.5) finish();
   });
-  player.on('video:ended', () => {
-    if (endedSent) return;
-    endedSent = true;
-    if (props.resume && props.resumeKey) localStorage.removeItem(resumeStorageKey());
-    emit('ended');
-  });
+  player.on('video:ended', finish);
   // 出错和恢复都走同一个判定：内核状态说了算（见 syncFailure）
   player.on('video:error', () => syncFailure(player));
   player.on('video:canplay', () => syncFailure(player));
@@ -408,7 +408,12 @@ watch(
       // 就地换源时 artplayer 用 `option.type` 判内核，换集地址可能变成代理地址（或反过来），
       // 所以每次换源前都要按新地址重算一次
       art.option.type = inferType(next);
-      await art.switchUrl(next);
+      try {
+        await art.switchUrl(next);
+      } catch {
+        // switchUrl 在拿到 canplay 前遇到 video:error 会 reject；内核失败本身由 syncFailure 接管
+        // （iOS 原生失败后降级 hls.js 时这是必经路径），这里不能再抛成未处理异常
+      }
       return;
     }
     createPlayer();

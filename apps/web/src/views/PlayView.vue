@@ -6,6 +6,7 @@ import { isAbortError, portal, type VodPlay } from '../api/portal';
 import { site } from '../site';
 import { useSeo } from '../composables/useSeo';
 import { pageCategoryId } from '../composables/usePageCategoryId';
+import { readPref, writePref } from '../composables/usePref';
 import PlayerBox from '../components/PlayerBox.vue';
 import Skeleton from '../components/ui/Skeleton.vue';
 import EpisodeSkeleton from '../components/ui/EpisodeSkeleton.vue';
@@ -24,20 +25,11 @@ const playerRef = ref<InstanceType<typeof PlayerBox> | null>(null);
 
 /** 选集排序与详情页共用一份偏好：倒序 = 最新集在前 */
 const EP_ORDER_KEY = 'lcm:ep-order';
-const epDesc = ref(false);
-try {
-  epDesc.value = localStorage.getItem(EP_ORDER_KEY) === 'desc';
-} catch {
-  epDesc.value = false;
-}
+const epDesc = ref(readPref(EP_ORDER_KEY) === 'desc');
 
 function toggleEpOrder(): void {
   epDesc.value = !epDesc.value;
-  try {
-    localStorage.setItem(EP_ORDER_KEY, epDesc.value ? 'desc' : 'asc');
-  } catch {
-    /* 存不了也不影响本次会话 */
-  }
+  writePref(EP_ORDER_KEY, epDesc.value ? 'desc' : 'asc');
 }
 
 const vod = computed(() => play.value?.vod ?? null);
@@ -45,7 +37,15 @@ const line = computed(() => play.value?.line ?? null);
 const episodes = computed(() => play.value?.episodes ?? []);
 const episodesShown = computed(() => (epDesc.value ? [...episodes.value].reverse() : episodes.value));
 
-const current = computed(() => play.value?.current ?? 1);
+/** 当前集以地址栏为准（越界时夹到最后一集），换集/换线路后由地址栏纠偏 */
+const current = computed(() => {
+  const total = episodes.value.length;
+  if (total === 0) return 1;
+  const fromUrl = Number(route.params.ep);
+  const wanted =
+    Number.isFinite(fromUrl) && fromUrl >= 1 ? Math.floor(fromUrl) : (play.value?.current ?? 1);
+  return Math.min(Math.max(1, wanted), total);
+});
 const epItem = computed(() => episodes.value[current.value - 1] ?? null);
 const player = computed(() => site.config.player);
 
@@ -57,22 +57,15 @@ const prevEp = computed(() => (current.value > 1 ? current.value - 1 : 0));
  * 用 computed 而不是 ref 快照：站点配置是异步加载的，直达播放页时 setup 阶段还是默认值。
  */
 const AUTONEXT_KEY = 'lcm:autonext';
-const autonextPref = ref<boolean | null>(null);
-try {
-  const saved = localStorage.getItem(AUTONEXT_KEY);
-  autonextPref.value = saved === '1' ? true : saved === '0' ? false : null;
-} catch {
-  /* 隐私模式读不到就按站点配置 */
-}
+const savedAutonext = readPref(AUTONEXT_KEY);
+const autonextPref = ref<boolean | null>(
+  savedAutonext === '1' ? true : savedAutonext === '0' ? false : null,
+);
 const autonext = computed(() => autonextPref.value ?? site.config.player.autonext);
 
 function toggleAutonext(): void {
   autonextPref.value = !autonext.value;
-  try {
-    localStorage.setItem(AUTONEXT_KEY, autonext.value ? '1' : '0');
-  } catch {
-    /* 存不了也不影响本次会话 */
-  }
+  writePref(AUTONEXT_KEY, autonext.value ? '1' : '0');
 }
 
 /** 标题右侧的小字：只显示当前集名（片名就在左边、备注已在页面其他地方） */
@@ -81,125 +74,81 @@ const subtitle = computed(() => {
   return epItem.value?.name ?? '';
 });
 
-/** 在飞请求的中断句柄：换片/换线路/离开页面时把旧请求断掉，别占着连接和服务器 */
-let loadController: AbortController | null = null;
-let lineController: AbortController | null = null;
+/** 在飞请求只认最后一次：换片/换线路时中断旧请求，回调也按序号判断是否过期 */
+let controller: AbortController | null = null;
+let requestSeq = 0;
 
-async function load(): Promise<void> {
-  lineController?.abort();
-  loadController?.abort();
-  const controller = new AbortController();
-  loadController = controller;
-  const { signal } = controller;
+type FetchPlayOptions = {
+  /** 同剧换线路：失败只提示，不顶掉正在播的内容 */
+  keepPlayer?: boolean;
+  /** 成功后地址栏怎么走：进页面/纠偏用 replace，用户切线路用 push */
+  history?: 'replace' | 'push';
+};
 
-  const vodId = String(route.params.id || '');
-  const lineParam = typeof route.params.lineId === 'string' ? route.params.lineId : '';
-  const epParam = Math.max(1, Number(route.params.ep) || 1);
+/** 拉取某条线路的播放数据；线路由服务端按 lineId 直接定位，一次请求拿全 */
+async function fetchPlay(
+  vodId: string,
+  lineId: string,
+  ep: number,
+  { keepPlayer = false, history = 'replace' }: FetchPlayOptions = {},
+): Promise<void> {
+  controller?.abort();
+  const pending = new AbortController();
+  controller = pending;
+  const seq = ++requestSeq;
 
-  loading.value = true;
-  error.value = '';
+  if (keepPlayer) {
+    playerRef.value?.saveProgress();
+    lineError.value = '';
+  } else {
+    loading.value = true;
+    error.value = '';
+  }
+
   try {
-    // 先取线路列表（line=0），再按 URL 里的线路 id 换算成接口需要的 0 基下标。
-    let result = await portal.play(vodId, { line: 0, ep: epParam }, { signal });
+    const result = await portal.play(vodId, { lineId: lineId || undefined, ep }, { signal: pending.signal });
+    if (seq !== requestSeq) return;
 
-    let lineIndex = 0;
-    if (lineParam) {
-      const found = result.lines.findIndex((item) => item.id === lineParam);
-      if (found >= 0) lineIndex = found;
-    }
-    if (lineIndex !== 0) {
-      result = await portal.play(vodId, { line: lineIndex, ep: epParam }, { signal });
-    }
-
-    // 集数越界由服务端 clamp 并放在 result.current 里，这里不再多发一次请求
     play.value = result;
     // 小屏底栏靠它高亮所属的一级分类（播放页 URL 里只有影片 id）
     pageCategoryId.value = result.vod.categoryId;
 
-    const canonicalLine = result.line.id;
-    const canonicalEp = String(result.current);
-    if (lineParam !== canonicalLine || String(route.params.ep ?? '') !== canonicalEp) {
-      await router.replace({ name: 'play', params: { id: vodId, lineId: canonicalLine, ep: canonicalEp } });
+    const params = { id: vodId, lineId: result.line.id, ep: String(result.current) };
+    const inSync =
+      String(route.params.lineId ?? '') === params.lineId && String(route.params.ep ?? '') === params.ep;
+    if (!inSync) {
+      await (history === 'push' ? router.push({ name: 'play', params }) : router.replace({ name: 'play', params }));
     }
   } catch (e) {
-    if (isAbortError(e) || loadController !== controller) return;
-    play.value = null;
-    error.value = (e as Error).message || '播放页加载失败';
+    if (isAbortError(e) || seq !== requestSeq) return;
+    const message = (e as Error).message || '播放页加载失败';
+    if (keepPlayer) {
+      // 只影响线路区域，不把整页播放器顶掉
+      lineError.value = message;
+    } else {
+      play.value = null;
+      error.value = message;
+    }
   } finally {
     // 已经被新请求接管时不要去关骨架屏：那时新的那次已经把它打开了
-    if (loadController === controller) loading.value = false;
-  }
-}
-
-/**
- * 换到另一条线路：要取一次新线路的集数列表，但播放器不重建。
- * 返回是否切换成功（失败时由调用方决定是否整页重载）。
- */
-async function switchLineInPlace(lineId: string, ep: number): Promise<boolean> {
-  const p = play.value;
-  if (!p) return false;
-  const lineIndex = p.lines.findIndex((item) => item.id === lineId);
-  if (lineIndex < 0) return false;
-
-  // 连点线路时只认最后一次：上一个请求在这里被断掉，它的 catch 拿到 AbortError 直接退出
-  lineController?.abort();
-  const controller = new AbortController();
-  lineController = controller;
-
-  playerRef.value?.saveProgress();
-  lineError.value = '';
-  try {
-    const next = await portal.play(String(p.vod.id), { line: lineIndex, ep }, { signal: controller.signal });
-    if (lineController !== controller) return false;
-    play.value = next;
-    return true;
-  } catch (e) {
-    if (isAbortError(e) || lineController !== controller) return false;
-    // 只影响线路区域，不把整页播放器顶掉
-    lineError.value = (e as Error).message || '切换线路失败';
-    return false;
+    if (seq === requestSeq) loading.value = false;
   }
 }
 
 /** 切线路时保持当前集；新线路没这么多集才回落到它的最后一集 */
-async function selectLine(lineId: string, lineEpisodes: number): Promise<void> {
+function selectLine(lineId: string, lineEpisodes: number): void {
   const p = play.value;
-  if (!p) return;
-  const ep = Math.max(1, Math.min(p.current, lineEpisodes || p.current));
-
-  if (lineId === p.line.id) {
-    applyEp(ep);
-    await router.push({
-      name: 'play',
-      params: { id: String(p.vod.id), lineId, ep: String(p.current) },
-    });
-    return;
-  }
-
-  if (!(await switchLineInPlace(lineId, ep))) return;
-  const next = play.value;
-  await router.push({
-    name: 'play',
-    params: { id: String(p.vod.id), lineId, ep: String(next?.current ?? ep) },
-  });
+  if (!p || lineId === p.line.id) return;
+  const ep = Math.min(current.value, lineEpisodes || current.value);
+  void fetchPlay(String(p.vod.id), lineId, ep, { keepPlayer: true, history: 'push' });
 }
 
-/** 就地换集：只改 current，播放器换源、地址栏更新，不再请求接口 */
-function applyEp(index: number): void {
-  const p = play.value;
-  if (!p || index < 1 || index > p.episodes.length || index === p.current) return;
-  playerRef.value?.saveProgress();
-  p.current = index;
-}
-
+/** 选集：地址栏是唯一真源，这里只负责跳转（播放器跟着 computed 换源） */
 function selectEp(index: number): void {
   const p = play.value;
-  if (!p || index < 1 || index > p.episodes.length) return;
-  applyEp(index);
-  void router.push({
-    name: 'play',
-    params: { id: String(p.vod.id), lineId: p.line.id, ep: String(p.current) },
-  });
+  if (!p || index < 1 || index > p.episodes.length || index === current.value) return;
+  playerRef.value?.saveProgress();
+  void router.push({ name: 'play', params: { id: String(p.vod.id), lineId: p.line.id, ep: String(index) } });
 }
 
 function onEnded(): void {
@@ -214,7 +163,7 @@ async function scrollToCurrent(): Promise<void> {
   if (!box) return;
   const active = box.querySelector<HTMLElement>('[data-active="1"]');
   if (!active) return;
-  // 用相对视口的矩形差算位移：offsetTop 会受最近定位祖先影响，卡片里会算偏
+  // 用相对视口的差值算位移：offsetTop 会受最近定位祖先影响，卡片里会算偏
   const boxRect = box.getBoundingClientRect();
   const activeRect = active.getBoundingClientRect();
   box.scrollTop += activeRect.top - boxRect.top - box.clientHeight / 2 + activeRect.height / 2;
@@ -228,30 +177,28 @@ watch(
     const ep = Math.max(1, Number(route.params.ep) || 1);
     const p = play.value;
 
-    // 同一部片：同线路只换集，不同线路取一次数据后就地换源（前进/后退也走这里）
-    if (p && vodId === String(p.vod.id)) {
-      if (lineId === p.line.id && ep <= p.episodes.length) {
-        applyEp(ep);
-        return;
-      }
-      if (lineId !== p.line.id) {
-        void switchLineInPlace(lineId, ep).then((ok) => {
-          if (!ok) void load();
+    // 同一部片同一条线路：当前集完全由地址栏派生，不请求；只把越界集数纠回最后一集
+    if (p && vodId === String(p.vod.id) && (!lineId || lineId === p.line.id)) {
+      // 浏览器前进/后退也会走到这里，切换前先把进度落盘
+      if (ep !== p.current) playerRef.value?.saveProgress();
+      if (ep > p.episodes.length) {
+        void router.replace({
+          name: 'play',
+          params: { id: vodId, lineId: p.line.id, ep: String(p.episodes.length) },
         });
-        return;
       }
+      return;
     }
-    void load();
+
+    // 换片整页重载；同剧换线路保留播放器
+    void fetchPlay(vodId, lineId, ep, { keepPlayer: Boolean(p && vodId === String(p.vod.id)) });
   },
   { immediate: true },
 );
 
 watch(current, () => void scrollToCurrent());
 
-onBeforeUnmount(() => {
-  loadController?.abort();
-  lineController?.abort();
-});
+onBeforeUnmount(() => controller?.abort());
 
 useSeo(() => ({
   title: vod.value
@@ -395,20 +342,19 @@ useSeo(() => ({
         </p>
 
         <div ref="epsRef" class="max-h-[var(--ep-max-h)] overflow-y-auto">
-          <div class="flex flex-wrap gap-[var(--ep-gap)] sm:grid sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+          <div class="grid grid-cols-4 gap-[var(--ep-gap)] sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
             <button
               v-for="ep in episodesShown"
               :key="ep.index"
               type="button"
               :title="ep.name"
               :data-active="ep.index === current ? '1' : undefined"
-              class="h-[var(--ep-cell-h)] max-w-full cursor-pointer truncate rounded text-center text-caption leading-[var(--ep-cell-h)] transition"
-              :class="[
+              class="h-[var(--ep-cell-h)] min-w-0 cursor-pointer truncate rounded px-1 text-center text-caption leading-[var(--ep-cell-h)] transition"
+              :class="
                 ep.index === current
                   ? 'bg-primary text-white'
-                  : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink',
-                'min-w-[calc((100%-3*var(--ep-gap))/4)] px-1 sm:min-w-0 sm:px-0',
-              ]"
+                  : 'bg-surface-2 text-ink-2 hover:bg-surface-3 hover:text-ink'
+              "
               @click="selectEp(ep.index)"
             >
               {{ ep.name }}
