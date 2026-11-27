@@ -12,9 +12,10 @@ const props = defineProps<{
 }>();
 
 /*
- * 占位图始终作为卡片底图（见 <style> 里的 .poster），真实封面加载完再淡入。
+ * 加载中只垫中性渐变（见 <style> 里的 .poster），真实封面加载完再淡入；
+ * 「暂无封面」占位图只在无封面 / 坏图时才出现，避免下载过程中先把「暂无」摆出来误导用户。
  * 不用「加载前整块透明」的写法：iOS Safari 的原生懒加载有已知缺陷（WebKit 237703 / 240083），
- * 图片偶尔永远不触发 load，那样卡片会一直是空块；有底图时最差也只是显示「暂无封面」。
+ * 图片偶尔永远不触发 load，那样卡片会一直是空块；有渐变底时最差也只是一块深色海报位。
  */
 const broken = ref(false);
 const loaded = ref(false);
@@ -45,6 +46,14 @@ onMounted(() => {
     <div
       class="poster relative aspect-[2/3] overflow-hidden rounded-md bg-surface-2 transition-shadow duration-200 group-hover:ring-1 group-hover:ring-primary-line"
     >
+      <!-- 加载中的呼吸层：真实封面淡入后撤掉 -->
+      <div
+        v-if="!loaded && !broken && cover"
+        class="absolute inset-0 animate-pulse bg-surface-2"
+        aria-hidden="true"
+      />
+      <!-- 无封面 / 坏图时才显示「暂无封面」 -->
+      <div v-if="!cover || broken" class="poster-fallback absolute inset-0" aria-hidden="true" />
       <img
         v-if="!broken && cover"
         ref="posterRef"
@@ -71,8 +80,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 底图：海报位永远有内容，真实封面淡入时不会有「先空一块」的观感 */
+/* 加载中的中性底：只有深色渐变，不出现「暂无封面」字样 */
 .poster {
+  background-image: linear-gradient(135deg, #1f2733, #171d26);
+}
+
+/* 无封面 / 坏图：铺占位图（画布 2:3、拉伸铺满） */
+.poster-fallback {
   background-image: url('/img/poster-placeholder.svg');
   background-repeat: no-repeat;
   background-size: 100% 100%;
