@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import Artplayer from 'artplayer';
+import Player from 'xgplayer';
+import HlsPlugin from 'xgplayer-hls';
+import 'xgplayer/dist/index.min.css';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { readPref, removePref, writePref } from '../composables/usePref';
 
@@ -42,32 +44,33 @@ const emit = defineEmits<{ ended: []; error: [] }>();
 const PLAYLIST_PROXY = /\/api\/web\/playlist(?:\?|$)/;
 
 /**
- * 给 ArtPlayer 判内核类型。
+ * 这条地址该不该交给 HlsPlugin。
  *
- * artplayer 的 `url` setter 是 `option.type || 由地址后缀推断`，随后 `customType[类型]`：
- * 类型对不上就 `video.src = url` 裸赋值。所以 `option.type` 不能只会是空串：
- * 直链地址多半是 `.../index.m3u8`，后缀能推对；但走去广告代理时地址是
- * `/api/web/playlist?...`——既没后缀、还带查询串，推出来的东西不在 `customType` 里，
- * hls.js 永远拿不到这条流，Chrome/Firefox 只能得到 MEDIA_ERR_SRC_NOT_SUPPORTED(4)，
- * 界面就是「该线路暂不支持在线播放」，而且控制台不报任何 JS 错。
+ * 注意 xgplayer 的插件一旦在创建时挂上就会接管所有地址、不看后缀，所以 mp4 直链必须
+ * **不挂**插件，留给原生内核；也正因为插件集合在创建时就固定了，换集时内核种类变了
+ * 只能重建实例（`inferType()` 那种「按后缀告诉播放器怎么解」的做法在这里不适用）。
  */
-function inferType(url: string): string {
-  return PLAYLIST_PROXY.test(url) || /\.m3u8(?:[?#]|$)/i.test(url) ? 'm3u8' : '';
+function isHls(url: string): boolean {
+  return PLAYLIST_PROXY.test(url) || /\.m3u8(?:[?#]|$)/i.test(url);
 }
 
-/*
- * 失败提示只有一句中性文案。
+/**
+ * iOS 上要不要绕过系统播放器（AVPlayer）走 MSE 管线。
  *
- * 曾经试过按 `MediaError.code` 和补探出来的 HTTP 状态码细分（「网络连接异常」
- * 「线路暂时不可用」等），但 iOS 的原生内核会对着同一个拉不到的地址反复报错：
- * 每报一次就先把中性文案写上、再被探测结果覆盖，文字在两句之间来回跳，
- * 用户看到的就是画面在闪。细分带来的那点信息量不值一次闪屏，全删了。
+ * 内核选择本身完全由 xgplayer 负责，我们不判断 UA：
+ * - `false`（xgplayer 默认）：HlsPlugin 发现只有 ManagedMediaSource、没有 MediaSource 时
+ *   主动让位，`video.src` 交给系统播放器；
+ * - `true`：iOS 17.1+ 上也走 MSE 缓冲管线。
+ *
+ * 排障时用 `?mms=1` 临时切换，不用改代码重新构建。
  */
-const NEUTRAL_FAILURE = '播放失败，请稍后重试或换线路';
+const PREFER_MMS = /\bmms=1\b/.test(location.search);
+
+
+/** 排障信息：只有 URL 带 `?debug=1` 时才有值（手机上没有 devtools 可看） */
+const DEBUG = /\bdebug=1\b/.test(location.search);
 
 const containerRef = ref<HTMLDivElement | null>(null);
-const failedText = ref('');
-/** 排障信息：只有 URL 带 `?debug=1` 时才有值（见 describeFailure） */
 const debugInfo = ref('');
 
 /** 直链播放地址：优先用代理地址，没有就回落到原始地址 */
@@ -83,177 +86,45 @@ const iframeSrc = computed(() => {
 
 const RESUME_PREFIX = 'lcm:resume:';
 
-/**
- * hls.js 动态导入后的类型：只声明用到的那部分。
- * 它的 d.ts 是 `export default class Hls`，但动态 import 的命名空间类型在
- * `moduleResolution: Bundler` 下拿不到构造签名，这里显式声明更稳。
- */
-interface HlsPlayer {
-  loadSource(url: string): void;
-  attachMedia(media: HTMLVideoElement): void;
-  recoverMediaError(): void;
-  destroy(): void;
-  on(
-    event: string,
-    listener: (
-      event: string,
-      data: { fatal?: boolean; type?: string },
-    ) => void,
-  ): void;
+/** xgplayer `error` 事件里我们用到的那部分字段（内核已经替我们采集好了） */
+interface PlaybackError {
+  errorType?: string;
+  errorCode?: number;
+  message?: string;
+  readyState?: number;
+  networkState?: number;
 }
 
-interface HlsConstructor {
-  new (config: { enableWorker: boolean; lowLatencyMode: boolean; maxAudioFramesDrift: number }): HlsPlayer;
-  isSupported(): boolean;
-  Events: { ERROR: string };
-  ErrorTypes: { MEDIA_ERROR: string };
-}
-
-let art: Artplayer | null = null;
-let hls: HlsPlayer | null = null;
-/** hls.js 动态加载令牌：换集或销毁后让上一次加载的回调失效 */
-let loadToken = 0;
+let player: Player | null = null;
+/** 当前实例的内核种类：决定换集时能否就地 `switchURL`，还是必须重建 */
+let mountedKind: 'hls' | 'direct' = 'hls';
 let lastSaveAt = 0;
 /** 当前这一集是否已经发过 ended：timeupdate 兜底与原生 ended 只取一次 */
 let endedSent = false;
-/**
- * 这一集选定的内核，`null` 表示还没决策。
- * iOS 先给原生一次机会，失败后固定走 hls.js 不再回头 —— Artplayer 的断线重连会把同一个
- * 地址重新送进来，靠「决策 + 地址」两个字段就能认出「别重新决策、别拆实例」。
- */
-type Engine = 'native' | 'hls';
-let engine: Engine | null = null;
-let engineUrl = '';
 
 function resumeStorageKey(): string {
   return props.resumeKey ? RESUME_PREFIX + props.resumeKey : '';
 }
 
-function destroyPlayer(): void {
-  loadToken += 1;
-  if (hls) {
-    hls.destroy();
-    hls = null;
-  }
-  if (art) {
-    art.destroy(false);
-    art = null;
-  }
-}
-
-/**
- * 原生 HLS 能不能放。
- * 只问 `application/vnd.apple.mpegurl` 不够：iOS 17.1 之后部分内核（含 iOS 上的第三方壳）
- * 对它返回空串，只认 `application/x-mpegURL`，于是会被误判成「不支持」。三个都问一遍。
- */
-const NATIVE_HLS_TYPES = ['application/vnd.apple.mpegurl', 'application/x-mpegURL', 'audio/mpegurl'];
-
-/**
- * 是否 iPhone/iPad。
- * 这类设备没有 MSE，hls.js 永远起不来，只能走原生内核 —— 哪怕 canPlayType 说不行。
- */
-function isAppleMobile(): boolean {
-  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true;
-  // iPadOS 13 起 UA 伪装成 Macintosh，用触摸点区分
-  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-}
-
-/**
- * ArtPlayer 的 m3u8 自定义内核：非 iOS 一律 hls.js，iOS 先原生、失败降级一次 hls.js。
- *
- * 不能反过来「hls.js 优先」：Chrome/Firefox 对 HLS 的 canPlayType 会回 "maybe"，真把
- * m3u8 塞给 video.src 只会得到 MEDIA_ERR_SRC_NOT_SUPPORTED（code 4）。而 iPhone/iPad
- * 上 hls.js 只能走 ManagedMediaSource（iOS 17.1+ 的实验特性），原生内核才是稳的那条路。
- *
- * 内核按「每一集」记在 engine 里：同一地址的重连通知只复述决定，不会重新决策；
- * 只有换集/换线路（engineUrl 变化）才重新来过。
- *
- * hls.js 压缩后约 400KB，只有真正需要时才动态加载，不拖慢首屏（播放器外壳先出来）。
- */
-function playM3u8(video: HTMLVideoElement, url: string, _player: Artplayer): void {
-  if (engineUrl !== url) {
-    engine = null;
-    engineUrl = url;
-  }
-  // 重连只是重复通知：hls 已经接管并且实例还在，别拆掉正在播放的流
-  if (engine === 'hls' && hls) return;
-
-  // 就地换集时同一个实例会被再次调用，先把上一条流的 hls 实例销毁，避免残留监听
-  if (hls) {
-    hls.destroy();
-    hls = null;
-  }
-  // 换集/卸载会让上一次的动态加载作废，用令牌判断回调是否还有效
-  const token = ++loadToken;
-
-  // 本集第一次进来才决策，结果对后续重连一直生效
-  engine ??= isAppleMobile() ? 'native' : 'hls';
-  if (engine === 'native') {
-    video.src = url;
-    return;
-  }
-
-  const unsupported = (): void => {
-    failedText.value = NEUTRAL_FAILURE;
-    debugInfo.value = 'unsupported: 内核不支持 HLS 也没有 MSE';
-    emit('error');
-  };
-
-  void import('hls.js')
-    .then((module) => {
-      if (token !== loadToken) return;
-      const Hls = (module as unknown as { default: HlsConstructor }).default;
-      if (!Hls.isSupported()) {
-        // 没有 MSE 但内核自己认 HLS（macOS Safari 之外的少量环境）时退回原生
-        if (NATIVE_HLS_TYPES.some((type) => video.canPlayType(type) !== '')) {
-          video.src = url;
-          return;
-        }
-        unsupported();
-        return;
-      }
-
-      const instance = new Hls({ enableWorker: true, lowLatencyMode: false, maxAudioFramesDrift: 5 });
-      hls = instance;
-      instance.loadSource(url);
-      instance.attachMedia(video);
-      instance.on(Hls.Events.ERROR, (_event, data) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          instance.recoverMediaError();
-          return;
-        }
-        instance.destroy();
-        hls = null;
-        video.src = url;
-      });
-    })
-    .catch(() => {
-      if (token !== loadToken) return;
-      unsupported();
-    });
-}
-
-function restoreResume(player: Artplayer): void {
-  if (!props.resume || !props.resumeKey) return;
+/** 续播起点：读不到就是 0，交给 xgplayer 的 `startTime` 去 seek */
+function resumeStartTime(): number {
+  if (!props.resume || !props.resumeKey) return 0;
   const saved = Number(readPref(resumeStorageKey()) ?? 0);
-  const duration = player.duration;
-  if (saved > 5 && Number.isFinite(duration) && saved < duration - 10) {
-    player.currentTime = saved;
-  }
+  return Number.isFinite(saved) && saved > 5 ? saved : 0;
 }
 
-/**
- * 把当前进度写进 localStorage：默认 5 秒节流，`force` 用于换集/换线路前立刻落盘，
- * 保证「看了一半切走再切回来」能接上。
- */
+function destroyPlayer(): void {
+  player?.destroy();
+  player = null;
+}
+
 function saveProgress(force = false): void {
-  if (!art || !props.resume || !props.resumeKey) return;
+  if (!player || !props.resume || !props.resumeKey) return;
   const now = Date.now();
   if (!force && now - lastSaveAt < 5000) return;
   lastSaveAt = now;
-  if (art.currentTime > 5) {
-    writePref(resumeStorageKey(), String(Math.floor(art.currentTime)));
+  if (player.currentTime > 5) {
+    writePref(resumeStorageKey(), String(Math.floor(player.currentTime)));
   }
 }
 
@@ -268,126 +139,121 @@ function finish(): void {
 defineExpose({ saveProgress });
 
 /**
- * 同步失败浮层：判据是内核自己的状态，不是事件。
- *
- * 只有 `video.error` 有值、且 `readyState` 停在「没数据可放」那几档才算真播不了。
- * 只看事件会被 iOS 残留的旧 code 骗（视频在放，屏幕上写着播放失败）；只看一次
- * 又分不清「刚起播就崩」和「崩完自己恢复了」。两个条件一起用，进出一共两条路径，
- * 既不需要记住「哪个地址报过错」，也不需要另找一个清除时机。
+ * 排障用的错误描述：只在 URL 带 `?debug=1` 时展示。
+ * 字段几乎全部来自 xgplayer 抛出的 Errors（它已经把 readyState/networkState/errorCode 采好了），
+ * 我们只补两个它不知道的：内核种类、这台设备有没有 ManagedMediaSource。
+ * 地址用我们传进去的那条（走 MSE 时 `error.src` 只会是 `blob:`，看不出是哪条线路）。
  */
-function syncFailure(player: Artplayer): void {
-  const { error, readyState } = player.video;
-  // code 1 = 主动中断（换集、切线路时的 abort），不是真的失败，不能弹提示
-  const broken =
-    error !== null && error.code !== 1 && readyState < HTMLMediaElement.HAVE_CURRENT_DATA;
-  if (!broken) {
-    // 有数据可放了就收浮层；只是残留的旧错误，压根没弹过，清一下也无害
-    if (readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) failedText.value = '';
-    return;
-  }
-  // 同一波错误只提示一次：内核会对同一个拉不到的地址反复报错，每次重弹就是闪屏
-  if (failedText.value !== '') return;
-  // iOS 还有一条没试过的路：hls.js + ManagedMediaSource（iOS 17.1+）。
-  // 只在「本集选了原生」时降一次；已经走 hls 的地址不再回头，否则两条路会互相拆台。
-  if (engine === 'native' && isAppleMobile() && hls === null) {
-    engine = 'hls';
-    playM3u8(player.video, directSrc.value, player);
-    return;
-  }
-  leaveFullscreen(player);
-  failedText.value = NEUTRAL_FAILURE;
-  debugInfo.value = describeFailure(player);
-  emit('error');
-}
-
-/**
- * 排障用的错误描述：只在 URL 带 `?debug=1` 时展示在失败浮层上。
- * 手机上没有 devtools，iOS 上又没有「拷贝控制台」这种入口，只能把关键状态直接画出来：
- * 内核报的 code、缓冲状态、真正被请求的地址、以及内核到底认不认 HLS 类型。
- */
-function describeFailure(player: Artplayer): string {
-  if (!/\bdebug=1\b/.test(location.search)) return '';
-  const video = player.video;
-  const mime = NATIVE_HLS_TYPES.map((type) => `${type.slice(-12)}=${video.canPlayType(type) || '-'}`);
-  const parts = [
-    `code=${video.error?.code ?? '-'} msg=${video.error?.message ?? '-'}`,
-    `readyState=${video.readyState} networkState=${video.networkState}`,
-    `ua=${isAppleMobile() ? 'apple' : 'other'} hls=${hls ? 'yes' : 'no'}`,
-    `src=${video.currentSrc || video.src}`,
-    mime.join(' '),
-  ];
-  return parts.join(' | ');
-}
-/**
- * 失败时先退出全屏，否则浮层根本露不出来：
- * - 网页全屏时 Artplayer 会把容器改成 `position:fixed; inset:0; z-index:9999`，
- *   浮层的 `z-[130]` 压不过它；
- * - 原生全屏时浏览器只渲染全屏元素那一棵子树，浮层不在里面，等于看不见也点不到。
- * 两处失败都不该把用户锁在一个看不见提示的全屏画面里，所以一并退出。
- */
-function leaveFullscreen(player: Artplayer): void {
-  if (player.fullscreen) player.fullscreen = false;
-  if (player.fullscreenWeb) player.fullscreenWeb = false;
+function describeFailure(error: PlaybackError): string {
+  if (!DEBUG) return '';
+  return [
+    `code=${error.errorCode ?? '-'} type=${error.errorType ?? '-'} msg=${error.message || '-'}`,
+    `readyState=${error.readyState ?? '-'} networkState=${error.networkState ?? '-'}`,
+    `kernel=${mountedKind} mms=${'ManagedMediaSource' in window ? 'yes' : 'no'}`,
+    `src=${directSrc.value.slice(0, 120)}`,
+  ].join(' | ');
 }
 
 function createPlayer(): void {
-  // 重试/换集时先把浮层收掉，别让旧提示盖在正在重新加载的画面上
-  failedText.value = '';
-  debugInfo.value = '';
-  // 新一轮播放，内核决策也重置
-  engine = null;
-  engineUrl = '';
   const container = containerRef.value;
   if (!container || !directSrc.value) return;
 
   destroyPlayer();
+  debugInfo.value = '';
   endedSent = false;
 
-  const player = new Artplayer({
-    container,
-    url: directSrc.value,
-    // 不能只靠 artplayer 从后缀推断：去广告代理的地址没有 `.m3u8` 后缀（见 inferType）
-    type: inferType(directSrc.value),
-    customType: { m3u8: playM3u8 },
-    // 不放封面：加载时保持黑底，避免先闪一下影片海报（poster 也不再作为 prop 传入）
-    autoplay: props.autoplay,
-    theme: '#3b82f6',
-    lang: 'zh-cn',
-    volume: 0.7,
-    playbackRate: true,
-    aspectRatio: true,
-    // 四个开关对应后台「播放设置」，默认值与 site.ts 的兜底保持一致
-    screenshot: props.screenshot,
-    fullscreen: props.fullscreen,
-    fullscreenWeb: props.webfullscreen,
-    pip: true,
-    hotkey: true,
-    setting: props.setting,
-    autoSize: false,
-    moreVideoAttr: { playsInline: true, preload: 'metadata' },
-  });
-  art = player;
+  const hls = isHls(directSrc.value);
+  mountedKind = hls ? 'hls' : 'direct';
 
-  player.on('video:loadedmetadata', () => restoreResume(player));
-  player.on('video:timeupdate', () => {
+  // 后台「播放设置」里关掉的控件：xgplayer 内置插件靠 ignores 关，不用自己藏
+  const ignores: string[] = [];
+  if (!props.fullscreen) ignores.push('fullscreen');
+  // 「播放设置」里的倍速与清晰度开关，对应 xgplayer 的两个独立插件
+  // （插件名叫 playbackRate，忽略列表比较时两边都转小写）
+  if (!props.setting) ignores.push('playbackRate', 'definition');
+
+  player = new Player({
+    el: container,
+    width: '100%',
+    height: '100%',
+    url: directSrc.value,
+    plugins: hls ? [HlsPlugin] : [],
+    hls: { preferMMS: PREFER_MMS },
+    lang: 'zh-cn',
+    autoplay: props.autoplay,
+    volume: 0.7,
+    playsinline: true,
+    videoAttributes: { preload: 'metadata' },
+    startTime: resumeStartTime(),
+    screenShot: props.screenshot,
+    cssFullscreen: props.webfullscreen,
+    pip: true,
+    ignores,
+    // 主题色：已播进度条 / 拖拽钮 / 音量条（其余红色在下方 CSS 里覆盖）
+    commonStyle: {
+      playedColor: 'var(--primary)',
+      sliderBtnStyle: { background: 'var(--primary)' },
+      volumeColor: 'var(--primary)',
+    },
+  });
+
+  player.on('ended', finish);
+  player.on('timeupdate', () => {
     saveProgress();
     // 兜底：个别源站/内核到结尾时不派发 ended，这里按「离结尾不到 0.5 秒」判定一次
-    const video = player.video;
-    if (!Number.isFinite(video.duration) || video.duration <= 0) return;
-    if (video.duration - video.currentTime < 0.5) finish();
+    if (!player) return;
+    const { duration, currentTime } = player;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    if (duration - currentTime < 0.5) finish();
   });
-  player.on('video:ended', finish);
-  // 出错和恢复都走同一个判定：内核状态说了算（见 syncFailure）
-  player.on('video:error', () => syncFailure(player));
-  player.on('video:canplay', () => syncFailure(player));
+  // 失败提示与「刷新」按钮由内置 ErrorPlugin 负责，这里只记录排障信息并通知父组件
+  player.on('error', (error: PlaybackError) => {
+    debugInfo.value = describeFailure(error);
+    emit('error');
+  });
+  player.on('canplay', () => {
+    debugInfo.value = '';
+  });
 }
+
 /**
- * 重新加载当前这一集。
- * 必须有：PlayView 的同集点击是 no-op（`applyEp` 遇到 `index === current` 直接 return），
- * 失败浮层又是不透明全屏盖层，没有这个按钮用户就只能换集才能继续看。
+ * 换集：同一内核种类就地换源（不销毁实例，避免黑一下），种类变了才重建。
+ *
+ * 两条分支的区别是有原因的：`player.handleSource` 为 false 说明 HlsPlugin 接管了数据源
+ *（MSE 管线），它把 switchURL 换成了支持 `{ currentTime }` 的版本；为 true 说明走的还是
+ * `<video>` 自己（mp4 直链，或 iOS 上插件让位给 AVPlayer），而内核自带的 switchURL 会
+ *「从当前位置接着播」（把起点设成当前 currentTime，并忽略入参），换集时必须自己 seek。
  */
-function retry(): void {
-  createPlayer();
+async function switchEpisode(next: string): Promise<void> {
+  const inst = player;
+  if (!inst) return;
+  if (isHls(next) !== (mountedKind === 'hls')) {
+    createPlayer();
+    return;
+  }
+  // 换走前先把上一集的进度落盘（续播键带集数，不写就丢了）
+  saveProgress(true);
+  debugInfo.value = '';
+  lastSaveAt = 0;
+  endedSent = false;
+  const start = resumeStartTime();
+
+  if (!inst.handleSource) {
+    try {
+      await inst.switchURL(next, { currentTime: start });
+    } catch {
+      // 拿到 canplay 之前遇到 error 会 reject；失败提示本身由内置 ErrorPlugin 接管
+    }
+    return;
+  }
+
+  inst.src = next;
+  inst.once('loadedmetadata', () => {
+    if (player !== inst) return;
+    // 换集后应从头/从续播点开播，而不是接着上一集的进度
+    inst.currentTime = inst.duration > 0 ? Math.min(start, inst.duration) : start;
+    void inst.play();
+  });
 }
 
 watch(
@@ -400,20 +266,8 @@ watch(
       destroyPlayer();
       return;
     }
-    if (art && prev) {
-      // 换集就地切换：同一个 ArtPlayer 实例换源，不销毁重建（避免黑一下）
-      failedText.value = '';
-      lastSaveAt = 0;
-      endedSent = false;
-      // 就地换源时 artplayer 用 `option.type` 判内核，换集地址可能变成代理地址（或反过来），
-      // 所以每次换源前都要按新地址重算一次
-      art.option.type = inferType(next);
-      try {
-        await art.switchUrl(next);
-      } catch {
-        // switchUrl 在拿到 canplay 前遇到 video:error 会 reject；内核失败本身由 syncFailure 接管
-        // （iOS 原生失败后降级 hls.js 时这是必经路径），这里不能再抛成未处理异常
-      }
+    if (player && prev) {
+      await switchEpisode(next);
       return;
     }
     createPlayer();
@@ -429,13 +283,7 @@ onBeforeUnmount(destroyPlayer);
 </script>
 
 <template>
-  <!--
-    `isolate` 不是为了视觉，是把浮层的 `z-[130]` 锁在这个播放器内部：
-    它会盖住顶栏（`SiteHeader.vue:81` 是 `sticky top-0 z-50`）。
-    不隔离的话，页面滚到播放器贴住顶部时，那块不透明的失败浮层会画在导航上面。
-    隔离后 130 只在播放器这个层叠上下文里有意义，对页面其它元素等于 0。
-  -->
-  <div class="player-box relative isolate h-full w-full bg-black">
+  <div class="player-box relative h-full w-full bg-black">
     <iframe
       v-if="iframeSrc"
       :src="iframeSrc"
@@ -445,46 +293,27 @@ onBeforeUnmount(destroyPlayer);
       referrerpolicy="no-referrer"
     ></iframe>
     <div v-else ref="containerRef" class="h-full w-full"></div>
-    <!--
-      `z-[130]` 是裸数值，理由是浮层必须盖住 Artplayer 自己的层：它内部的控件层是
-      `.art-bottom:60`、`.art-loading:70`、`.art-notice:80`、`.art-settings:90`、
-      `.art-info:100`、`.art-contextmenus:120`（打包在 artplayer.js 里的样式），
-      而 `.art-video-player` 自身没建层叠上下文（`position:relative` + `z-index:auto`），
-      所以不抬高层的活，遮罩会被控件盖住、按钮也点不到。Tailwind 没有 >50 的 z 刻度。
-      抬高只在这个播放器里有效（外层容器用 `isolate` 做了层叠隔离），不会反过来
-      压住顶部的 sticky 导航。
-    -->
+    <!-- 手机上没有 devtools，`?debug=1` 时把内核状态直接画在画面上 -->
     <div
-      v-if="failedText"
-      class="absolute inset-0 z-[130] grid place-items-center overflow-y-auto bg-surface px-4 py-2 text-center text-small text-ink-2"
+      v-if="debugInfo"
+      class="pointer-events-none absolute inset-x-0 top-0 break-all bg-black/70 px-2 py-1 font-mono text-xs text-white/80"
     >
-      <div class="grid gap-3">
-        <span>{{ failedText }}</span>
-        <span v-if="debugInfo" class="break-all font-mono text-xs opacity-70">{{ debugInfo }}</span>
-        <button
-          type="button"
-          class="mx-auto inline-flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-line px-4 text-small text-ink-2 transition hover:border-primary-line hover:text-ink active:border-primary-line active:text-ink"
-          @click="retry"
-        >
-          重新加载
-        </button>
-      </div>
+      {{ debugInfo }}
     </div>
   </div>
 </template>
 
 <style scoped>
-.player-box :deep(.art-video-player) {
+.player-box :deep(.xgplayer) {
   width: 100%;
   height: 100%;
 }
 
-/*
- * artplayer 自己的样式是 `.art-video { object-fit: fill }`，视频会被拉伸成容器的 16:9。
- * 片源比例不一定都是 16:9（示例：1920x802 约 2.39:1），fill 下画面被竖向拉高 35%，人物变形。
- * 改成 contain：保留原比例，多出来的地方用容器底色（黑）补。
- */
-.player-box :deep(.art-video) {
-  object-fit: contain;
+/* xgplayer 的红色写死在这几处，commonStyle 管不到，用站点主色盖掉 */
+.player-box :deep(.xgplayer-error .xgplayer-error-refresh),
+.player-box :deep(.xgplayer .xg-options-list li:hover),
+.player-box :deep(.xgplayer .xg-options-list li.selected),
+.player-box :deep(.xgplayer xg-trigger .time-preview .xg-cur) {
+  color: var(--primary);
 }
 </style>
